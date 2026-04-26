@@ -107,6 +107,8 @@ Lalu isi nilai penting berikut:
 - `SUPABASE_SERVICE_ROLE_KEY`
 - `ANTHROPIC_API_KEY`
 - `SECRET_KEY`
+- `ALLOWED_ORIGINS`
+- `ALLOWED_HOSTS`
 - `VITE_SUPABASE_URL`
 - `VITE_SUPABASE_ANON_KEY`
 - `VITE_API_BASE_URL`
@@ -114,6 +116,8 @@ Lalu isi nilai penting berikut:
 Catatan:
 - frontend memakai variabel `VITE_*`
 - backend memakai variabel non-`VITE_*`
+- untuk production, `ALLOWED_ORIGINS` harus berisi domain frontend Vercel dan `ALLOWED_HOSTS` harus berisi host backend Render
+- backend juga menambahkan host production penting secara defensif agar Render tidak menolak request dengan `Invalid host header`
 
 ### 3. Jalankan Supabase lokal
 
@@ -289,6 +293,14 @@ Catatan:
 - Suite E2E yang aktif saat ini mencakup route publik, login invalid, serta smoke flow login + wallet + transaction + budget + bills.
 - Smoke test sudah memakai bootstrap session yang lebih cepat agar runtime suite tetap efisien.
 
+## Catatan Production Auth dan Backend
+
+- Frontend menunggu Supabase menyelesaikan cek sesi awal sebelum menampilkan route auth/protected.
+- Cek sesi awal sekarang punya timeout pendek, sehingga halaman `/login` tidak lagi stuck selamanya di layar "Memuat halaman login" jika Supabase auth atau browser lock lambat.
+- Jika user belum punya sesi aktif, frontend akan lanjut sebagai guest dan menampilkan form login.
+- Backend production memakai `TrustedHostMiddleware`; jika host Render belum diizinkan, endpoint akan menjawab `400 Invalid host header` dan frontend menampilkan pesan tidak bisa terhubung ke backend.
+- Untuk service saat ini, host backend production yang harus valid adalah `catat-in-backend.onrender.com`, dan origin frontend production adalah `https://catat-in-nine.vercel.app`.
+
 ## API yang Tersedia
 
 ### Auth
@@ -412,6 +424,8 @@ Catatan:
 
 - Mobile sudah punya onboarding awal dan shell navigasi dasar, tetapi belum setara dengan flow web.
 - Beberapa file lama masih punya issue encoding karakter, walau file yang aktif untuk fitur utama sudah dirapikan lewat implementasi terbaru.
+- Backend Render Free bisa cold start setelah idle. Jika health check pertama lambat, tunggu sebentar lalu ulangi.
+- Jika muncul pesan frontend "Tidak bisa terhubung ke backend", cek dulu `https://catat-in-backend.onrender.com/health`. Response sehat adalah JSON dengan `status: ok` dan `database: ok`.
 - Jika kamu ingin mengikuti PRD penuh, langkah berikutnya yang paling logis adalah:
 
 1. sambungkan screen mobile ke API dan state nyata

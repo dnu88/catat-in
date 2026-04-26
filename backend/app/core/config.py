@@ -95,7 +95,6 @@ class Settings(BaseSettings):
         "http://localhost:3000",
         "http://localhost:3001",
         "https://catat-in-nine.vercel.app",
-        "*.vercel.app"
     ]
     ALLOWED_HOSTS: List[str] = ["localhost", "127.0.0.1", "*.onrender.com", "*.vercel.app", "*.railway.app"]
 

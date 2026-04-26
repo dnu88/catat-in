@@ -33,7 +33,8 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.ALLOWED_ORIGINS,
+    allow_origins=[str(origin).strip().rstrip("/") for origin in settings.ALLOWED_ORIGINS],
+    allow_origin_regex=r"https://catat-in-.*\.vercel\.app", # Mendukung subdomain preview Vercel
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

@@ -25,6 +25,8 @@ Konfigurasi repo yang sudah disiapkan:
 
 - `backend/Dockerfile` sudah mengikuti `PORT` dari platform hosting
 - `backend/app/core/config.py` sudah mendukung `ALLOWED_ORIGINS` dan `ALLOWED_HOSTS`
+- `backend/app/core/config.py` juga menambahkan host production penting secara defensif, termasuk host Render saat ini, agar request tidak gagal dengan `Invalid host header`
+- `apps/web/src/lib/supabase.ts` memberi timeout pada cek sesi awal Supabase agar halaman login tidak stuck di layar loading
 - endpoint AI sekarang fail-safe jika `ANTHROPIC_API_KEY` belum diisi
 - `apps/web/vercel.json` sudah menambahkan SPA rewrite agar route frontend tidak 404
 
@@ -89,6 +91,15 @@ ALLOWED_ORIGINS=https://your-app.vercel.app
 ALLOWED_HOSTS=your-backend-service.onrender.com
 ```
 
+Untuk deployment project saat ini, nilai production yang dipakai adalah:
+
+```text
+ALLOWED_ORIGINS=https://catat-in-nine.vercel.app
+ALLOWED_HOSTS=catat-in-backend.onrender.com
+```
+
+Jika memakai domain custom, tambahkan domain baru tersebut tanpa menghapus domain Vercel/Render yang masih aktif.
+
 Opsional tetapi disarankan:
 
 ```text
@@ -111,6 +122,8 @@ https://your-backend-service.onrender.com/health
 
 Harus mengembalikan `status: ok`.
 
+Jika endpoint mengembalikan `400 Invalid host header`, berarti host Render belum masuk `ALLOWED_HOSTS` atau service masih menjalankan build lama. Redeploy backend, lalu cek ulang `/health`.
+
 ## 4. Deploy Frontend ke Vercel Hobby
 
 1. Import repo yang sama ke Vercel.
@@ -129,6 +142,12 @@ VITE_API_BASE_URL=https://your-backend-service.onrender.com/api/v1
 VITE_MIDTRANS_CLIENT_KEY=
 ```
 
+Untuk deployment project saat ini:
+
+```text
+VITE_API_BASE_URL=https://catat-in-backend.onrender.com/api/v1
+```
+
 4. Deploy frontend.
 5. `apps/web/vercel.json` sudah memastikan route SPA seperti `/login`, `/dashboard`, `/transactions`, dan `/reset-password` tetap bekerja.
 
@@ -141,13 +160,30 @@ Setelah URL frontend dan backend final sudah dapat:
 3. pastikan `VITE_API_BASE_URL` di Vercel menunjuk ke backend Render final
 4. update `Site URL` dan `Redirect URLs` di Supabase Auth
 
+Validasi koneksi frontend-backend:
+
+```bash
+curl -i https://your-backend-service.onrender.com/health
+curl -i -X OPTIONS https://your-backend-service.onrender.com/api/v1/wallets/ \
+  -H "Origin: https://your-app.vercel.app" \
+  -H "Access-Control-Request-Method: POST" \
+  -H "Access-Control-Request-Headers: authorization,content-type"
+```
+
+Hasil yang benar:
+- `/health` mengembalikan `200 OK` dengan `status: ok`
+- preflight CORS mengembalikan `200 OK` dan `access-control-allow-origin` sesuai domain frontend
+- request endpoint protected tanpa token boleh mengembalikan `401` atau `403`; itu normal selama header CORS tetap ada
+
 ## 6. Checklist Go-Live
 
 Sebelum diumumkan ke user public, cek:
 
 - `GET /health` backend production merespons normal
+- preflight CORS dari domain frontend production merespons normal
 - signup user baru berhasil
 - login email/password berhasil
+- halaman `/login` tidak stuck di layar cek sesi awal
 - forgot password mengirim email reset
 - reset password via link email berhasil
 - create wallet berhasil
