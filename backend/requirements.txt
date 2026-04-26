@@ -1,0 +1,53 @@
+# ============================================================
+# CATAT.IN — Python Dependencies
+# Install: pip install -r requirements.txt
+# ============================================================
+
+# ── FRAMEWORK ────────────────────────────────────────────────
+fastapi==0.111.0
+uvicorn[standard]==0.30.1
+python-multipart==0.0.9      # Untuk upload file
+
+# ── PYDANTIC & SETTINGS ──────────────────────────────────────
+pydantic==2.7.3
+pydantic-settings==2.3.1
+
+# ── DATABASE / SUPABASE ──────────────────────────────────────
+supabase==2.5.0
+httpx==0.27.0                # HTTP client async
+
+# ── AI ───────────────────────────────────────────────────────
+anthropic==0.28.0
+
+# ── PAYMENT ──────────────────────────────────────────────────
+midtransclient==1.4.2
+
+# ── PUSH NOTIFICATION ────────────────────────────────────────
+firebase-admin==6.5.0
+
+# ── DATA PROCESSING (Import CSV) ─────────────────────────────
+pandas==2.2.2
+openpyxl==3.1.4              # Baca file .xlsx
+chardet==5.2.0               # Deteksi encoding CSV
+
+# ── IMAGE PROCESSING (Struk) ─────────────────────────────────
+Pillow==10.3.0               # Validasi dan resize gambar sebelum kirim ke AI
+
+# ── AUTH ─────────────────────────────────────────────────────
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+
+# ── RATE LIMITING ────────────────────────────────────────────
+slowapi==0.1.9               # Rate limiter untuk FastAPI
+
+# ── UTILITIES ────────────────────────────────────────────────
+python-dateutil==2.9.0
+pytz==2024.1
+
+# ── MONITORING ───────────────────────────────────────────────
+sentry-sdk[fastapi]==2.5.1   # Error tracking
+
+# ── DEV ONLY ─────────────────────────────────────────────────
+pytest==8.2.2
+pytest-asyncio==0.23.7
+httpx==0.27.0                # Test client FastAPI

@@ -1,0 +1,30 @@
+{
+  "name": "catat-in",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "concurrently \"pnpm --filter web dev\" \"pnpm backend:dev\"",
+    "dev:web": "pnpm --filter web dev",
+    "dev:mobile": "pnpm --filter mobile start",
+    "backend:dev": "cd backend && venv\\Scripts\\uvicorn main:app --reload --port 8000",
+    "test": "pnpm -r test && pnpm test:backend",
+    "test:web": "pnpm --filter web test",
+    "test:mobile": "pnpm --filter mobile test",
+    "test:backend": "cd backend && venv\\Scripts\\pytest",
+    "build": "pnpm --filter web build",
+    "lint": "pnpm -r lint",
+    "type-check": "pnpm -r type-check",
+    "db:start": "supabase start",
+    "db:stop": "supabase stop",
+    "db:reset": "supabase db reset",
+    "db:migrate": "supabase db push"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2",
+    "typescript": "^5.4.5"
+  },
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=9.0.0"
+  }
+}

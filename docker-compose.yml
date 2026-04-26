@@ -1,0 +1,59 @@
+version: '3.9'
+
+# ============================================================
+# CATAT.IN — Docker Compose (Local Development)
+# Jalankan: docker-compose up -d
+# ============================================================
+
+services:
+
+  # ── REACT WEB APP ──────────────────────────────────────────
+  web:
+    build:
+      context: ./apps/web
+      dockerfile: Dockerfile.dev
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./apps/web:/app
+      - /app/node_modules
+    environment:
+      - VITE_SUPABASE_URL=${SUPABASE_LOCAL_URL}
+      - VITE_SUPABASE_ANON_KEY=${SUPABASE_LOCAL_ANON_KEY}
+      - VITE_API_BASE_URL=http://localhost:8000/api/v1
+    depends_on:
+      - backend
+    networks:
+      - catat-in-network
+
+  # ── FASTAPI BACKEND ─────────────────────────────────────────
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app
+    environment:
+      - ENVIRONMENT=development
+      - DEBUG=true
+      - SUPABASE_URL=${SUPABASE_LOCAL_URL}
+      - SUPABASE_ANON_KEY=${SUPABASE_LOCAL_ANON_KEY}
+      - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - MIDTRANS_SERVER_KEY=${MIDTRANS_SERVER_KEY}
+      - MIDTRANS_IS_PRODUCTION=false
+      - SECRET_KEY=${SECRET_KEY}
+      - ALLOWED_ORIGINS=http://localhost:5173,http://localhost:3000
+    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+    networks:
+      - catat-in-network
+
+networks:
+  catat-in-network:
+    driver: bridge
+
+# NOTE: Supabase dijalankan terpisah via Supabase CLI
+# Jalankan: supabase start (dari direktori backend/supabase)
+# Supabase Studio akan tersedia di http://localhost:54323

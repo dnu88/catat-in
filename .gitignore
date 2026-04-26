@@ -1,0 +1,69 @@
+# ── ENVIRONMENT VARIABLES ────────────────────────────────────
+.env
+.env.local
+.env.*.local
+.tmp/
+.claude/
+
+# ── NODE / PNPM ──────────────────────────────────────────────
+node_modules/
+.pnpm-store/
+dist/
+build/
+.cache/
+
+# ── PYTHON ───────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+.venv/
+*.egg-info/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# ── SUPABASE ─────────────────────────────────────────────────
+supabase/.branches
+supabase/.temp
+backend/supabase/.branches/
+backend/supabase/.temp/
+
+# ── EXPO / REACT NATIVE ──────────────────────────────────────
+.expo/
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+*.orig.*
+android/
+ios/
+web-build/
+
+# ── EDITORS ──────────────────────────────────────────────────
+.vscode/settings.json
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# ── LOGS ─────────────────────────────────────────────────────
+*.log
+logs/
+npm-debug.log*
+
+# ── TESTING ──────────────────────────────────────────────────
+coverage/
+.nyc_output/
+apps/web/test-results/
+
+# ── DOCKER ───────────────────────────────────────────────────
+docker-compose.override.yml
+
+# ── BUILD ARTIFACTS ──────────────────────────────────────────
+*.tsbuildinfo

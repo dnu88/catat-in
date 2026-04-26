@@ -1,0 +1,23 @@
+{
+  "expo": {
+    "name": "CATAT-IN",
+    "slug": "catat-in",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#EAF1FF"
+      }
+    },
+    "web": {
+      "bundler": "metro"
+    }
+  }
+}
