@@ -41,6 +41,14 @@ export const supabase = createClient<Database>(clientUrl, clientAnonKey, {
 import type { Session } from '@supabase/supabase-js'
 export let currentSession: Session | null = null
 
+// Prime session once so API calls after a hard refresh don't race against
+// the INITIAL_SESSION event from Supabase.
+supabase.auth.getSession().then(({ data: { session } }) => {
+  currentSession = session
+}).catch(() => {
+  currentSession = null
+})
+
 supabase.auth.onAuthStateChange((_event, session) => {
   currentSession = session
 })

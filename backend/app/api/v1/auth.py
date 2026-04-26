@@ -5,19 +5,17 @@ Register, login, logout, dan refresh token via Supabase Auth.
 
 from fastapi import APIRouter, HTTPException, status
 from pydantic import BaseModel, EmailStr, Field
-from supabase import create_client
-
-from app.core.config import settings
+from app.core.database import get_supabase, get_supabase_anon
 
 router = APIRouter()
 
 
 def _client():
-    return create_client(settings.SUPABASE_URL, settings.SUPABASE_SERVICE_ROLE_KEY)
+    return get_supabase()
 
 
 def _anon_client():
-    return create_client(settings.SUPABASE_URL, settings.SUPABASE_ANON_KEY)
+    return get_supabase_anon()
 
 
 # ── SCHEMAS ──────────────────────────────────────────────────

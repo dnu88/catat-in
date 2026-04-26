@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import ReactDOM from 'react-dom/client'
 import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom'
+import { apiConfigError } from '@lib/api'
 import { supabase, supabaseConfigError } from '@lib/supabase'
 import { useAuthStore } from '@store/auth.store'
 
@@ -28,14 +29,13 @@ let authResolved = false
 let authSession: boolean = false
 const authListeners: Array<() => void> = []
 
+// Sesi awal akan dicek oleh useAuthReady
 if (!supabaseConfigError) {
-  supabase.auth.onAuthStateChange((event, session) => {
+  supabase.auth.getSession().then(({ data: { session } }) => {
     authSession = !!session
-    if (!authResolved) {
-      authResolved = true
-      authListeners.forEach((fn) => fn())
-      authListeners.length = 0
-    }
+    authResolved = true
+    authListeners.forEach((fn) => fn())
+    authListeners.length = 0
   })
 }
 
@@ -202,10 +202,12 @@ function FullscreenMessage({
 }
 
 function ConfigErrorPage() {
+  const configError = supabaseConfigError || apiConfigError || 'Konfigurasi frontend belum lengkap.'
+
   return (
     <FullscreenMessage
       title="Konfigurasi frontend belum siap"
-      body={`${supabaseConfigError} Isi .env dengan VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY, dan VITE_API_BASE_URL yang benar lalu restart dev server.`}
+      body={`${configError} Isi environment frontend dengan VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY, dan VITE_API_BASE_URL yang benar lalu deploy ulang.`}
     />
   )
 }
@@ -217,7 +219,7 @@ function AuthCallbackPage() {
 
   useEffect(() => {
     if (!ready) return
-    if (supabaseConfigError) {
+    if (supabaseConfigError || apiConfigError) {
       navigate('/login', { replace: true })
       return
     }
@@ -239,7 +241,7 @@ function RequireAuth({ children }: { children: React.ReactNode }) {
     return <FullscreenMessage title="Memuat aplikasi" body="Sedang mengecek sesi login kamu." loading />
   }
 
-  if (supabaseConfigError) {
+  if (supabaseConfigError || apiConfigError) {
     return <ConfigErrorPage />
   }
 
@@ -257,7 +259,7 @@ function GuestOnly({ children }: { children: React.ReactNode }) {
     return <FullscreenMessage title="Memuat halaman login" body="Sedang mengecek apakah sesi kamu masih aktif." loading />
   }
 
-  if (supabaseConfigError) {
+  if (supabaseConfigError || apiConfigError) {
     return <ConfigErrorPage />
   }
 
@@ -271,7 +273,7 @@ function GuestOnly({ children }: { children: React.ReactNode }) {
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <BrowserRouter>
-      {supabaseConfigError ? (
+      {supabaseConfigError || apiConfigError ? (
         <ConfigErrorPage />
       ) : (
         <Routes>

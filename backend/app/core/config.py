@@ -79,7 +79,7 @@ class Settings(BaseSettings):
 
     # CORS / trusted hosts. See _ListFriendlyEnvSource above.
     ALLOWED_ORIGINS: List[str] = ["http://localhost:5173", "http://localhost:3000"]
-    ALLOWED_HOSTS: List[str] = ["localhost", "127.0.0.1", "*.railway.app", "*.catat-in.id"]
+    ALLOWED_HOSTS: List[str] = ["localhost", "127.0.0.1", "*.railway.app", "*.catat-in.id", "*.onrender.com"]
 
     # Storage
     STORAGE_BUCKET_RECEIPTS: str = "receipts"

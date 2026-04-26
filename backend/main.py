@@ -63,8 +63,17 @@ app.include_router(webhooks.router, prefix=f"{API_PREFIX}/webhooks", tags=["Webh
 
 @app.get("/health", tags=["System"])
 async def health_check():
+    db_status = "ok"
+    try:
+        from app.core.database import get_supabase
+        # Coba query simpel untuk cek koneksi
+        get_supabase().table("profiles").select("id", count="exact").limit(1).execute()
+    except Exception as e:
+        db_status = f"error: {str(e)}"
+
     return {
-        "status": "ok",
+        "status": "ok" if db_status == "ok" else "degraded",
+        "database": db_status,
         "version": settings.VERSION,
         "environment": settings.ENVIRONMENT,
     }

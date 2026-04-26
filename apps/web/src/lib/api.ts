@@ -1,25 +1,55 @@
 import axios from 'axios'
 import { supabase, currentSession } from './supabase'
 
-// Base API client — semua request ke FastAPI backend lewat sini
+const DEFAULT_DEV_API_BASE_URL = 'http://localhost:8000/api/v1'
+
+function normalizeBaseUrl(url: string) {
+  return url.replace(/\/+$/, '')
+}
+
+function isLocalhostUrl(url: string) {
+  return /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?(\/|$)/i.test(url)
+}
+
+const configuredApiBaseUrl = import.meta.env.VITE_API_BASE_URL?.trim()
+
+export const apiConfigError = !import.meta.env.DEV && (!configuredApiBaseUrl || isLocalhostUrl(configuredApiBaseUrl))
+  ? 'Konfigurasi backend production belum valid. Isi VITE_API_BASE_URL dengan URL backend public, bukan localhost.'
+  : null
+
+export const apiBaseUrl = normalizeBaseUrl(
+  configuredApiBaseUrl || (import.meta.env.DEV ? DEFAULT_DEV_API_BASE_URL : '/api/v1'),
+)
+
 export const api = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1',
-  timeout: 30_000, // 30 detik (lebih lama untuk OCR dan AI)
+  baseURL: apiBaseUrl,
+  timeout: 30_000,
   headers: {
     'Content-Type': 'application/json',
   },
 })
 
-// ── REQUEST INTERCEPTOR ──────────────────────────────────────
-// Otomatis sisipkan JWT token dari Supabase session ke setiap request
-api.interceptors.request.use((config) => {
+async function resolveAccessToken() {
   if (currentSession?.access_token) {
-    config.headers.Authorization = `Bearer ${currentSession.access_token}`
+    return currentSession.access_token
   }
-  return config
-}, (error) => Promise.reject(error))
 
-// ── RESPONSE INTERCEPTOR ─────────────────────────────────────
+  const { data: { session } } = await supabase.auth.getSession()
+  return session?.access_token || null
+}
+
+api.interceptors.request.use(
+  async (config) => {
+    const accessToken = await resolveAccessToken()
+
+    if (accessToken) {
+      config.headers.Authorization = `Bearer ${accessToken}`
+    }
+    return config
+  },
+  (error) => Promise.reject(error),
+)
+
 let isRefreshing = false
 let refreshPromise: Promise<any> | null = null
 
@@ -46,11 +76,14 @@ api.interceptors.response.use(
           return Promise.reject(error)
         }
 
-        setTimeout(() => { isRefreshing = false; refreshPromise = null }, 1000)
+        setTimeout(() => {
+          isRefreshing = false
+          refreshPromise = null
+        }, 1000)
 
         originalRequest.headers.Authorization = `Bearer ${session.access_token}`
         return api(originalRequest)
-      } catch (err) {
+      } catch {
         isRefreshing = false
         await supabase.auth.signOut()
         window.location.href = '/login'
@@ -58,25 +91,30 @@ api.interceptors.response.use(
       }
     }
 
-    // Format error supaya consistent
-    const errorMessage = error.response?.data?.detail
+    const networkErrorMessage = !error.response
+      ? apiConfigError || `Tidak bisa terhubung ke backend (${apiBaseUrl}). Cek VITE_API_BASE_URL dan ALLOWED_ORIGINS backend.`
+      : null
+
+    const errorMessage = networkErrorMessage
+      || error.response?.data?.detail
       || error.response?.data?.message
       || error.message
       || 'Terjadi kesalahan. Silakan coba lagi.'
 
     return Promise.reject(new Error(errorMessage))
-  }
+  },
 )
 
-// ── API Client khusus upload (multipart/form-data) ───────────
 export const uploadApi = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1',
-  timeout: 60_000, // 60 detik untuk upload file besar
+  baseURL: apiBaseUrl,
+  timeout: 60_000,
 })
 
-uploadApi.interceptors.request.use((config) => {
-  if (currentSession?.access_token) {
-    config.headers.Authorization = `Bearer ${currentSession.access_token}`
+uploadApi.interceptors.request.use(async (config) => {
+  const accessToken = await resolveAccessToken()
+
+  if (accessToken) {
+    config.headers.Authorization = `Bearer ${accessToken}`
   }
   return config
 })

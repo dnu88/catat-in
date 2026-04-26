@@ -6,8 +6,7 @@ Laporan ringkasan keuangan bulanan dan tren pengeluaran.
 from fastapi import APIRouter, Depends, Query
 from typing import Optional
 from datetime import date
-from supabase import create_client
-
+from app.core.database import get_supabase
 from app.core.auth import get_current_user
 from app.core.config import settings
 from app.core.schema_compat import has_columns
@@ -16,7 +15,7 @@ router = APIRouter()
 
 
 def _client():
-    return create_client(settings.SUPABASE_URL, settings.SUPABASE_SERVICE_ROLE_KEY)
+    return get_supabase()
 
 
 def _tx_supports(column: str) -> bool:

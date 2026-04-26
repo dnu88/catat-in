@@ -69,10 +69,10 @@ Jika struk tidak jelas/buram, set readable = false dan confidence rendah.
 
 
 @lru_cache
-def get_anthropic_client() -> anthropic.Anthropic:
+def _get_async_anthropic_client() -> anthropic.AsyncAnthropic:
     if not settings.ANTHROPIC_API_KEY:
         raise RuntimeError("ANTHROPIC_API_KEY belum dikonfigurasi di server.")
-    return anthropic.Anthropic(api_key=settings.ANTHROPIC_API_KEY)
+    return anthropic.AsyncAnthropic(api_key=settings.ANTHROPIC_API_KEY)
 
 
 def ensure_ai_configured():
@@ -91,7 +91,8 @@ def _strip_json_code_block(raw: str) -> str:
 
 async def extract_transaction_from_text(user_text: str) -> dict:
     try:
-        response = get_anthropic_client().messages.create(
+        client = _get_async_anthropic_client()
+        response = await client.messages.create(
             model=settings.ANTHROPIC_MODEL,
             max_tokens=500,
             system=TRANSACTION_EXTRACT_PROMPT,
@@ -112,8 +113,8 @@ async def extract_transaction_from_text(user_text: str) -> dict:
 async def analyze_receipt_image(image_data: bytes, media_type: str = "image/jpeg") -> dict:
     try:
         image_b64 = base64.standard_b64encode(image_data).decode("utf-8")
-
-        response = get_anthropic_client().messages.create(
+        client = _get_async_anthropic_client()
+        response = await client.messages.create(
             model=settings.ANTHROPIC_MODEL,
             max_tokens=800,
             system=RECEIPT_ANALYSIS_PROMPT,
@@ -164,10 +165,12 @@ Data keuangan {period}:
 
 Format response: plain text, paragraf pendek, tidak perlu JSON."""
 
-    response = get_anthropic_client().messages.create(
+    client = _get_async_anthropic_client()
+    response = await client.messages.create(
         model=settings.ANTHROPIC_MODEL,
         max_tokens=400,
         messages=[{"role": "user", "content": prompt}],
     )
 
     return response.content[0].text.strip()
+
