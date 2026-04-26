@@ -31,12 +31,31 @@ const authListeners: Array<() => void> = []
 
 // Sesi awal akan dicek oleh useAuthReady
 if (!supabaseConfigError) {
-  supabase.auth.getSession().then(({ data: { session } }) => {
-    authSession = !!session
-    authResolved = true
-    authListeners.forEach((fn) => fn())
-    authListeners.length = 0
-  })
+  // Set timeout sebagai pengaman agar tidak stuck selamanya jika koneksi lambat
+  const timeoutId = setTimeout(() => {
+    if (!authResolved) {
+      console.warn('Auth session check timed out, proceeding as guest.')
+      authResolved = true
+      authListeners.forEach((fn) => fn())
+      authListeners.length = 0
+    }
+  }, 5000)
+
+  supabase.auth.getSession()
+    .then(({ data: { session } }) => {
+      clearTimeout(timeoutId)
+      authSession = !!session
+      authResolved = true
+      authListeners.forEach((fn) => fn())
+      authListeners.length = 0
+    })
+    .catch((err) => {
+      clearTimeout(timeoutId)
+      console.error('Auth session check failed:', err)
+      authResolved = true
+      authListeners.forEach((fn) => fn())
+      authListeners.length = 0
+    })
 }
 
 function useAuthReady(): { ready: boolean; hasSession: boolean } {
