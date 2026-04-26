@@ -6,10 +6,33 @@ Semua environment variables dibaca dari sini menggunakan pydantic-settings.
 import json
 from functools import lru_cache
 from pathlib import Path
-from typing import List
+from typing import Any, List, Tuple, Type
 
 from pydantic import field_validator
+from pydantic.fields import FieldInfo
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic_settings.sources import EnvSettingsSource, PydanticBaseSettingsSource
+
+
+# Fields below are List[str] but we want to accept plain comma-separated strings
+# from platform env vars (e.g. Render, Railway). Pydantic-settings normally tries
+# to JSON-decode complex types from env, which crashes on values like
+# "https://app.vercel.app". We bypass that for these specific fields and let the
+# field_validator below parse the raw string instead.
+_LIST_FIELDS_NO_JSON_DECODE = {"ALLOWED_ORIGINS", "ALLOWED_HOSTS"}
+
+
+class _ListFriendlyEnvSource(EnvSettingsSource):
+    def prepare_field_value(
+        self,
+        field_name: str,
+        field: FieldInfo,
+        value: Any,
+        value_is_complex: bool,
+    ) -> Any:
+        if field_name in _LIST_FIELDS_NO_JSON_DECODE and isinstance(value, str):
+            return value
+        return super().prepare_field_value(field_name, field, value, value_is_complex)
 
 
 BASE_DIR = Path(__file__).resolve().parents[2]
@@ -54,7 +77,7 @@ class Settings(BaseSettings):
     FIREBASE_PRIVATE_KEY: str | None = None
     FIREBASE_CLIENT_EMAIL: str | None = None
 
-    # CORS / trusted hosts
+    # CORS / trusted hosts. See _ListFriendlyEnvSource above.
     ALLOWED_ORIGINS: List[str] = ["http://localhost:5173", "http://localhost:3000"]
     ALLOWED_HOSTS: List[str] = ["localhost", "127.0.0.1", "*.railway.app", "*.catat-in.id"]
 
@@ -108,6 +131,22 @@ class Settings(BaseSettings):
                     return [str(item).strip() for item in parsed if str(item).strip()]
             return [item.strip() for item in normalized.split(",") if item.strip()]
         return value
+
+    @classmethod
+    def settings_customise_sources(
+        cls,
+        settings_cls: Type[BaseSettings],
+        init_settings: PydanticBaseSettingsSource,
+        env_settings: PydanticBaseSettingsSource,
+        dotenv_settings: PydanticBaseSettingsSource,
+        file_secret_settings: PydanticBaseSettingsSource,
+    ) -> Tuple[PydanticBaseSettingsSource, ...]:
+        return (
+            init_settings,
+            _ListFriendlyEnvSource(settings_cls),
+            dotenv_settings,
+            file_secret_settings,
+        )
 
 
 @lru_cache
