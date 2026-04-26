@@ -97,8 +97,14 @@ export const useAuthStore = create<AuthState>()(
       },
 
       signOut: async () => {
-        await supabase.auth.signOut()
-        set({ user: null, isAuthenticated: false })
+        set({ isLoading: true })
+        try {
+          // Local sign-out keeps the UI responsive even if the remote auth
+          // endpoint is slow or blocked. The browser session is what gates app access.
+          await supabase.auth.signOut({ scope: 'local' })
+        } finally {
+          set({ user: null, isAuthenticated: false, isLoading: false })
+        }
       },
 
       refreshUser: async () => {

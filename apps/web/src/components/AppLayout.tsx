@@ -54,13 +54,16 @@ function formatDate(): string {
 }
 
 export default function AppLayout() {
-  const { user, signOut } = useAuthStore()
+  const { user, signOut, isLoading } = useAuthStore()
   const navigate = useNavigate()
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
   const handleSignOut = async () => {
-    await signOut()
-    navigate('/login', { replace: true })
+    try {
+      await signOut()
+    } finally {
+      navigate('/login', { replace: true })
+    }
   }
 
   const userName = user?.full_name || user?.email || 'Pengguna'
@@ -130,11 +133,12 @@ export default function AppLayout() {
           </div>
           <button
             onClick={handleSignOut}
+            disabled={isLoading}
             className="btn btn-danger"
             style={{ padding: '6px 12px', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '6px' }}
             title="Keluar"
           >
-            <span>↪</span> Keluar
+            <span>↪</span> {isLoading ? 'Keluar...' : 'Keluar'}
           </button>
         </div>
       </aside>
