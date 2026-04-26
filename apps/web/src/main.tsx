@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react'
 import ReactDOM from 'react-dom/client'
 import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { apiConfigError } from '@lib/api'
-import { supabase, supabaseConfigError } from '@lib/supabase'
+import { supabase, supabaseConfigError, sessionReady } from '@lib/supabase'
 import { useAuthStore } from '@store/auth.store'
 
 import './index.css'
@@ -24,66 +24,29 @@ import GroupsPage from '@pages/GroupsPage'
 import ImportsPage from '@pages/ImportsPage'
 
 // Satu sumber kebenaran auth: apakah Supabase sudah selesai cek sesi awal.
-// Disimpan di luar React supaya tidak reset tiap re-render.
 let authResolved = false
-let authSession: boolean = false
-const authListeners: Array<() => void> = []
+let authSession = false
 
-// Sesi awal akan dicek oleh useAuthReady
-if (!supabaseConfigError) {
-  // Set timeout sebagai pengaman agar tidak stuck selamanya jika koneksi lambat
-  const timeoutId = setTimeout(() => {
-    if (!authResolved) {
-      console.warn('Auth session check timed out, proceeding as guest.')
-      authResolved = true
-      authListeners.forEach((fn) => fn())
-      authListeners.length = 0
-    }
-  }, 5000)
-
-  supabase.auth.getSession()
-    .then(({ data: { session } }) => {
-      clearTimeout(timeoutId)
-      authSession = !!session
-      authResolved = true
-      authListeners.forEach((fn) => fn())
-      authListeners.length = 0
-    })
-    .catch((err) => {
-      clearTimeout(timeoutId)
-      console.error('Auth session check failed:', err)
-      authResolved = true
-      authListeners.forEach((fn) => fn())
-      authListeners.length = 0
-    })
-}
+sessionReady.then((session) => {
+  authSession = !!session
+  authResolved = true
+})
 
 function useAuthReady(): { ready: boolean; hasSession: boolean } {
   const [ready, setReady] = useState(authResolved)
   const [hasSession, setHasSession] = useState(authSession)
 
   useEffect(() => {
-    if (supabaseConfigError) {
-      setReady(true)
-      setHasSession(false)
-      return
-    }
-
     if (authResolved) {
       setReady(true)
       setHasSession(authSession)
       return
     }
 
-    const notify = () => {
+    sessionReady.then((session) => {
       setReady(true)
-      setHasSession(authSession)
-    }
-    authListeners.push(notify)
-    return () => {
-      const idx = authListeners.indexOf(notify)
-      if (idx !== -1) authListeners.splice(idx, 1)
-    }
+      setHasSession(!!session)
+    })
   }, [])
 
   // Tetap sinkron jika auth berubah setelah ready (login/logout)

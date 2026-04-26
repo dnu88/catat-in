@@ -1,4 +1,4 @@
-import { createClient } from '@supabase/supabase-js'
+import { createClient, Session } from '@supabase/supabase-js'
 import type { Database } from '@/types/database.types'
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
@@ -38,16 +38,20 @@ export const supabase = createClient<Database>(clientUrl, clientAnonKey, {
   },
 })
 
-import type { Session } from '@supabase/supabase-js'
 export let currentSession: Session | null = null
+export let sessionReady: Promise<Session | null>
 
-// Prime session once so API calls after a hard refresh don't race against
-// the INITIAL_SESSION event from Supabase.
-supabase.auth.getSession().then(({ data: { session } }) => {
-  currentSession = session
-}).catch(() => {
-  currentSession = null
-})
+if (supabaseConfigError) {
+  sessionReady = Promise.resolve(null)
+} else {
+  sessionReady = supabase.auth.getSession().then(({ data: { session } }) => {
+    currentSession = session
+    return session
+  }).catch(() => {
+    currentSession = null
+    return null
+  })
+}
 
 supabase.auth.onAuthStateChange((_event, session) => {
   currentSession = session

@@ -35,7 +35,7 @@ export const useAuthStore = create<AuthState>()(
               () =>
                 reject(
                   new Error(
-                    'Login ke server terlalu lama. Jika memakai Supabase cloud gratis, project bisa sedang cold start. Tunggu sebentar lalu coba lagi.',
+                    'Koneksi ke Supabase lambat. Cek koneksi internet Anda atau coba lagi.',
                   ),
                 ),
               LOGIN_TIMEOUT_MS,
@@ -43,17 +43,25 @@ export const useAuthStore = create<AuthState>()(
           )
           const signIn = supabase.auth.signInWithPassword({ email, password })
           const { data, error } = (await Promise.race([signIn, timeout])) as Awaited<typeof signIn>
+          
           if (error) throw error
 
           if (data.session) {
-            try {
-              await get().refreshUser()
-            } catch {
-              set((state) => ({ ...state, isAuthenticated: true }))
+            // Update session globally
+            const { setUser } = get()
+            const { data: profile } = await supabase.from('profiles').select('*').eq('id', data.user.id).single()
+            if (profile) {
+              setUser(profile as User)
+            } else {
+              set({ isAuthenticated: true })
             }
+            return true
           }
 
-          return !!data.session
+          return false
+        } catch (err) {
+          console.error('Login error:', err)
+          throw err
         } finally {
           set({ isLoading: false })
         }
