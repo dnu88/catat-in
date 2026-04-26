@@ -41,16 +41,40 @@ export const supabase = createClient<Database>(clientUrl, clientAnonKey, {
 export let currentSession: Session | null = null
 export let sessionReady: Promise<Session | null>
 
+const SESSION_READY_TIMEOUT_MS = 4_000
+
+function withSessionTimeout(sessionPromise: Promise<Session | null>) {
+  let timeoutId: number | undefined
+  const timeoutPromise = new Promise<Session | null>((resolve) => {
+    timeoutId = window.setTimeout(() => {
+      console.warn('[auth] Initial session check timed out; continuing without an active session.')
+      resolve(null)
+    }, SESSION_READY_TIMEOUT_MS)
+  })
+
+  return Promise.race([sessionPromise, timeoutPromise])
+    .finally(() => {
+      if (timeoutId !== undefined) {
+        window.clearTimeout(timeoutId)
+      }
+    })
+}
+
 if (supabaseConfigError) {
   sessionReady = Promise.resolve(null)
 } else {
-  sessionReady = supabase.auth.getSession().then(({ data: { session } }) => {
-    currentSession = session
-    return session
-  }).catch(() => {
-    currentSession = null
-    return null
-  })
+  const initialSession = supabase.auth.getSession()
+    .then(({ data: { session } }) => {
+      currentSession = session
+      return session
+    })
+    .catch((error) => {
+      console.warn('[auth] Initial session check failed.', error)
+      currentSession = null
+      return null
+    })
+
+  sessionReady = withSessionTimeout(initialSession)
 }
 
 supabase.auth.onAuthStateChange((_event, session) => {
