@@ -4,11 +4,12 @@ Semua environment variables dibaca dari sini menggunakan pydantic-settings.
 """
 
 import json
+import os
 from functools import lru_cache
 from pathlib import Path
 from typing import Any, List, Tuple, Type
 
-from pydantic import field_validator
+from pydantic import field_validator, model_validator
 from pydantic.fields import FieldInfo
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from pydantic_settings.sources import EnvSettingsSource, PydanticBaseSettingsSource
@@ -20,6 +21,17 @@ from pydantic_settings.sources import EnvSettingsSource, PydanticBaseSettingsSou
 # "https://app.vercel.app". We bypass that for these specific fields and let the
 # field_validator below parse the raw string instead.
 _LIST_FIELDS_NO_JSON_DECODE = {"ALLOWED_ORIGINS", "ALLOWED_HOSTS"}
+
+_REQUIRED_ALLOWED_ORIGINS = [
+    "https://catat-in-nine.vercel.app",
+]
+
+_REQUIRED_ALLOWED_HOSTS = [
+    "catat-in-backend.onrender.com",
+    "*.onrender.com",
+    "*.vercel.app",
+    "*.railway.app",
+]
 
 
 class _ListFriendlyEnvSource(EnvSettingsSource):
@@ -138,6 +150,17 @@ class Settings(BaseSettings):
             return [item.strip() for item in normalized.split(",") if item.strip()]
         return value
 
+    @model_validator(mode="after")
+    def include_deployment_defaults(self):
+        render_hostname = os.environ.get("RENDER_EXTERNAL_HOSTNAME", "").strip()
+        allowed_hosts = [*self.ALLOWED_HOSTS, *_REQUIRED_ALLOWED_HOSTS]
+        if render_hostname:
+            allowed_hosts.append(render_hostname)
+
+        self.ALLOWED_ORIGINS = _dedupe_preserve_order([*self.ALLOWED_ORIGINS, *_REQUIRED_ALLOWED_ORIGINS])
+        self.ALLOWED_HOSTS = _dedupe_preserve_order(allowed_hosts)
+        return self
+
     @classmethod
     def settings_customise_sources(
         cls,
@@ -153,6 +176,17 @@ class Settings(BaseSettings):
             dotenv_settings,
             file_secret_settings,
         )
+
+
+def _dedupe_preserve_order(values: List[str]) -> List[str]:
+    seen = set()
+    result = []
+    for value in values:
+        normalized = value.strip()
+        if normalized and normalized not in seen:
+            seen.add(normalized)
+            result.append(normalized)
+    return result
 
 
 @lru_cache
