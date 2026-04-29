@@ -7,11 +7,9 @@ from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 from pydantic import BaseModel
 
 from app.core.auth import get_current_user, require_premium
-from app.core.config import settings
 from app.core.rate_limit import rate_limit_ai
 from app.services.ai_service import (
     analyze_receipt_image,
-    ensure_ai_configured,
     extract_transaction_from_text,
     generate_financial_insight,
 )
@@ -32,16 +30,6 @@ class InsightRequest(BaseModel):
     period: str = "monthly"
 
 
-def _raise_if_ai_not_ready():
-    try:
-        ensure_ai_configured()
-    except RuntimeError as exc:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=str(exc),
-        ) from exc
-
-
 @router.post("/chat", dependencies=[Depends(rate_limit_ai)])
 async def chat_input(body: ChatInputRequest, current_user=Depends(get_current_user)):
     if not body.text or len(body.text.strip()) < 2:
@@ -55,8 +43,6 @@ async def chat_input(body: ChatInputRequest, current_user=Depends(get_current_us
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail="Teks terlalu panjang. Maksimal 500 karakter per pesan.",
         )
-
-    _raise_if_ai_not_ready()
 
     try:
         return await extract_transaction_from_text(body.text)
@@ -79,8 +65,6 @@ async def analyze_receipt(file: UploadFile = File(...), current_user=Depends(get
             detail=f"Ukuran file terlalu besar. Maksimal {settings.MAX_UPLOAD_SIZE_MB}MB.",
         )
 
-    _raise_if_ai_not_ready()
-
     try:
         return await analyze_receipt_image(image_data, file.content_type)
     except RuntimeError as exc:
@@ -89,8 +73,6 @@ async def analyze_receipt(file: UploadFile = File(...), current_user=Depends(get
 
 @router.post("/insight", dependencies=[Depends(require_premium)])
 async def get_financial_insight(body: InsightRequest, current_user=Depends(get_current_user)):
-    _raise_if_ai_not_ready()
-
     user_financial_data = {
         "user_id": current_user["user_id"],
         "period": body.period,

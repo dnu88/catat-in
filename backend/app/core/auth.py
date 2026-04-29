@@ -1,34 +1,43 @@
+from __future__ import annotations
+
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from app.core.database import get_supabase
 
-_bearer = HTTPBearer()
+from app.core.firebase import get_firestore_client, verify_id_token
 
-
-def _service_client():
-    return get_supabase()
+_bearer = HTTPBearer(auto_error=False)
 
 
 def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(_bearer),
 ):
+    if not credentials or not credentials.credentials:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token tidak ditemukan.",
+        )
+
     token = credentials.credentials
     try:
-        client = _service_client()
-        response = client.auth.get_user(token)
-        user = response.user
-        if not user:
-            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token tidak valid")
-        return {"user_id": user.id, "email": user.email}
-    except HTTPException:
-        raise
+        decoded = verify_id_token(token)
+        return {
+            "user_id": decoded.get("uid"),
+            "email": decoded.get("email"),
+        }
     except Exception:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token tidak valid atau sudah kadaluarsa")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token Firebase tidak valid atau sudah kedaluwarsa.",
+        )
 
 
 def require_premium(current_user: dict = Depends(get_current_user)):
-    client = _service_client()
-    result = client.table("profiles").select("plan_type").eq("id", current_user["user_id"]).single().execute()
-    if not result.data or result.data.get("plan_type") != "premium":
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Fitur ini membutuhkan akun Premium")
+    db = get_firestore_client()
+    profile = db.collection("users").document(current_user["user_id"]).get()
+    profile_data = profile.to_dict() if profile.exists else {}
+    if profile_data.get("plan_type") != "premium":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Fitur ini membutuhkan akun Premium",
+        )
     return current_user

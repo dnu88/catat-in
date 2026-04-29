@@ -70,10 +70,10 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 15
     REFRESH_TOKEN_EXPIRE_DAYS: int = 30
 
-    # Supabase
-    SUPABASE_URL: str
-    SUPABASE_ANON_KEY: str
-    SUPABASE_SERVICE_ROLE_KEY: str
+    # Supabase (legacy optional)
+    SUPABASE_URL: str | None = None
+    SUPABASE_ANON_KEY: str | None = None
+    SUPABASE_SERVICE_ROLE_KEY: str | None = None
 
     # Anthropic
     ANTHROPIC_API_KEY: str | None = None
@@ -91,10 +91,10 @@ class Settings(BaseSettings):
 
     # CORS / trusted hosts. See _ListFriendlyEnvSource above.
     ALLOWED_ORIGINS: List[str] = [
+        "https://catat-in-nine.vercel.app",
         "http://localhost:5173",
         "http://localhost:3000",
         "http://localhost:3001",
-        "https://catat-in-nine.vercel.app",
     ]
     ALLOWED_HOSTS: List[str] = ["localhost", "127.0.0.1", "*.onrender.com", "*.vercel.app", "*.railway.app"]
 

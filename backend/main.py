@@ -9,9 +9,10 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 
-from app.api.v1 import ai, auth, bills, budgets, categories, groups, imports, reports, transactions, wallets, webhooks
+from app.api.v1 import ai, groups, imports, webhooks
 from app.core.config import settings
 from app.core.database import init_db
+from app.core.firebase import has_firebase_admin_config
 
 
 @asynccontextmanager
@@ -31,50 +32,37 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=[str(origin).strip().rstrip("/") for origin in settings.ALLOWED_ORIGINS],
-    allow_origin_regex=r"https://catat-in-.*\.vercel\.app", # Mendukung subdomain preview Vercel
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
 if not settings.DEBUG:
     app.add_middleware(
         TrustedHostMiddleware,
         allowed_hosts=settings.ALLOWED_HOSTS,
     )
 
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[str(origin).strip().rstrip("/") for origin in settings.ALLOWED_ORIGINS],
+    allow_origin_regex=r"https://.*\.vercel\.app", 
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 
 API_PREFIX = "/api/v1"
 
-app.include_router(auth.router, prefix=f"{API_PREFIX}/auth", tags=["Auth"])
-app.include_router(categories.router, prefix=f"{API_PREFIX}/categories", tags=["Categories"])
-app.include_router(transactions.router, prefix=f"{API_PREFIX}/transactions", tags=["Transactions"])
-app.include_router(wallets.router, prefix=f"{API_PREFIX}/wallets", tags=["Wallets"])
-app.include_router(budgets.router, prefix=f"{API_PREFIX}/budgets", tags=["Budgets"])
-app.include_router(bills.router, prefix=f"{API_PREFIX}/bills", tags=["Bills"])
 app.include_router(ai.router, prefix=f"{API_PREFIX}/ai", tags=["AI"])
 app.include_router(groups.router, prefix=f"{API_PREFIX}/groups", tags=["Groups"])
 app.include_router(imports.router, prefix=f"{API_PREFIX}/imports", tags=["Import"])
-app.include_router(reports.router, prefix=f"{API_PREFIX}/reports", tags=["Reports"])
 app.include_router(webhooks.router, prefix=f"{API_PREFIX}/webhooks", tags=["Webhooks"])
 
 
 @app.get("/health", tags=["System"])
 async def health_check():
-    db_status = "ok"
-    try:
-        from app.core.database import get_supabase
-        # Coba query simpel untuk cek koneksi
-        get_supabase().table("profiles").select("id", count="exact").limit(1).execute()
-    except Exception as e:
-        db_status = f"error: {str(e)}"
+    firebase_status = "ok" if has_firebase_admin_config() else "missing-config"
 
     return {
-        "status": "ok" if db_status == "ok" else "degraded",
-        "database": db_status,
+        "status": "ok" if firebase_status == "ok" else "degraded",
+        "firebase": firebase_status,
         "version": settings.VERSION,
         "environment": settings.ENVIRONMENT,
     }
