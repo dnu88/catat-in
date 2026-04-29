@@ -65,6 +65,25 @@ function startOfMonth(date = new Date()) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-01`
 }
 
+function sanitizeForFirestore<T>(value: T): T {
+  if (Array.isArray(value)) {
+    return value
+      .map((item) => sanitizeForFirestore(item))
+      .filter((item) => item !== undefined) as T
+  }
+
+  if (value && typeof value === 'object') {
+    const next: Record<string, unknown> = {}
+    Object.entries(value as Record<string, unknown>).forEach(([key, item]) => {
+      if (item === undefined) return
+      next[key] = sanitizeForFirestore(item)
+    })
+    return next as T
+  }
+
+  return value
+}
+
 function slugifyCategoryName(value: string) {
   return value
     .trim()
@@ -110,7 +129,7 @@ export async function ensureUserProfileFromAuth(firebaseUser: FirebaseUser): Pro
     created_at: existing?.created_at || isoNow(),
   }
 
-  await setDoc(profileRef, profile, { merge: true })
+  await setDoc(profileRef, sanitizeForFirestore(profile), { merge: true })
   await ensureDefaultCategories(uid)
   return profile
 }
@@ -129,7 +148,7 @@ export async function ensureDefaultCategories(uid: string) {
   await Promise.all(
     DEFAULT_CATEGORIES.map((item) => {
       const id = `${item.type}-${item.name}`
-      return setDoc(doc(db, 'users', uid, 'categories', id), { ...item, id })
+      return setDoc(doc(db, 'users', uid, 'categories', id), sanitizeForFirestore({ ...item, id }))
     }),
   )
 }
@@ -162,13 +181,13 @@ export async function createCategory(
   if (!existing.empty) throw new Error('Kategori dengan nama ini sudah ada.')
 
   const label = payload.name.trim().replace(/\s+/g, ' ')
-  const docRef = await addDoc(usersCollection(uid, 'categories'), {
+  const docRef = await addDoc(usersCollection(uid, 'categories'), sanitizeForFirestore({
     name: normalized,
     label,
     type: payload.type,
     icon: payload.icon || null,
     is_default: false,
-  })
+  }))
 
   return {
     id: docRef.id,
@@ -227,7 +246,7 @@ export async function addWallet(
     is_active: true,
     created_at: isoNow(),
   }
-  const docRef = await addDoc(usersCollection(uid, 'wallets'), record)
+  const docRef = await addDoc(usersCollection(uid, 'wallets'), sanitizeForFirestore(record))
   return { id: docRef.id, ...record }
 }
 
@@ -248,7 +267,7 @@ export async function patchWallet(
   if (typeof patch.balance === 'number') payload.balance = patch.balance
   if (typeof patch.bank_name === 'string') payload.bank_name = patch.bank_name.trim()
   if (typeof patch.account_number === 'string') payload.account_number = patch.account_number.trim()
-  await updateDoc(doc(db, 'users', uid, 'wallets', walletId), payload)
+  await updateDoc(doc(db, 'users', uid, 'wallets', walletId), sanitizeForFirestore(payload))
 }
 
 export async function removeWallet(uid: string, walletId: string) {
@@ -341,7 +360,7 @@ export async function createTransaction(uid: string, payload: TransactionFormDat
     created_at: isoNow(),
   }
 
-  const docRef = await addDoc(usersCollection(uid, 'transactions'), record)
+  const docRef = await addDoc(usersCollection(uid, 'transactions'), sanitizeForFirestore(record))
   await applyWalletDelta(uid, payload.wallet_id, signedAmount(payload.type, amount))
   return { id: docRef.id, ...record }
 }
@@ -362,7 +381,7 @@ export async function patchTransaction(
     amount: patch.amount !== undefined ? Number(patch.amount) : previous.amount,
   }
 
-  await setDoc(txRef, next, { merge: true })
+  await setDoc(txRef, sanitizeForFirestore(next), { merge: true })
 
   const previousSigned = signedAmount(previous.type, previous.amount)
   const nextSigned = signedAmount(next.type, next.amount)
@@ -423,7 +442,7 @@ export async function createBudget(uid: string, payload: BudgetFormData): Promis
     is_active: true,
     created_at: isoNow(),
   }
-  const docRef = await addDoc(usersCollection(uid, 'budgets'), record)
+  const docRef = await addDoc(usersCollection(uid, 'budgets'), sanitizeForFirestore(record))
   return { id: docRef.id, ...record }
 }
 
@@ -433,7 +452,7 @@ export async function patchBudget(uid: string, budgetId: string, patch: Partial<
   if (typeof patch.limit_amount === 'number') payload.limit_amount = patch.limit_amount
   if (patch.period_start) payload.period_start = patch.period_start
   if (typeof patch.notify_at_percent === 'number') payload.notify_at_percent = patch.notify_at_percent
-  await updateDoc(doc(db, 'users', uid, 'budgets', budgetId), payload)
+  await updateDoc(doc(db, 'users', uid, 'budgets', budgetId), sanitizeForFirestore(payload))
 }
 
 export async function removeBudget(uid: string, budgetId: string) {
@@ -504,7 +523,7 @@ export async function createBill(uid: string, payload: BillFormData): Promise<Bi
     notify_before_days: payload.notify_before_days || [3, 1],
     created_at: isoNow(),
   }
-  const docRef = await addDoc(usersCollection(uid, 'bills'), record)
+  const docRef = await addDoc(usersCollection(uid, 'bills'), sanitizeForFirestore(record))
   return { id: docRef.id, ...record }
 }
 
@@ -529,7 +548,7 @@ export async function markBillPaid(uid: string, billId: string): Promise<BillRem
       paid_at: paidAt,
       payment_history: [...(existing.payment_history || []), historyEntry],
     }
-    await setDoc(ref, nextState, { merge: true })
+    await setDoc(ref, sanitizeForFirestore(nextState), { merge: true })
     return nextState
   }
 
@@ -542,7 +561,7 @@ export async function markBillPaid(uid: string, billId: string): Promise<BillRem
     next_due_date: nextDue,
     payment_history: [...(existing.payment_history || []), historyEntry],
   }
-  await setDoc(ref, nextState, { merge: true })
+  await setDoc(ref, sanitizeForFirestore(nextState), { merge: true })
   return nextState
 }
 
