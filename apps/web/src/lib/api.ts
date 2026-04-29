@@ -1,5 +1,5 @@
 import axios from 'axios'
-import { supabase, currentSession } from './supabase'
+import { getCurrentIdToken } from './firebase'
 
 const DEFAULT_DEV_API_BASE_URL = 'http://localhost:8000/api/v1'
 
@@ -7,15 +7,11 @@ function normalizeBaseUrl(url: string) {
   return url.replace(/\/+$/, '')
 }
 
-function isLocalhostUrl(url: string) {
-  return /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?(\/|$)/i.test(url)
-}
-
 const configuredApiBaseUrl = import.meta.env.VITE_API_BASE_URL?.trim()
 
-export const apiConfigError = !import.meta.env.DEV && (!configuredApiBaseUrl || isLocalhostUrl(configuredApiBaseUrl))
-  ? 'Konfigurasi backend production belum valid. Isi VITE_API_BASE_URL dengan URL backend public, bukan localhost.'
-  : null
+// Backend API sekarang optional. Jika tidak diisi, fitur yang membutuhkan backend akan gagal per-endpoint,
+// tetapi aplikasi inti Firebase tetap bisa berjalan.
+export const apiConfigError = null
 
 export const apiBaseUrl = normalizeBaseUrl(
   configuredApiBaseUrl || (import.meta.env.DEV ? DEFAULT_DEV_API_BASE_URL : '/api/v1'),
@@ -29,70 +25,22 @@ export const api = axios.create({
   },
 })
 
-async function resolveAccessToken() {
-  if (currentSession?.access_token) {
-    return currentSession.access_token
-  }
-
-  const { data: { session } } = await supabase.auth.getSession()
-  return session?.access_token || null
-}
-
 api.interceptors.request.use(
   async (config) => {
-    const accessToken = await resolveAccessToken()
-
-    if (accessToken) {
-      config.headers.Authorization = `Bearer ${accessToken}`
+    const idToken = await getCurrentIdToken()
+    if (idToken) {
+      config.headers.Authorization = `Bearer ${idToken}`
     }
     return config
   },
   (error) => Promise.reject(error),
 )
 
-let isRefreshing = false
-let refreshPromise: Promise<any> | null = null
-
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
-    const originalRequest = error.config
-
-    if (error.response?.status === 401 && !originalRequest._retry) {
-      originalRequest._retry = true
-
-      if (!isRefreshing) {
-        isRefreshing = true
-        refreshPromise = supabase.auth.refreshSession()
-      }
-
-      try {
-        const { data: { session }, error: refreshError } = await refreshPromise!
-
-        if (refreshError || !session) {
-          isRefreshing = false
-          await supabase.auth.signOut()
-          window.location.href = '/login'
-          return Promise.reject(error)
-        }
-
-        setTimeout(() => {
-          isRefreshing = false
-          refreshPromise = null
-        }, 1000)
-
-        originalRequest.headers.Authorization = `Bearer ${session.access_token}`
-        return api(originalRequest)
-      } catch {
-        isRefreshing = false
-        await supabase.auth.signOut()
-        window.location.href = '/login'
-        return Promise.reject(error)
-      }
-    }
-
     const networkErrorMessage = !error.response
-      ? apiConfigError || `Tidak bisa terhubung ke backend (${apiBaseUrl}). Cek VITE_API_BASE_URL dan ALLOWED_ORIGINS backend.`
+      ? `Tidak bisa terhubung ke backend (${apiBaseUrl}).`
       : null
 
     const errorMessage = networkErrorMessage
@@ -111,10 +59,9 @@ export const uploadApi = axios.create({
 })
 
 uploadApi.interceptors.request.use(async (config) => {
-  const accessToken = await resolveAccessToken()
-
-  if (accessToken) {
-    config.headers.Authorization = `Bearer ${accessToken}`
+  const idToken = await getCurrentIdToken()
+  if (idToken) {
+    config.headers.Authorization = `Bearer ${idToken}`
   }
   return config
 })

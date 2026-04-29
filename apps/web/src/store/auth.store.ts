@@ -1,7 +1,16 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import { supabase } from '@lib/supabase'
+import {
+  confirmPasswordReset,
+  signInWithEmailAndPassword,
+  signInWithPopup,
+  signOut as firebaseSignOut,
+  sendPasswordResetEmail,
+  updatePassword as firebaseUpdatePassword,
+} from 'firebase/auth'
 import type { User } from '@catat-in/shared/types'
+import { auth, googleProvider, subscribeAuthState } from '@lib/firebase'
+import { ensureUserProfileFromAuth, getUserProfile } from '@lib/firestore'
 
 const LOGIN_TIMEOUT_MS = 20_000
 
@@ -14,6 +23,7 @@ interface AuthState {
   signInWithGoogle: () => Promise<void>
   requestPasswordReset: (email: string) => Promise<void>
   updatePassword: (password: string) => Promise<void>
+  confirmPasswordResetByCode: (oobCode: string, password: string) => Promise<void>
   signOut: () => Promise<void>
   refreshUser: () => Promise<void>
 }
@@ -34,31 +44,17 @@ export const useAuthStore = create<AuthState>()(
             setTimeout(
               () =>
                 reject(
-                  new Error(
-                    'Koneksi ke Supabase lambat. Cek koneksi internet Anda atau coba lagi.',
-                  ),
+                  new Error('Koneksi ke Firebase lambat. Cek koneksi internet Anda atau coba lagi.'),
                 ),
               LOGIN_TIMEOUT_MS,
             ),
           )
-          const signIn = supabase.auth.signInWithPassword({ email, password })
-          const { data, error } = (await Promise.race([signIn, timeout])) as Awaited<typeof signIn>
-          
-          if (error) throw error
 
-          if (data.session) {
-            // Update session globally
-            const { setUser } = get()
-            const { data: profile } = await supabase.from('profiles').select('*').eq('id', data.user.id).single()
-            if (profile) {
-              setUser(profile as User)
-            } else {
-              set({ isAuthenticated: true })
-            }
-            return true
-          }
-
-          return false
+          const signIn = signInWithEmailAndPassword(auth, email, password)
+          const { user } = (await Promise.race([signIn, timeout])) as Awaited<typeof signIn>
+          await ensureUserProfileFromAuth(user)
+          await get().refreshUser()
+          return true
         } catch (err) {
           console.error('Login error:', err)
           throw err
@@ -70,13 +66,9 @@ export const useAuthStore = create<AuthState>()(
       signInWithGoogle: async () => {
         set({ isLoading: true })
         try {
-          const { error } = await supabase.auth.signInWithOAuth({
-            provider: 'google',
-            options: {
-              redirectTo: `${window.location.origin}/auth/callback`,
-            },
-          })
-          if (error) throw error
+          const result = await signInWithPopup(auth, googleProvider)
+          await ensureUserProfileFromAuth(result.user)
+          await get().refreshUser()
         } finally {
           set({ isLoading: false })
         }
@@ -85,10 +77,10 @@ export const useAuthStore = create<AuthState>()(
       requestPasswordReset: async (email) => {
         set({ isLoading: true })
         try {
-          const { error } = await supabase.auth.resetPasswordForEmail(email, {
-            redirectTo: `${window.location.origin}/reset-password`,
+          await sendPasswordResetEmail(auth, email, {
+            url: `${window.location.origin}/reset-password`,
+            handleCodeInApp: false,
           })
-          if (error) throw error
         } finally {
           set({ isLoading: false })
         }
@@ -97,8 +89,19 @@ export const useAuthStore = create<AuthState>()(
       updatePassword: async (password) => {
         set({ isLoading: true })
         try {
-          const { error } = await supabase.auth.updateUser({ password })
-          if (error) throw error
+          if (!auth.currentUser) {
+            throw new Error('Sesi login tidak ditemukan. Silakan login ulang.')
+          }
+          await firebaseUpdatePassword(auth.currentUser, password)
+        } finally {
+          set({ isLoading: false })
+        }
+      },
+
+      confirmPasswordResetByCode: async (oobCode, password) => {
+        set({ isLoading: true })
+        try {
+          await confirmPasswordReset(auth, oobCode, password)
         } finally {
           set({ isLoading: false })
         }
@@ -107,32 +110,27 @@ export const useAuthStore = create<AuthState>()(
       signOut: async () => {
         set({ isLoading: true })
         try {
-          // Local sign-out keeps the UI responsive even if the remote auth
-          // endpoint is slow or blocked. The browser session is what gates app access.
-          await supabase.auth.signOut({ scope: 'local' })
+          await firebaseSignOut(auth)
         } finally {
           set({ user: null, isAuthenticated: false, isLoading: false })
         }
       },
 
       refreshUser: async () => {
-        const {
-          data: { user: authUser },
-        } = await supabase.auth.getUser()
-
+        const authUser = auth.currentUser
         if (!authUser) {
           set({ user: null, isAuthenticated: false })
           return
         }
 
-        const { data: profile } = await supabase.from('profiles').select('*').eq('id', authUser.id).single()
-
+        const profile = await getUserProfile(authUser.uid)
         if (profile) {
-          set({ user: profile as User, isAuthenticated: true })
+          set({ user: profile, isAuthenticated: true })
           return
         }
 
-        set((state) => ({ ...state, isAuthenticated: true }))
+        const created = await ensureUserProfileFromAuth(authUser)
+        set({ user: created, isAuthenticated: true })
       },
     }),
     {
@@ -145,11 +143,11 @@ export const useAuthStore = create<AuthState>()(
   ),
 )
 
-supabase.auth.onAuthStateChange(async (event, session) => {
+subscribeAuthState(async (user) => {
   const { refreshUser, setUser } = useAuthStore.getState()
-  if (event === 'SIGNED_IN' && session) {
+  if (user) {
     await refreshUser()
-  } else if (event === 'SIGNED_OUT') {
-    setUser(null)
+    return
   }
+  setUser(null)
 })

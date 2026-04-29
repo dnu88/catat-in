@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuthStore } from '@store/auth.store'
-import { supabase } from '@lib/supabase'
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
@@ -38,15 +37,7 @@ export default function LoginPage() {
       return
     }
 
-    const {
-      data: { session },
-    } = await supabase.auth.getSession()
-
-    if (session) {
-      navigate('/dashboard')
-    } else {
-      setError('Sesi login belum terbentuk. Coba login lagi atau reload halaman.')
-    }
+    setError('Sesi login belum terbentuk. Coba login lagi atau reload halaman.')
   }
 
   return (

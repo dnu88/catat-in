@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { BarChart, Bar, CartesianGrid, Cell, LineChart, Line, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
-import { api } from '@lib/api'
 import { useWalletStore } from '@store/wallet.store'
+import { buildMonthlyReport, requireAuthUid } from '@lib/firestore'
 
 const CATEGORY_LABEL: Record<string, string> = {
   food: 'Makan & Minum',
@@ -45,10 +45,6 @@ interface TrendPoint {
   net: number
 }
 
-interface TrendsResponse {
-  data: TrendPoint[]
-}
-
 interface CategoryDetailResponse {
   category: string
   period: {
@@ -77,6 +73,7 @@ export default function ReportsPage() {
   const [walletFilter, setWalletFilter] = useState('')
   const [summary, setSummary] = useState<SummaryResponse | null>(null)
   const [trends, setTrends] = useState<TrendPoint[]>([])
+  const [monthlyTransactions, setMonthlyTransactions] = useState<CategoryDetailResponse['transactions']>([])
   const [categoryDetail, setCategoryDetail] = useState<CategoryDetailResponse | null>(null)
   const [selectedCategory, setSelectedCategory] = useState<string>('')
   const [isLoading, setIsLoading] = useState(false)
@@ -102,56 +99,54 @@ export default function ReportsPage() {
   }, [summary])
 
   useEffect(() => {
-    if (selectedCategory) {
-      void loadCategoryDetail(selectedCategory)
-    } else {
+    if (!selectedCategory) {
       setCategoryDetail(null)
+      return
     }
-  }, [selectedCategory, selectedMonth])
+
+    const categoryTransactions = monthlyTransactions.filter((item) => item.category === selectedCategory)
+    const total = categoryTransactions.reduce((sum, item) => sum + Number(item.amount), 0)
+
+    setCategoryDetail({
+      category: selectedCategory,
+      period: { year, month },
+      total,
+      transaction_count: categoryTransactions.length,
+      transactions: categoryTransactions,
+    })
+  }, [monthlyTransactions, month, selectedCategory, year])
 
   const loadReports = async () => {
     setIsLoading(true)
     setError(null)
 
     try {
-      const summaryParams = new URLSearchParams({
-        year: String(year),
-        month: String(month),
+      const uid = requireAuthUid()
+      const report = await buildMonthlyReport(uid, year, month, walletFilter || undefined)
+      setSummary({
+        period: report.period,
+        total_income: report.total_income,
+        total_expense: report.total_expense,
+        net: report.net,
+        transaction_count: report.transaction_count,
+        expense_by_category: report.expense_by_category,
       })
-
-      if (walletFilter) {
-        summaryParams.set('wallet_id', walletFilter)
-      }
-
-      const [summaryRes, trendsRes] = await Promise.all([
-        api.get<SummaryResponse>(`/reports/summary?${summaryParams.toString()}`),
-        api.get<TrendsResponse>('/reports/trends?months=6'),
-      ])
-
-      setSummary(summaryRes.data)
-      setTrends(trendsRes.data.data || [])
+      setTrends(report.trends || [])
+      setMonthlyTransactions(
+        report.transactions.map((item) => ({
+          id: item.id,
+          type: item.type,
+          amount: item.amount,
+          merchant: item.merchant || null,
+          note: item.note || null,
+          date: item.date,
+          category: item.category,
+        })),
+      )
     } catch (err: any) {
       setError(err.message || 'Gagal memuat laporan.')
     } finally {
       setIsLoading(false)
-    }
-  }
-
-  const loadCategoryDetail = async (category: string) => {
-    setDetailLoading(true)
-
-    try {
-      const params = new URLSearchParams({
-        year: String(year),
-        month: String(month),
-        category,
-      })
-      const { data } = await api.get<CategoryDetailResponse>(`/reports/category-detail?${params.toString()}`)
-      setCategoryDetail(data)
-    } catch (err: any) {
-      setError(err.message || 'Gagal memuat detail kategori.')
-    } finally {
-      setDetailLoading(false)
     }
   }
 
@@ -185,7 +180,7 @@ export default function ReportsPage() {
             Laporan & Grafik
           </h2>
           <p style={{ fontSize: '13px', color: 'var(--text-muted)', maxWidth: '720px' }}>
-            Halaman ini sekarang memakai endpoint laporan backend untuk ringkasan bulanan, tren 6 bulan, breakdown kategori, dan detail transaksi per kategori.
+            Halaman ini menghitung laporan langsung dari data Firestore: ringkasan bulanan, tren 6 bulan, breakdown kategori, dan detail transaksi.
           </p>
         </div>
 

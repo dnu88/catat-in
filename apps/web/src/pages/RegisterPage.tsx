@@ -1,5 +1,7 @@
 import { useState } from 'react'
-import { supabase } from '@lib/supabase'
+import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth'
+import { auth } from '@lib/firebase'
+import { ensureUserProfileFromAuth } from '@lib/firestore'
 
 export default function RegisterPage() {
   const [fullName, setFullName] = useState('')
@@ -18,12 +20,11 @@ export default function RegisterPage() {
     }
     setIsLoading(true)
     try {
-      const { error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: { data: { full_name: fullName } },
-      })
-      if (error) throw error
+      const credential = await createUserWithEmailAndPassword(auth, email, password)
+      if (fullName.trim()) {
+        await updateProfile(credential.user, { displayName: fullName.trim() })
+      }
+      await ensureUserProfileFromAuth(credential.user)
       setSuccess(true)
     } catch (err: any) {
       setError(err.message || 'Pendaftaran gagal. Coba lagi.')
@@ -45,7 +46,7 @@ export default function RegisterPage() {
             </div>
             <h1 className="login-logo-name">Pendaftaran Berhasil!</h1>
             <p className="login-tagline">
-              Cek email <strong style={{ color: '#fff' }}>{email}</strong> dan klik link konfirmasi untuk mengaktifkan akun kamu.
+              Akun untuk <strong style={{ color: '#fff' }}>{email}</strong> berhasil dibuat. Lanjut login untuk mulai mencatat keuanganmu.
             </p>
             <a
               href="/login"

@@ -1,6 +1,6 @@
 import { create } from 'zustand'
-import { api } from '@lib/api'
 import type { Category, TransactionType } from '@catat-in/shared/types'
+import { createCategory, listCategories, removeCategory, requireAuthUid } from '@lib/firestore'
 
 interface CategoryState {
   categories: Category[]
@@ -20,9 +20,9 @@ export const useCategoryStore = create<CategoryState>((set) => ({
   fetchCategories: async (type) => {
     set({ isLoading: true, error: null })
     try {
-      const params = type ? `?type=${type}` : ''
-      const { data } = await api.get<{ data: Category[] }>(`/categories/${params}`)
-      set({ categories: data.data })
+      const uid = requireAuthUid()
+      const categories = await listCategories(uid, type)
+      set({ categories })
     } catch (err: any) {
       set({ error: err.message || 'Gagal memuat kategori.' })
     } finally {
@@ -31,16 +31,18 @@ export const useCategoryStore = create<CategoryState>((set) => ({
   },
 
   createCategory: async (payload) => {
-    const { data } = await api.post<{ data: Category }>('/categories/', payload)
+    const uid = requireAuthUid()
+    const category = await createCategory(uid, payload)
     set((state) => ({
-      categories: [...state.categories, data.data].sort((a, b) => a.label.localeCompare(b.label, 'id-ID')),
+      categories: [...state.categories, category].sort((a, b) => a.label.localeCompare(b.label, 'id-ID')),
       error: null,
     }))
-    return data.data
+    return category
   },
 
   deleteCategory: async (id) => {
-    await api.delete(`/categories/${id}`)
+    const uid = requireAuthUid()
+    await removeCategory(uid, id)
     set((state) => ({
       categories: state.categories.filter((item) => item.id !== id),
       error: null,

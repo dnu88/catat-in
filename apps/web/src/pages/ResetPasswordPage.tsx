@@ -1,22 +1,25 @@
 import { useEffect, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
-import { supabase } from '@lib/supabase'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { auth } from '@lib/firebase'
 import { useAuthStore } from '@store/auth.store'
 
 export default function ResetPasswordPage() {
   const navigate = useNavigate()
-  const { updatePassword, isLoading } = useAuthStore()
+  const location = useLocation()
+  const { updatePassword, confirmPasswordResetByCode, isLoading } = useAuthStore()
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
   const [hasRecoverySession, setHasRecoverySession] = useState(false)
+  const [oobCode, setOobCode] = useState<string | null>(null)
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
-      setHasRecoverySession(!!data.session)
-    })
-  }, [])
+    const params = new URLSearchParams(location.search)
+    const actionCode = params.get('oobCode')
+    setOobCode(actionCode)
+    setHasRecoverySession(Boolean(actionCode || auth.currentUser))
+  }, [location.search])
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault()
@@ -34,7 +37,11 @@ export default function ResetPasswordPage() {
     }
 
     try {
-      await updatePassword(password)
+      if (oobCode) {
+        await confirmPasswordResetByCode(oobCode, password)
+      } else {
+        await updatePassword(password)
+      }
       setSuccess('Password berhasil diperbarui. Kamu akan diarahkan ke halaman login.')
       setTimeout(() => navigate('/login', { replace: true }), 1500)
     } catch (err: any) {

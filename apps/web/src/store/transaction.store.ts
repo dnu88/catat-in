@@ -1,16 +1,13 @@
 import { create } from 'zustand'
-import { api } from '@lib/api'
-import type { Transaction, TransactionFormData, PaginatedResponse } from '@catat-in/shared/types'
-
-interface TransactionFilters {
-  type?: 'income' | 'expense'
-  category?: string
-  wallet_id?: string
-  date_from?: string
-  date_to?: string
-  page?: number
-  per_page?: number
-}
+import type { Transaction, TransactionFormData } from '@catat-in/shared/types'
+import {
+  createTransaction,
+  listTransactions,
+  patchTransaction,
+  removeTransaction,
+  requireAuthUid,
+  type TransactionFilters,
+} from '@lib/firestore'
 
 interface TransactionState {
   transactions: Transaction[]
@@ -18,8 +15,6 @@ interface TransactionState {
   isLoading: boolean
   error: string | null
   filters: TransactionFilters
-
-  // Actions
   fetchTransactions: (filters?: TransactionFilters) => Promise<void>
   addTransaction: (data: TransactionFormData) => Promise<Transaction>
   updateTransaction: (id: string, data: Partial<TransactionFormData>) => Promise<void>
@@ -39,43 +34,33 @@ export const useTransactionStore = create<TransactionState>((set, get) => ({
     const activeFilters = { ...get().filters, ...filters }
     set({ isLoading: true, error: null, filters: activeFilters })
     try {
-      const params = new URLSearchParams()
-      Object.entries(activeFilters).forEach(([k, v]) => {
-        if (v !== undefined && v !== null) params.append(k, String(v))
-      })
-      const { data } = await api.get<PaginatedResponse<Transaction>>(
-        `/transactions/?${params.toString()}`
-      )
-      set({ transactions: data.data, total: data.total })
+      const uid = requireAuthUid()
+      const result = await listTransactions(uid, activeFilters)
+      set({ transactions: result.data, total: result.total })
     } catch (err: any) {
-      set({ error: err.message })
+      set({ error: err.message || 'Gagal memuat transaksi.' })
     } finally {
       set({ isLoading: false })
     }
   },
 
   addTransaction: async (formData) => {
-    const { data } = await api.post<{ data: Transaction }>('/transactions/', formData)
-    set((state) => ({
-      transactions: [data.data, ...state.transactions],
-      total: state.total + 1,
-    }))
-    return data.data
+    const uid = requireAuthUid()
+    const tx = await createTransaction(uid, formData)
+    await get().fetchTransactions()
+    return tx
   },
 
   updateTransaction: async (id, formData) => {
-    const { data } = await api.patch<{ data: Transaction }>(`/transactions/${id}`, formData)
-    set((state) => ({
-      transactions: state.transactions.map((t) => (t.id === id ? data.data : t)),
-    }))
+    const uid = requireAuthUid()
+    await patchTransaction(uid, id, formData)
+    await get().fetchTransactions()
   },
 
   deleteTransaction: async (id) => {
-    await api.delete(`/transactions/${id}`)
-    set((state) => ({
-      transactions: state.transactions.filter((t) => t.id !== id),
-      total: state.total - 1,
-    }))
+    const uid = requireAuthUid()
+    await removeTransaction(uid, id)
+    await get().fetchTransactions()
   },
 
   setFilters: (filters) => set((state) => ({ filters: { ...state.filters, ...filters } })),

@@ -1,8 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import ReactDOM from 'react-dom/client'
 import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom'
-import { apiConfigError } from '@lib/api'
-import { supabase, supabaseConfigError, sessionReady } from '@lib/supabase'
+import { firebaseConfigError, sessionReady, subscribeAuthState } from '@lib/firebase'
 import { useAuthStore } from '@store/auth.store'
 
 import './index.css'
@@ -23,12 +22,12 @@ import CapturePage from '@pages/CapturePage'
 import GroupsPage from '@pages/GroupsPage'
 import ImportsPage from '@pages/ImportsPage'
 
-// Satu sumber kebenaran auth: apakah Supabase sudah selesai cek sesi awal.
+// Satu sumber kebenaran auth: apakah Firebase sudah selesai cek sesi awal.
 let authResolved = false
 let authSession = false
 
-sessionReady.then((session) => {
-  authSession = !!session
+sessionReady.then((user) => {
+  authSession = !!user
   authResolved = true
 })
 
@@ -43,20 +42,19 @@ function useAuthReady(): { ready: boolean; hasSession: boolean } {
       return
     }
 
-    sessionReady.then((session) => {
+    sessionReady.then((user) => {
       setReady(true)
-      setHasSession(!!session)
+      setHasSession(!!user)
     })
   }, [])
 
   // Tetap sinkron jika auth berubah setelah ready (login/logout)
   useEffect(() => {
-    if (!supabaseConfigError) {
-      const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-        setHasSession(!!session)
-      })
-      return () => subscription.unsubscribe()
-    }
+    if (firebaseConfigError) return
+    const unsubscribe = subscribeAuthState((user) => {
+      setHasSession(!!user)
+    })
+    return () => unsubscribe()
   }, [])
 
   return { ready, hasSession }
@@ -184,12 +182,12 @@ function FullscreenMessage({
 }
 
 function ConfigErrorPage() {
-  const configError = supabaseConfigError || apiConfigError || 'Konfigurasi frontend belum lengkap.'
+  const configError = firebaseConfigError || 'Konfigurasi frontend belum lengkap.'
 
   return (
     <FullscreenMessage
       title="Konfigurasi frontend belum siap"
-      body={`${configError} Isi environment frontend dengan VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY, dan VITE_API_BASE_URL yang benar lalu deploy ulang.`}
+      body={`${configError} Isi environment frontend dengan variabel VITE_FIREBASE_* yang benar lalu deploy ulang.`}
     />
   )
 }
@@ -201,7 +199,7 @@ function AuthCallbackPage() {
 
   useEffect(() => {
     if (!ready) return
-    if (supabaseConfigError || apiConfigError) {
+    if (firebaseConfigError) {
       navigate('/login', { replace: true })
       return
     }
@@ -223,7 +221,7 @@ function RequireAuth({ children }: { children: React.ReactNode }) {
     return <FullscreenMessage title="Memuat aplikasi" body="Sedang mengecek sesi login kamu." loading />
   }
 
-  if (supabaseConfigError || apiConfigError) {
+  if (firebaseConfigError) {
     return <ConfigErrorPage />
   }
 
@@ -241,7 +239,7 @@ function GuestOnly({ children }: { children: React.ReactNode }) {
     return <FullscreenMessage title="Memuat halaman login" body="Sedang mengecek apakah sesi kamu masih aktif." loading />
   }
 
-  if (supabaseConfigError || apiConfigError) {
+  if (firebaseConfigError) {
     return <ConfigErrorPage />
   }
 
@@ -253,9 +251,9 @@ function GuestOnly({ children }: { children: React.ReactNode }) {
 }
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
-  <React.StrictMode>
+    <React.StrictMode>
     <BrowserRouter>
-      {supabaseConfigError || apiConfigError ? (
+      {firebaseConfigError ? (
         <ConfigErrorPage />
       ) : (
         <Routes>

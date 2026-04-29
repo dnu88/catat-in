@@ -27,7 +27,7 @@ export default function SettingsPage() {
             Profil akun
           </h3>
           <p style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
-            Data dasar yang sekarang diambil dari akun Supabase.
+            Data dasar yang sekarang diambil dari akun Firebase.
           </p>
         </div>
 
@@ -126,7 +126,7 @@ export default function SettingsPage() {
           Langkah lanjutan yang cocok
         </h3>
         <p style={{ fontSize: '13px', lineHeight: 1.7, color: 'rgba(255,255,255,0.86)' }}>
-          Dari halaman ini kita bisa lanjut ke simpan preferensi ke database, ganti tema real-time, atau sambungkan notifikasi ke Supabase dan FCM.
+          Dari halaman ini kita bisa lanjut ke simpan preferensi ke Firestore, ganti tema real-time, atau sambungkan notifikasi ke FCM.
         </p>
       </section>
     </div>
