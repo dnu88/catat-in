@@ -136,10 +136,19 @@ export default function CapturePage() {
         content: message.content,
       }))
 
-      const { data } = await api.post<AIChatResponse>('/ai/chat', {
-        text,
-        conversation_history: conversationHistory,
-      })
+      let data: AIChatResponse
+      let usedLocalFallback = false
+
+      try {
+        const response = await api.post<AIChatResponse>('/ai/chat', {
+          text,
+          conversation_history: conversationHistory,
+        })
+        data = response.data
+      } catch {
+        data = extractTransactionsLocally(text, activeWallets)
+        usedLocalFallback = true
+      }
 
       const extractedItems = (data.transactions || []).map((transaction, index) =>
         toReviewTransaction(transaction, activeWallets, index),
@@ -182,6 +191,7 @@ export default function CapturePage() {
           autoSavedCount,
           reviewCount: finalReviewItems.length,
           unclear: data.unclear,
+          source: usedLocalFallback ? 'local' : 'backend',
         }),
         extracted: data.transactions,
         timestamp: new Date().toISOString(),
@@ -722,16 +732,22 @@ function buildAssistantReply({
   autoSavedCount,
   reviewCount,
   unclear,
+  source,
 }: {
   autoSavedCount: number
   reviewCount: number
   unclear: string | null
+  source: 'backend' | 'local'
 }): string {
   if (autoSavedCount === 0 && reviewCount === 0) {
-    return unclear || 'Aku belum menemukan transaksi yang bisa dicatat. Coba tulis lebih spesifik.'
+    const base = unclear || 'Aku belum menemukan transaksi yang bisa dicatat. Coba tulis lebih spesifik.'
+    return source === 'local' ? `Backend AI belum tersedia, jadi aku pakai parser lokal. ${base}` : base
   }
 
   const parts: string[] = []
+  if (source === 'local') {
+    parts.push('Backend AI belum tersedia, jadi aku pakai parser lokal dulu.')
+  }
   if (autoSavedCount > 0) parts.push(`${autoSavedCount} transaksi langsung tersimpan otomatis.`)
   if (reviewCount > 0) parts.push(`${reviewCount} transaksi perlu kamu review dulu.`)
   if (unclear) parts.push(`Catatan: ${unclear}`)
@@ -756,4 +772,118 @@ function normalizeReviewDate(value?: string | null): string {
 
 function formatDateInput(date: Date): string {
   return date.toISOString().split('T')[0]
+}
+
+function extractTransactionsLocally(
+  text: string,
+  wallets: Array<{ id: string; name: string; bank_name?: string | null }>,
+): AIChatResponse {
+  const normalized = normalizeText(text)
+  const amount = extractAmount(text)
+  const walletHint = extractWalletHint(normalized, wallets)
+  const type = inferTransactionType(normalized)
+  const category = inferCategory(normalized, type)
+  const merchant = extractMerchant(normalized)
+  const date = inferRelativeDate(normalized)
+
+  if (!amount) {
+    return {
+      transactions: [],
+      unclear: 'Nominal belum terbaca. Tambahkan angka, misalnya 45rb atau 120000.',
+    }
+  }
+
+  let confidence = 0.55
+  if (amount > 0) confidence += 0.2
+  if (walletHint) confidence += 0.15
+  if (category) confidence += 0.1
+  if (date !== 'today') confidence += 0.05
+  confidence = Math.min(confidence, 0.98)
+
+  return {
+    transactions: [
+      {
+        type,
+        amount,
+        category,
+        merchant: merchant || undefined,
+        note: '',
+        wallet_hint: walletHint || null,
+        date,
+        confidence,
+      },
+    ],
+    unclear: walletHint ? null : 'Wallet belum dikenali otomatis. Pilih wallet saat review transaksi.',
+  }
+}
+
+function extractAmount(text: string): number {
+  const matches = [...text.toLowerCase().matchAll(/(\d+(?:[.,]\d+)?)\s*(rb|ribu|jt|juta|k|m)?/g)]
+  if (matches.length === 0) return 0
+
+  const best = matches
+    .map((match) => {
+      const raw = (match[1] || '').replace(/\./g, '').replace(',', '.')
+      const suffix = match[2] || ''
+      const value = Number(raw)
+      if (!Number.isFinite(value)) return 0
+
+      if (suffix === 'rb' || suffix === 'ribu' || suffix === 'k') return value * 1_000
+      if (suffix === 'jt' || suffix === 'juta' || suffix === 'm') return value * 1_000_000
+      return value
+    })
+    .sort((a, b) => b - a)[0]
+
+  return Math.round(best || 0)
+}
+
+function inferTransactionType(text: string): TransactionType {
+  const incomeKeywords = ['gaji', 'masuk', 'pemasukan', 'bonus', 'dibayar', 'transfer masuk', 'refund']
+  return incomeKeywords.some((keyword) => text.includes(keyword)) ? 'income' : 'expense'
+}
+
+function inferCategory(text: string, type: TransactionType): string {
+  if (type === 'income') {
+    if (text.includes('gaji')) return 'salary'
+    if (text.includes('freelance') || text.includes('proyek')) return 'freelance'
+    if (text.includes('investasi') || text.includes('dividen')) return 'investment'
+    return 'other'
+  }
+
+  if (text.includes('makan') || text.includes('kopi') || text.includes('warteg') || text.includes('resto')) return 'food'
+  if (text.includes('bensin') || text.includes('transport') || text.includes('parkir') || text.includes('tol')) return 'transport'
+  if (text.includes('belanja') || text.includes('minimarket') || text.includes('supermarket')) return 'shopping'
+  if (text.includes('obat') || text.includes('dokter') || text.includes('klinik')) return 'health'
+  if (text.includes('bioskop') || text.includes('netflix') || text.includes('game')) return 'entertainment'
+  if (text.includes('kursus') || text.includes('buku') || text.includes('sekolah')) return 'education'
+  if (text.includes('listrik') || text.includes('air') || text.includes('internet') || text.includes('kontrakan')) return 'housing'
+  return 'other'
+}
+
+function extractMerchant(text: string): string {
+  const match = text.match(/(?:di|ke)\s+([a-z0-9\s._-]+?)(?:\s+(?:pakai|lewat|via|dengan)\s+|$)/i)
+  if (!match?.[1]) return ''
+  return match[1].trim()
+}
+
+function extractWalletHint(
+  text: string,
+  wallets: Array<{ id: string; name: string; bank_name?: string | null }>,
+): string {
+  const matched = wallets.find((wallet) => {
+    const candidates = [wallet.name, wallet.bank_name || '']
+      .map((value) => normalizeText(value))
+      .filter(Boolean)
+    return candidates.some((candidate) => text.includes(candidate))
+  })
+
+  if (matched) return matched.name
+
+  const genericHint = text.match(/(?:pakai|lewat|via|dengan)\s+([a-z0-9\s._-]+)/i)?.[1]?.trim() || ''
+  return genericHint
+}
+
+function inferRelativeDate(text: string): string {
+  if (text.includes('kemarin')) return 'yesterday'
+  return 'today'
 }
