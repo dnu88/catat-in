@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useBudgetStore } from '@store/budget.store'
 import { useCategoryStore } from '@store/category.store'
 import { CATEGORY_LABEL, buildCategoryOptions } from '@lib/categories'
+import { useI18nStore } from '@store/i18n.store'
 
 function formatRupiah(amount: number) {
   return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(amount)
@@ -204,6 +205,7 @@ function BudgetCard({ budget, onEdit, onDelete }: { budget: any; onEdit: (b: any
 }
 
 export default function BudgetPage() {
+  const { language } = useI18nStore()
   const { budgets, isLoading, error, fetchBudgets, addBudget, updateBudget, deleteBudget } = useBudgetStore()
   const {
     categories,
@@ -262,22 +264,22 @@ export default function BudgetPage() {
     <div style={styles.page}>
       <div style={styles.header}>
         <div>
-          <h2 style={styles.title}>Anggaran</h2>
+          <h2 style={styles.title}>{language === 'id' ? 'Anggaran' : 'Budgets'}</h2>
           <p style={styles.period}>Periode: {periodLabel}</p>
         </div>
         <button onClick={() => { setEditingBudget(null); setShowModal(true) }} style={styles.addBtn}>
-          + Tambah Budget
+          + {language === 'id' ? 'Tambah Budget' : 'Add Budget'}
         </button>
       </div>
 
-      {isLoading ? <p style={styles.info}>Memuat...</p> : null}
+      {isLoading ? <p style={styles.info}>{language === 'id' ? 'Memuat...' : 'Loading...'}</p> : null}
       {error ? <p style={styles.errorText}>{error}</p> : null}
       {categoryError ? <p style={styles.errorText}>{categoryError}</p> : null}
 
       {!isLoading && budgets.length === 0 ? (
         <div style={styles.empty}>
           <p style={styles.emptyIcon}>📊</p>
-          <p>Belum ada anggaran bulan ini. Buat budget untuk mulai memantau pengeluaran!</p>
+          <p>{language === 'id' ? 'Belum ada anggaran bulan ini. Buat budget untuk mulai memantau pengeluaran!' : 'No budget for this month yet. Create one to track your spending.'}</p>
         </div>
       ) : null}
 

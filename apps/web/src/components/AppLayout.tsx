@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { useAuthStore } from '@store/auth.store'
+import { useI18nStore } from '@store/i18n.store'
 
 type NavSectionItem = {
   section: string
@@ -13,19 +14,40 @@ type NavLinkItem = {
   badge?: string
 }
 
-const NAV_ITEMS: Array<NavSectionItem | NavLinkItem> = [
-  { section: 'Menu utama' },
-  { to: '/dashboard', icon: '🏠', label: 'Dashboard' },
-  { to: '/transactions', icon: '📋', label: 'Transaksi' },
-  { to: '/budgets', icon: '🎯', label: 'Anggaran' },
-  { to: '/reports', icon: '📊', label: 'Laporan' },
-  { to: '/bills', icon: '🔔', label: 'Tagihan' },
-  { section: 'Lainnya' },
-  { to: '/groups', icon: '👥', label: 'Grup' },
-  { to: '/imports', icon: '📥', label: 'Import' },
-  { to: '/wallets', icon: '💳', label: 'Dompet' },
-  { to: '/settings', icon: '⚙️', label: 'Pengaturan' },
-]
+const NAV_ITEMS: Record<'id' | 'en', Array<NavSectionItem | NavLinkItem>> = {
+  id: [
+    { section: 'Menu utama' },
+    { to: '/dashboard', icon: '🏠', label: 'Dashboard' },
+    { to: '/transactions', icon: '📋', label: 'Transaksi' },
+    { to: '/budgets', icon: '🎯', label: 'Anggaran' },
+    { to: '/reports', icon: '📊', label: 'Laporan' },
+    { to: '/bills', icon: '🔔', label: 'Tagihan' },
+    { section: 'Lainnya' },
+    { to: '/groups', icon: '👥', label: 'Grup' },
+    { to: '/imports', icon: '📥', label: 'Import' },
+    { to: '/wallets', icon: '💳', label: 'Dompet' },
+    { to: '/activity', icon: '🕒', label: 'Aktivitas' },
+    { to: '/saved-views', icon: '💾', label: 'Tampilan Tersimpan' },
+    { to: '/goals', icon: '🏁', label: 'Target' },
+    { to: '/settings', icon: '⚙️', label: 'Pengaturan' },
+  ],
+  en: [
+    { section: 'Main menu' },
+    { to: '/dashboard', icon: '🏠', label: 'Dashboard' },
+    { to: '/transactions', icon: '📋', label: 'Transactions' },
+    { to: '/budgets', icon: '🎯', label: 'Budgets' },
+    { to: '/reports', icon: '📊', label: 'Reports' },
+    { to: '/bills', icon: '🔔', label: 'Bills' },
+    { section: 'Others' },
+    { to: '/groups', icon: '👥', label: 'Groups' },
+    { to: '/imports', icon: '📥', label: 'Import' },
+    { to: '/wallets', icon: '💳', label: 'Wallets' },
+    { to: '/activity', icon: '🕒', label: 'Activity' },
+    { to: '/saved-views', icon: '💾', label: 'Saved Views' },
+    { to: '/goals', icon: '🏁', label: 'Goals' },
+    { to: '/settings', icon: '⚙️', label: 'Settings' },
+  ],
+}
 
 function getInitials(name: string): string {
   return name
@@ -55,19 +77,40 @@ function formatDate(): string {
 
 export default function AppLayout() {
   const { user, signOut, isLoading } = useAuthStore()
+  const { language } = useI18nStore()
   const navigate = useNavigate()
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [isSigningOut, setIsSigningOut] = useState(false)
 
   const handleSignOut = async () => {
+    setIsSigningOut(true)
     try {
       await signOut()
-    } finally {
       navigate('/login', { replace: true })
+    } finally {
+      setTimeout(() => setIsSigningOut(false), 150)
     }
   }
 
   const userName = user?.full_name || user?.email || 'Pengguna'
   const initials = getInitials(userName)
+
+  if (isSigningOut) {
+    return (
+      <div
+        style={{
+          minHeight: '100vh',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          background: 'var(--bg-base)',
+          color: 'var(--text-primary)',
+        }}
+      >
+        <div className="card" style={{ padding: '16px 20px', fontSize: '14px' }}>Keluar akun...</div>
+      </div>
+    )
+  }
 
   return (
     <div className="app-shell">
@@ -94,7 +137,7 @@ export default function AppLayout() {
         </div>
 
         <nav className="sidebar-nav">
-          {NAV_ITEMS.map((item, index) => {
+          {NAV_ITEMS[language].map((item, index) => {
             if ('section' in item) {
               return (
                 <div key={index} className="nav-section-label">
@@ -128,7 +171,7 @@ export default function AppLayout() {
               {userName}
             </div>
             <div className="user-plan-badge">
-              {user?.plan_type === 'premium' ? 'Premium' : 'Free plan'}
+              {user?.plan_type === 'premium' ? 'Premium' : language === 'id' ? 'Paket gratis' : 'Free plan'}
             </div>
           </div>
           <button
@@ -161,9 +204,9 @@ export default function AppLayout() {
             </div>
           </div>
           <div className="topbar-actions">
-            <button className="btn btn-secondary">🔔 Notifikasi</button>
+            <button className="btn btn-secondary">🔔 {language === 'id' ? 'Notifikasi' : 'Notifications'}</button>
             <button className="btn btn-primary" onClick={() => navigate('/capture')}>
-              ＋ Tambah transaksi
+              ＋ {language === 'id' ? 'Tambah transaksi' : 'Add transaction'}
             </button>
           </div>
         </header>

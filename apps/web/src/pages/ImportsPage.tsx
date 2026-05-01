@@ -3,6 +3,7 @@ import { api, uploadApi } from '@lib/api'
 import { useTransactionStore } from '@store/transaction.store'
 import { useWalletStore } from '@store/wallet.store'
 import { useCategoryStore } from '@store/category.store'
+import { useI18nStore } from '@store/i18n.store'
 import { buildCategoryOptions } from '@lib/categories'
 import type { TransactionCategory, TransactionFormData } from '@catat-in/shared/types'
 
@@ -71,6 +72,7 @@ interface ConfirmImportResponse {
 }
 
 export default function ImportsPage() {
+  const { language } = useI18nStore()
   const { wallets, fetchWallets } = useWalletStore()
   const { addTransaction } = useTransactionStore()
   const { categories, fetchCategories } = useCategoryStore()
@@ -308,7 +310,7 @@ export default function ImportsPage() {
     <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
       <div>
         <h2 style={{ fontSize: '20px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '4px' }}>
-          Import Mutasi & Struk
+          {language === 'id' ? 'Import Mutasi & Struk' : 'Import Statements & Receipts'}
         </h2>
         <p style={{ fontSize: '13px', color: 'var(--text-muted)', maxWidth: '760px' }}>
           Sekarang lane struk dan import mutasi sama-sama aktif. Upload struk untuk OCR review, atau upload file CSV/Excel bank lalu preview hasil parsing dan duplikat sebelum konfirmasi import.
@@ -326,7 +328,7 @@ export default function ImportsPage() {
           <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap' }}>
             <div>
               <h3 style={{ fontSize: '16px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '4px' }}>
-                Upload Struk
+                {language === 'id' ? 'Upload Struk' : 'Upload Receipt'}
               </h3>
               <p style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
                 Format didukung: JPG, PNG, WEBP, atau PDF. Backend juga sudah memvalidasi ukuran file.
@@ -390,7 +392,7 @@ export default function ImportsPage() {
 
           <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
             <button className="btn btn-primary" onClick={handleAnalyze} disabled={!selectedFile || isAnalyzing}>
-              {isAnalyzing ? 'Menganalisis...' : 'Analisis dengan AI'}
+              {isAnalyzing ? (language === 'id' ? 'Menganalisis...' : 'Analyzing...') : (language === 'id' ? 'Analisis dengan AI' : 'Analyze with AI')}
             </button>
             <button className="btn btn-secondary" onClick={() => handleFileSelect(null)} disabled={!selectedFile || isAnalyzing}>
               Reset file
@@ -496,7 +498,7 @@ export default function ImportsPage() {
           <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap' }}>
             <div>
               <h3 style={{ fontSize: '16px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '4px' }}>
-                Import Mutasi Bank
+                {language === 'id' ? 'Import Mutasi Bank' : 'Import Bank Statements'}
               </h3>
               <p style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
                 Upload CSV/Excel, preview hasil parsing, lalu konfirmasi import ke wallet yang dipilih.
@@ -552,7 +554,7 @@ export default function ImportsPage() {
 
           <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
             <button className="btn btn-primary" onClick={handlePreviewImport} disabled={!importFile || isPreviewingImport}>
-              {isPreviewingImport ? 'Memproses preview...' : 'Preview import'}
+              {isPreviewingImport ? (language === 'id' ? 'Memproses preview...' : 'Processing preview...') : (language === 'id' ? 'Preview import' : 'Preview import')}
             </button>
             <button className="btn btn-secondary" onClick={() => handleImportFileChange(null)} disabled={!importFile || isPreviewingImport}>
               Reset file

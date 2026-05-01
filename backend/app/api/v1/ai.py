@@ -7,6 +7,7 @@ from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 from pydantic import BaseModel
 
 from app.core.auth import get_current_user, require_premium
+from app.core.config import settings
 from app.core.rate_limit import rate_limit_ai
 from app.services.ai_service import (
     analyze_receipt_image,

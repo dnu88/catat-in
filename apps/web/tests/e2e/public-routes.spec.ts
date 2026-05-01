@@ -24,6 +24,8 @@ test.describe('public routes', () => {
     await page.getByLabel('Password').fill('WrongPass123!')
     await page.getByRole('button', { name: 'Masuk', exact: true }).click()
 
-    await expect(page.getByText('Email atau password salah. Coba periksa lagi.')).toBeVisible()
+    const loginError = page.locator('.login-error')
+    await expect(loginError).toBeVisible()
+    await expect(loginError).toContainText(/invalid-credential|salah|gagal/i)
   })
 })

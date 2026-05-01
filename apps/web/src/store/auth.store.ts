@@ -10,9 +10,16 @@ import {
 } from 'firebase/auth'
 import type { User } from '@catat-in/shared/types'
 import { auth, googleProvider, subscribeAuthState } from '@lib/firebase'
-import { ensureUserProfileFromAuth, getUserProfile } from '@lib/firestore'
 
 const LOGIN_TIMEOUT_MS = 20_000
+
+async function loadFirestoreAuthHelpers() {
+  const mod = await import('@lib/firestore')
+  return {
+    ensureUserProfileFromAuth: mod.ensureUserProfileFromAuth,
+    getUserProfile: mod.getUserProfile,
+  }
+}
 
 interface AuthState {
   user: User | null
@@ -52,6 +59,7 @@ export const useAuthStore = create<AuthState>()(
 
           const signIn = signInWithEmailAndPassword(auth, email, password)
           const { user } = (await Promise.race([signIn, timeout])) as Awaited<typeof signIn>
+          const { ensureUserProfileFromAuth } = await loadFirestoreAuthHelpers()
           await ensureUserProfileFromAuth(user)
           await get().refreshUser()
           return true
@@ -67,6 +75,7 @@ export const useAuthStore = create<AuthState>()(
         set({ isLoading: true })
         try {
           const result = await signInWithPopup(auth, googleProvider)
+          const { ensureUserProfileFromAuth } = await loadFirestoreAuthHelpers()
           await ensureUserProfileFromAuth(result.user)
           await get().refreshUser()
         } finally {
@@ -123,6 +132,7 @@ export const useAuthStore = create<AuthState>()(
           return
         }
 
+        const { getUserProfile, ensureUserProfileFromAuth } = await loadFirestoreAuthHelpers()
         const profile = await getUserProfile(authUser.uid)
         if (profile) {
           set({ user: profile, isAuthenticated: true })

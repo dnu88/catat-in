@@ -192,6 +192,7 @@ export interface TransactionFormData {
   date: string
   wallet_id: string
   is_shared?: boolean
+  group_id?: string
   on_behalf_of?: string
 }
 

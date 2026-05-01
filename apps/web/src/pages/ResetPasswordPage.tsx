@@ -2,8 +2,10 @@ import { useEffect, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { auth } from '@lib/firebase'
 import { useAuthStore } from '@store/auth.store'
+import { useI18nStore } from '@store/i18n.store'
 
 export default function ResetPasswordPage() {
+  const { language } = useI18nStore()
   const navigate = useNavigate()
   const location = useLocation()
   const { updatePassword, confirmPasswordResetByCode, isLoading } = useAuthStore()
@@ -52,8 +54,8 @@ export default function ResetPasswordPage() {
   return (
     <div className="simple-auth-page">
       <div className="simple-auth-card">
-        <h1 className="simple-auth-title">Atur password baru</h1>
-        <p className="simple-auth-subtitle">Masukkan password baru untuk akun Catat.in kamu.</p>
+        <h1 className="simple-auth-title">{language === 'id' ? 'Atur password baru' : 'Set new password'}</h1>
+        <p className="simple-auth-subtitle">{language === 'id' ? 'Masukkan password baru untuk akun Catat.in kamu.' : 'Enter a new password for your Catat.in account.'}</p>
 
         {!hasRecoverySession ? (
           <p className="simple-auth-success">
@@ -62,26 +64,26 @@ export default function ResetPasswordPage() {
         ) : (
           <form onSubmit={handleSubmit} className="simple-auth-form">
             <label className="simple-auth-field">
-              <span>Password baru</span>
+              <span>{language === 'id' ? 'Password baru' : 'New password'}</span>
               <input
                 className="form-input"
                 type="password"
                 value={password}
                 onChange={(event) => setPassword(event.target.value)}
-                placeholder="Minimal 8 karakter"
+                placeholder={language === 'id' ? 'Minimal 8 karakter' : 'Minimum 8 characters'}
                 required
                 autoComplete="new-password"
               />
             </label>
 
             <label className="simple-auth-field">
-              <span>Konfirmasi password</span>
+              <span>{language === 'id' ? 'Konfirmasi password' : 'Confirm password'}</span>
               <input
                 className="form-input"
                 type="password"
                 value={confirmPassword}
                 onChange={(event) => setConfirmPassword(event.target.value)}
-                placeholder="Ulangi password baru"
+                placeholder={language === 'id' ? 'Ulangi password baru' : 'Repeat new password'}
                 required
                 autoComplete="new-password"
               />
@@ -91,13 +93,13 @@ export default function ResetPasswordPage() {
             {success ? <p className="simple-auth-success">{success}</p> : null}
 
             <button type="submit" disabled={isLoading} className="btn btn-primary">
-              {isLoading ? 'Menyimpan...' : 'Simpan password baru'}
+              {isLoading ? (language === 'id' ? 'Menyimpan...' : 'Saving...') : (language === 'id' ? 'Simpan password baru' : 'Save new password')}
             </button>
           </form>
         )}
 
         <p className="simple-auth-footer">
-          <Link to="/login">Kembali ke login</Link>
+          <Link to="/login">{language === 'id' ? 'Kembali ke login' : 'Back to login'}</Link>
         </p>
       </div>
 

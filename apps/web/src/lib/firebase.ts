@@ -5,7 +5,6 @@ import {
   onAuthStateChanged,
   type User as FirebaseUser,
 } from 'firebase/auth'
-import { enableIndexedDbPersistence, getFirestore } from 'firebase/firestore'
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY?.trim(),
@@ -40,17 +39,9 @@ const safeConfig = hasMissingConfig
       appId: string
     })
 
-const app = initializeApp(safeConfig)
+export const app = initializeApp(safeConfig)
 export const auth = getAuth(app)
-export const db = getFirestore(app)
 export const googleProvider = new GoogleAuthProvider()
-
-if (typeof window !== 'undefined') {
-  void enableIndexedDbPersistence(db).catch(() => {
-    // Persistence gagal biasanya karena multi-tab atau browser tidak mendukung.
-    // App tetap bisa jalan dengan mode online-only.
-  })
-}
 
 export let currentAuthUser: FirebaseUser | null = auth.currentUser
 

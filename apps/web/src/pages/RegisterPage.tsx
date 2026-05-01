@@ -2,8 +2,10 @@ import { useState } from 'react'
 import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth'
 import { auth } from '@lib/firebase'
 import { ensureUserProfileFromAuth } from '@lib/firestore'
+import { useI18nStore } from '@store/i18n.store'
 
 export default function RegisterPage() {
+  const { language } = useI18nStore()
   const [fullName, setFullName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -44,7 +46,7 @@ export default function RegisterPage() {
             <div style={{ width: '72px', height: '72px', borderRadius: '50%', background: 'rgba(16, 185, 129, 0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '36px', margin: '0 auto 20px', border: '1px solid rgba(255,255,255,0.25)' }}>
               ✓
             </div>
-            <h1 className="login-logo-name">Pendaftaran Berhasil!</h1>
+            <h1 className="login-logo-name">{language === 'id' ? 'Pendaftaran Berhasil!' : 'Registration Successful!'}</h1>
             <p className="login-tagline">
               Akun untuk <strong style={{ color: '#fff' }}>{email}</strong> berhasil dibuat. Lanjut login untuk mulai mencatat keuanganmu.
             </p>
@@ -63,7 +65,7 @@ export default function RegisterPage() {
                 boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
               }}
             >
-              Kembali ke Login
+              {language === 'id' ? 'Kembali ke Login' : 'Back to Login'}
             </a>
           </div>
         </div>
@@ -97,15 +99,15 @@ export default function RegisterPage() {
       <div className="login-form-side">
         <div className="login-card">
           <div className="login-card-header">
-            <h2 className="login-card-title">Buat akun baru</h2>
+            <h2 className="login-card-title">{language === 'id' ? 'Buat akun baru' : 'Create new account'}</h2>
             <p className="login-card-sub">
-              Daftar gratis dan mulai catat keuangan
+              {language === 'id' ? 'Daftar gratis dan mulai catat keuangan' : 'Sign up for free and start tracking your finances'}
             </p>
           </div>
 
           <form onSubmit={handleRegister} className="login-form">
             <div className="login-field">
-              <label className="form-label" htmlFor="reg-name">Nama Lengkap</label>
+              <label className="form-label" htmlFor="reg-name">{language === 'id' ? 'Nama Lengkap' : 'Full Name'}</label>
               <input
                 id="reg-name"
                 className="form-input"
@@ -133,14 +135,14 @@ export default function RegisterPage() {
             </div>
 
             <div className="login-field">
-              <label className="form-label" htmlFor="reg-password">Password</label>
+              <label className="form-label" htmlFor="reg-password">{language === 'id' ? 'Password' : 'Password'}</label>
               <input
                 id="reg-password"
                 className="form-input"
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="Minimal 8 karakter"
+                placeholder={language === 'id' ? 'Minimal 8 karakter' : 'Minimum 8 characters'}
                 required
                 autoComplete="new-password"
               />
@@ -149,13 +151,13 @@ export default function RegisterPage() {
             {error && <p className="login-error">{error}</p>}
 
             <button type="submit" disabled={isLoading} className="btn btn-primary login-submit">
-              {isLoading ? 'Mendaftarkan...' : 'Daftar Sekarang'}
+              {isLoading ? (language === 'id' ? 'Mendaftarkan...' : 'Registering...') : (language === 'id' ? 'Daftar Sekarang' : 'Register Now')}
             </button>
           </form>
 
           <p className="login-register-text">
-            Sudah punya akun?{' '}
-            <a href="/login" className="login-register-link">Masuk di sini</a>
+            {language === 'id' ? 'Sudah punya akun?' : 'Already have an account?'}{' '}
+            <a href="/login" className="login-register-link">{language === 'id' ? 'Masuk di sini' : 'Sign in here'}</a>
           </p>
         </div>
       </div>

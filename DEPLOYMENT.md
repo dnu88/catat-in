@@ -1,214 +1,127 @@
-# Public Deployment Guide
+# Deployment Guide (Firebase-first)
 
-Panduan ini mengikuti opsi biaya minimum yang kita pilih:
+Dokumen ini mengikuti arsitektur produksi saat ini:
+- Frontend: Vercel (`apps/web`)
+- Auth + data inti: Firebase Auth + Cloud Firestore
+- Backend FastAPI (opsional): fitur AI receipt, import mutasi, dan groups
 
-- `Vercel Hobby` untuk frontend web
-- `Render Free` untuk backend FastAPI
-- `Supabase Free` untuk database, auth, dan storage
+Jika kamu full Firebase tanpa backend tambahan, cukup ikuti langkah 1-2 lalu lewati langkah backend.
 
-Arsitektur ini cocok untuk:
+## 1) Setup Firebase
 
-- MVP public
-- demo
-- early user testing
-- soft launch dengan biaya serendah mungkin
-
-Catatan penting:
-
-- backend Render Free bisa sleep saat idle
-- request pertama setelah idle bisa lambat karena cold start
-- jadi setup ini murah, tetapi belum sehalus deployment berbayar
-
-## Yang Sudah Siap di Repo
-
-Konfigurasi repo yang sudah disiapkan:
-
-- `backend/Dockerfile` sudah mengikuti `PORT` dari platform hosting
-- `backend/app/core/config.py` sudah mendukung `ALLOWED_ORIGINS` dan `ALLOWED_HOSTS`
-- `backend/app/core/config.py` juga menambahkan host production penting secara defensif, termasuk host Render saat ini, agar request tidak gagal dengan `Invalid host header`
-- `apps/web/src/lib/supabase.ts` memberi timeout pada cek sesi awal Supabase agar halaman login tidak stuck di layar loading
-- endpoint AI sekarang fail-safe jika `ANTHROPIC_API_KEY` belum diisi
-- `apps/web/vercel.json` sudah menambahkan SPA rewrite agar route frontend tidak 404
-
-## 1. Siapkan Supabase Cloud
-
-1. Pastikan project Supabase cloud yang akan dipakai sudah benar.
-2. Dari folder `backend`, jalankan migration:
+1. Buat Firebase project.
+2. Aktifkan:
+   - Authentication (`Email/Password`, `Google`)
+   - Cloud Firestore
+3. Tambahkan Authorized Domains:
+   - domain Vercel frontend (production + preview jika perlu)
+   - `localhost` untuk local dev
+4. Deploy Firestore rules dari root repo:
 
 ```bash
-supabase login
-supabase link --project-ref your-project-ref
-supabase db push
+firebase login
+firebase use --add
+firebase deploy --only firestore:rules
 ```
 
-3. Verifikasi minimal kolom penting sudah ada:
-- `wallets.currency`
-- `bill_reminders.payment_history`
-- `categories.is_default`
+Rules file:
+- `firestore.rules`
 
-## 2. Konfigurasi Auth Supabase
+## 2) Deploy Frontend (Vercel)
 
-Di Supabase Dashboard:
+Vercel project settings:
+- Root Directory: `apps/web`
 
-1. Buka `Authentication -> URL Configuration`
-2. Isi `Site URL` dengan domain frontend production, misalnya:
+Environment variables (Production/Preview):
+- `VITE_FIREBASE_API_KEY`
+- `VITE_FIREBASE_AUTH_DOMAIN`
+- `VITE_FIREBASE_PROJECT_ID`
+- `VITE_FIREBASE_STORAGE_BUCKET`
+- `VITE_FIREBASE_MESSAGING_SENDER_ID`
+- `VITE_FIREBASE_APP_ID`
+- `VITE_API_BASE_URL` (opsional, isi jika backend dipakai)
 
-```text
-https://your-app.vercel.app
-```
+Setelah env diubah, lakukan redeploy.
 
-3. Tambahkan `Redirect URLs` berikut:
+## 3) Deploy Backend (Opsional, jika dipakai)
 
-```text
-https://your-app.vercel.app/auth/callback
-https://your-app.vercel.app/reset-password
-```
+Backend service settings:
+- Root directory: `backend`
+- Health endpoint: `/health`
 
-Jika nanti memakai domain custom, tambahkan juga URL domain custom tersebut.
+Environment variables minimal:
+- `ENVIRONMENT=production`
+- `DEBUG=false`
+- `SECRET_KEY=<random-strong-secret>`
+- `FIREBASE_PROJECT_ID=<project-id>`
+- `FIREBASE_CLIENT_EMAIL=<service-account-email>`
+- `FIREBASE_PRIVATE_KEY=<service-account-private-key>`
+- `ALLOWED_ORIGINS=https://your-frontend.vercel.app`
+- `ALLOWED_HOSTS=api.yourdomain.com`
 
-## 3. Deploy Backend ke Render Free
+Penting:
+- Isi `FIREBASE_PRIVATE_KEY` dalam format satu baris dengan `\n` escape (bukan multiline mentah).
+- `ALLOWED_ORIGINS` dan `ALLOWED_HOSTS` boleh pakai format comma-separated.
 
-1. Push repo ini ke GitHub jika belum.
-2. Login ke Render dan buat `Web Service` baru dari repo GitHub.
-3. Set `Root Directory` ke:
+Optional:
+- `ANTHROPIC_API_KEY=<key>` (tanpa ini AI chat pakai fallback parser)
+- `ANTHROPIC_MODEL=claude-sonnet-4-6` (atau model lain)
 
-```text
-backend
-```
+Legacy vars (boleh kosong):
+- `SUPABASE_URL`
+- `SUPABASE_ANON_KEY`
+- `SUPABASE_SERVICE_ROLE_KEY`
 
-4. Anda bisa deploy memakai Dockerfile yang sudah ada di repo ini.
+## 4) Integrasi Frontend-Backend
 
-5. Isi environment variables minimal berikut di Render:
+Jika backend aktif:
+- set `VITE_API_BASE_URL=https://api.yourdomain.com/api/v1`
 
-```text
-ENVIRONMENT=production
-DEBUG=false
-SECRET_KEY=replace-with-a-long-random-secret
-SUPABASE_URL=https://your-project-ref.supabase.co
-SUPABASE_ANON_KEY=your-public-anon-key
-SUPABASE_SERVICE_ROLE_KEY=your-secret-service-role-key
-ALLOWED_ORIGINS=https://your-app.vercel.app
-ALLOWED_HOSTS=your-backend-service.onrender.com
-```
+Jika backend belum aktif:
+- boleh kosongkan `VITE_API_BASE_URL`
+- fitur inti Firebase tetap jalan (wallet/transaction/budget/bills/reports)
+- fitur backend-only (OCR/import/groups) tidak aktif
 
-Untuk deployment project saat ini, nilai production yang dipakai adalah:
+## 5) Verifikasi Setelah Deploy
 
-```text
-ALLOWED_ORIGINS=https://catat-in-nine.vercel.app
-ALLOWED_HOSTS=catat-in-backend.onrender.com
-```
+Checklist minimum:
+1. Login/register Firebase berjalan di frontend production.
+2. Wallet CRUD berjalan.
+3. Transaksi manual berjalan.
+4. Budget + kategori kustom + bills berjalan.
+5. Reports tampil dari Firestore.
+6. Jika backend aktif: `GET /health` mengembalikan status sehat.
+7. Jika backend aktif: AI receipt/import/groups bisa dipakai dari frontend.
 
-Jika memakai domain custom, tambahkan domain baru tersebut tanpa menghapus domain Vercel/Render yang masih aktif.
-
-Opsional tetapi disarankan:
-
-```text
-ANTHROPIC_API_KEY=sk-ant-api03-xxxx
-ANTHROPIC_MODEL=claude-sonnet-4-6
-MIDTRANS_SERVER_KEY=
-MIDTRANS_CLIENT_KEY=
-MIDTRANS_IS_PRODUCTION=false
-FIREBASE_PROJECT_ID=
-FIREBASE_PRIVATE_KEY=
-FIREBASE_CLIENT_EMAIL=
-UVICORN_WORKERS=2
-```
-
-6. Setelah deploy selesai, cek health endpoint:
-
-```text
-https://your-backend-service.onrender.com/health
-```
-
-Harus mengembalikan `status: ok`.
-
-Jika endpoint mengembalikan `400 Invalid host header`, berarti host Render belum masuk `ALLOWED_HOSTS` atau service masih menjalankan build lama. Redeploy backend, lalu cek ulang `/health`.
-
-## 4. Deploy Frontend ke Vercel Hobby
-
-1. Import repo yang sama ke Vercel.
-2. Set `Root Directory` ke:
-
-```text
-apps/web
-```
-
-3. Isi environment variables frontend berikut:
-
-```text
-VITE_SUPABASE_URL=https://your-project-ref.supabase.co
-VITE_SUPABASE_ANON_KEY=your-public-anon-key
-VITE_API_BASE_URL=https://your-backend-service.onrender.com/api/v1
-VITE_MIDTRANS_CLIENT_KEY=
-```
-
-Untuk deployment project saat ini:
-
-```text
-VITE_API_BASE_URL=https://catat-in-backend.onrender.com/api/v1
-```
-
-4. Deploy frontend.
-5. `apps/web/vercel.json` sudah memastikan route SPA seperti `/login`, `/dashboard`, `/transactions`, dan `/reset-password` tetap bekerja.
-
-## 5. Hubungkan Frontend, Backend, dan Supabase
-
-Setelah URL frontend dan backend final sudah dapat:
-
-1. update `ALLOWED_ORIGINS` di Render agar berisi domain Vercel final
-2. update `ALLOWED_HOSTS` di Render agar berisi domain Render final
-3. pastikan `VITE_API_BASE_URL` di Vercel menunjuk ke backend Render final
-4. update `Site URL` dan `Redirect URLs` di Supabase Auth
-
-Validasi koneksi frontend-backend:
+Verifikasi lokal sebelum release:
 
 ```bash
-curl -i https://your-backend-service.onrender.com/health
-curl -i -X OPTIONS https://your-backend-service.onrender.com/api/v1/wallets/ \
-  -H "Origin: https://your-app.vercel.app" \
-  -H "Access-Control-Request-Method: POST" \
-  -H "Access-Control-Request-Headers: authorization,content-type"
+pnpm --filter @catat-in/web test
+pnpm --filter @catat-in/web test:e2e
+pnpm test:backend
 ```
 
-Hasil yang benar:
-- `/health` mengembalikan `200 OK` dengan `status: ok`
-- preflight CORS mengembalikan `200 OK` dan `access-control-allow-origin` sesuai domain frontend
-- request endpoint protected tanpa token boleh mengembalikan `401` atau `403`; itu normal selama header CORS tetap ada
+## 6) Troubleshooting Cepat
 
-## 6. Checklist Go-Live
+### Frontend masih minta Supabase
+- Pastikan deployment memakai commit terbaru.
+- Hard refresh / incognito.
+- Cek env Vercel memakai `VITE_FIREBASE_*`, bukan `VITE_SUPABASE_*`.
 
-Sebelum diumumkan ke user public, cek:
+### Backend gagal start
+- Cek `FIREBASE_PRIVATE_KEY` valid dan format `\n` benar.
+- Cek `ALLOWED_ORIGINS` dan `ALLOWED_HOSTS` benar.
+- Jalankan lokal:
 
-- `GET /health` backend production merespons normal
-- preflight CORS dari domain frontend production merespons normal
-- signup user baru berhasil
-- login email/password berhasil
-- halaman `/login` tidak stuck di layar cek sesi awal
-- forgot password mengirim email reset
-- reset password via link email berhasil
-- create wallet berhasil
-- create transaction berhasil
-- create budget berhasil
-- create bill dan pay bill berhasil
-- create custom category berhasil
-- AI chat dan OCR berjalan jika `ANTHROPIC_API_KEY` terisi
-- route frontend langsung seperti `/login` dan `/transactions` tidak 404
+```bash
+cd backend
+venv\Scripts\python.exe -m uvicorn main:app --host 127.0.0.1 --port 8000 --reload
+```
 
-## 7. Batasan Opsi Termurah
+### AI chat error ke localhost saat production
+- `VITE_API_BASE_URL` masih menunjuk backend lokal.
+- Ganti ke backend publik atau kosongkan jika ingin hanya mode Firebase-first.
 
-Hal yang perlu Anda antisipasi pada jalur `Vercel Hobby + Render Free + Supabase Free`:
-
-- backend bisa cold start setelah idle
-- performa awal request bisa terasa lambat
-- cocok untuk MVP public, bukan pengalaman production premium
-- jika user mulai aktif, upgrade pertama yang paling masuk akal biasanya backend dari `Render Free` ke plan berbayar
-
-## 8. Hal yang Masih Perlu Anda Sediakan
-
-Repo ini sekarang sudah siap untuk deployment public dengan biaya minimum, tetapi langkah berikut tetap membutuhkan akses akun Anda:
-
-- membuat service Render di akun Anda
-- membuat project Vercel di akun Anda
-- mengisi secret production asli
-- memverifikasi flow reset password lewat inbox production
-- mengarahkan domain custom jika nanti dibutuhkan
+### Budget list gagal dengan pesan "The query requires an index"
+- Buat Firestore composite index dari link yang muncul di error page.
+- Setelah index `Ready`, reload halaman budget.

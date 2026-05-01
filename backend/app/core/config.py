@@ -16,21 +16,18 @@ from pydantic_settings.sources import EnvSettingsSource, PydanticBaseSettingsSou
 
 
 # Fields below are List[str] but we want to accept plain comma-separated strings
-# from platform env vars (e.g. Render, Railway). Pydantic-settings normally tries
-# to JSON-decode complex types from env, which crashes on values like
-# "https://app.vercel.app". We bypass that for these specific fields and let the
-# field_validator below parse the raw string instead.
+# from environment variables. Pydantic-settings normally tries to JSON-decode
+# complex types from env; we bypass that for these specific fields and let the
+# field_validator below parse raw string values instead.
 _LIST_FIELDS_NO_JSON_DECODE = {"ALLOWED_ORIGINS", "ALLOWED_HOSTS"}
 
-_REQUIRED_ALLOWED_ORIGINS = [
+_REQUIRED_ALLOWED_ORIGINS: list[str] = [
     "https://catat-in-nine.vercel.app",
 ]
 
 _REQUIRED_ALLOWED_HOSTS = [
-    "catat-in-backend.onrender.com",
-    "*.onrender.com",
-    "*.vercel.app",
-    "*.railway.app",
+    "localhost",
+    "127.0.0.1",
 ]
 
 
@@ -96,7 +93,7 @@ class Settings(BaseSettings):
         "http://localhost:3000",
         "http://localhost:3001",
     ]
-    ALLOWED_HOSTS: List[str] = ["localhost", "127.0.0.1", "*.onrender.com", "*.vercel.app", "*.railway.app"]
+    ALLOWED_HOSTS: List[str] = ["localhost", "127.0.0.1"]
 
     # Storage
     STORAGE_BUCKET_RECEIPTS: str = "receipts"
@@ -151,13 +148,8 @@ class Settings(BaseSettings):
 
     @model_validator(mode="after")
     def include_deployment_defaults(self):
-        render_hostname = os.environ.get("RENDER_EXTERNAL_HOSTNAME", "").strip()
-        allowed_hosts = [*self.ALLOWED_HOSTS, *_REQUIRED_ALLOWED_HOSTS]
-        if render_hostname:
-            allowed_hosts.append(render_hostname)
-
         self.ALLOWED_ORIGINS = _dedupe_preserve_order([*self.ALLOWED_ORIGINS, *_REQUIRED_ALLOWED_ORIGINS])
-        self.ALLOWED_HOSTS = _dedupe_preserve_order(allowed_hosts)
+        self.ALLOWED_HOSTS = _dedupe_preserve_order([*self.ALLOWED_HOSTS, *_REQUIRED_ALLOWED_HOSTS])
         return self
 
     @classmethod

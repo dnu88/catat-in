@@ -762,6 +762,32 @@ Setiap modul harus memiliki error state dan empty state yang terdefinisi. Ini ad
 - Transfer ownership grup
 - Optimasi performa mobile: lazy loading, image caching, bundle size
 
+### Fase 2.5 — Professional Website Experience
+
+> 🎯 **Goal:** Website terasa lebih matang, kredibel, dan siap scale.
+
+- **Audit Log & Activity Timeline** (login, hapus transaksi, ubah budget, aksi grup)
+- **Advanced Filter + Saved Views** untuk transaksi dan laporan
+- **Recurring Transactions** (gaji, sewa, langganan) dengan scheduler bulanan
+- **Goal-Based Savings** (target tabungan + progress + ETA)
+- **Anomaly Detection Alerts** (peringatan pengeluaran tidak wajar vs rata-rata)
+- **Monthly Financial Health Score** (0–100 + rekomendasi singkat)
+- **In-app Help Center + Guided Product Tour** untuk onboarding dan adopsi fitur
+- **Public Status Page** untuk transparansi incident/downtime
+
+### Acceptance Criteria Ringkas — Fase 2.5
+
+| Fitur | Given | When | Then |
+|---|---|---|---|
+| Audit Log | User membuka halaman aktivitas | Ada aksi penting terbaru | Timeline menampilkan siapa, aksi apa, kapan, dan context entity terkait |
+| Saved Views | User menerapkan filter transaksi kompleks | Klik "Simpan View" | Filter tersimpan dan bisa dipakai ulang di sesi berikutnya |
+| Recurring Transactions | User membuat transaksi berulang | Tanggal eksekusi tiba | Sistem membuat transaksi otomatis dan menandai sebagai recurring |
+| Goal Savings | User membuat target tabungan | User mencatat pemasukan/pengeluaran | Progress goal ter-update otomatis berdasarkan alokasi saldo |
+| Anomaly Alert | Pengeluaran kategori bulan ini naik signifikan | User buka dashboard/laporan | Muncul alert insight dengan kategori terdampak dan persen kenaikan |
+| Health Score | User punya data transaksi minimal 1 bulan | User buka laporan bulanan | Skor kesehatan keuangan tampil beserta 2–3 rekomendasi tindakan |
+| Guided Tour | User pertama kali login | User masuk dashboard | Tour interaktif tampil sekali, bisa di-skip, bisa dibuka lagi dari Help |
+| Status Page | Ada gangguan layanan | User membuka status page | Komponen terdampak, waktu mulai, dan status pemulihan terlihat jelas |
+
 ---
 
 ## 17. Definisi Selesai (Definition of Done)

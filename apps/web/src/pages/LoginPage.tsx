@@ -1,8 +1,10 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuthStore } from '@store/auth.store'
+import { useI18nStore } from '@store/i18n.store'
 
 export default function LoginPage() {
+  const { language } = useI18nStore()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
@@ -65,8 +67,8 @@ export default function LoginPage() {
       <div className="login-form-side">
         <div className="login-card">
           <div className="login-card-header">
-            <h2 className="login-card-title">Masuk ke akun kamu</h2>
-            <p className="login-card-sub">Kelola keuangan dengan lebih cerdas</p>
+            <h2 className="login-card-title">{language === 'id' ? 'Masuk ke akun kamu' : 'Sign in to your account'}</h2>
+            <p className="login-card-sub">{language === 'id' ? 'Kelola keuangan dengan lebih cerdas' : 'Manage your finances smarter'}</p>
           </div>
 
           <form onSubmit={handleLogin} className="login-form">
@@ -104,7 +106,7 @@ export default function LoginPage() {
 
             <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '-6px' }}>
               <a href="/forgot-password" className="login-register-link" style={{ fontSize: '13px' }}>
-                Lupa password?
+                {language === 'id' ? 'Lupa password?' : 'Forgot password?'}
               </a>
             </div>
 
@@ -118,10 +120,10 @@ export default function LoginPage() {
                     <span className="login-submit-loader-glow" />
                     <span className="login-submit-loader-mark">💰</span>
                   </span>
-                  <span>Masuk...</span>
+                  <span>{language === 'id' ? 'Masuk...' : 'Signing in...'}</span>
                 </span>
               ) : (
-                'Masuk'
+                (language === 'id' ? 'Masuk' : 'Sign in')
               )}
             </button>
           </form>
@@ -137,11 +139,11 @@ export default function LoginPage() {
               <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05" />
               <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" />
             </svg>
-            Masuk dengan Google
+            {language === 'id' ? 'Masuk dengan Google' : 'Continue with Google'}
           </button>
 
           <p className="login-register-text">
-            Belum punya akun? <a href="/register" className="login-register-link">Daftar sekarang</a>
+            {language === 'id' ? 'Belum punya akun?' : "Don't have an account?"} <a href="/register" className="login-register-link">{language === 'id' ? 'Daftar sekarang' : 'Register now'}</a>
           </p>
         </div>
       </div>

@@ -30,6 +30,22 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     sourcemap: true,
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (!id.includes('node_modules')) return
+
+          if (id.includes('recharts') || id.includes('d3-')) return 'vendor-charts'
+          if (id.includes('firebase')) return 'vendor-firebase'
+          if (id.includes('react-router') || id.includes('@remix-run')) return 'vendor-router'
+          if (id.includes('axios')) return 'vendor-network'
+          if (id.includes('zustand')) return 'vendor-state'
+          if (id.includes('date-fns')) return 'vendor-date'
+
+          return 'vendor-core'
+        },
+      },
+    },
   },
   test: {
     globals: true,

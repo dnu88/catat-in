@@ -5,6 +5,7 @@ import { CATEGORY_LABEL, buildCategoryOptions } from '@lib/categories'
 import { useCategoryStore } from '@store/category.store'
 import { useTransactionStore } from '@store/transaction.store'
 import { useWalletStore } from '@store/wallet.store'
+import { useI18nStore } from '@store/i18n.store'
 import type {
   AIChatMessage,
   AIExtractedTransaction,
@@ -67,6 +68,7 @@ interface AIChatResponse {
 }
 
 export default function CapturePage() {
+  const { language } = useI18nStore()
   const navigate = useNavigate()
   const { wallets, fetchWallets } = useWalletStore()
   const { categories, fetchCategories } = useCategoryStore()
@@ -289,7 +291,7 @@ export default function CapturePage() {
     <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
       <div>
         <h2 style={{ fontSize: '20px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '4px' }}>
-          Tambah Transaksi
+          {language === 'id' ? 'Tambah Transaksi' : 'Add Transaction'}
         </h2>
         <p style={{ fontSize: '13px', color: 'var(--text-muted)', maxWidth: '720px' }}>
           AI chat input transaksi dengan flow confidence-based saving: auto-save jika yakin, review dulu jika masih ambigu.
@@ -391,7 +393,7 @@ export default function CapturePage() {
                 Input harus 2-500 karakter. Jika AI belum yakin, hasil akan masuk ke review card.
               </span>
               <button className="btn btn-primary" onClick={handleSend} disabled={!canSend}>
-                {isSubmitting ? 'Memproses...' : 'Kirim ke AI'}
+                {isSubmitting ? (language === 'id' ? 'Memproses...' : 'Processing...') : (language === 'id' ? 'Kirim ke AI' : 'Send to AI')}
               </button>
             </div>
             {submitError ? (
@@ -479,7 +481,7 @@ export default function CapturePage() {
                 lineHeight: 1.7,
               }}
             >
-              Belum ada hasil yang perlu direview.
+              {language === 'id' ? 'Belum ada hasil yang perlu direview.' : 'No items need review yet.'}
             </div>
           ) : (
             <div style={{ display: 'grid', gap: '12px' }}>

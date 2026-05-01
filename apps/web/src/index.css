@@ -326,6 +326,9 @@ body {
 .page-content {
   padding: 24px;
   flex: 1;
+  max-width: 1280px;
+  width: 100%;
+  margin: 0 auto;
 }
 
 /* ── BUTTONS ────────────────────────────────────────────────── */
@@ -335,7 +338,8 @@ body {
   align-items: center;
   justify-content: center;
   gap: 6px;
-  padding: 8px 16px;
+  padding: 9px 16px;
+  min-height: 36px;
   border-radius: var(--r-sm);
   font-size: 13px;
   font-weight: 600;
@@ -391,7 +395,12 @@ body {
   border: 1px solid var(--border);
   border-radius: var(--r);
   box-shadow: var(--shadow);
-  transition: background 0.3s;
+  transition: background 0.3s, box-shadow 0.2s, border-color 0.2s;
+}
+
+.card:hover {
+  border-color: var(--border-strong);
+  box-shadow: 0 10px 24px rgba(37, 99, 235, 0.08);
 }
 
 .hero-card {
@@ -442,6 +451,7 @@ body {
   border: 1px solid var(--border-strong);
   border-radius: var(--r-sm);
   font-size: 14px;
+  line-height: 1.4;
   font-family: inherit;
   color: var(--text-primary);
   background: var(--bg-card);
@@ -512,7 +522,7 @@ body {
   align-items: center;
   font-size: 11px;
   font-weight: 600;
-  padding: 2px 10px;
+  padding: 4px 10px;
   border-radius: var(--r-pill);
 }
 
@@ -571,6 +581,8 @@ body {
 @media (max-width: 768px) {
   .sidebar {
     transform: translateX(-100%);
+    width: min(86vw, 320px);
+    box-shadow: 0 24px 48px rgba(2, 8, 23, 0.32);
   }
 
   .sidebar.open {
@@ -579,14 +591,50 @@ body {
 
   .main-content {
     margin-left: 0;
+    min-width: 0;
   }
 
   .mobile-menu-btn {
     display: flex;
   }
 
+  .topbar {
+    padding: 12px 14px;
+    align-items: flex-start;
+    gap: 10px;
+    flex-direction: column;
+  }
+
+  .topbar-title {
+    font-size: 16px;
+  }
+
+  .topbar-sub {
+    font-size: 11px;
+  }
+
+  .topbar-actions {
+    width: 100%;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+
+  .topbar-actions .btn {
+    width: 100%;
+  }
+
   .page-content {
-    padding: 16px;
+    padding: 14px;
+  }
+
+  .card {
+    border-radius: 10px;
+  }
+
+  .modal-box {
+    padding: 18px;
+    border-radius: 12px;
   }
 }
 
@@ -597,6 +645,17 @@ body {
 
   .sidebar-overlay {
     display: none !important;
+  }
+}
+
+@media (max-width: 420px) {
+  .topbar-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .btn {
+    font-size: 12px;
+    padding: 8px 12px;
   }
 }
 

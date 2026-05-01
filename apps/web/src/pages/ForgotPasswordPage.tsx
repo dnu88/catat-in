@@ -1,8 +1,10 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuthStore } from '@store/auth.store'
+import { useI18nStore } from '@store/i18n.store'
 
 export default function ForgotPasswordPage() {
+  const { language } = useI18nStore()
   const [email, setEmail] = useState('')
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
@@ -24,18 +26,18 @@ export default function ForgotPasswordPage() {
   return (
     <div className="simple-auth-page">
       <div className="simple-auth-card">
-        <h1 className="simple-auth-title">Lupa password</h1>
-        <p className="simple-auth-subtitle">Masukkan email akun kamu untuk menerima link reset password.</p>
+        <h1 className="simple-auth-title">{language === 'id' ? 'Lupa password' : 'Forgot password'}</h1>
+        <p className="simple-auth-subtitle">{language === 'id' ? 'Masukkan email akun kamu untuk menerima link reset password.' : 'Enter your account email to receive a reset link.'}</p>
 
         <form onSubmit={handleSubmit} className="simple-auth-form">
           <label className="simple-auth-field">
-            <span>Email</span>
+            <span>{language === 'id' ? 'Email' : 'Email'}</span>
             <input
               className="form-input"
               type="email"
               value={email}
               onChange={(event) => setEmail(event.target.value)}
-              placeholder="email@contoh.com"
+              placeholder={language === 'id' ? 'email@contoh.com' : 'email@example.com'}
               required
               autoComplete="email"
             />
@@ -45,12 +47,12 @@ export default function ForgotPasswordPage() {
           {success ? <p className="simple-auth-success">{success}</p> : null}
 
           <button type="submit" disabled={isLoading} className="btn btn-primary">
-            {isLoading ? 'Mengirim...' : 'Kirim link reset'}
+            {isLoading ? (language === 'id' ? 'Mengirim...' : 'Sending...') : (language === 'id' ? 'Kirim link reset' : 'Send reset link')}
           </button>
         </form>
 
         <p className="simple-auth-footer">
-          <Link to="/login">Kembali ke login</Link>
+          <Link to="/login">{language === 'id' ? 'Kembali ke login' : 'Back to login'}</Link>
         </p>
       </div>
 

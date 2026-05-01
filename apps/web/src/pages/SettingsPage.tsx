@@ -1,11 +1,13 @@
 import { useState } from 'react'
 import { useAuthStore } from '@store/auth.store'
+import { useI18nStore } from '@store/i18n.store'
 
 type ThemeMode = 'system' | 'light' | 'dark'
 
 export default function SettingsPage() {
   const { user } = useAuthStore()
   const [theme, setTheme] = useState<ThemeMode>('system')
+  const { language, setLanguage } = useI18nStore()
   const [currency, setCurrency] = useState('IDR')
   const [dailyReminder, setDailyReminder] = useState(true)
   const [billReminder, setBillReminder] = useState(true)
@@ -70,6 +72,18 @@ export default function SettingsPage() {
                   {mode === 'system' ? 'Ikuti sistem' : mode === 'light' ? 'Terang' : 'Gelap'}
                 </button>
               ))}
+            </div>
+          </div>
+
+          <div>
+            <label className="form-label">Bahasa / Language</label>
+            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+              <button type="button" className={`badge ${language === 'id' ? 'badge-ok' : 'badge-info'}`} style={{ cursor: 'pointer', border: 'none', padding: '8px 14px' }} onClick={() => setLanguage('id')}>
+                Indonesia
+              </button>
+              <button type="button" className={`badge ${language === 'en' ? 'badge-ok' : 'badge-info'}`} style={{ cursor: 'pointer', border: 'none', padding: '8px 14px' }} onClick={() => setLanguage('en')}>
+                English
+              </button>
             </div>
           </div>
 

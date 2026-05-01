@@ -8,6 +8,12 @@ export default defineConfig({
   workers: 2,
   retries: process.env.CI ? 2 : 0,
   reporter: [['list']],
+  webServer: {
+    command: 'pnpm dev -- --host 127.0.0.1 --port 3000',
+    url: baseURL,
+    reuseExistingServer: !process.env.CI,
+    timeout: 120_000,
+  },
   use: {
     baseURL,
     trace: 'on-first-retry',

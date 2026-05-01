@@ -9,7 +9,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 
-from app.api.v1 import ai, groups, imports, webhooks
+from app.api.v1 import ai, groups, imports, professional, webhooks
 from app.core.config import settings
 from app.core.database import init_db
 from app.core.firebase import has_firebase_admin_config
@@ -41,7 +41,6 @@ if not settings.DEBUG:
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[str(origin).strip().rstrip("/") for origin in settings.ALLOWED_ORIGINS],
-    allow_origin_regex=r"https://.*\.vercel\.app", 
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -54,6 +53,7 @@ app.include_router(ai.router, prefix=f"{API_PREFIX}/ai", tags=["AI"])
 app.include_router(groups.router, prefix=f"{API_PREFIX}/groups", tags=["Groups"])
 app.include_router(imports.router, prefix=f"{API_PREFIX}/imports", tags=["Import"])
 app.include_router(webhooks.router, prefix=f"{API_PREFIX}/webhooks", tags=["Webhooks"])
+app.include_router(professional.router, prefix=f"{API_PREFIX}", tags=["Professional"])
 
 
 @app.get("/health", tags=["System"])
