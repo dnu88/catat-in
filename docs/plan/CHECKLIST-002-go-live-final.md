@@ -17,9 +17,9 @@ related_plans:
 - [x] Web build production lulus (`pnpm --filter @catat-in/web build`)
 - [x] Backend test lulus (`pnpm test:backend`)
 - [x] E2E smoke lulus (`pnpm --filter @catat-in/web test:e2e`)
-- [ ] Repo clean untuk release branch (tidak ada file modified/untracked)
+- [x] Repo clean untuk release branch (tidak ada file modified/untracked)
 - [ ] Semua env production tervalidasi (Vercel + Backend)
-- [ ] Firestore rules sudah dideploy ke project production
+- [x] Firestore rules sudah dideploy ke project production
 - [ ] Health backend production terverifikasi (`GET /health`) jika backend dipakai
 - [ ] Tidak ada bug P0/P1 open di launch board
 
@@ -43,7 +43,9 @@ related_plans:
 - Quality gate lulus: typecheck, unit test, build, backend test, E2E smoke.
 - Lint: 48 warning (`no-explicit-any`), 0 error.
 - Build warning: chunk `vendor-firebase` > 500 kB.
-- Git status: belum clean (`.gitignore`, `NEXT_STEPS.md`, `docs/plan/` belum commit).
+- Git status: clean (semua perubahan checklist/plan sudah di-commit).
+- Firestore rules: sukses deploy ke project `catat-in-69ca6` (up-to-date).
+- Catatan env lokal web: `VITE_API_BASE_URL` masih mengarah localhost (wajar untuk dev, pastikan env production tidak localhost).
 - Secret scan pola umum: tidak terdeteksi hardcoded key pada tracked files.
 - Env keyset: `apps/web/.env` dan `backend/.env` sudah memuat key utama sesuai `.env.example`.
 
