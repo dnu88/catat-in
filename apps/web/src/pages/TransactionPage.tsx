@@ -8,8 +8,7 @@ import {
 	buildCategoryOptions,
 } from "@lib/categories";
 import type { Transaction, TransactionFormData } from "@catat-in/shared/types";
-import { api } from "@lib/api";
-import { listMyGroups, requireAuthUid } from "@lib/firestore";
+import { listMyGroups, listSavedViews, requireAuthUid } from "@lib/firestore";
 import { useI18nStore } from "@store/i18n.store";
 
 function formatRupiah(amount: number) {
@@ -512,8 +511,9 @@ export default function TransactionPage() {
 
 	const loadSavedViews = async () => {
 		try {
-			const res = await api.get("/saved-views?scope=transactions");
-			setSavedViews(res.data?.data || []);
+			const uid = requireAuthUid();
+			const rows = await listSavedViews(uid, "transactions");
+			setSavedViews(rows as SavedView[]);
 		} catch {
 			setSavedViews([]);
 		}

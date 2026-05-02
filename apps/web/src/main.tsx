@@ -13,6 +13,7 @@ import {
 	sessionReady,
 	subscribeAuthState,
 } from "@lib/firebase";
+import { backendRequiredMessage, isBackendConfigured } from "@lib/api";
 import { useAuthStore } from "@store/auth.store";
 
 import "./index.css";
@@ -342,6 +343,18 @@ function GuestOnly({ children }: { children: React.ReactNode }) {
 	return <>{children}</>;
 }
 
+function BackendFeatureGuard({ children }: { children: React.ReactNode }) {
+	if (!isBackendConfigured) {
+		return (
+			<FullscreenMessage
+				title="Fitur membutuhkan backend"
+				body={backendRequiredMessage}
+			/>
+		);
+	}
+	return <>{children}</>;
+}
+
 ReactDOM.createRoot(document.getElementById("root")!).render(
 	<React.StrictMode>
 		<RootErrorBoundary>
@@ -576,17 +589,19 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
 							<Route
 								path="/imports"
 								element={
-									<Suspense
-										fallback={
-											<FullscreenMessage
-												title="Memuat halaman"
-												body="Menyiapkan import..."
-												loading
-											/>
-										}
-									>
-										<ImportsPage />
-									</Suspense>
+									<BackendFeatureGuard>
+										<Suspense
+											fallback={
+												<FullscreenMessage
+													title="Memuat halaman"
+													body="Menyiapkan import..."
+													loading
+												/>
+											}
+										>
+											<ImportsPage />
+										</Suspense>
+									</BackendFeatureGuard>
 								}
 							/>
 							<Route

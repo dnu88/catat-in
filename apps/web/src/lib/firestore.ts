@@ -194,7 +194,14 @@ function usersDoc(uid: string) {
 
 function usersCollection(
 	uid: string,
-	name: "wallets" | "transactions" | "budgets" | "bills" | "categories",
+	name:
+		| "wallets"
+		| "transactions"
+		| "budgets"
+		| "bills"
+		| "categories"
+		| "saved_views"
+		| "savings_goals",
 ) {
 	return collection(db, "users", uid, name);
 }
@@ -1230,6 +1237,110 @@ export async function getGroupFinanceSummary(
 		net: total_income - total_expense,
 		transaction_count: txs.length,
 	};
+}
+
+export interface SavedViewItem {
+	id: string;
+	name: string;
+	scope: "transactions" | "reports";
+	filters: Record<string, unknown>;
+	created_at: string;
+}
+
+export async function listSavedViews(
+	uid: string,
+	scope?: "transactions" | "reports",
+): Promise<SavedViewItem[]> {
+	const constraints: QueryConstraint[] = [orderBy("created_at", "desc")];
+	if (scope) constraints.unshift(where("scope", "==", scope));
+	const snapshot = await getDocs(
+		query(usersCollection(uid, "saved_views"), ...constraints),
+	);
+	return snapshot.docs.map((item) => {
+		const row = item.data() as Record<string, unknown>;
+		return {
+			id: item.id,
+			name: String(row.name || "Untitled view"),
+			scope: (row.scope as "transactions" | "reports") || "transactions",
+			filters: (row.filters as Record<string, unknown>) || {},
+			created_at: String(row.created_at || isoNow()),
+		};
+	});
+}
+
+export async function createSavedView(
+	uid: string,
+	payload: {
+		name: string;
+		scope: "transactions" | "reports";
+		filters: Record<string, unknown>;
+	},
+): Promise<SavedViewItem> {
+	const record = {
+		name: payload.name.trim(),
+		scope: payload.scope,
+		filters: payload.filters || {},
+		created_at: isoNow(),
+	};
+	const ref = await addDoc(
+		usersCollection(uid, "saved_views"),
+		sanitizeForFirestore(record),
+	);
+	return { id: ref.id, ...record };
+}
+
+export async function deleteSavedView(uid: string, id: string): Promise<void> {
+	await deleteDoc(doc(db, "users", uid, "saved_views", id));
+}
+
+export interface SavingsGoalItem {
+	id: string;
+	name: string;
+	target_amount: number;
+	current_amount: number;
+	created_at: string;
+}
+
+export async function listSavingsGoals(
+	uid: string,
+): Promise<SavingsGoalItem[]> {
+	const snapshot = await getDocs(
+		query(usersCollection(uid, "savings_goals"), orderBy("created_at", "desc")),
+	);
+	return snapshot.docs.map((item) => {
+		const row = item.data() as Record<string, unknown>;
+		return {
+			id: item.id,
+			name: String(row.name || "Target tabungan"),
+			target_amount: Number(row.target_amount || 0),
+			current_amount: Number(row.current_amount || 0),
+			created_at: String(row.created_at || isoNow()),
+		};
+	});
+}
+
+export async function createSavingsGoal(
+	uid: string,
+	payload: { name: string; target_amount: number; current_amount: number },
+): Promise<SavingsGoalItem> {
+	const record = {
+		name: payload.name.trim(),
+		target_amount: Number(payload.target_amount || 0),
+		current_amount: Number(payload.current_amount || 0),
+		created_at: isoNow(),
+	};
+	const ref = await addDoc(
+		usersCollection(uid, "savings_goals"),
+		sanitizeForFirestore(record),
+	);
+	return { id: ref.id, ...record };
+}
+
+export async function deleteSavingsGoal(
+	uid: string,
+	id: string,
+): Promise<void> {
+	await deleteDoc(doc(db, "users", uid, "savings_goals", id));
 }
 
 export async function buildMonthlyReport(
