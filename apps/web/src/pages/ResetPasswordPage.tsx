@@ -1,109 +1,149 @@
-import { useEffect, useState } from 'react'
-import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { auth } from '@lib/firebase'
-import { useAuthStore } from '@store/auth.store'
-import { useI18nStore } from '@store/i18n.store'
+import { useEffect, useState } from "react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import { auth } from "@lib/firebase";
+import { useAuthStore } from "@store/auth.store";
+import { useI18nStore } from "@store/i18n.store";
 
 export default function ResetPasswordPage() {
-  const { language } = useI18nStore()
-  const navigate = useNavigate()
-  const location = useLocation()
-  const { updatePassword, confirmPasswordResetByCode, isLoading } = useAuthStore()
-  const [password, setPassword] = useState('')
-  const [confirmPassword, setConfirmPassword] = useState('')
-  const [error, setError] = useState('')
-  const [success, setSuccess] = useState('')
-  const [hasRecoverySession, setHasRecoverySession] = useState(false)
-  const [oobCode, setOobCode] = useState<string | null>(null)
+	const { language } = useI18nStore();
+	const navigate = useNavigate();
+	const location = useLocation();
+	const { updatePassword, confirmPasswordResetByCode, isLoading } =
+		useAuthStore();
+	const [password, setPassword] = useState("");
+	const [confirmPassword, setConfirmPassword] = useState("");
+	const [error, setError] = useState("");
+	const [success, setSuccess] = useState("");
+	const [hasRecoverySession, setHasRecoverySession] = useState(false);
+	const [oobCode, setOobCode] = useState<string | null>(null);
 
-  useEffect(() => {
-    const params = new URLSearchParams(location.search)
-    const actionCode = params.get('oobCode')
-    setOobCode(actionCode)
-    setHasRecoverySession(Boolean(actionCode || auth.currentUser))
-  }, [location.search])
+	useEffect(() => {
+		const params = new URLSearchParams(location.search);
+		const mode = params.get("mode");
+		const actionCode = params.get("oobCode");
 
-  const handleSubmit = async (event: React.FormEvent) => {
-    event.preventDefault()
-    setError('')
-    setSuccess('')
+		const isResetLink = Boolean(
+			actionCode && (mode === null || mode === "resetPassword"),
+		);
 
-    if (password.length < 8) {
-      setError('Password baru minimal 8 karakter.')
-      return
-    }
+		setOobCode(actionCode);
+		setHasRecoverySession(Boolean(isResetLink || auth.currentUser));
+	}, [location.search]);
 
-    if (password !== confirmPassword) {
-      setError('Konfirmasi password belum sama.')
-      return
-    }
+	const handleSubmit = async (event: React.FormEvent) => {
+		event.preventDefault();
+		setError("");
+		setSuccess("");
 
-    try {
-      if (oobCode) {
-        await confirmPasswordResetByCode(oobCode, password)
-      } else {
-        await updatePassword(password)
-      }
-      setSuccess('Password berhasil diperbarui. Kamu akan diarahkan ke halaman login.')
-      setTimeout(() => navigate('/login', { replace: true }), 1500)
-    } catch (err: any) {
-      setError(err.message || 'Belum bisa memperbarui password.')
-    }
-  }
+		if (password.length < 8) {
+			setError("Password baru minimal 8 karakter.");
+			return;
+		}
 
-  return (
-    <div className="simple-auth-page">
-      <div className="simple-auth-card">
-        <h1 className="simple-auth-title">{language === 'id' ? 'Atur password baru' : 'Set new password'}</h1>
-        <p className="simple-auth-subtitle">{language === 'id' ? 'Masukkan password baru untuk akun Catat.in kamu.' : 'Enter a new password for your Catat.in account.'}</p>
+		if (password !== confirmPassword) {
+			setError("Konfirmasi password belum sama.");
+			return;
+		}
 
-        {!hasRecoverySession ? (
-          <p className="simple-auth-success">
-            Link reset belum aktif atau sudah kedaluwarsa. Coba minta link reset baru dari halaman lupa password.
-          </p>
-        ) : (
-          <form onSubmit={handleSubmit} className="simple-auth-form">
-            <label className="simple-auth-field">
-              <span>{language === 'id' ? 'Password baru' : 'New password'}</span>
-              <input
-                className="form-input"
-                type="password"
-                value={password}
-                onChange={(event) => setPassword(event.target.value)}
-                placeholder={language === 'id' ? 'Minimal 8 karakter' : 'Minimum 8 characters'}
-                required
-                autoComplete="new-password"
-              />
-            </label>
+		try {
+			if (oobCode) {
+				await confirmPasswordResetByCode(oobCode, password);
+			} else {
+				await updatePassword(password);
+			}
+			setSuccess(
+				"Password berhasil diperbarui. Kamu akan diarahkan ke halaman login.",
+			);
+			setTimeout(() => navigate("/login", { replace: true }), 1500);
+		} catch (err: any) {
+			setError(err.message || "Belum bisa memperbarui password.");
+		}
+	};
 
-            <label className="simple-auth-field">
-              <span>{language === 'id' ? 'Konfirmasi password' : 'Confirm password'}</span>
-              <input
-                className="form-input"
-                type="password"
-                value={confirmPassword}
-                onChange={(event) => setConfirmPassword(event.target.value)}
-                placeholder={language === 'id' ? 'Ulangi password baru' : 'Repeat new password'}
-                required
-                autoComplete="new-password"
-              />
-            </label>
+	return (
+		<div className="simple-auth-page">
+			<div className="simple-auth-card">
+				<h1 className="simple-auth-title">
+					{language === "id" ? "Atur password baru" : "Set new password"}
+				</h1>
+				<p className="simple-auth-subtitle">
+					{language === "id"
+						? "Masukkan password baru untuk akun Catat.in kamu."
+						: "Enter a new password for your Catat.in account."}
+				</p>
 
-            {error ? <p className="simple-auth-error">{error}</p> : null}
-            {success ? <p className="simple-auth-success">{success}</p> : null}
+				{!hasRecoverySession ? (
+					<p className="simple-auth-success">
+						Link reset tidak valid atau sudah kedaluwarsa. Silakan minta link
+						reset baru dari halaman lupa password.
+					</p>
+				) : (
+					<form onSubmit={handleSubmit} className="simple-auth-form">
+						<label className="simple-auth-field">
+							<span>
+								{language === "id" ? "Password baru" : "New password"}
+							</span>
+							<input
+								className="form-input"
+								type="password"
+								value={password}
+								onChange={(event) => setPassword(event.target.value)}
+								placeholder={
+									language === "id"
+										? "Minimal 8 karakter"
+										: "Minimum 8 characters"
+								}
+								required
+								autoComplete="new-password"
+							/>
+						</label>
 
-            <button type="submit" disabled={isLoading} className="btn btn-primary">
-              {isLoading ? (language === 'id' ? 'Menyimpan...' : 'Saving...') : (language === 'id' ? 'Simpan password baru' : 'Save new password')}
-            </button>
-          </form>
-        )}
+						<label className="simple-auth-field">
+							<span>
+								{language === "id" ? "Konfirmasi password" : "Confirm password"}
+							</span>
+							<input
+								className="form-input"
+								type="password"
+								value={confirmPassword}
+								onChange={(event) => setConfirmPassword(event.target.value)}
+								placeholder={
+									language === "id"
+										? "Ulangi password baru"
+										: "Repeat new password"
+								}
+								required
+								autoComplete="new-password"
+							/>
+						</label>
 
-        <p className="simple-auth-footer">
-          <Link to="/login">{language === 'id' ? 'Kembali ke login' : 'Back to login'}</Link>
-        </p>
-      </div>
+						{error ? <p className="simple-auth-error">{error}</p> : null}
+						{success ? <p className="simple-auth-success">{success}</p> : null}
 
-      <style>{`
+						<button
+							type="submit"
+							disabled={isLoading}
+							className="btn btn-primary"
+						>
+							{isLoading
+								? language === "id"
+									? "Menyimpan..."
+									: "Saving..."
+								: language === "id"
+									? "Simpan password baru"
+									: "Save new password"}
+						</button>
+					</form>
+				)}
+
+				<p className="simple-auth-footer">
+					<Link to="/login">
+						{language === "id" ? "Kembali ke login" : "Back to login"}
+					</Link>
+				</p>
+			</div>
+
+			<style>{`
         .simple-auth-page {
           min-height: 100vh;
           display: flex;
@@ -166,6 +206,6 @@ export default function ResetPasswordPage() {
           font-size: 13px;
         }
       `}</style>
-    </div>
-  )
+		</div>
+	);
 }
