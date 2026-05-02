@@ -42,7 +42,6 @@ pnpm dev:web
 ```
 
 - Buka: `http://localhost:3000`
-
 ### Backend (opsional)
 
 ```bash
