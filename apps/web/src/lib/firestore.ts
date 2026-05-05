@@ -490,28 +490,37 @@ export async function listTransactions(
 		toTransaction({ id: item.id, data: item.data() as Record<string, any> }),
 	);
 
-	const groupRoles = await getMyActiveGroupRoles(uid);
-	const groupIds = Array.from(groupRoles.keys());
 	const sharedRows: Transaction[] = [];
+	try {
+		const groupRoles = await getMyActiveGroupRoles(uid);
+		const groupIds = Array.from(groupRoles.keys());
 
-	await Promise.all(
-		groupIds.map(async (groupId) => {
-			const snap = await getDocs(
-				query(
-					collectionGroup(db, "transactions"),
-					where("group_id", "==", groupId),
-					where("is_shared", "==", true),
-				),
-			);
-			snap.docs.forEach((docSnap) => {
-				const tx = toTransaction({
-					id: docSnap.id,
-					data: docSnap.data() as Record<string, any>,
-				});
-				if (tx.user_id !== uid) sharedRows.push(tx);
-			});
-		}),
-	);
+		await Promise.all(
+			groupIds.map(async (groupId) => {
+				try {
+					const snap = await getDocs(
+						query(
+							collectionGroup(db, "transactions"),
+							where("group_id", "==", groupId),
+							where("is_shared", "==", true),
+						),
+					);
+					snap.docs.forEach((docSnap) => {
+						const tx = toTransaction({
+							id: docSnap.id,
+							data: docSnap.data() as Record<string, any>,
+						});
+						if (tx.user_id !== uid) sharedRows.push(tx);
+					});
+				} catch {
+					// Firebase-only quick fix: abaikan shared group transactions
+					// bila rules belum mengizinkan collectionGroup query lintas user.
+				}
+			}),
+		);
+	} catch {
+		// fallback ke transaksi milik user sendiri
+	}
 
 	const merged = [...own, ...sharedRows];
 	const deduped = Array.from(
@@ -688,12 +697,39 @@ export async function listBudgets(
 	const snapshot = await getDocs(
 		query(usersCollection(uid, "budgets"), ...constraints),
 	);
-	const results = snapshot.docs.map((item) =>
+	const budgets = snapshot.docs.map((item) =>
 		toBudget({ id: item.id, data: item.data() as Record<string, any> }),
 	);
-	return results.sort((a, b) =>
-		String(b.created_at || "").localeCompare(String(a.created_at || "")),
-	);
+
+	if (budgets.length === 0) return [];
+
+	// Hitung spent_amount secara dinamis dari transaksi aktual agar selalu akurat
+	const txSnapshot = await getDocs(usersCollection(uid, "transactions"));
+	const allTx = txSnapshot.docs.map((d) => d.data() as Record<string, any>);
+
+	return budgets
+		.map((budget) => {
+			const [year, month] = budget.period_start.split("-").map(Number);
+			const nextMonth = month === 12 ? 1 : month + 1;
+			const nextYear = month === 12 ? year + 1 : year;
+			const periodEnd = `${nextYear}-${String(nextMonth).padStart(2, "0")}-01`;
+
+			const spent = allTx
+				.filter(
+					(tx) =>
+						tx.type === "expense" &&
+						tx.category === budget.category &&
+						typeof tx.date === "string" &&
+						tx.date >= budget.period_start &&
+						tx.date < periodEnd,
+				)
+				.reduce((sum, tx) => sum + Number(tx.amount || 0), 0);
+
+			return { ...budget, spent_amount: spent };
+		})
+		.sort((a, b) =>
+			String(b.created_at || "").localeCompare(String(a.created_at || "")),
+		);
 }
 
 export async function createBudget(
@@ -1349,11 +1385,46 @@ export async function buildMonthlyReport(
 	month: number,
 	walletId?: string,
 ) {
-	const snapshot = await getDocs(
+	const ownSnapshot = await getDocs(
 		query(usersCollection(uid, "transactions"), orderBy("date", "desc")),
 	);
-	const rows = snapshot.docs.map((item) =>
+	const ownRows = ownSnapshot.docs.map((item) =>
 		toTransaction({ id: item.id, data: item.data() as Record<string, any> }),
+	);
+
+	// Sertakan shared group transactions agar laporan konsisten dengan daftar transaksi
+	const sharedRows: Transaction[] = [];
+	try {
+		const groupRoles = await getMyActiveGroupRoles(uid);
+		await Promise.all(
+			Array.from(groupRoles.keys()).map(async (groupId) => {
+				try {
+					const snap = await getDocs(
+						query(
+							collectionGroup(db, "transactions"),
+							where("group_id", "==", groupId),
+							where("is_shared", "==", true),
+						),
+					);
+					snap.docs.forEach((docSnap) => {
+						const tx = toTransaction({
+							id: docSnap.id,
+							data: docSnap.data() as Record<string, any>,
+						});
+						if (tx.user_id !== uid) sharedRows.push(tx);
+					});
+				} catch {
+					// abaikan bila rules Firestore belum mengizinkan collectionGroup query
+				}
+			}),
+		);
+	} catch {
+		// fallback ke transaksi milik sendiri
+	}
+
+	const merged = [...ownRows, ...sharedRows];
+	const rows = Array.from(
+		new Map(merged.map((tx) => [`${tx.user_id}:${tx.id}`, tx])).values(),
 	);
 
 	const monthPrefix = `${year}-${String(month).padStart(2, "0")}`;

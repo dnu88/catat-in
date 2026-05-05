@@ -1,0 +1,21 @@
+{
+  "status": "commited",
+  "type": "backend",
+  "scope": "codebase",
+  "localEndpoint": "http://localhost:8000",
+  "backendAuthType": "basic token",
+  "backendUsername": "danubudiarto88@gmail.com",
+  "backendPassword": "Rahasia88",
+  "executionArgs": {
+    "projectName": "catat-in-backend",
+    "projectPath": "c:\\Users\\ThinkPad\\catat-in-dev-setup\\catat-in",
+    "testIds": [],
+    "additionalInstruction": "Please use the following credentials for auth: Email='danubudiarto88@gmail.com', Password='Rahasia88'. The backend is running on port 8000. API prefix is /api/v1.",
+    "serverMode": "development",
+    "envs": {
+      "API_KEY": "sk-user-x9T3rhArTzx9qrZNaijmK7HxEGhyFGzLF10R8r5n1Ay9D4Ckri3Y1fvy1KINaH7Cmiizta9bFk-mPjVrA_FFcam1DBPPr_6MSyYL5YIzLRE0D-cvkFx93XqpW4pp6LItx6I"
+    }
+  },
+  "serverPort": 51488,
+  "proxy": "http://ffdaa785-7e16-4ef5-86d0-ecda14010969:fpeXmbYN3ecu0IaYnnqknZOdbaoLIkzk@tun.testsprite.com:8080"
+}

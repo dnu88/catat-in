@@ -5,41 +5,31 @@ Laporan ringkasan keuangan bulanan dan tren pengeluaran.
 
 from fastapi import APIRouter, Depends, Query
 from typing import Optional
-from datetime import date
-from app.core.database import get_supabase
+from datetime import date, datetime
+from app.core.firebase import get_firestore_client
 from app.core.auth import get_current_user
-from app.core.config import settings
-from app.core.schema_compat import has_columns
 
 router = APIRouter()
 
 
-def _client():
-    return get_supabase()
+def _db():
+    return get_firestore_client()
 
 
-def _tx_supports(column: str) -> bool:
-    return has_columns("transactions", column)
+def _tx_col(uid: str):
+    return _db().collection("users").document(uid).collection("transactions")
 
 
-def _tx_type_column() -> str:
-    return "type" if _tx_supports("type") else "transaction_type"
-
-
-def _tx_wallet_column() -> str:
-    return "wallet_id" if _tx_supports("wallet_id") else "payment_method"
-
-
-def _normalize_transaction(row: dict) -> dict:
+def _normalize_transaction(doc_id: str, data: dict) -> dict:
     return {
-        "id": row["id"],
-        "type": row.get("type") or row.get("transaction_type") or "expense",
-        "amount": row["amount"],
-        "merchant": row.get("merchant"),
-        "note": row.get("note") or row.get("description"),
-        "date": row["date"],
-        "category": row.get("category", "other"),
-        "wallet_id": row.get("wallet_id") or row.get("payment_method"),
+        "id": doc_id,
+        "type": data.get("type") or data.get("transaction_type") or "expense",
+        "amount": data["amount"],
+        "merchant": data.get("merchant"),
+        "note": data.get("note") or data.get("description"),
+        "date": data["date"],
+        "category": data.get("category", "other"),
+        "wallet_id": data.get("wallet_id") or data.get("payment_method"),
     }
 
 
@@ -63,21 +53,21 @@ async def monthly_summary(
     current_user: dict = Depends(get_current_user),
 ):
     """Ringkasan pemasukan & pengeluaran bulan tertentu, breakdown per kategori."""
+    uid = current_user["user_id"]
     period_start, period_end = _period_bounds(year, month)
 
-    q = (
-        _client()
-        .table("transactions")
-        .select("*")
-        .eq("user_id", current_user["user_id"])
-        .gte("date", period_start)
-        .lt("date", period_end)
-    )
+    query = _tx_col(uid).where("date", ">=", period_start).where("date", "<", period_end)
+    
     if wallet_id:
-        q = q.eq(_tx_wallet_column(), wallet_id)
+        # Note: In Firestore, this might require a composite index. 
+        # For now, filtering in memory to ensure it works without manual index setup.
+        pass
 
-    result = q.execute()
-    transactions = [_normalize_transaction(row) for row in result.data]
+    docs = query.stream()
+    transactions = [_normalize_transaction(d.id, d.to_dict()) for d in docs]
+    
+    if wallet_id:
+        transactions = [t for t in transactions if t["wallet_id"] == wallet_id]
 
     total_income = sum(float(t["amount"]) for t in transactions if t["type"] == "income")
     total_expense = sum(float(t["amount"]) for t in transactions if t["type"] == "expense")
@@ -114,11 +104,22 @@ async def spending_trends(
     current_user: dict = Depends(get_current_user),
 ):
     """Tren pemasukan & pengeluaran N bulan terakhir."""
+    uid = current_user["user_id"]
     today = date.today()
     data = []
 
+    # Get all transactions for the relevant period to avoid multiple queries
+    start_year = today.year
+    start_month = today.month - (months - 1)
+    while start_month <= 0:
+        start_month += 12
+        start_year -= 1
+    
+    global_start, _ = _period_bounds(start_year, start_month)
+    all_docs = _tx_col(uid).where("date", ">=", global_start).stream()
+    all_transactions = [_normalize_transaction(d.id, d.to_dict()) for d in all_docs]
+
     for i in range(months - 1, -1, -1):
-        # Mundur i bulan dari bulan ini
         month = today.month - i
         year = today.year
         while month <= 0:
@@ -126,18 +127,8 @@ async def spending_trends(
             year -= 1
 
         period_start, period_end = _period_bounds(year, month)
-
-        result = (
-            _client()
-            .table("transactions")
-            .select("*")
-            .eq("user_id", current_user["user_id"])
-            .gte("date", period_start)
-            .lt("date", period_end)
-            .execute()
-        )
-
-        items = [_normalize_transaction(row) for row in result.data]
+        
+        items = [t for t in all_transactions if period_start <= t["date"] < period_end]
         income = sum(float(t["amount"]) for t in items if t["type"] == "income")
         expense = sum(float(t["amount"]) for t in items if t["type"] == "expense")
 
@@ -160,21 +151,15 @@ async def category_detail(
     current_user: dict = Depends(get_current_user),
 ):
     """Detail transaksi per kategori dalam satu bulan."""
+    uid = current_user["user_id"]
     period_start, period_end = _period_bounds(year, month)
 
-    result = (
-        _client()
-        .table("transactions")
-        .select("*")
-        .eq("user_id", current_user["user_id"])
-        .eq("category", category)
-        .gte("date", period_start)
-        .lt("date", period_end)
-        .order("date", desc=True)
-        .execute()
-    )
-
-    transactions = [_normalize_transaction(row) for row in result.data]
+    docs = _tx_col(uid).where("category", "==", category).where("date", ">=", period_start).where("date", "<", period_end).stream()
+    
+    transactions = [_normalize_transaction(d.id, d.to_dict()) for d in docs]
+    # Sort descending by date
+    transactions.sort(key=lambda x: x["date"], reverse=True)
+    
     total = sum(float(t["amount"]) for t in transactions)
 
     return {
@@ -184,3 +169,4 @@ async def category_detail(
         "transaction_count": len(transactions),
         "transactions": transactions,
     }
+

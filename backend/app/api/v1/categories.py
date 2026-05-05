@@ -1,11 +1,11 @@
-from typing import Optional
+from typing import Optional, Any
+import uuid
+from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
-from app.core.database import get_supabase
+from app.core.firebase import get_firestore_client
 from app.core.auth import get_current_user
-from app.core.config import settings
-from app.core.schema_compat import has_columns, table_exists
 
 router = APIRouter()
 
@@ -24,23 +24,23 @@ DEFAULT_CATEGORIES = [
 ]
 
 
-def _client():
-    return get_supabase()
+def _db():
+    return get_firestore_client()
 
 
-def _normalize_category(row: dict) -> dict:
+def _categories_col(uid: str):
+    return _db().collection("users").document(uid).collection("categories")
+
+
+def _normalize_category(doc_id: str, data: dict) -> dict:
     return {
-        "id": row["id"],
-        "name": row["name"],
-        "label": row.get("label") or row["name"],
-        "type": row["type"],
-        "icon": row.get("icon"),
-        "is_default": row.get("is_default", False),
+        "id": doc_id,
+        "name": data["name"],
+        "label": data.get("label") or data["name"],
+        "type": data["type"],
+        "icon": data.get("icon"),
+        "is_default": data.get("is_default", False),
     }
-
-
-def _category_supports(column: str) -> bool:
-    return has_columns("categories", column)
 
 
 def _default_categories(category_type: Optional[str]) -> list[dict]:
@@ -60,29 +60,18 @@ async def list_categories(
     type: Optional[str] = Query(None, pattern="^(income|expense)$"),
     current_user: dict = Depends(get_current_user),
 ):
+    uid = current_user["user_id"]
     items = _default_categories(type)
 
-    if not table_exists("categories"):
-        return {"data": items}
-
-    select_fields = ["id", "name", "type"]
-    if _category_supports("icon"):
-        select_fields.append("icon")
-    if _category_supports("is_default"):
-        select_fields.append("is_default")
-
-    query = (
-        _client()
-        .table("categories")
-        .select(",".join(select_fields))
-        .eq("user_id", current_user["user_id"])
-        .order("name")
-    )
+    # Get custom categories from Firestore
+    query = _categories_col(uid)
     if type:
-        query = query.eq("type", type)
+        query = query.where("type", "==", type)
+    
+    custom_docs = query.stream()
+    for doc in custom_docs:
+        items.append(_normalize_category(doc.id, doc.to_dict()))
 
-    result = query.execute()
-    items.extend(_normalize_category(row) for row in (result.data or []))
     return {"data": items}
 
 
@@ -91,51 +80,36 @@ async def create_category(
     body: CategoryCreate,
     current_user: dict = Depends(get_current_user),
 ):
-    if not table_exists("categories"):
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=(
-                "Kategori kustom belum aktif karena schema database belum lengkap. "
-                "Jalankan migration `backend/supabase/migrations/006_prd_phase1_alignment.sql` lalu coba lagi."
-            ),
-        )
-
+    uid = current_user["user_id"]
     normalized_name = body.name.strip()
+    
     if not normalized_name:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Nama kategori tidak boleh kosong.")
 
+    # Check defaults
     if any(
         item["name"].lower() == normalized_name.lower() and item["type"] == body.type
         for item in DEFAULT_CATEGORIES
     ):
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Kategori bawaan itu sudah tersedia.")
 
-    existing = (
-        _client()
-        .table("categories")
-        .select("id,name")
-        .eq("user_id", current_user["user_id"])
-        .eq("type", body.type)
-        .execute()
-    )
-    if any(row["name"].lower() == normalized_name.lower() for row in (existing.data or [])):
+    # Check existing custom
+    existing = _categories_col(uid).where("name", "==", normalized_name).where("type", "==", body.type).limit(1).get()
+    if existing:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Kategori dengan nama itu sudah ada.")
 
-    result = (
-        _client()
-        .table("categories")
-        .insert(
-            {
-                "user_id": current_user["user_id"],
-                "name": normalized_name,
-                "type": body.type,
-                **({"icon": body.icon} if _category_supports("icon") else {}),
-                **({"is_default": False} if _category_supports("is_default") else {}),
-            }
-        )
-        .execute()
-    )
-    return {"data": _normalize_category(result.data[0])}
+    cat_id = str(uuid.uuid4())
+    cat_data = {
+        "name": normalized_name,
+        "label": normalized_name,
+        "type": body.type,
+        "icon": body.icon,
+        "is_default": False,
+        "created_at": datetime.utcnow().isoformat(),
+    }
+    
+    _categories_col(uid).document(cat_id).set(cat_data)
+    return {"data": _normalize_category(cat_id, cat_data)}
 
 
 @router.delete("/{category_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -146,25 +120,12 @@ async def delete_category(
     if category_id.startswith("default-"):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Kategori bawaan tidak bisa dihapus.")
 
-    if not table_exists("categories"):
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=(
-                "Kategori kustom belum aktif karena schema database belum lengkap. "
-                "Jalankan migration `backend/supabase/migrations/006_prd_phase1_alignment.sql` lalu coba lagi."
-            ),
-        )
-
-    existing = (
-        _client()
-        .table("categories")
-        .select("id")
-        .eq("id", category_id)
-        .eq("user_id", current_user["user_id"])
-        .single()
-        .execute()
-    )
-    if not existing.data:
+    uid = current_user["user_id"]
+    ref = _categories_col(uid).document(category_id)
+    doc = ref.get()
+    
+    if not doc.exists:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Kategori tidak ditemukan.")
 
-    _client().table("categories").delete().eq("id", category_id).execute()
+    ref.delete()
+

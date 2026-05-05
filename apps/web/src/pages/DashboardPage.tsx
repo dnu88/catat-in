@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuthStore } from "@store/auth.store";
 import { useWalletStore } from "@store/wallet.store";
@@ -6,6 +6,7 @@ import { useTransactionStore } from "@store/transaction.store";
 import { useBudgetStore } from "@store/budget.store";
 import { useBillsStore } from "@store/bills.store";
 import { useI18nStore } from "@store/i18n.store";
+import { buildMonthlyReport, requireAuthUid } from "@lib/firestore";
 
 const CATEGORY_EMOJI: Record<string, string> = {
 	food: "🍔",
@@ -87,13 +88,32 @@ export default function DashboardPage() {
 	const { budgets, fetchBudgets } = useBudgetStore();
 	const { bills, fetchBills } = useBillsStore();
 	const navigate = useNavigate();
+	const [monthlySummary, setMonthlySummary] = useState<{
+		total_income: number;
+		total_expense: number;
+	} | null>(null);
 
-	 
 	useEffect(() => {
 		fetchWallets();
 		fetchTransactions({ per_page: 5, page: 1 });
 		fetchBudgets(currentPeriodStart());
 		fetchBills();
+
+		// Ambil ringkasan bulanan lengkap (semua transaksi bulan ini, bukan hanya 5 terakhir)
+		const now = new Date();
+		try {
+			const uid = requireAuthUid();
+			buildMonthlyReport(uid, now.getFullYear(), now.getMonth() + 1)
+				.then((report) =>
+					setMonthlySummary({
+						total_income: report.total_income,
+						total_expense: report.total_expense,
+					}),
+				)
+				.catch(() => {});
+		} catch {
+			// user belum login, biarkan kosong
+		}
 	}, []);
 
 	// Compute summary
@@ -104,12 +124,8 @@ export default function DashboardPage() {
 		year: "numeric",
 	});
 
-	const incomeThisMonth = transactions
-		.filter((t) => t.type === "income")
-		.reduce((s, t) => s + Number(t.amount), 0);
-	const expenseThisMonth = transactions
-		.filter((t) => t.type === "expense")
-		.reduce((s, t) => s + Number(t.amount), 0);
+	const incomeThisMonth = monthlySummary?.total_income ?? 0;
+	const expenseThisMonth = monthlySummary?.total_expense ?? 0;
 
 	const savingsRate =
 		incomeThisMonth > 0

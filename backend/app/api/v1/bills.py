@@ -1,28 +1,41 @@
-"""
-Catat.in — Bill Reminders Router
-CRUD tagihan berulang (listrik, langganan, cicilan, dll).
-"""
-
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 from typing import Optional
 from datetime import date, datetime
 from calendar import monthrange
-from supabase import create_client
+import uuid
 
 from app.core.auth import get_current_user
-from app.core.config import settings
-from app.core.schema_compat import has_columns, require_tables
+from app.core.firebase import get_firestore_client
 
 router = APIRouter()
 
 
-def _client():
-    return create_client(settings.SUPABASE_URL, settings.SUPABASE_SERVICE_ROLE_KEY)
+def _db():
+    return get_firestore_client()
 
 
-def _bill_supports(column: str) -> bool:
-    return has_columns("bill_reminders", column)
+def _bills_col(uid: str):
+    return _db().collection("users").document(uid).collection("bill_reminders")
+
+
+def _normalize_bill(doc_id: str, data: dict) -> dict:
+    return {
+        "id": doc_id,
+        "user_id": data.get("user_id"),
+        "name": data.get("name"),
+        "amount": data.get("amount"),
+        "due_day": data.get("due_day"),
+        "recurrence": data.get("recurrence"),
+        "icon": data.get("icon"),
+        "next_due_date": data.get("next_due_date"),
+        "is_active": data.get("is_active", True),
+        "is_paid": data.get("is_paid", False),
+        "notify_before_days": data.get("notify_before_days", [3, 1]),
+        "payment_history": data.get("payment_history", []),
+        "auto_record_wallet": data.get("auto_record_wallet"),
+        "created_at": data.get("created_at"),
+    }
 
 
 # ── HELPERS ───────────────────────────────────────────────────
@@ -93,17 +106,14 @@ class BillUpdate(BaseModel):
 
 @router.get("/")
 async def list_bills(current_user: dict = Depends(get_current_user)):
-    require_tables("bill_reminders")
-    result = (
-        _client()
-        .table("bill_reminders")
-        .select("*")
-        .eq("user_id", current_user["user_id"])
-        .eq("is_active", True)
-        .order("next_due_date")
-        .execute()
-    )
-    return {"data": result.data}
+    uid = current_user["user_id"]
+    docs = _bills_col(uid).where("is_active", "==", True).stream()
+    
+    bills = [_normalize_bill(doc.id, doc.to_dict()) for doc in docs]
+    # Sort by next_due_date
+    bills.sort(key=lambda x: x["next_due_date"])
+    
+    return {"data": bills}
 
 
 @router.post("/", status_code=status.HTTP_201_CREATED)
@@ -111,9 +121,10 @@ async def create_bill(
     body: BillCreate,
     current_user: dict = Depends(get_current_user),
 ):
-    require_tables("bill_reminders")
-    data: dict = {
-        "user_id": current_user["user_id"],
+    uid = current_user["user_id"]
+    doc_id = str(uuid.uuid4())
+    data = {
+        "user_id": uid,
         "name": body.name,
         "amount": body.amount,
         "due_day": body.due_day,
@@ -123,14 +134,13 @@ async def create_bill(
         "next_due_date": _compute_next_due(body.due_day, body.recurrence),
         "is_active": True,
         "is_paid": False,
+        "payment_history": [],
+        "auto_record_wallet": body.auto_record_wallet,
+        "created_at": datetime.utcnow().isoformat(),
     }
-    if _bill_supports("payment_history"):
-        data["payment_history"] = []
-    if body.auto_record_wallet:
-        data["auto_record_wallet"] = body.auto_record_wallet
-
-    result = _client().table("bill_reminders").insert(data).execute()
-    return {"data": result.data[0]}
+    
+    _bills_col(uid).document(doc_id).set(data)
+    return {"data": _normalize_bill(doc_id, data)}
 
 
 @router.patch("/{bill_id}")
@@ -139,28 +149,23 @@ async def update_bill(
     body: BillUpdate,
     current_user: dict = Depends(get_current_user),
 ):
-    require_tables("bill_reminders")
-    existing = (
-        _client()
-        .table("bill_reminders")
-        .select("*")
-        .eq("id", bill_id)
-        .eq("user_id", current_user["user_id"])
-        .single()
-        .execute()
-    )
-    if not existing.data:
+    uid = current_user["user_id"]
+    ref = _bills_col(uid).document(bill_id)
+    doc = ref.get()
+    
+    if not doc.exists:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tagihan tidak ditemukan")
 
+    existing_data = doc.to_dict()
     updates = body.model_dump(exclude_none=True)
 
-    # Recompute next_due_date jika due_day berubah
     if "due_day" in updates:
-        recurrence = existing.data["recurrence"]
+        recurrence = existing_data["recurrence"]
         updates["next_due_date"] = _compute_next_due(updates["due_day"], recurrence)
 
-    result = _client().table("bill_reminders").update(updates).eq("id", bill_id).execute()
-    return {"data": result.data[0]}
+    ref.update(updates)
+    updated_data = ref.get().to_dict()
+    return {"data": _normalize_bill(bill_id, updated_data)}
 
 
 @router.delete("/{bill_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -168,20 +173,13 @@ async def delete_bill(
     bill_id: str,
     current_user: dict = Depends(get_current_user),
 ):
-    require_tables("bill_reminders")
-    existing = (
-        _client()
-        .table("bill_reminders")
-        .select("id")
-        .eq("id", bill_id)
-        .eq("user_id", current_user["user_id"])
-        .single()
-        .execute()
-    )
-    if not existing.data:
+    uid = current_user["user_id"]
+    ref = _bills_col(uid).document(bill_id)
+    if not ref.get().exists:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tagihan tidak ditemukan")
 
-    _client().table("bill_reminders").update({"is_active": False}).eq("id", bill_id).execute()
+    # Soft delete
+    ref.update({"is_active": False})
 
 
 @router.post("/{bill_id}/pay")
@@ -190,46 +188,42 @@ async def pay_bill(
     current_user: dict = Depends(get_current_user),
 ):
     """Tandai tagihan sebagai lunas dan hitung next_due_date berikutnya."""
-    require_tables("bill_reminders")
-    existing = (
-        _client()
-        .table("bill_reminders")
-        .select("*")
-        .eq("id", bill_id)
-        .eq("user_id", current_user["user_id"])
-        .single()
-        .execute()
-    )
-    if not existing.data:
+    uid = current_user["user_id"]
+    ref = _bills_col(uid).document(bill_id)
+    doc = ref.get()
+    
+    if not doc.exists:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tagihan tidak ditemukan")
 
-    bill = existing.data
+    bill = doc.to_dict()
     paid_date = date.today()
-    # Hitung jadwal berikutnya setelah tanggal bayar
     next_due = _compute_next_due(bill["due_day"], bill["recurrence"], after=paid_date)
 
     is_one_time = bill["recurrence"] == "once"
     paid_at = datetime.utcnow().isoformat()
+    
+    payment_history = list(bill.get("payment_history") or [])
+    payment_history.append({
+        "paid_at": paid_at,
+        "amount": float(bill["amount"]),
+        "next_due_date_before_payment": bill["next_due_date"],
+    })
+
     updates = {
         "is_paid": is_one_time,
         "is_active": not is_one_time,
         "paid_at": paid_at,
         "next_due_date": next_due,
+        "payment_history": payment_history,
     }
-    if _bill_supports("payment_history"):
-        payment_history = list(bill.get("payment_history") or [])
-        payment_history.append(
-            {
-                "paid_at": paid_at,
-                "amount": float(bill["amount"]),
-                "next_due_date_before_payment": bill["next_due_date"],
-            }
-        )
-        updates["payment_history"] = payment_history
-    result = _client().table("bill_reminders").update(updates).eq("id", bill_id).execute()
+    
+    ref.update(updates)
+    updated_data = ref.get().to_dict()
+    
     message = (
         "Tagihan sekali jalan berhasil ditandai lunas"
         if is_one_time
         else "Tagihan berhasil dibayar dan dijadwalkan ulang untuk periode berikutnya"
     )
-    return {"data": result.data[0], "message": message}
+    return {"data": _normalize_bill(bill_id, updated_data), "message": message}
+

@@ -1,0 +1,52 @@
+[
+  {
+    "id": "TC001",
+    "title": "create_transaction_with_valid_data",
+    "description": "Test creating a transaction with valid data including type, amount greater than zero, wallet_id, category, and date. Verify response status 201 Created and that the returned transaction object contains correct fields."
+  },
+  {
+    "id": "TC002",
+    "title": "create_transaction_with_zero_amount",
+    "description": "Test creating a transaction with amount equal to zero. Verify response status 400 Bad Request with validation error message 'Nominal harus lebih dari 0'."
+  },
+  {
+    "id": "TC003",
+    "title": "create_transaction_without_authorization",
+    "description": "Test creating a transaction without providing Authorization header. Verify response status 401 Unauthorized."
+  },
+  {
+    "id": "TC004",
+    "title": "create_wallet_with_valid_data",
+    "description": "Test creating a wallet with valid data including name, type, balance, and currency. Verify response status 201 Created and that the returned wallet object includes id and balance."
+  },
+  {
+    "id": "TC005",
+    "title": "create_wallet_missing_name_field",
+    "description": "Test creating a wallet with missing required field 'name'. Verify response status 400 Bad Request with validation error 'name is required'."
+  },
+  {
+    "id": "TC006",
+    "title": "list_wallets_without_authorization",
+    "description": "Test listing wallets without Authorization header. Verify response status 401 Unauthorized."
+  },
+  {
+    "id": "TC007",
+    "title": "ai_process_with_high_confidence_input",
+    "description": "Test AI processing endpoint with natural language input that yields high confidence extraction of transaction fields. Verify response status 200 OK with extracted fields and confidence scores."
+  },
+  {
+    "id": "TC008",
+    "title": "ai_process_with_low_confidence_input",
+    "description": "Test AI processing endpoint with ambiguous natural language input resulting in low confidence extraction. Verify response status 200 OK with partial extracted fields and flags indicating review required."
+  },
+  {
+    "id": "TC009",
+    "title": "ai_process_with_provider_error",
+    "description": "Test AI processing endpoint when Anthropic API key is invalid or provider error occurs. Verify response status 502 Bad Gateway with sanitized provider error message."
+  },
+  {
+    "id": "TC010",
+    "title": "import_mutasi_with_supported_file_and_preview",
+    "description": "Test bank mutation import endpoint by uploading a supported CSV or XLSX file with preview=true parameter. Verify response status 200 OK with preview payload containing parsed rows and duplicate flags."
+  }
+]

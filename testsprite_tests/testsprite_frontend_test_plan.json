@@ -1,0 +1,1752 @@
+[
+  {
+    "id": "TC001",
+    "title": "Sign in and reach the dashboard",
+    "description": "Verifies a user can log in with valid credentials and reach the dashboard successfully.",
+    "category": "User Login (Email/Password)",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the user lands on the dashboard"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the dashboard financial summary is displayed"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC002",
+    "title": "Create a transaction and see wallet balance update",
+    "description": "Verifies a user can add a valid manual transaction and it appears in the transaction list with the selected wallet balance updated.",
+    "category": "Manual Transaction Entry",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Click the navigation link to transactions"
+      },
+      {
+        "type": "action",
+        "description": "Start adding a new transaction"
+      },
+      {
+        "type": "action",
+        "description": "Fill a valid amount greater than 0 into the amount field"
+      },
+      {
+        "type": "action",
+        "description": "Select a category"
+      },
+      {
+        "type": "action",
+        "description": "Select a wallet"
+      },
+      {
+        "type": "action",
+        "description": "Save the transaction"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the new transaction is listed in the transactions list"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the selected wallet balance reflects the newly added transaction"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC003",
+    "title": "Create a new account and land on dashboard with a default wallet",
+    "description": "Verifies a user can register with a valid email/password and is taken to the dashboard where a default wallet is available.",
+    "category": "User Registration",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /register"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with a unique valid email"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with a valid strong password"
+      },
+      {
+        "type": "action",
+        "description": "Submit the registration form"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the user lands on the dashboard"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify at least one wallet is displayed"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC004",
+    "title": "Auto-save high-confidence AI capture with undo",
+    "description": "Verifies that a high-confidence AI chat capture auto-saves a transaction, offers undo, and the transaction can be removed via undo.",
+    "category": "AI Capture — Natural Language Chat",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Click the navigation link to capture"
+      },
+      {
+        "type": "action",
+        "description": "Open AI chat capture mode"
+      },
+      {
+        "type": "action",
+        "description": "Fill \"Lunch 45000 cash today\" into the AI chat input"
+      },
+      {
+        "type": "action",
+        "description": "Submit the AI chat message"
+      },
+      {
+        "type": "action",
+        "description": "Wait for the capture result to complete"
+      },
+      {
+        "type": "action",
+        "description": "Click the undo action for the recently saved capture"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the capture success state is cleared after undo"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify no new transaction from the AI capture appears in the transactions list"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC005",
+    "title": "Import selected statement rows into a wallet and see them in transactions with updated balance",
+    "description": "Verifies a user can import a subset of parsed bank statement rows into a chosen wallet and the imported transactions appear in the transactions list with wallet balance updated.",
+    "category": "Import Bank Statement (Import Mutasi)",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Click the navigation link to open the capture page"
+      },
+      {
+        "type": "action",
+        "description": "Open Import Mutasi mode"
+      },
+      {
+        "type": "action",
+        "description": "Upload a valid CSV or Excel statement file"
+      },
+      {
+        "type": "action",
+        "description": "Select a subset of parsed rows to import"
+      },
+      {
+        "type": "action",
+        "description": "Select a target wallet for the import"
+      },
+      {
+        "type": "action",
+        "description": "Confirm the import"
+      },
+      {
+        "type": "action",
+        "description": "Click the navigation link to open the transactions page"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify newly imported transactions are displayed in the transactions list"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the target wallet balance reflects the imported transactions"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC006",
+    "title": "Review and save low-confidence AI capture",
+    "description": "Verifies that when AI capture requires review, the user can edit or confirm fields and save the transaction to appear in transactions with updated wallet balance.",
+    "category": "AI Capture — Natural Language Chat",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Click the navigation link to capture"
+      },
+      {
+        "type": "action",
+        "description": "Open AI chat capture mode"
+      },
+      {
+        "type": "action",
+        "description": "Fill \"Transfer to savings\" into the AI chat input"
+      },
+      {
+        "type": "action",
+        "description": "Submit the AI chat message"
+      },
+      {
+        "type": "action",
+        "description": "Wait for the review card to appear"
+      },
+      {
+        "type": "action",
+        "description": "Select a wallet in the review card"
+      },
+      {
+        "type": "action",
+        "description": "Fill a valid amount greater than 0 into the amount field in the review card"
+      },
+      {
+        "type": "action",
+        "description": "Select a category in the review card"
+      },
+      {
+        "type": "action",
+        "description": "Save the reviewed transaction"
+      },
+      {
+        "type": "action",
+        "description": "Click the navigation link to transactions"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the captured transaction is listed in the transactions list"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the selected wallet balance reflects the newly saved transaction"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC007",
+    "title": "Create wallet with initial balance and see opening transaction recorded",
+    "description": "Verifies creating a new wallet with an initial balance adds the wallet and records an opening transaction in the transaction history.",
+    "category": "Wallet Management",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Click the navigation link to open the wallets page"
+      },
+      {
+        "type": "action",
+        "description": "Start creating a new wallet"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the wallet name with Wallet A"
+      },
+      {
+        "type": "action",
+        "description": "Select a wallet type"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the initial balance field with 100000"
+      },
+      {
+        "type": "action",
+        "description": "Save the wallet"
+      },
+      {
+        "type": "action",
+        "description": "Click the navigation link to open the transactions page"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify a transaction representing the wallet opening balance exists"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify Wallet A is available as a wallet selection in transactions"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC008",
+    "title": "Upload receipt and save extracted transaction",
+    "description": "Verifies that a user can upload a supported receipt file, review extracted fields, save the transaction, and see it listed with wallet balance updated.",
+    "category": "OCR Receipt Capture",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Click the navigation link to capture"
+      },
+      {
+        "type": "action",
+        "description": "Open OCR receipt capture mode"
+      },
+      {
+        "type": "action",
+        "description": "Upload a supported receipt file (JPG, PNG, WEBP, or PDF)"
+      },
+      {
+        "type": "action",
+        "description": "Wait for receipt extraction to complete"
+      },
+      {
+        "type": "action",
+        "description": "Review the extracted merchant field"
+      },
+      {
+        "type": "action",
+        "description": "Review the extracted date field"
+      },
+      {
+        "type": "action",
+        "description": "Review the extracted amount field"
+      },
+      {
+        "type": "action",
+        "description": "Select a wallet for the transaction"
+      },
+      {
+        "type": "action",
+        "description": "Save the receipt transaction"
+      },
+      {
+        "type": "action",
+        "description": "Click the navigation link to transactions"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the receipt transaction is listed in the transactions list"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the selected wallet balance reflects the newly saved transaction"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC009",
+    "title": "Budget progress updates after adding a transaction in the same category",
+    "description": "Verifies adding an expense transaction in a budgeted category updates the budget’s spent/progress and can surface a threshold warning.",
+    "category": "Budget Management",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Click the navigation link to open the budgets page"
+      },
+      {
+        "type": "action",
+        "description": "Start creating a new budget"
+      },
+      {
+        "type": "action",
+        "description": "Select a budget category"
+      },
+      {
+        "type": "action",
+        "description": "Fill 10000 into the monthly limit field"
+      },
+      {
+        "type": "action",
+        "description": "Save the budget"
+      },
+      {
+        "type": "action",
+        "description": "Click the navigation link to open the transactions page"
+      },
+      {
+        "type": "action",
+        "description": "Start adding a new manual transaction"
+      },
+      {
+        "type": "action",
+        "description": "Select an expense transaction type"
+      },
+      {
+        "type": "action",
+        "description": "Fill 9000 into the amount field"
+      },
+      {
+        "type": "action",
+        "description": "Select the same category as the budget category"
+      },
+      {
+        "type": "action",
+        "description": "Save the transaction"
+      },
+      {
+        "type": "action",
+        "description": "Click the navigation link to open the budgets page"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the budget spent/progress reflects the newly added transaction"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify a budget warning indicator is visible when the spend approaches the budget limit"
+      }
+    ],
+    "priority": "High"
+  },
+  {
+    "id": "TC010",
+    "title": "Create a recurring bill reminder and see it on dashboard upcoming widget",
+    "description": "User creates a recurring bill reminder and it appears in the bills list and in the dashboard upcoming bills widget.",
+    "category": "Bill Reminders",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill {{LOGIN_USER}} into the email field"
+      },
+      {
+        "type": "action",
+        "description": "Fill {{LOGIN_PASSWORD}} into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Click the navigation link to bills"
+      },
+      {
+        "type": "action",
+        "description": "Start creating a new bill reminder"
+      },
+      {
+        "type": "action",
+        "description": "Fill Bill A into the bill name field"
+      },
+      {
+        "type": "action",
+        "description": "Fill a valid amount into the amount field"
+      },
+      {
+        "type": "action",
+        "description": "Select a valid due day of month"
+      },
+      {
+        "type": "action",
+        "description": "Select a valid recurrence option"
+      },
+      {
+        "type": "action",
+        "description": "Save the bill reminder"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the new bill reminder is listed in the bills page"
+      },
+      {
+        "type": "action",
+        "description": "Click the navigation link to dashboard"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify upcoming bills are displayed and include the newly created reminder"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC011",
+    "title": "Preview marks duplicates and importing excludes unselected duplicates",
+    "description": "Verifies duplicate rows are visibly flagged in the import preview and only the selected non-duplicate rows are imported.",
+    "category": "Import Bank Statement (Import Mutasi)",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Click the navigation link to open the capture page"
+      },
+      {
+        "type": "action",
+        "description": "Open Import Mutasi mode"
+      },
+      {
+        "type": "action",
+        "description": "Upload a valid CSV or Excel statement file that contains at least one duplicate row"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify at least one parsed row is marked as a duplicate in the preview"
+      },
+      {
+        "type": "action",
+        "description": "Deselect the rows marked as duplicates"
+      },
+      {
+        "type": "action",
+        "description": "Select a target wallet for the import"
+      },
+      {
+        "type": "action",
+        "description": "Confirm the import"
+      },
+      {
+        "type": "action",
+        "description": "Click the navigation link to open the transactions page"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify only the selected statement rows were added as transactions"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC012",
+    "title": "Mark a due bill as paid and advance the next due date",
+    "description": "User marks a bill as paid and the UI updates to show it paid and advances the next due date based on recurrence.",
+    "category": "Bill Reminders",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill {{LOGIN_USER}} into the email field"
+      },
+      {
+        "type": "action",
+        "description": "Fill {{LOGIN_PASSWORD}} into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Click the navigation link to bills"
+      },
+      {
+        "type": "action",
+        "description": "Start creating a new bill reminder"
+      },
+      {
+        "type": "action",
+        "description": "Fill Bill Paid Flow into the bill name field"
+      },
+      {
+        "type": "action",
+        "description": "Fill a valid amount into the amount field"
+      },
+      {
+        "type": "action",
+        "description": "Select a valid due day of month"
+      },
+      {
+        "type": "action",
+        "description": "Select a monthly recurrence option"
+      },
+      {
+        "type": "action",
+        "description": "Save the bill reminder"
+      },
+      {
+        "type": "action",
+        "description": "Mark the created bill reminder as paid"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the bill shows a paid status"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the next due date for the bill is advanced"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC013",
+    "title": "Create a monthly category budget and see it listed with progress",
+    "description": "Verifies a user can create a monthly budget for a category and the budget appears with spent/progress information.",
+    "category": "Budget Management",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Click the navigation link to open the budgets page"
+      },
+      {
+        "type": "action",
+        "description": "Start creating a new budget"
+      },
+      {
+        "type": "action",
+        "description": "Select a budget category"
+      },
+      {
+        "type": "action",
+        "description": "Fill 2000000 into the monthly limit field"
+      },
+      {
+        "type": "action",
+        "description": "Save the budget"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the new budget is displayed as a budget card"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the budget card shows spent amount and progress for the current month"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC014",
+    "title": "Prevent saving a transaction with zero amount",
+    "description": "Verifies that attempting to save a manual transaction with amount equal to 0 is blocked with a visible validation error.",
+    "category": "Manual Transaction Entry",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Click the navigation link to transactions"
+      },
+      {
+        "type": "action",
+        "description": "Start adding a new transaction"
+      },
+      {
+        "type": "action",
+        "description": "Fill 0 into the amount field"
+      },
+      {
+        "type": "action",
+        "description": "Select a category"
+      },
+      {
+        "type": "action",
+        "description": "Select a wallet"
+      },
+      {
+        "type": "action",
+        "description": "Attempt to save the transaction"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify an amount validation error is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the transaction was not added to the transactions list"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC015",
+    "title": "View monthly summary for a selected month",
+    "description": "User selects a month in reports and sees totals and breakdowns for that month.",
+    "category": "Reports (Basic Monthly Summary)",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill {{LOGIN_USER}} into the email field"
+      },
+      {
+        "type": "action",
+        "description": "Fill {{LOGIN_PASSWORD}} into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Click the navigation link to reports"
+      },
+      {
+        "type": "action",
+        "description": "Select a valid month in the reports month selector"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify total income, total expense, and net values are displayed"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify a trend chart and category breakdown are displayed"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC016",
+    "title": "Delete attempt for wallet with transactions is blocked with guidance to deactivate",
+    "description": "Verifies a wallet that has transactions cannot be deleted and the UI guides the user to deactivate instead.",
+    "category": "Wallet Management",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Click the navigation link to open the wallets page"
+      },
+      {
+        "type": "action",
+        "description": "Start creating a new wallet"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the wallet name with Wallet To Delete"
+      },
+      {
+        "type": "action",
+        "description": "Select a wallet type"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the initial balance field with 50000"
+      },
+      {
+        "type": "action",
+        "description": "Save the wallet"
+      },
+      {
+        "type": "action",
+        "description": "Click the navigation link to open the transactions page"
+      },
+      {
+        "type": "action",
+        "description": "Start adding a new manual transaction"
+      },
+      {
+        "type": "action",
+        "description": "Select Wallet To Delete as the wallet"
+      },
+      {
+        "type": "action",
+        "description": "Select an expense transaction type"
+      },
+      {
+        "type": "action",
+        "description": "Fill 1000 into the amount field"
+      },
+      {
+        "type": "action",
+        "description": "Select a category"
+      },
+      {
+        "type": "action",
+        "description": "Save the transaction"
+      },
+      {
+        "type": "action",
+        "description": "Click the navigation link to open the wallets page"
+      },
+      {
+        "type": "action",
+        "description": "Attempt to delete Wallet To Delete"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify a message is shown that the wallet cannot be deleted because it has transactions"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the UI offers deactivation as the alternative action"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC017",
+    "title": "Drill down from a category to its transactions for the selected month",
+    "description": "User selects a category in the report breakdown and sees the transaction list filtered to that category and month.",
+    "category": "Reports (Basic Monthly Summary)",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill {{LOGIN_USER}} into the email field"
+      },
+      {
+        "type": "action",
+        "description": "Fill {{LOGIN_PASSWORD}} into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Click the navigation link to transactions"
+      },
+      {
+        "type": "action",
+        "description": "Start adding a new transaction"
+      },
+      {
+        "type": "action",
+        "description": "Select an expense type"
+      },
+      {
+        "type": "action",
+        "description": "Fill 12345 into the amount field"
+      },
+      {
+        "type": "action",
+        "description": "Select a category to use for reporting"
+      },
+      {
+        "type": "action",
+        "description": "Select a valid date within the current month"
+      },
+      {
+        "type": "action",
+        "description": "Save the transaction"
+      },
+      {
+        "type": "action",
+        "description": "Click the navigation link to reports"
+      },
+      {
+        "type": "action",
+        "description": "Select the current month in the reports month selector"
+      },
+      {
+        "type": "action",
+        "description": "Click the category used by the created transaction in the category breakdown"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify a list of transactions for the selected category and month is displayed"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the created transaction amount 12345 appears in the filtered transaction list"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC018",
+    "title": "Request password reset for an existing email shows generic success",
+    "description": "Verifies submitting the forgot-password form shows a generic success confirmation regardless of delivery details.",
+    "category": "Forgot Password",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /forgot-password"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the reset request"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify a generic reset request success message is visible"
+      }
+    ],
+    "priority": "Medium"
+  },
+  {
+    "id": "TC019",
+    "title": "Reject login with incorrect credentials",
+    "description": "Verifies login fails with incorrect credentials and an authentication error is shown without signing the user in.",
+    "category": "User Login (Email/Password)",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with invalid.user@example.com"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with wrong-password"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify an authentication error message is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the user remains on the login page"
+      }
+    ],
+    "priority": "Low"
+  },
+  {
+    "id": "TC020",
+    "title": "Persist settings changes within the session after saving preferences",
+    "description": "User updates a preference, saves, and sees confirmation with the updated preference applied in the session.",
+    "category": "Settings and Preferences",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill {{LOGIN_USER}} into the email field"
+      },
+      {
+        "type": "action",
+        "description": "Fill {{LOGIN_PASSWORD}} into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Click the navigation link to settings"
+      },
+      {
+        "type": "action",
+        "description": "Update the theme preference to a different option"
+      },
+      {
+        "type": "action",
+        "description": "Save settings"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify a success confirmation is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the updated theme preference is applied in the session"
+      }
+    ],
+    "priority": "Low"
+  },
+  {
+    "id": "TC021",
+    "title": "Unsupported statement file type shows import validation guidance",
+    "description": "Verifies uploading an unsupported or unrecognized statement file format shows an error and prevents import.",
+    "category": "Import Bank Statement (Import Mutasi)",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Click the navigation link to open the capture page"
+      },
+      {
+        "type": "action",
+        "description": "Open Import Mutasi mode"
+      },
+      {
+        "type": "action",
+        "description": "Upload a file with an unsupported or unrecognized format"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify an import validation error is visible indicating supported formats"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the user cannot proceed to confirm an import"
+      }
+    ],
+    "priority": "Low"
+  },
+  {
+    "id": "TC022",
+    "title": "Update profile name and see it reflected across the app",
+    "description": "User updates their profile name and it appears in the app where the user identity is shown.",
+    "category": "Settings and Preferences",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill {{LOGIN_USER}} into the email field"
+      },
+      {
+        "type": "action",
+        "description": "Fill {{LOGIN_PASSWORD}} into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Click the navigation link to settings"
+      },
+      {
+        "type": "action",
+        "description": "Fill Test User Renamed into the profile name field"
+      },
+      {
+        "type": "action",
+        "description": "Save profile changes"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify a success confirmation is visible"
+      },
+      {
+        "type": "action",
+        "description": "Click the navigation link to dashboard"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the updated profile name Test User Renamed is visible in the app header or user menu"
+      }
+    ],
+    "priority": "Low"
+  },
+  {
+    "id": "TC023",
+    "title": "Prevent registration with weak password",
+    "description": "Verifies registration is blocked when a weak password is entered and a validation error is shown.",
+    "category": "User Registration",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /register"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with a unique valid email"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with a weak password"
+      },
+      {
+        "type": "action",
+        "description": "Submit the registration form"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify a password validation error is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the user is not signed in"
+      }
+    ],
+    "priority": "Low"
+  },
+  {
+    "id": "TC024",
+    "title": "Update currency preference and see it reflected in financial views",
+    "description": "User changes the currency preference and sees amounts displayed using the selected currency in the app.",
+    "category": "Settings and Preferences",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill {{LOGIN_USER}} into the email field"
+      },
+      {
+        "type": "action",
+        "description": "Fill {{LOGIN_PASSWORD}} into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Click the navigation link to settings"
+      },
+      {
+        "type": "action",
+        "description": "Update the currency preference to a different option"
+      },
+      {
+        "type": "action",
+        "description": "Save settings"
+      },
+      {
+        "type": "action",
+        "description": "Click the navigation link to dashboard"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify financial summary amounts are displayed using the selected currency"
+      },
+      {
+        "type": "action",
+        "description": "Click the navigation link to transactions"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify transaction amounts are displayed using the selected currency"
+      }
+    ],
+    "priority": "Low"
+  },
+  {
+    "id": "TC025",
+    "title": "Prevent registration with invalid email format",
+    "description": "Verifies registration is blocked when an invalid email is entered and a validation error is shown.",
+    "category": "User Registration",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /register"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with invalid-email-format"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with a valid strong password"
+      },
+      {
+        "type": "action",
+        "description": "Submit the registration form"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify an email validation error is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the user is not signed in"
+      }
+    ],
+    "priority": "Low"
+  },
+  {
+    "id": "TC026",
+    "title": "Block unsupported receipt file type",
+    "description": "Verifies that uploading an unsupported receipt file type is rejected with visible guidance about supported formats and file size.",
+    "category": "OCR Receipt Capture",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Click the navigation link to capture"
+      },
+      {
+        "type": "action",
+        "description": "Open OCR receipt capture mode"
+      },
+      {
+        "type": "action",
+        "description": "Upload an unsupported file type for receipt capture"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify an upload validation error with supported formats guidance is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify no receipt review card is created"
+      }
+    ],
+    "priority": "Low"
+  },
+  {
+    "id": "TC027",
+    "title": "Prevent saving a bill reminder with missing required fields",
+    "description": "User cannot save a bill reminder when required fields are missing and sees inline validation guidance.",
+    "category": "Bill Reminders",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill {{LOGIN_USER}} into the email field"
+      },
+      {
+        "type": "action",
+        "description": "Fill {{LOGIN_PASSWORD}} into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Click the navigation link to bills"
+      },
+      {
+        "type": "action",
+        "description": "Start creating a new bill reminder"
+      },
+      {
+        "type": "action",
+        "description": "Fill Bill Missing Amount into the bill name field"
+      },
+      {
+        "type": "action",
+        "description": "Attempt to save the bill reminder"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify a required-field validation error is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the bill reminder is not added to the bills list"
+      }
+    ],
+    "priority": "Low"
+  },
+  {
+    "id": "TC028",
+    "title": "Show a helpful empty state when no data exists for a selected month",
+    "description": "User selects a month with no transactions and sees an empty-state experience rather than misleading totals.",
+    "category": "Reports (Basic Monthly Summary)",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill {{LOGIN_USER}} into the email field"
+      },
+      {
+        "type": "action",
+        "description": "Fill {{LOGIN_PASSWORD}} into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Click the navigation link to reports"
+      },
+      {
+        "type": "action",
+        "description": "Select a month likely to have no data for this user"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify an empty or no-data state is displayed for reports"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify category breakdown does not show any categories"
+      }
+    ],
+    "priority": "Low"
+  },
+  {
+    "id": "TC029",
+    "title": "Request password reset for an unknown email still shows generic success",
+    "description": "Verifies the forgot-password flow does not disclose account existence and still shows a generic success confirmation for an unknown email.",
+    "category": "Forgot Password",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /forgot-password"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with unknown.user@example.com"
+      },
+      {
+        "type": "action",
+        "description": "Submit the reset request"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify a generic reset request success message is visible"
+      }
+    ],
+    "priority": "Low"
+  },
+  {
+    "id": "TC030",
+    "title": "Reject AI chat input shorter than minimum length",
+    "description": "Verifies that AI chat does not submit and shows a validation error when the message is shorter than the allowed minimum length.",
+    "category": "AI Capture — Natural Language Chat",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Click the navigation link to capture"
+      },
+      {
+        "type": "action",
+        "description": "Open AI chat capture mode"
+      },
+      {
+        "type": "action",
+        "description": "Fill \"a\" into the AI chat input"
+      },
+      {
+        "type": "action",
+        "description": "Submit the AI chat message"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify an AI chat length validation error is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify no new capture result or transaction is created"
+      }
+    ],
+    "priority": "Low"
+  },
+  {
+    "id": "TC031",
+    "title": "Cancel bill reminder creation without adding a reminder",
+    "description": "User cancels bill creation and no new bill reminder appears in the list.",
+    "category": "Bill Reminders",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill {{LOGIN_USER}} into the email field"
+      },
+      {
+        "type": "action",
+        "description": "Fill {{LOGIN_PASSWORD}} into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Click the navigation link to bills"
+      },
+      {
+        "type": "action",
+        "description": "Start creating a new bill reminder"
+      },
+      {
+        "type": "action",
+        "description": "Fill Bill To Cancel into the bill name field"
+      },
+      {
+        "type": "action",
+        "description": "Fill a valid amount into the amount field"
+      },
+      {
+        "type": "action",
+        "description": "Cancel bill reminder creation"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the bill reminder creation form is closed"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the bills list does not include the cancelled reminder"
+      }
+    ],
+    "priority": "Low"
+  },
+  {
+    "id": "TC032",
+    "title": "Update notification preference and persist it after page reload",
+    "description": "User toggles a notification preference, saves, reloads the page, and the preference remains updated.",
+    "category": "Settings and Preferences",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill {{LOGIN_USER}} into the email field"
+      },
+      {
+        "type": "action",
+        "description": "Fill {{LOGIN_PASSWORD}} into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Click the navigation link to settings"
+      },
+      {
+        "type": "action",
+        "description": "Toggle the notifications preference"
+      },
+      {
+        "type": "action",
+        "description": "Save settings"
+      },
+      {
+        "type": "action",
+        "description": "Navigate to /settings"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify the notifications preference remains set to the updated value"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify a saved state is indicated for the current settings"
+      }
+    ],
+    "priority": "Low"
+  },
+  {
+    "id": "TC033",
+    "title": "Reject AI chat input longer than maximum length",
+    "description": "Verifies that AI chat does not submit and shows a validation error when the message exceeds the allowed maximum length.",
+    "category": "AI Capture — Natural Language Chat",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the email field with {{LOGIN_USER}}"
+      },
+      {
+        "type": "action",
+        "description": "Fill in the password field with {{LOGIN_PASSWORD}}"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Click the navigation link to capture"
+      },
+      {
+        "type": "action",
+        "description": "Open AI chat capture mode"
+      },
+      {
+        "type": "action",
+        "description": "Fill a message longer than 500 characters into the AI chat input"
+      },
+      {
+        "type": "action",
+        "description": "Submit the AI chat message"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify an AI chat length validation error is visible"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify no new capture result or transaction is created"
+      }
+    ],
+    "priority": "Low"
+  },
+  {
+    "id": "TC034",
+    "title": "Display an empty state when no bill reminders exist",
+    "description": "User sees an empty state on the bills page when there are no bill reminders.",
+    "category": "Bill Reminders",
+    "steps": [
+      {
+        "type": "action",
+        "description": "Navigate to /login"
+      },
+      {
+        "type": "action",
+        "description": "Fill {{LOGIN_USER}} into the email field"
+      },
+      {
+        "type": "action",
+        "description": "Fill {{LOGIN_PASSWORD}} into the password field"
+      },
+      {
+        "type": "action",
+        "description": "Submit the login form"
+      },
+      {
+        "type": "action",
+        "description": "Click the navigation link to bills"
+      },
+      {
+        "type": "action",
+        "description": "If any bill reminders are present, delete or deactivate them until none remain"
+      },
+      {
+        "type": "assertion",
+        "description": "Verify an empty state is displayed for bills"
+      }
+    ],
+    "priority": "Low"
+  }
+]

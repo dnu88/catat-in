@@ -1,0 +1,54 @@
+version: "2"
+type: backend
+tech_stack:
+  - language: Python
+  - framework: FastAPI
+  - database: Supabase (PostgreSQL)
+  - auth: Firebase Admin
+  - deployment: Docker
+endpoints:
+  - path: /health
+    method: GET
+    description: Health check endpoint
+  - path: /api/v1/auth/me
+    method: GET
+    auth_required: true
+    description: Get current user info
+  - path: /api/v1/wallets
+    method: GET
+    auth_required: true
+    description: List wallets
+  - path: /api/v1/wallets
+    method: POST
+    auth_required: true
+    description: Create wallet
+  - path: /api/v1/transactions
+    method: GET
+    auth_required: true
+    description: List transactions
+  - path: /api/v1/transactions
+    method: POST
+    auth_required: true
+    description: Create transaction
+  - path: /api/v1/ai/process
+    method: POST
+    auth_required: true
+    description: Process natural language input via AI
+  - path: /api/v1/imports/mutasi
+    method: POST
+    auth_required: true
+    description: Import bank statement
+features:
+  - name: Transaction Management
+    description: CRUD operations for transactions
+    endpoints:
+      - /api/v1/transactions
+  - name: Wallet Management
+    description: CRUD operations for wallets
+    endpoints:
+      - /api/v1/wallets
+  - name: AI Processing
+    description: AI-driven transaction entry
+    endpoints:
+      - /api/v1/ai/process
+known_limitations: []

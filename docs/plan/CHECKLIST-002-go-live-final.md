@@ -26,7 +26,7 @@ related_plans:
 # P1 (Sangat disarankan)
 
 - [ ] Warning lint utama dikurangi (fokus auth/transaction/firestore)
-- [ ] Tambah backend smoke tests untuk endpoint kritikal non-happy-path
+- [~] Tambah backend smoke tests untuk endpoint kritikal non-happy-path — testsprite TC001 ✅, TC002 ❌ (ANTHROPIC_API_KEY invalid)
 - [ ] Dokumentasi incident runbook + rollback steps final
 - [ ] Verifikasi Firebase Authorized Domains (prod + preview)
 
@@ -49,5 +49,19 @@ related_plans:
 - Secret scan pola umum: tidak terdeteksi hardcoded key pada tracked files.
 - Env keyset: `apps/web/.env` dan `backend/.env` sudah memuat key utama sesuai `.env.example`.
 
-- Hasil saat ini menunjukkan aplikasi siap untuk **private beta terbatas**.
+## Testsprite integration tests (2026-05-02)
+
+| Test | Hasil | Catatan |
+|---|---|---|
+| TC001 — POST Transactions Manual Entry | ✅ LULUS | Create, verifikasi, dan cleanup transaksi berhasil |
+| TC002 — POST AI Process Capture | ❌ GAGAL | `ANTHROPIC_API_KEY` tidak valid; endpoint `/ai/process` juga diperbaiki (missing `try/except RuntimeError`) |
+
+Bug yang ditemukan dan diperbaiki:
+- `backend/app/api/v1/ai.py`: endpoint `POST /api/v1/ai/process` tidak punya `try/except RuntimeError` → akan return 500 saat Anthropic API error. **Fix sudah diterapkan**, perlu restart backend.
+
+Blocker yang masih terbuka:
+- `ANTHROPIC_API_KEY` di `backend/.env` tidak valid (gateway: "No active credentials for provider: anthropic"). Perbarui key sebelum beta demo.
+
+- Hasil saat ini menunjukkan aplikasi siap untuk **private beta terbatas** (Mode A Firebase-only).
+- Untuk Mode B (dengan backend AI), perbarui `ANTHROPIC_API_KEY` dan restart backend terlebih dahulu.
 - Untuk go-live publik lebih aman, tuntaskan semua item P0 dan mayoritas P1.

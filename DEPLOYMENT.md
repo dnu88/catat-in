@@ -64,8 +64,8 @@ Penting:
 - `ALLOWED_ORIGINS` dan `ALLOWED_HOSTS` boleh pakai format comma-separated.
 
 Optional:
-- `ANTHROPIC_API_KEY=<key>` (tanpa ini AI chat pakai fallback parser)
-- `ANTHROPIC_MODEL=claude-sonnet-4-6` (atau model lain)
+- `ANTHROPIC_API_KEY=<key>` (tanpa ini AI chat pakai fallback parser) — **pastikan key aktif dan valid; key yang expired/tidak punya kredit menyebabkan semua endpoint AI gagal 502**
+- `ANTHROPIC_MODEL=claude-sonnet-4-6` (atau model lain, misalnya `claude-haiku-4-5-20251001`)
 
 Legacy vars (boleh kosong):
 - `SUPABASE_URL`

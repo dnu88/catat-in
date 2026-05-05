@@ -59,16 +59,21 @@ function getInitials(name: string): string {
 		.slice(0, 2);
 }
 
-function getGreeting(): string {
+function getGreeting(lang: "id" | "en"): string {
 	const hour = new Date().getHours();
+	if (lang === "en") {
+		if (hour < 12) return "Good morning";
+		if (hour < 17) return "Good afternoon";
+		return "Good evening";
+	}
 	if (hour < 11) return "Selamat pagi";
 	if (hour < 15) return "Selamat siang";
 	if (hour < 18) return "Selamat sore";
 	return "Selamat malam";
 }
 
-function formatDate(): string {
-	return new Date().toLocaleDateString("id-ID", {
+function formatDate(lang: "id" | "en"): string {
+	return new Date().toLocaleDateString(lang === "id" ? "id-ID" : "en-US", {
 		weekday: "long",
 		day: "numeric",
 		month: "long",
@@ -227,10 +232,10 @@ export default function AppLayout() {
 						</button>
 						<div>
 							<div className="topbar-title">
-								{getGreeting()}, {user?.full_name?.split(" ")[0] || "Pengguna"}{" "}
+								{getGreeting(language)}, {user?.full_name?.split(" ")[0] || "Pengguna"}{" "}
 								👋
 							</div>
-							<div className="topbar-sub">{formatDate()}</div>
+							<div className="topbar-sub">{formatDate(language)}</div>
 						</div>
 					</div>
 					<div className="topbar-actions">

@@ -4,7 +4,8 @@ id: "PRD-001"
 status: "Draft"
 owner: "ThinkPad"
 last_updated: "2026-05-02"
-related_adrs: []
+related_adrs:
+  - "docs/adr/ADR-0001-group-transaction-source-of-truth.md"
 ---
 
 # 1. Executive Summary
@@ -36,7 +37,7 @@ Walau happy-path utama sudah berjalan (berdasarkan test web/e2e/backend), kesiap
 ## 3.3 Engineering Goals
 
 - FE deploy sukses di Vercel tanpa build failure.
-- Backend endpoint inti merespons <2 detik pada beban private beta normal (non-AI heavy path).
+- Jika Mode B dipilih: backend endpoint inti merespons <2 detik pada beban private beta normal (non-AI heavy path).
 - Tidak ada critical bug pada happy path.
 
 # 4. Non-Goals
@@ -67,11 +68,31 @@ Walau happy-path utama sudah berjalan (berdasarkan test web/e2e/backend), kesiap
 - Onboarding/auth Firebase.
 - Wallet, transaction, budget, bills, reports dari Firestore.
 - AI chat extraction (Anthropic + local fallback).
-- Group collaboration (create/join/member role/shared transaction/summary).
-- FE deploy Vercel + BE deploy FastAPI.
+- Group collaboration (conditional):
+  - Mode A: read-only/limited visibility untuk konteks grup yang sudah ada (tanpa group write baru).
+  - Mode B: create/join/member role/shared transaction/summary penuh via backend-mediated flow.
+- FE deploy Vercel.
 - Basic monitoring/logging, error handling, and runbook.
 
-## 6.2 Out of Scope (Wave berikutnya)
+## 6.2 Release Modes (Gate Wajib sebelum go-live)
+
+### Mode A — Firebase-only
+
+- `VITE_API_BASE_URL` kosong.
+- Fitur inti aktif: auth, wallet, transaction manual, budget, bills, reports, AI chat fallback lokal.
+- Sesuai ADR-0001, **group write baru tidak diaktifkan** pada Mode A (create/join/leave/update role/remove member/mutasi transaksi grup).
+- Fitur backend-only dianggap non-scope launch: OCR receipt, import mutasi, groups write via backend.
+
+### Mode B — Firebase + Backend
+
+- `VITE_API_BASE_URL` mengarah ke backend production.
+- Backend `/health` wajib healthy/degraded yang terdefinisi.
+- Fitur backend aktif: AI chat backend, OCR receipt, import, groups APIs.
+- Untuk grup, jalur write (create/join/leave/update role/remove member/transaksi grup) wajib backend-mediated sesuai ADR-0001.
+
+Go-live decision harus eksplisit memilih Mode A atau Mode B dan mengikuti acceptance criteria mode tersebut.
+
+## 6.3 Out of Scope (Wave berikutnya)
 
 - Advanced RBAC detail beyond owner/member.
 - Enterprise-grade observability/paid CI.
@@ -99,9 +120,10 @@ Walau happy-path utama sudah berjalan (berdasarkan test web/e2e/backend), kesiap
 
 - User dapat create group dan join via invite code/link.
 - Member aktif dapat melihat transaksi grup.
-- Owner dan member mengikuti permission sederhana:
+- Owner dan member mengikuti permission sederhana.
+- Untuk private beta, keputusan permission dan source-of-truth transaksi grup mengikuti **ADR-0001 (Accepted)**.
   - Owner: kelola anggota/role.
-  - Member: input & edit transaksi grup sesuai kebijakan final ADR.
+  - Member: input & edit transaksi grup sesuai batasan yang ditetapkan ADR-0001 dan implementasi turunannya.
 - Dashboard grup menampilkan total pengeluaran/pemasukan/net + kontribusi.
 
 ## FR-5 Reporting
@@ -111,11 +133,18 @@ Walau happy-path utama sudah berjalan (berdasarkan test web/e2e/backend), kesiap
 ## FR-6 Deployability
 
 - FE production build dan deploy sukses di Vercel.
-- BE health endpoint tersedia (`/health`) dan status environment terlihat.
+- Jika Mode B dipilih: BE health endpoint tersedia (`/health`) dan status environment terlihat.
 
 # 8. Non-Functional Requirements
 
 - P95 endpoint non-AI core path < 2 detik pada traffic beta.
+  - Cakupan endpoint (Mode B):
+    - `GET /health`
+    - `GET /api/v1/groups`
+    - `POST /api/v1/groups/join`
+    - `GET /api/v1/reports/*` (non-AI path)
+  - Metode ukur: sampling smoke + synthetic check minimal 30 request/endpoint pada env production/staging-like.
+  - Evidence: simpan artifact hasil uji (timestamp, environment, pass/fail, latency summary) pada dokumen release note/checklist.
 - Uptime target private beta: best effort dengan recovery runbook.
 - Error API harus memiliki pesan ramah user (ID).
 - Secrets tidak boleh ada di repo.
@@ -124,10 +153,10 @@ Walau happy-path utama sudah berjalan (berdasarkan test web/e2e/backend), kesiap
 
 ## 9.1 Launch Readiness Metrics
 
-- 100% critical happy-path checklist pass.
+- 100% critical happy-path checklist pass (acu ke `docs/plan/CHECKLIST-002-go-live-final.md`).
 - 0 blocker bug pada smoke test private beta.
 - FE build/deploy pass di branch release.
-- BE `/health` status ok/degraded terjelas dan dapat ditindaklanjuti.
+- Jika Mode B: BE `/health` status ok/degraded terjelas dan dapat ditindaklanjuti.
 
 ## 9.2 Product Metrics (beta)
 
@@ -137,17 +166,26 @@ Walau happy-path utama sudah berjalan (berdasarkan test web/e2e/backend), kesiap
 # 10. Acceptance Criteria
 
 1. Flow onboarding → AI capture → save → dashboard → history lulus test E2E internal.
-2. Flow create group → join second user → shared transaction visible lulus E2E internal.
-3. Semua env production minimum terisi dan tervalidasi.
+2. Flow groups lulus sesuai mode rilis:
+   - Mode A (Firebase-only): tidak ada group write baru; UI/akses grup yang ditampilkan tidak menimbulkan error blocker.
+   - Mode B (Firebase+Backend): flow create/join/manage group dan mutasi transaksi grup wajib lewat backend endpoint (bukan Firestore direct) dan lulus E2E internal.
+3. Semua env production minimum terisi dan tervalidasi (acu ke `DEPLOYMENT.md`, section env frontend/backend) dengan evidence:
+   - Mode A: checklist env frontend + Firebase authorized domains.
+   - Mode B: checklist env frontend+backend + output health check backend (`GET /health`).
 4. Tidak ada P0/P1 open bug saat beta gate.
 
 # 11. Milestones (4–6 Minggu)
 
 - Week 1: Architecture hardening + auth/access contract.
+  - Artifact wajib: access matrix + boundary decision note.
 - Week 2: AI reliability + transaction integrity fixes.
+  - Artifact wajib: test report integrity saldo + fallback AI behavior.
 - Week 3: Group collaboration hardening + performance pass.
+  - Artifact wajib: E2E group flow report + latency sampling report.
 - Week 4: QA regression + release runbook + beta gate.
+  - Artifact wajib: go-live checklist signed + launch decision note.
 - Week 5–6 (buffer): bugfix dan stabilisasi.
+  - Artifact wajib: known issues update + post-beta backlog seed.
 
 # 12. Risks & Mitigations
 
@@ -155,20 +193,32 @@ Walau happy-path utama sudah berjalan (berdasarkan test web/e2e/backend), kesiap
 - AI extraction quality variance: golden prompts dataset + fallback + review UX.
 - Solo-dev bandwidth: strict scope freeze dan wave-based rollout.
 
+## 12.1 Risk Register (Operasional)
+
+| Risk                            | Severity | Owner     | Trigger                                                                                         | Mitigation                                              | Contingency                                                   |
+| ------------------------------- | -------- | --------- | ----------------------------------------------------------------------------------------------- | ------------------------------------------------------- | ------------------------------------------------------------- |
+| Permission mismatch FE/BE/Rules | High     | Eng owner | Forbidden/unauthorized >2% pada group mutation selama 15 menit, atau group write gagal berulang | Access matrix + integration test + ADR compliance check | Freeze fitur group baru, fallback ke mode read-only sementara |
+| AI extraction quality drop      | Medium   | Eng owner | Auto-save salah kategori/nominal naik                                                           | Confidence gate + review UX + fallback parser           | Force review-only mode sementara                              |
+| Backend instability (Mode B)    | High     | Eng owner | `/health` degraded berkepanjangan                                                               | Health monitor + restart runbook + rate limit tuning    | Switch launch mode ke Mode A Firebase-only                    |
+| Delivery capacity overload      | Medium   | Eng owner | Milestone slip >1 week                                                                          | Scope freeze + wave priority                            | De-scope fitur non-core ke wave berikutnya                    |
+
 # 13. Dependencies
 
 - Firebase Auth/Firestore configuration benar.
 - Anthropic API key aktif.
 - Vercel env var sinkron.
 
-# 14. Related Decisions (Planned ADRs)
+# 14. Related Decisions
 
-- ADR: Source-of-truth untuk mutasi transaksi grup (Firestore direct vs backend-mediated).
-- ADR: Permission model Owner/Member untuk operasi grup.
-- ADR: AI reliability policy (confidence gate, fallback, failure mode).
+- **Accepted:** `ADR-0001` Source-of-truth mutasi transaksi grup = backend-mediated untuk scope yang diputuskan.
+- **Current-state gap (harus ditutup sebelum Mode B go-live):** implementasi frontend saat ini masih memiliki jalur write grup Firestore-direct; perlu migrasi bertahap ke backend-mediated sesuai ADR-0001.
+- **Konsistensi mode:** Mode A tidak mengaktifkan group write baru agar tidak bertentangan dengan ADR-0001.
+- Planned next ADRs:
+  - ADR: Permission model Owner/Member untuk operasi grup (detail lanjutan).
+  - ADR: AI reliability policy (confidence gate, fallback, failure mode).
 
 # 15. Open Questions
 
 1. Apakah edit transaksi grup oleh member selalu diizinkan atau dibatasi per role editor?
 2. Apakah OCR/import wajib masuk beta wave-1 atau wave-2?
-3. Endpoint mana saja yang wajib SLA <2 detik (AI endpoint dikecualikan/tidak)?
+3. Apakah cakupan endpoint SLA perlu diperluas di luar daftar NFR §8 untuk fase setelah private beta?

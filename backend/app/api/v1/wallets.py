@@ -1,44 +1,33 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 from typing import Optional
-from app.core.database import get_supabase
+import uuid
+from datetime import datetime, timezone
+
 from app.core.auth import get_current_user
-from app.core.config import settings
-from app.core.schema_compat import has_columns
+from app.core.firebase import get_firestore_client
 
 router = APIRouter()
 
 
-def _client():
-    return get_supabase()
+def _db(uid: str):
+    return get_firestore_client().collection("users").document(uid).collection("wallets")
 
 
-def _wallet_supports(column: str) -> bool:
-    return has_columns("wallets", column)
-
-
-def _tx_supports(column: str) -> bool:
-    return has_columns("transactions", column)
-
-
-def _tx_wallet_column() -> str:
-    return "wallet_id" if _tx_supports("wallet_id") else "payment_method"
-
-
-def _normalize_wallet(row: dict) -> dict:
+def _normalize_wallet(doc_id: str, data: dict) -> dict:
     return {
-        "id": row["id"],
-        "user_id": row["user_id"],
-        "name": row["name"],
-        "type": row.get("type", "bank"),
-        "balance": row.get("balance", 0),
-        "currency": row.get("currency", "IDR"),
-        "bank_name": row.get("bank_name"),
-        "account_number": row.get("account_number"),
-        "is_shared": row.get("is_shared", False),
-        "group_id": row.get("group_id"),
-        "is_active": row.get("is_active", True),
-        "created_at": row.get("created_at"),
+        "id": doc_id,
+        "user_id": data.get("user_id", ""),
+        "name": data.get("name", ""),
+        "type": data.get("type", "bank"),
+        "balance": data.get("balance", 0),
+        "currency": data.get("currency", "IDR"),
+        "bank_name": data.get("bank_name"),
+        "account_number": data.get("account_number"),
+        "is_shared": data.get("is_shared", False),
+        "group_id": data.get("group_id"),
+        "is_active": data.get("is_active", True),
+        "created_at": data.get("created_at"),
     }
 
 
@@ -66,46 +55,35 @@ class WalletUpdate(BaseModel):
 
 @router.get("/")
 async def list_wallets(current_user: dict = Depends(get_current_user)):
-    query = (
-        _client()
-        .table("wallets")
-        .select("*")
-        .eq("user_id", current_user["user_id"])
-        .order("created_at")
-    )
-    if _wallet_supports("is_active"):
-        query = query.eq("is_active", True)
-
-    result = query.execute()
-    return {"data": [_normalize_wallet(row) for row in result.data]}
+    uid = current_user["user_id"]
+    docs = _db(uid).order_by("created_at").stream()
+    wallets = [
+        _normalize_wallet(d.id, d.to_dict())
+        for d in docs
+        if d.to_dict().get("is_active", True)
+    ]
+    return {"data": wallets}
 
 
 @router.post("/", status_code=status.HTTP_201_CREATED)
 async def create_wallet(body: WalletCreate, current_user: dict = Depends(get_current_user)):
+    uid = current_user["user_id"]
+    wallet_id = str(uuid.uuid4())
+    now = datetime.now(timezone.utc).isoformat()
     payload = {
-        "user_id": current_user["user_id"],
+        "user_id": uid,
         "name": body.name,
         "type": body.type,
         "balance": body.balance,
+        "currency": body.currency or "IDR",
+        "bank_name": body.bank_name,
+        "account_number": body.account_number,
+        "is_shared": False,
+        "is_active": True,
+        "created_at": now,
     }
-    if _wallet_supports("currency"):
-        payload["currency"] = body.currency or "IDR"
-    if _wallet_supports("bank_name"):
-        payload["bank_name"] = body.bank_name
-    if _wallet_supports("account_number"):
-        payload["account_number"] = body.account_number
-    if _wallet_supports("is_shared"):
-        payload["is_shared"] = False
-    if _wallet_supports("is_active"):
-        payload["is_active"] = True
-
-    result = (
-        _client()
-        .table("wallets")
-        .insert(payload)
-        .execute()
-    )
-    return {"data": _normalize_wallet(result.data[0])}
+    _db(uid).document(wallet_id).set(payload)
+    return {"data": _normalize_wallet(wallet_id, payload)}
 
 
 @router.patch("/{wallet_id}")
@@ -114,58 +92,32 @@ async def update_wallet(
     body: WalletUpdate,
     current_user: dict = Depends(get_current_user),
 ):
-    existing = (
-        _client()
-        .table("wallets")
-        .select("id")
-        .eq("id", wallet_id)
-        .eq("user_id", current_user["user_id"])
-        .single()
-        .execute()
-    )
-    if not existing.data:
+    uid = current_user["user_id"]
+    ref = _db(uid).document(wallet_id)
+    snap = ref.get()
+    if not snap.exists:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Wallet tidak ditemukan")
 
-    updates = body.model_dump(exclude_none=True)
-    result = (
-        _client()
-        .table("wallets")
-        .update(updates)
-        .eq("id", wallet_id)
-        .execute()
-    )
-    return {"data": _normalize_wallet(result.data[0])}
+    updates = {k: v for k, v in body.model_dump(exclude_none=True).items()}
+    ref.update(updates)
+    data = {**snap.to_dict(), **updates}
+    return {"data": _normalize_wallet(wallet_id, data)}
 
 
 @router.delete("/{wallet_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_wallet(wallet_id: str, current_user: dict = Depends(get_current_user)):
-    existing = (
-        _client()
-        .table("wallets")
-        .select("id")
-        .eq("id", wallet_id)
-        .eq("user_id", current_user["user_id"])
-        .single()
-        .execute()
-    )
-    if not existing.data:
+    uid = current_user["user_id"]
+    ref = _db(uid).document(wallet_id)
+    snap = ref.get()
+    if not snap.exists:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Wallet tidak ditemukan")
 
-    linked_transactions = (
-        _client()
-        .table("transactions")
-        .select("id", count="exact")
-        .eq(_tx_wallet_column(), wallet_id)
-        .limit(1)
-        .execute()
-    )
-    if (linked_transactions.count or 0) > 0:
+    tx_col = get_firestore_client().collection("users").document(uid).collection("transactions")
+    tx_docs = tx_col.where("wallet_id", "==", wallet_id).limit(1).stream()
+    if any(True for _ in tx_docs):
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="Wallet tidak dapat dihapus karena masih memiliki transaksi. Nonaktifkan jika tidak ingin digunakan.",
         )
 
-    if _wallet_supports("is_active"):
-        _client().table("wallets").update({"is_active": False}).eq("id", wallet_id).execute()
-    else:
-        _client().table("wallets").delete().eq("id", wallet_id).execute()
+    ref.update({"is_active": False})
