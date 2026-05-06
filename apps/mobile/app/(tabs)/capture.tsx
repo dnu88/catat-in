@@ -76,6 +76,7 @@ export default function CaptureScreen() {
           <Text style={styles.title}>Capture AI</Text>
           <Text style={styles.subtitle}>Catat transaksi dengan teks, foto, rekam, atau import.</Text>
         </View>
+        <Text style={styles.headerChip}>{selectedMode}</Text>
       </View>
 
       <View style={styles.modeRow}>
@@ -116,9 +117,9 @@ export default function CaptureScreen() {
           </Pressable>
         </View>
       ) : (
-        <View style={styles.sectionCard}>
+        <View style={styles.emptyCard}>
           <Text style={styles.sectionTitle}>Mode {selectedMode}</Text>
-          <Text style={styles.sectionSub}>Flow lengkap mode ini akan disambungkan pada wave berikutnya (UI sudah disiapkan).</Text>
+          <Text style={styles.sectionSub}>Flow lengkap mode ini akan disambungkan pada wave berikutnya.</Text>
         </View>
       )}
 
@@ -146,7 +147,12 @@ export default function CaptureScreen() {
             </>
           ) : null}
         </View>
-      ) : null}
+      ) : (
+        <View style={styles.emptyCard}>
+          <Text style={styles.emptyTitle}>Belum ada proses aktif</Text>
+          <Text style={styles.emptySub}>Kirim input teks untuk mulai parsing transaksi dengan AI.</Text>
+        </View>
+      )}
     </ScrollView>
   )
 }
@@ -162,7 +168,19 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
       gap: 12,
     },
     title: { color: theme.colors.textPrimary, fontSize: 26, fontWeight: '800', letterSpacing: -0.4 },
-    subtitle: { color: theme.colors.textSecondary, fontSize: 13, marginTop: 2 },
+    subtitle: { color: theme.colors.textSecondary, fontSize: 13, marginTop: 2, maxWidth: 260 },
+    headerChip: {
+      backgroundColor: `${theme.colors.brandPrimary}1F`,
+      color: theme.colors.brandPrimary,
+      borderWidth: 1,
+      borderColor: `${theme.colors.brandPrimary}52`,
+      borderRadius: 999,
+      paddingHorizontal: 10,
+      paddingVertical: 5,
+      fontSize: 12,
+      fontWeight: '700',
+      overflow: 'hidden',
+    },
     modeRow: { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
     modeChip: {
       borderRadius: 999,
@@ -180,6 +198,27 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
       borderColor: theme.colors.borderSoft,
       padding: 14,
       gap: 10,
+    },
+    emptyCard: {
+      backgroundColor: theme.colors.surface,
+      borderRadius: 16,
+      borderWidth: 1,
+      borderStyle: 'dashed',
+      borderColor: theme.colors.borderSoft,
+      padding: 14,
+      gap: 8,
+      alignItems: 'center',
+    },
+    emptyTitle: {
+      color: theme.colors.textPrimary,
+      fontSize: 14,
+      fontWeight: '800',
+    },
+    emptySub: {
+      color: theme.colors.textMuted,
+      fontSize: 12,
+      lineHeight: 18,
+      textAlign: 'center',
     },
     sectionTitle: {
       color: theme.colors.textPrimary,

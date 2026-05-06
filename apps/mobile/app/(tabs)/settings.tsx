@@ -1,5 +1,5 @@
 import { router } from 'expo-router'
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 
 import { useSupabase } from '../../src/lib/supabase'
@@ -9,6 +9,8 @@ export default function SettingsScreen() {
   const { supabase } = useSupabase()
   const { theme, preference, setPreference } = useTheme()
   const styles = useMemo(() => createStyles(theme), [theme])
+  const [dailyReminder, setDailyReminder] = useState(true)
+  const [billReminder, setBillReminder] = useState(true)
 
   const onLogout = async () => {
     await supabase.auth.signOut()
@@ -36,11 +38,28 @@ export default function SettingsScreen() {
       </View>
 
       <View style={styles.sectionCard}>
+        <Text style={styles.sectionTitle}>Notifikasi</Text>
+        <Text style={styles.sectionSub}>Pilih pengingat penting agar cashflow tetap terkontrol.</Text>
+
+        <ToggleRow
+          title="Ringkasan harian"
+          helper="Notifikasi cek kondisi pemasukan dan pengeluaran"
+          value={dailyReminder}
+          onToggle={() => setDailyReminder((prev) => !prev)}
+        />
+        <ToggleRow
+          title="Pengingat tagihan"
+          helper="Notifikasi sebelum tanggal jatuh tempo"
+          value={billReminder}
+          onToggle={() => setBillReminder((prev) => !prev)}
+        />
+      </View>
+
+      <View style={styles.sectionCard}>
         <Text style={styles.sectionTitle}>Akun</Text>
-        <Text style={styles.sectionSub}>Kelola keamanan akun dan preferensi notifikasi.</Text>
+        <Text style={styles.sectionSub}>Kelola keamanan akun dan preferensi aplikasi.</Text>
 
         <SettingRow title="Ubah password" helper="Perbarui password akun Supabase" />
-        <SettingRow title="Notifikasi tagihan" helper="Pengingat jatuh tempo otomatis" />
         <SettingRow title="Bahasa" helper="Bahasa Indonesia" />
       </View>
 
@@ -81,6 +100,60 @@ function SettingRow({ title, helper }: { title: string; helper: string }) {
       <Text style={{ color: theme.colors.textPrimary, fontSize: 13, fontWeight: '700' }}>{title}</Text>
       <Text style={{ color: theme.colors.textMuted, fontSize: 11, marginTop: 2 }}>{helper}</Text>
     </View>
+  )
+}
+
+function ToggleRow({
+  title,
+  helper,
+  value,
+  onToggle,
+}: {
+  title: string
+  helper: string
+  value: boolean
+  onToggle: () => void
+}) {
+  const { theme } = useTheme()
+
+  return (
+    <Pressable
+      onPress={onToggle}
+      style={{
+        paddingVertical: 10,
+        borderTopWidth: 1,
+        borderTopColor: theme.colors.borderSoft,
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        gap: 10,
+      }}
+    >
+      <View style={{ flex: 1 }}>
+        <Text style={{ color: theme.colors.textPrimary, fontSize: 13, fontWeight: '700' }}>{title}</Text>
+        <Text style={{ color: theme.colors.textMuted, fontSize: 11, marginTop: 2 }}>{helper}</Text>
+      </View>
+      <View
+        style={{
+          width: 44,
+          height: 24,
+          borderRadius: 999,
+          backgroundColor: value ? theme.colors.brandPrimary : theme.colors.borderStrong,
+          padding: 2,
+          justifyContent: 'center',
+        }}
+      >
+        <View
+          style={{
+            width: 20,
+            height: 20,
+            borderRadius: 10,
+            backgroundColor: theme.colors.textInverse,
+            alignSelf: value ? 'flex-end' : 'flex-start',
+          }}
+        />
+      </View>
+    </Pressable>
   )
 }
 

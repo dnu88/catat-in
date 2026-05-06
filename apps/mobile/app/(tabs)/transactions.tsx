@@ -33,6 +33,17 @@ export default function TransactionsScreen() {
         <Text style={styles.summaryBadge}>{list.length} item</Text>
       </View>
 
+      <View style={styles.statRow}>
+        <View style={styles.statCard}>
+          <Text style={styles.statLabel}>Pemasukan</Text>
+          <Text style={[styles.statValue, { color: theme.colors.success }]}>Rp 11.000.000</Text>
+        </View>
+        <View style={styles.statCard}>
+          <Text style={styles.statLabel}>Pengeluaran</Text>
+          <Text style={[styles.statValue, { color: theme.colors.danger }]}>Rp 570.000</Text>
+        </View>
+      </View>
+
       <View style={styles.filterRow}>
         <FilterChip
           label="Semua"
@@ -51,30 +62,44 @@ export default function TransactionsScreen() {
         />
       </View>
 
-      <View style={styles.listCard}>
-        {list.map((item, index) => (
-          <View
-            key={item.id}
-            style={[
-              styles.row,
-              index < list.length - 1 ? { borderBottomWidth: 1, borderBottomColor: theme.colors.borderSoft } : null,
-            ]}
-          >
-            <View style={styles.rowIcon}>
-              <Text style={styles.rowIconText}>{item.type === 'income' ? '↗' : '↘'}</Text>
-            </View>
-            <View style={styles.rowInfo}>
-              <Text style={styles.rowTitle}>{item.title}</Text>
-              <Text style={styles.rowSub}>
-                {item.category} • {item.date}
+      {list.length === 0 ? (
+        <View style={styles.emptyCard}>
+          <Text style={styles.emptyTitle}>Belum ada transaksi</Text>
+          <Text style={styles.emptySub}>Coba ubah filter atau tambahkan transaksi baru dari tab Capture.</Text>
+        </View>
+      ) : (
+        <View style={styles.listCard}>
+          {list.map((item, index) => (
+            <View
+              key={item.id}
+              style={[
+                styles.row,
+                index < list.length - 1
+                  ? { borderBottomWidth: 1, borderBottomColor: theme.colors.borderSoft }
+                  : null,
+              ]}
+            >
+              <View style={styles.rowIcon}>
+                <Text style={styles.rowIconText}>{item.type === 'income' ? '↗' : '↘'}</Text>
+              </View>
+              <View style={styles.rowInfo}>
+                <Text style={styles.rowTitle}>{item.title}</Text>
+                <Text style={styles.rowSub}>
+                  {item.category} • {item.date}
+                </Text>
+              </View>
+              <Text
+                style={[
+                  styles.rowAmount,
+                  item.type === 'income' ? { color: theme.colors.success } : { color: theme.colors.danger },
+                ]}
+              >
+                {item.amount}
               </Text>
             </View>
-            <Text style={[styles.rowAmount, item.type === 'income' ? { color: theme.colors.success } : { color: theme.colors.danger }]}>
-              {item.amount}
-            </Text>
-          </View>
-        ))}
-      </View>
+          ))}
+        </View>
+      )}
     </ScrollView>
   )
 }
@@ -131,6 +156,18 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
       fontWeight: '700',
       overflow: 'hidden',
     },
+    statRow: { flexDirection: 'row', gap: 10 },
+    statCard: {
+      flex: 1,
+      backgroundColor: theme.colors.surface,
+      borderRadius: 14,
+      borderWidth: 1,
+      borderColor: theme.colors.borderSoft,
+      padding: 12,
+      gap: 3,
+    },
+    statLabel: { color: theme.colors.textSecondary, fontSize: 12, fontWeight: '600' },
+    statValue: { fontSize: 15, fontWeight: '800' },
     filterRow: { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
     listCard: {
       backgroundColor: theme.colors.surface,
@@ -139,6 +176,18 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
       borderColor: theme.colors.borderSoft,
       paddingHorizontal: 12,
     },
+    emptyCard: {
+      backgroundColor: theme.colors.surface,
+      borderRadius: 16,
+      borderWidth: 1,
+      borderColor: theme.colors.borderSoft,
+      borderStyle: 'dashed',
+      padding: 16,
+      alignItems: 'center',
+      gap: 6,
+    },
+    emptyTitle: { color: theme.colors.textPrimary, fontSize: 14, fontWeight: '800' },
+    emptySub: { color: theme.colors.textMuted, fontSize: 12, textAlign: 'center', lineHeight: 18 },
     row: {
       flexDirection: 'row',
       alignItems: 'center',
