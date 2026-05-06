@@ -19,6 +19,8 @@ import { useAuthStore } from "@store/auth.store";
 import "./index.css";
 
 import AppLayout from "@components/AppLayout";
+import { applyWebTheme, resolveThemeMode } from "@theme/web-theme";
+
 
 const LoginPage = lazy(() => import("@pages/LoginPage"));
 const RegisterPage = lazy(() => import("@pages/RegisterPage"));
@@ -37,6 +39,19 @@ const ImportsPage = lazy(() => import("@pages/ImportsPage"));
 const ActivityPage = lazy(() => import("@pages/ActivityPage"));
 const SavedViewsPage = lazy(() => import("@pages/SavedViewsPage"));
 const SavingsGoalsPage = lazy(() => import("@pages/SavingsGoalsPage"));
+
+function bootstrapTheme() {
+	try {
+		const raw = localStorage.getItem("kaswise-web-theme");
+		const parsed = raw ? JSON.parse(raw) : null;
+		const preference = parsed?.state?.preference || "system";
+		applyWebTheme(resolveThemeMode(preference));
+	} catch {
+		applyWebTheme(resolveThemeMode("system"));
+	}
+}
+
+bootstrapTheme();
 
 // Satu sumber kebenaran auth: apakah Firebase sudah selesai cek sesi awal.
 let authResolved = false;
@@ -212,7 +227,7 @@ function FullscreenMessage({
 						marginBottom: "8px",
 					}}
 				>
-					CATAT-IN
+					KASWISE
 				</div>
 				<h1
 					style={{

@@ -3,6 +3,7 @@ import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { useAuthStore } from "@store/auth.store";
 import { useI18nStore } from "@store/i18n.store";
 import { isBackendConfigured } from "@lib/api";
+import ThemeToggle from "@components/theme/ThemeToggle";
 
 type NavSectionItem = {
 	section: string;
@@ -142,8 +143,8 @@ export default function AppLayout() {
 				<div className="sidebar-logo">
 					<div className="sidebar-logo-mark">💰</div>
 					<div>
-						<div className="sidebar-logo-text">Catat.in</div>
-						<div className="sidebar-logo-sub">Keuangan Pribadi</div>
+						<div className="sidebar-logo-text">kaswise</div>
+						<div className="sidebar-logo-sub">Catat Keuangan, Bijak Setiap Hari</div>
 					</div>
 				</div>
 
@@ -239,6 +240,7 @@ export default function AppLayout() {
 						</div>
 					</div>
 					<div className="topbar-actions">
+						<ThemeToggle />
 						<button className="btn btn-secondary">
 							🔔 {language === "id" ? "Notifikasi" : "Notifications"}
 						</button>

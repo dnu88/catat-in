@@ -1,4 +1,23 @@
 import { StyleSheet } from 'react-native'
+import type { MobileTheme } from '../theme/mobile-theme'
+
+export function createMobileStyles(theme: MobileTheme) {
+  return StyleSheet.create({
+    safeArea: { flex: 1, backgroundColor: theme.colors.background },
+    container: { flex: 1, backgroundColor: theme.colors.background, padding: 16 },
+    sectionCard: {
+      backgroundColor: theme.colors.card,
+      borderWidth: 1,
+      borderColor: theme.colors.borderSoft,
+      borderRadius: 16,
+      padding: 14,
+      gap: 10,
+    },
+    sectionTitle: { color: theme.colors.textPrimary, fontSize: 16, fontWeight: '700' },
+    sectionSub: { color: theme.colors.textSecondary, fontSize: 12 },
+    borderTop: { borderTopWidth: 1, borderTopColor: theme.colors.borderSoft },
+  })
+}
 
 export const colors = {
   background: '#F0F4FF',

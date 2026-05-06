@@ -24,7 +24,9 @@
       "@store/*": ["src/store/*"],
       "@hooks/*": ["src/hooks/*"],
       "@lib/*": ["src/lib/*"],
-      "@catat-in/shared/types": ["../../packages/shared/types/index.ts"]
+      "@theme/*": ["src/theme/*"],
+      "@kaswise/shared/types": ["../../packages/shared/types/index.ts"],
+      "@kaswise/shared/theme": ["../../packages/shared/theme/index.ts"]
     }
   },
   "include": ["src"],

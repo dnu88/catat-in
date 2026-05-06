@@ -5,67 +5,40 @@
 /* ── DESIGN SYSTEM — Catat.in ──────────────────────────────── */
 
 :root {
-  /* Surfaces */
-  --bg-base: #F0F4FF;
-  --bg-card: #ffffff;
-  --bg-card2: #F7F9FF;
-  --bg-sidebar: #ffffff;
+  --bg-base: var(--ks-bg-base);
+  --bg-card: var(--ks-bg-surface);
+  --bg-card2: var(--ks-bg-card);
+  --bg-sidebar: var(--ks-bg-surface);
 
-  /* Borders */
-  --border: rgba(99, 120, 220, 0.13);
-  --border-strong: rgba(99, 120, 220, 0.22);
+  --border: var(--ks-border-soft);
+  --border-strong: var(--ks-border-strong);
 
-  /* Text */
-  --text-primary: #0F1523;
-  --text-secondary: #5A6480;
-  --text-muted: #9BA3BB;
+  --text-primary: var(--ks-text-primary);
+  --text-secondary: var(--ks-text-secondary);
+  --text-muted: var(--ks-text-muted);
 
-  /* Accent */
-  --accent: #2563EB;
-  --accent-light: #EEF3FF;
-  --accent-glow: rgba(37, 99, 235, 0.15);
+  --accent: var(--ks-brand-primary);
+  --accent-light: color-mix(in srgb, var(--ks-brand-primary) 12%, transparent);
+  --accent-glow: color-mix(in srgb, var(--ks-brand-primary) 22%, transparent);
 
-  /* Semantic */
-  --green: #10B981;
-  --red: #EF4444;
-  --amber: #F59E0B;
+  --green: var(--ks-status-success);
+  --red: var(--ks-status-danger);
+  --amber: var(--ks-status-warning);
 
-  /* Gradients */
-  --g-card: linear-gradient(135deg, #1E40AF, #2563EB 50%, #3B82F6);
-  --g-income: linear-gradient(135deg, #0EA5E9, #2563EB);
-  --g-expense: linear-gradient(135deg, #6366F1, #8B5CF6);
-  --g-savings: linear-gradient(135deg, #10B981, #059669);
-  --g-warning: linear-gradient(135deg, #F59E0B, #EF4444);
+  --g-card: linear-gradient(135deg, color-mix(in srgb, var(--ks-brand-primary) 72%, #030712), var(--ks-brand-primary) 58%, color-mix(in srgb, var(--ks-brand-primary) 60%, #38BDF8));
+  --g-income: linear-gradient(135deg, var(--ks-status-success), color-mix(in srgb, var(--ks-status-success) 58%, #38BDF8));
+  --g-expense: linear-gradient(135deg, var(--ks-status-danger), color-mix(in srgb, var(--ks-status-danger) 45%, #f97316));
+  --g-savings: linear-gradient(135deg, var(--ks-status-success), var(--ks-brand-accent));
+  --g-warning: linear-gradient(135deg, var(--ks-status-warning), var(--ks-status-danger));
 
-  /* Shadows */
-  --shadow: 0 1px 3px rgba(15, 21, 35, 0.06), 0 4px 16px rgba(37, 99, 235, 0.06);
-  --shadow-accent: 0 4px 20px rgba(37, 99, 235, 0.28);
+  --shadow: 0 1px 3px rgba(15, 21, 35, 0.06), 0 4px 16px rgba(15, 21, 35, 0.08);
+  --shadow-accent: 0 4px 20px color-mix(in srgb, var(--ks-brand-primary) 36%, transparent);
 
-  /* Radius */
-  --r: 12px;
-  --r-sm: 8px;
-  --r-pill: 999px;
+  --r: var(--ks-radius-md);
+  --r-sm: var(--ks-radius-sm);
+  --r-pill: var(--ks-radius-pill);
 
-  /* Sidebar */
   --sidebar-width: 240px;
-}
-
-/* ── DARK MODE ──────────────────────────────────────────────── */
-.dark {
-  --bg-base: #0B0F1E;
-  --bg-card: #131929;
-  --bg-card2: #1A2035;
-  --bg-sidebar: #0F1525;
-  --border: rgba(99, 140, 255, 0.12);
-  --border-strong: rgba(99, 140, 255, 0.22);
-  --text-primary: #E8EEFF;
-  --text-secondary: #7B8DB0;
-  --text-muted: #4A5675;
-  --accent: #3B7BF8;
-  --accent-light: rgba(59, 123, 248, 0.12);
-  --accent-glow: rgba(59, 123, 248, 0.2);
-  --shadow: 0 1px 3px rgba(0, 0, 0, 0.3), 0 4px 20px rgba(0, 0, 0, 0.2);
-  --shadow-accent: 0 4px 20px rgba(59, 123, 248, 0.35);
 }
 
 /* ── BASE STYLES ────────────────────────────────────────────── */

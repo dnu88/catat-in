@@ -9,8 +9,18 @@
     "allowSyntheticDefaultImports": true,
     "baseUrl": ".",
     "paths": {
-      "@catat-in/shared/types": ["../../packages/shared/types/index.ts"]
+      "@kaswise/shared/types": [
+        "../../packages/shared/types/index.ts"
+      ],
+      "@kaswise/shared/theme": [
+        "../../packages/shared/theme/index.ts"
+      ]
     }
   },
-  "include": ["App.tsx", "src/**/*.ts", "src/**/*.tsx"]
+  "include": [
+    "App.tsx",
+    "src/**/*.ts",
+    "src/**/*.tsx"
+  ],
+  "extends": "expo/tsconfig.base"
 }

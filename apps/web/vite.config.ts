@@ -13,7 +13,9 @@ export default defineConfig({
       '@store': resolve(__dirname, './src/store'),
       '@hooks': resolve(__dirname, './src/hooks'),
       '@lib': resolve(__dirname, './src/lib'),
-      '@catat-in/shared/types': resolve(__dirname, '../../packages/shared/types/index.ts'),
+      '@theme': resolve(__dirname, './src/theme'),
+      '@kaswise/shared/types': resolve(__dirname, '../../packages/shared/types/index.ts'),
+      '@kaswise/shared/theme': resolve(__dirname, '../../packages/shared/theme/index.ts'),
     },
   },
   server: {

@@ -1,9 +1,10 @@
 {
-  "name": "@catat-in/shared",
+  "name": "@kaswise/shared",
   "version": "0.1.0",
   "private": true,
   "exports": {
-    "./types": "./types/index.ts"
+    "./types": "./types/index.ts",
+    "./theme": "./theme/index.ts"
   },
   "main": "./types/index.ts"
 }
