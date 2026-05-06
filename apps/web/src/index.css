@@ -24,6 +24,7 @@
   --green: var(--ks-status-success);
   --red: var(--ks-status-danger);
   --amber: var(--ks-status-warning);
+  --info: var(--ks-status-info);
 
   --g-card: linear-gradient(135deg, color-mix(in srgb, var(--ks-brand-primary) 72%, #030712), var(--ks-brand-primary) 58%, color-mix(in srgb, var(--ks-brand-primary) 60%, #38BDF8));
   --g-income: linear-gradient(135deg, var(--ks-status-success), color-mix(in srgb, var(--ks-status-success) 58%, #38BDF8));

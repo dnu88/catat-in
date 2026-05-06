@@ -31,12 +31,12 @@ const CATEGORY_LABEL: Record<string, string> = {
 };
 
 const CATEGORY_COLORS = [
-	"#2563EB",
-	"#0EA5E9",
-	"#10B981",
-	"#F59E0B",
-	"#EF4444",
-	"#8B5CF6",
+	"var(--accent)",
+	"var(--info)",
+	"var(--green)",
+	"var(--amber)",
+	"var(--red)",
+	"color-mix(in srgb, var(--accent) 62%, var(--info))",
 ];
 
 interface SummaryResponse {
@@ -380,11 +380,11 @@ export default function ReportsPage() {
 											/>
 											<XAxis
 												dataKey="label"
-												tick={{ fontSize: 12, fill: "#64748B" }}
+												tick={{ fontSize: 12, fill: "var(--text-muted)" }}
 											/>
 											<YAxis
 												tickFormatter={shortCurrency}
-												tick={{ fontSize: 12, fill: "#64748B" }}
+												tick={{ fontSize: 12, fill: "var(--text-muted)" }}
 											/>
 											<Tooltip
 												formatter={(value: number) =>
@@ -394,21 +394,21 @@ export default function ReportsPage() {
 											<Line
 												type="monotone"
 												dataKey="income"
-												stroke="#10B981"
+												stroke="var(--green)"
 												strokeWidth={3}
 												dot={{ r: 4 }}
 											/>
 											<Line
 												type="monotone"
 												dataKey="expense"
-												stroke="#EF4444"
+												stroke="var(--red)"
 												strokeWidth={3}
 												dot={{ r: 4 }}
 											/>
 											<Line
 												type="monotone"
 												dataKey="net"
-												stroke="#2563EB"
+												stroke="var(--accent)"
 												strokeWidth={2}
 												strokeDasharray="6 4"
 												dot={{ r: 3 }}
@@ -497,11 +497,11 @@ export default function ReportsPage() {
 												/>
 												<XAxis
 													dataKey="label"
-													tick={{ fontSize: 12, fill: "#64748B" }}
+													tick={{ fontSize: 12, fill: "var(--text-muted)" }}
 												/>
 												<YAxis
 													tickFormatter={shortCurrency}
-													tick={{ fontSize: 12, fill: "#64748B" }}
+													tick={{ fontSize: 12, fill: "var(--text-muted)" }}
 												/>
 												<Tooltip
 													formatter={(value: number) =>

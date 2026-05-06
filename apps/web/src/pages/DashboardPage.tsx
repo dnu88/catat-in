@@ -813,7 +813,8 @@ export default function DashboardPage() {
 					{user?.plan_type !== "premium" && (
 						<div
 							style={{
-								background: "linear-gradient(135deg, #1E1B4B, #312E81)",
+								background:
+									"linear-gradient(135deg, color-mix(in srgb, var(--accent) 30%, var(--bg-base)), color-mix(in srgb, var(--accent) 72%, var(--bg-card2)))",
 								borderRadius: "var(--r)",
 								padding: "18px",
 								color: "#fff",
@@ -831,7 +832,7 @@ export default function DashboardPage() {
 							<p
 								style={{
 									fontSize: "12px",
-									color: "#A5B4FC",
+									color: "color-mix(in srgb, #fff 70%, var(--accent))",
 									marginBottom: "14px",
 									lineHeight: 1.6,
 								}}
@@ -842,7 +843,7 @@ export default function DashboardPage() {
 							<button
 								className="btn"
 								style={{
-									background: "#818CF8",
+									background: "color-mix(in srgb, var(--accent) 82%, #fff)",
 									color: "#fff",
 									width: "100%",
 									padding: "10px",

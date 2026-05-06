@@ -143,9 +143,10 @@ function TxModal({
 								flex: 1,
 								...(type === "expense"
 									? {
-											background: "linear-gradient(135deg, #EF4444, #DC2626)",
+											background:
+												"linear-gradient(135deg, var(--red), color-mix(in srgb, var(--red) 72%, var(--bg-base)))",
 											color: "#fff",
-											boxShadow: "0 4px 12px rgba(239,68,68,0.3)",
+											boxShadow: "0 4px 12px color-mix(in srgb, var(--red) 34%, transparent)",
 										}
 									: {}),
 							}}
@@ -160,9 +161,10 @@ function TxModal({
 								flex: 1,
 								...(type === "income"
 									? {
-											background: "linear-gradient(135deg, #10B981, #059669)",
+											background:
+												"linear-gradient(135deg, var(--green), color-mix(in srgb, var(--green) 68%, var(--bg-base)))",
 											color: "#fff",
-											boxShadow: "0 4px 12px rgba(16,185,129,0.3)",
+											boxShadow: "0 4px 12px color-mix(in srgb, var(--green) 34%, transparent)",
 										}
 									: {}),
 							}}
