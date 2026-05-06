@@ -208,13 +208,13 @@ function FullscreenMessage({
 							display: "flex",
 							alignItems: "center",
 							justifyContent: "center",
-							fontSize: "34px",
+							fontSize: "30px",
 							animation: loading
 								? "loaderPulse 1.2s ease-in-out infinite"
 								: undefined,
 						}}
 					>
-						💰
+						K
 					</div>
 				</div>
 				<div

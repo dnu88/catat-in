@@ -68,8 +68,8 @@ export default function ResetPasswordPage() {
 				</h1>
 				<p className="simple-auth-subtitle">
 					{language === "id"
-						? "Masukkan password baru untuk akun Catat.in kamu."
-						: "Enter a new password for your Catat.in account."}
+						? "Masukkan password baru untuk akun kaswise kamu."
+						: "Enter a new password for your kaswise account."}
 				</p>
 
 				{!hasRecoverySession ? (

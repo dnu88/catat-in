@@ -83,7 +83,7 @@ export default function RegisterPage() {
         <div className="login-brand-circle login-brand-circle-2" />
         <div className="login-brand-content">
           <div className="login-logo-mark">💰</div>
-          <h1 className="login-logo-name">Catat.in</h1>
+          <h1 className="login-logo-name">kaswise</h1>
           <p className="login-tagline">
             Mulai kelola keuanganmu<br />dengan cara yang lebih cerdas.
           </p>

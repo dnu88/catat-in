@@ -141,7 +141,7 @@ export default function AppLayout() {
 
 			<aside className={`sidebar ${sidebarOpen ? "open" : ""}`}>
 				<div className="sidebar-logo">
-					<div className="sidebar-logo-mark">💰</div>
+					<div className="sidebar-logo-mark">K</div>
 					<div>
 						<div className="sidebar-logo-text">kaswise</div>
 						<div className="sidebar-logo-sub">Catat Keuangan, Bijak Setiap Hari</div>

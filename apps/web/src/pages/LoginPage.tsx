@@ -50,11 +50,11 @@ export default function LoginPage() {
         <div className="login-brand-circle login-brand-circle-2" />
         <div className="login-brand-content">
           <div className="login-logo-mark">💰</div>
-          <h1 className="login-logo-name">Catat.in</h1>
+          <h1 className="login-logo-name">kaswise</h1>
           <p className="login-tagline">
-            Catat keuanganmu dengan
+            Catat Keuangan,
             <br />
-            mudah, cerdas, menyenangkan.
+            Bijak Setiap Hari.
           </p>
           <div className="login-features">
             <div className="login-feature">🤖 Input via AI Chat</div>

@@ -19,7 +19,7 @@ export default function SettingsPage() {
           Pengaturan
         </h2>
         <p style={{ fontSize: '13px', color: 'var(--text-muted)' }}>
-          Halaman ini menyiapkan fondasi preferensi akun dan aplikasi CATAT-IN.
+          Halaman ini menyiapkan fondasi preferensi akun dan aplikasi kaswise.
         </p>
       </div>
 
