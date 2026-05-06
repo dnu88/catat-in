@@ -54,10 +54,10 @@ export default function DashboardScreen() {
             </View>
           </View>
           <View style={styles.legendCol}>
-            <LegendDot color="#10B981" label="Makanan" />
-            <LegendDot color="#F59E0B" label="Belanja" />
-            <LegendDot color="#EF4444" label="Tagihan" />
-            <LegendDot color="#3B82F6" label="Transport" />
+            <LegendDot color={theme.colors.success} textColor={theme.colors.textMuted} label="Makanan" />
+            <LegendDot color={theme.colors.warning} textColor={theme.colors.textMuted} label="Belanja" />
+            <LegendDot color={theme.colors.danger} textColor={theme.colors.textMuted} label="Tagihan" />
+            <LegendDot color={theme.colors.info} textColor={theme.colors.textMuted} label="Transport" />
           </View>
         </View>
       </View>
@@ -92,11 +92,11 @@ export default function DashboardScreen() {
   )
 }
 
-function LegendDot({ color, label }: { color: string; label: string }) {
+function LegendDot({ color, textColor, label }: { color: string; textColor: string; label: string }) {
   return (
     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
       <View style={{ width: 8, height: 8, borderRadius: 999, backgroundColor: color }} />
-      <Text style={{ fontSize: 12, color: '#94A3B8' }}>{label}</Text>
+      <Text style={{ fontSize: 12, color: textColor }}>{label}</Text>
     </View>
   )
 }
@@ -221,7 +221,7 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
       height: 120,
       borderRadius: 60,
       borderWidth: 14,
-      borderColor: '#4F46E5',
+      borderColor: theme.colors.brandPrimary,
       alignItems: 'center',
       justifyContent: 'center',
     },

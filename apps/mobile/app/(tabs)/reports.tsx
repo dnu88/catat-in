@@ -3,16 +3,16 @@ import { ScrollView, StyleSheet, Text, View } from 'react-native'
 
 import { useTheme } from '../../src/theme/theme-context'
 
-const categories = [
-  { label: 'Makanan & Minuman', percent: 32, amount: 'Rp 2.050.000', color: '#10B981' },
-  { label: 'Transportasi', percent: 22, amount: 'Rp 1.408.000', color: '#3B82F6' },
-  { label: 'Belanja', percent: 18, amount: 'Rp 1.152.000', color: '#F59E0B' },
-  { label: 'Tagihan', percent: 15, amount: 'Rp 960.000', color: '#EF4444' },
-]
 
 export default function ReportsScreen() {
   const { theme } = useTheme()
   const styles = useMemo(() => createStyles(theme), [theme])
+  const categories = [
+    { label: 'Makanan & Minuman', percent: 32, amount: 'Rp 2.050.000', color: theme.colors.success },
+    { label: 'Transportasi', percent: 22, amount: 'Rp 1.408.000', color: theme.colors.info },
+    { label: 'Belanja', percent: 18, amount: 'Rp 1.152.000', color: theme.colors.warning },
+    { label: 'Tagihan', percent: 15, amount: 'Rp 960.000', color: theme.colors.danger },
+  ]
 
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
@@ -35,10 +35,10 @@ export default function ReportsScreen() {
 
         <View style={styles.chartMock}>
           {[40, 58, 52, 66, 70, 76].map((height, idx) => (
-            <View key={`income-${idx}`} style={[styles.chartBar, { height, backgroundColor: '#10B981' }]} />
+            <View key={`income-${idx}`} style={[styles.chartBar, { height, backgroundColor: theme.colors.success }]} />
           ))}
           {[20, 24, 28, 36, 30, 34].map((height, idx) => (
-            <View key={`expense-${idx}`} style={[styles.chartBar, { height, backgroundColor: '#EF4444' }]} />
+            <View key={`expense-${idx}`} style={[styles.chartBar, { height, backgroundColor: theme.colors.danger }]} />
           ))}
         </View>
       </View>

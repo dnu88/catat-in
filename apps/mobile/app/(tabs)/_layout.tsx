@@ -1,5 +1,6 @@
 import { Redirect, Tabs } from 'expo-router'
 import { useEffect, useState } from 'react'
+import { ActivityIndicator, StyleSheet, Text, View } from 'react-native'
 
 import { useSupabase } from '../../src/lib/supabase'
 import { useTheme } from '../../src/theme/theme-context'
@@ -26,7 +27,11 @@ export default function TabsLayout() {
   }, [supabase.auth])
 
   if (loading) {
-    return null
+    return (
+      <View style={[styles.loadingWrap, { backgroundColor: theme.colors.background }]}> 
+        <ActivityIndicator color={theme.colors.brandPrimary} />
+      </View>
+    )
   }
 
   if (!session) {
@@ -40,9 +45,17 @@ export default function TabsLayout() {
         tabBarStyle: {
           backgroundColor: theme.colors.surface,
           borderTopColor: theme.colors.borderSoft,
+          borderTopWidth: 1,
+          height: 64,
+          paddingBottom: 8,
+          paddingTop: 6,
         },
         tabBarActiveTintColor: theme.colors.brandPrimary,
         tabBarInactiveTintColor: theme.colors.textMuted,
+        tabBarLabelStyle: {
+          fontSize: 11,
+          fontWeight: '700',
+        },
         headerStyle: {
           backgroundColor: theme.colors.surface,
         },
@@ -54,32 +67,45 @@ export default function TabsLayout() {
         options={{
           title: 'Dashboard',
           headerTitle: 'Kaswise',
+          tabBarIcon: ({ color }) => <Text style={{ color, fontSize: 15 }}>🏠</Text>,
         }}
       />
       <Tabs.Screen
         name="transactions"
         options={{
           title: 'Transaksi',
+          tabBarIcon: ({ color }) => <Text style={{ color, fontSize: 15 }}>📋</Text>,
         }}
       />
       <Tabs.Screen
         name="capture"
         options={{
           title: 'Catat',
+          tabBarIcon: ({ color }) => <Text style={{ color, fontSize: 16 }}>✦</Text>,
         }}
       />
       <Tabs.Screen
         name="reports"
         options={{
           title: 'Laporan',
+          tabBarIcon: ({ color }) => <Text style={{ color, fontSize: 15 }}>📊</Text>,
         }}
       />
       <Tabs.Screen
         name="settings"
         options={{
           title: 'Pengaturan',
+          tabBarIcon: ({ color }) => <Text style={{ color, fontSize: 15 }}>⚙</Text>,
         }}
       />
     </Tabs>
   )
 }
+
+const styles = StyleSheet.create({
+  loadingWrap: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+})
