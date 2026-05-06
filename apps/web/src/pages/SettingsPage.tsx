@@ -1,45 +1,43 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useAuthStore } from '@store/auth.store'
 import { useI18nStore } from '@store/i18n.store'
+import { useThemeStore } from '@store/theme.store'
 
 type ThemeMode = 'system' | 'light' | 'dark'
 
 export default function SettingsPage() {
   const { user } = useAuthStore()
-  const [theme, setTheme] = useState<ThemeMode>('system')
   const { language, setLanguage } = useI18nStore()
+  const { preference, setPreference, currentMode } = useThemeStore()
+
   const [currency, setCurrency] = useState('IDR')
   const [dailyReminder, setDailyReminder] = useState(true)
   const [billReminder, setBillReminder] = useState(true)
 
+  const activeThemeLabel = useMemo(() => {
+    if (preference === 'system') {
+      return `Sistem (${currentMode === 'dark' ? 'Dark' : 'Light'})`
+    }
+    return preference === 'dark' ? 'Dark' : 'Light'
+  }, [currentMode, preference])
+
   return (
-    <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-      <div>
-        <h2 style={{ fontSize: '20px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '4px' }}>
-          Pengaturan
-        </h2>
-        <p style={{ fontSize: '13px', color: 'var(--text-muted)' }}>
-          Halaman ini menyiapkan fondasi preferensi akun dan aplikasi kaswise.
-        </p>
+    <div className="animate-fade-in page-shell">
+      <div className="page-header">
+        <div>
+          <h2 className="page-title">Pengaturan</h2>
+          <p className="page-subtitle">Atur akun, preferensi aplikasi, tema, dan notifikasi sesuai kebutuhanmu.</p>
+        </div>
+        <span className="badge badge-info">Tema aktif: {activeThemeLabel}</span>
       </div>
 
-      <section className="card" style={{ padding: '18px' }}>
-        <div style={{ marginBottom: '14px' }}>
-          <h3 style={{ fontSize: '16px', fontWeight: 700, color: 'var(--text-primary)' }}>
-            Profil akun
-          </h3>
-          <p style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
-            Data dasar yang sekarang diambil dari akun Firebase.
-          </p>
+      <section className="card page-section-card">
+        <div className="section-head">
+          <h3 className="section-title">Profil akun</h3>
+          <p className="section-subtitle">Data dasar dari akun autentikasi.</p>
         </div>
 
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-            gap: '12px',
-          }}
-        >
+        <div className="settings-grid">
           <InfoField label="Nama lengkap" value={user?.full_name || 'Belum tersedia'} />
           <InfoField label="Email" value={user?.email || 'Belum tersedia'} />
           <InfoField label="Plan" value={user?.plan_type === 'premium' ? 'Premium' : 'Free'} />
@@ -47,27 +45,22 @@ export default function SettingsPage() {
         </div>
       </section>
 
-      <section className="card" style={{ padding: '18px' }}>
-        <div style={{ marginBottom: '14px' }}>
-          <h3 style={{ fontSize: '16px', fontWeight: 700, color: 'var(--text-primary)' }}>
-            Preferensi aplikasi
-          </h3>
-          <p style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
-            Saat ini masih lokal di UI, tapi strukturnya siap dihubungkan ke backend nanti.
-          </p>
+      <section className="card page-section-card">
+        <div className="section-head">
+          <h3 className="section-title">Preferensi aplikasi</h3>
+          <p className="section-subtitle">Perubahan tema dan bahasa aktif secara real-time pada aplikasi web.</p>
         </div>
 
-        <div style={{ display: 'grid', gap: '14px' }}>
+        <div className="settings-stack">
           <div>
             <label className="form-label">Tema tampilan</label>
-            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+            <div className="chip-row">
               {(['system', 'light', 'dark'] as ThemeMode[]).map((mode) => (
                 <button
                   key={mode}
                   type="button"
-                  className={`badge ${theme === mode ? 'badge-ok' : 'badge-info'}`}
-                  style={{ cursor: 'pointer', border: 'none', padding: '8px 14px' }}
-                  onClick={() => setTheme(mode)}
+                  className={`chip-toggle ${preference === mode ? 'active' : ''}`}
+                  onClick={() => setPreference(mode)}
                 >
                   {mode === 'system' ? 'Ikuti sistem' : mode === 'light' ? 'Terang' : 'Gelap'}
                 </button>
@@ -77,11 +70,19 @@ export default function SettingsPage() {
 
           <div>
             <label className="form-label">Bahasa / Language</label>
-            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-              <button type="button" className={`badge ${language === 'id' ? 'badge-ok' : 'badge-info'}`} style={{ cursor: 'pointer', border: 'none', padding: '8px 14px' }} onClick={() => setLanguage('id')}>
+            <div className="chip-row">
+              <button
+                type="button"
+                className={`chip-toggle ${language === 'id' ? 'active' : ''}`}
+                onClick={() => setLanguage('id')}
+              >
                 Indonesia
               </button>
-              <button type="button" className={`badge ${language === 'en' ? 'badge-ok' : 'badge-info'}`} style={{ cursor: 'pointer', border: 'none', padding: '8px 14px' }} onClick={() => setLanguage('en')}>
+              <button
+                type="button"
+                className={`chip-toggle ${language === 'en' ? 'active' : ''}`}
+                onClick={() => setLanguage('en')}
+              >
                 English
               </button>
             </div>
@@ -89,11 +90,7 @@ export default function SettingsPage() {
 
           <div>
             <label className="form-label">Mata uang utama</label>
-            <select
-              className="form-input"
-              value={currency}
-              onChange={(event) => setCurrency(event.target.value)}
-            >
+            <select className="form-input" value={currency} onChange={(event) => setCurrency(event.target.value)}>
               <option value="IDR">Rupiah Indonesia (IDR)</option>
               <option value="USD">US Dollar (USD)</option>
               <option value="SGD">Singapore Dollar (SGD)</option>
@@ -102,17 +99,13 @@ export default function SettingsPage() {
         </div>
       </section>
 
-      <section className="card" style={{ padding: '18px' }}>
-        <div style={{ marginBottom: '14px' }}>
-          <h3 style={{ fontSize: '16px', fontWeight: 700, color: 'var(--text-primary)' }}>
-            Notifikasi
-          </h3>
-          <p style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
-            Cocok jadi sambungan berikutnya ke push notification dan reminder backend.
-          </p>
+      <section className="card page-section-card">
+        <div className="section-head">
+          <h3 className="section-title">Notifikasi</h3>
+          <p className="section-subtitle">Pilih pengingat yang kamu butuhkan agar cashflow tetap terkendali.</p>
         </div>
 
-        <div style={{ display: 'grid', gap: '10px' }}>
+        <div className="settings-stack">
           <ToggleRow
             title="Ringkasan harian"
             description="Kirim pengingat singkat untuk cek pemasukan dan pengeluaran harian."
@@ -128,19 +121,10 @@ export default function SettingsPage() {
         </div>
       </section>
 
-      <section
-        style={{
-          borderRadius: '16px',
-          padding: '18px',
-          background: 'linear-gradient(135deg, #0F766E, #0EA5A4)',
-          color: '#fff',
-        }}
-      >
-        <h3 style={{ fontSize: '16px', fontWeight: 700, marginBottom: '8px' }}>
-          Langkah lanjutan yang cocok
-        </h3>
-        <p style={{ fontSize: '13px', lineHeight: 1.7, color: 'rgba(255,255,255,0.86)' }}>
-          Dari halaman ini kita bisa lanjut ke simpan preferensi ke Firestore, ganti tema real-time, atau sambungkan notifikasi ke FCM.
+      <section className="settings-highlight">
+        <h3>Langkah lanjutan</h3>
+        <p>
+          Struktur UI ini siap disambungkan ke penyimpanan preferensi user di backend agar sinkron antar perangkat.
         </p>
       </section>
     </div>
@@ -149,18 +133,9 @@ export default function SettingsPage() {
 
 function InfoField({ label, value }: { label: string; value: string }) {
   return (
-    <div
-      style={{
-        border: '1px solid var(--border)',
-        borderRadius: '12px',
-        padding: '14px',
-        background: 'var(--bg-card2)',
-      }}
-    >
-      <p style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: '6px' }}>{label}</p>
-      <p style={{ fontSize: '13px', color: 'var(--text-primary)', fontWeight: 600, wordBreak: 'break-word' }}>
-        {value}
-      </p>
+    <div className="settings-info-item">
+      <p className="settings-info-label">{label}</p>
+      <p className="settings-info-value">{value}</p>
     </div>
   )
 }
@@ -177,51 +152,13 @@ function ToggleRow({
   onChange: () => void
 }) {
   return (
-    <button
-      type="button"
-      onClick={onChange}
-      style={{
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        gap: '16px',
-        padding: '14px 16px',
-        border: '1px solid var(--border)',
-        borderRadius: '12px',
-        background: 'var(--bg-card)',
-        cursor: 'pointer',
-        textAlign: 'left',
-      }}
-    >
+    <button type="button" onClick={onChange} className="settings-toggle-row">
       <div>
-        <p style={{ fontSize: '13px', color: 'var(--text-primary)', fontWeight: 600, marginBottom: '4px' }}>
-          {title}
-        </p>
-        <p style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>{description}</p>
+        <p className="settings-toggle-title">{title}</p>
+        <p className="settings-toggle-description">{description}</p>
       </div>
-      <div
-        style={{
-          width: '48px',
-          height: '28px',
-          borderRadius: '999px',
-          background: checked ? 'var(--accent)' : 'var(--border-strong)',
-          position: 'relative',
-          flexShrink: 0,
-          transition: 'background 0.2s ease',
-        }}
-      >
-        <div
-          style={{
-            position: 'absolute',
-            top: '3px',
-            left: checked ? '23px' : '3px',
-            width: '22px',
-            height: '22px',
-            borderRadius: '50%',
-            background: '#fff',
-            transition: 'left 0.2s ease',
-          }}
-        />
+      <div className={`settings-toggle-pill ${checked ? 'active' : ''}`}>
+        <div className="settings-toggle-knob" />
       </div>
     </button>
   )

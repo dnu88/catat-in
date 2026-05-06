@@ -7,7 +7,7 @@ import {
 	CATEGORY_LABEL,
 	buildCategoryOptions,
 } from "@lib/categories";
-import type { Transaction, TransactionFormData } from "@catat-in/shared/types";
+import type { Transaction, TransactionFormData } from "@kaswise/shared/types";
 import { listMyGroups, listSavedViews, requireAuthUid } from "@lib/firestore";
 import { useI18nStore } from "@store/i18n.store";
 
@@ -567,17 +567,8 @@ export default function TransactionPage() {
 	};
 
 	return (
-		<div className="animate-fade-in">
-			<div
-				style={{
-					display: "flex",
-					justifyContent: "space-between",
-					alignItems: "center",
-					marginBottom: "16px",
-					flexWrap: "wrap",
-					gap: "10px",
-				}}
-			>
+		<div className="animate-fade-in page-shell">
+			<div className="tx-header-row">
 				<h2
 					style={{
 						fontSize: "20px",
@@ -615,15 +606,7 @@ export default function TransactionPage() {
 				</div>
 			) : null}
 
-			<div
-				style={{
-					display: "flex",
-					gap: "8px",
-					alignItems: "center",
-					marginBottom: "12px",
-					flexWrap: "wrap",
-				}}
-			>
+			<div className="tx-filter-row">
 				{(["income", "expense"] as const).map((type) => (
 					<button
 						key={type}
@@ -763,7 +746,7 @@ export default function TransactionPage() {
 				</div>
 			) : null}
 
-			<div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+			<div className="tx-list">
 				{transactions.map((tx) => (
 					<TxRow
 						key={`${tx.user_id}:${tx.id}`}

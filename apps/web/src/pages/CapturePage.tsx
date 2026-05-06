@@ -11,7 +11,7 @@ import type {
   AIExtractedTransaction,
   TransactionFormData,
   TransactionType,
-} from '@catat-in/shared/types'
+} from '@kaswise/shared/types'
 
 const ENTRY_POINTS = [
   {
@@ -288,7 +288,7 @@ export default function CapturePage() {
   const canSend = prompt.trim().length >= 2 && prompt.trim().length <= 500 && !isSubmitting
 
   return (
-    <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+    <div className="animate-fade-in page-shell">
       <div>
         <h2 style={{ fontSize: '20px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '4px' }}>
           {language === 'id' ? 'Tambah Transaksi' : 'Add Transaction'}
@@ -298,7 +298,7 @@ export default function CapturePage() {
         </p>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.25fr) minmax(320px, 0.95fr)', gap: '16px' }}>
+      <div className="capture-main-grid">
         <section className="card" style={{ padding: '18px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap' }}>
             <div>
@@ -503,7 +503,7 @@ export default function CapturePage() {
         </section>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '12px' }}>
+      <div className="capture-entry-grid">
         {ENTRY_POINTS.map((item) => (
           <button
             key={item.title}
@@ -526,13 +526,6 @@ export default function CapturePage() {
         ))}
       </div>
 
-      <style>{`
-        @media (max-width: 980px) {
-          .animate-fade-in > div:nth-child(2) {
-            grid-template-columns: 1fr !important;
-          }
-        }
-      `}</style>
     </div>
   )
 

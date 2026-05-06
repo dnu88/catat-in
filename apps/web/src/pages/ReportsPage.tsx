@@ -230,18 +230,8 @@ export default function ReportsPage() {
 	);
 
 	return (
-		<div
-			className="animate-fade-in"
-			style={{ display: "flex", flexDirection: "column", gap: "16px" }}
-		>
-			<div
-				style={{
-					display: "flex",
-					justifyContent: "space-between",
-					gap: "12px",
-					flexWrap: "wrap",
-				}}
-			>
+		<div className="animate-fade-in page-shell">
+			<div className="reports-top-row">
 				<div>
 					<h2
 						style={{
@@ -266,7 +256,7 @@ export default function ReportsPage() {
 					</p>
 				</div>
 
-				<div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
+				<div className="reports-filter-row">
 					<input
 						className="form-input"
 						type="month"
@@ -359,13 +349,7 @@ export default function ReportsPage() {
 						/>
 					</div>
 
-					<div
-						style={{
-							display: "grid",
-							gridTemplateColumns: "minmax(0, 1.2fr) minmax(280px, 0.9fr)",
-							gap: "16px",
-						}}
-					>
+					<div className="reports-main-grid">
 						<section className="card" style={{ padding: "18px" }}>
 							<div style={{ marginBottom: "14px" }}>
 								<h3
@@ -475,13 +459,7 @@ export default function ReportsPage() {
 						</section>
 					</div>
 
-					<div
-						style={{
-							display: "grid",
-							gridTemplateColumns: "minmax(0, 1.1fr) minmax(320px, 0.9fr)",
-							gap: "16px",
-						}}
-					>
+					<div className="reports-secondary-grid">
 						<section className="card" style={{ padding: "18px" }}>
 							<div style={{ marginBottom: "14px" }}>
 								<h3

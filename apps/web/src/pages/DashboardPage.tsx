@@ -152,7 +152,7 @@ export default function DashboardPage() {
 		bills.length > 0;
 
 	return (
-		<div className="animate-fade-in">
+		<div className="animate-fade-in page-shell">
 			{/* Hero Card */}
 			<div className="hero-card" style={{ marginBottom: "20px" }}>
 				<div style={{ position: "relative", zIndex: 1 }}>
@@ -252,14 +252,7 @@ export default function DashboardPage() {
 				</div>
 			</div>
 
-			<div
-				style={{
-					display: "grid",
-					gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
-					gap: "10px",
-					marginBottom: "20px",
-				}}
-			>
+			<div className="dashboard-action-grid">
 				<QuickActionCard
 					icon="✏️"
 					label="Manual"
@@ -286,14 +279,7 @@ export default function DashboardPage() {
 				/>
 			</div>
 
-			<div
-				style={{
-					display: "grid",
-					gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
-					gap: "10px",
-					marginBottom: "20px",
-				}}
-			>
+			<div className="dashboard-metric-grid">
 				<MetricCard
 					icon={wallets[0] ? WALLET_EMOJI[wallets[0].type] || "💳" : "💳"}
 					label={wallets[0]?.name || "Wallet utama"}
@@ -472,9 +458,7 @@ export default function DashboardPage() {
 			</div>
 
 			{/* Bottom Grid: Transactions + Sidebar (Budget + Bills) */}
-			<div
-				style={{ display: "grid", gridTemplateColumns: "3fr 2fr", gap: "14px" }}
-			>
+			<div className="dashboard-main-grid">
 				{/* Recent Transactions */}
 				<div className="card" style={{ overflow: "hidden" }}>
 					<div
@@ -602,7 +586,7 @@ export default function DashboardPage() {
 				</div>
 
 				{/* Right column */}
-				<div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+				<div className="dashboard-side-col">
 					{/* Budget Progress */}
 					<div className="card" style={{ overflow: "hidden" }}>
 						<div
@@ -873,13 +857,6 @@ export default function DashboardPage() {
 				</div>
 			</div>
 
-			<style>{`
-        @media (max-width: 768px) {
-          .animate-fade-in > div:last-child {
-            grid-template-columns: 1fr !important;
-          }
-        }
-      `}</style>
 		</div>
 	);
 }
