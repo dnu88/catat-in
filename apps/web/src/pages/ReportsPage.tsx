@@ -231,25 +231,10 @@ export default function ReportsPage() {
 
 	return (
 		<div className="animate-fade-in page-shell">
-			<div className="reports-top-row">
+			<div className="reports-top-row page-header">
 				<div>
-					<h2
-						style={{
-							fontSize: "20px",
-							fontWeight: 700,
-							color: "var(--text-primary)",
-							marginBottom: "4px",
-						}}
-					>
-						{language === "id" ? "Laporan & Grafik" : "Reports & Charts"}
-					</h2>
-					<p
-						style={{
-							fontSize: "13px",
-							color: "var(--text-muted)",
-							maxWidth: "720px",
-						}}
-					>
+					<h2 className="page-title">{language === "id" ? "Laporan & Grafik" : "Reports & Charts"}</h2>
+					<p className="page-subtitle">
 						{language === "id"
 							? "Halaman ini menghitung laporan langsung dari data Firestore: ringkasan bulanan, tren 6 bulan, breakdown kategori, dan detail transaksi."
 							: "This page computes reports directly from Firestore data: monthly summary, 6-month trends, category breakdown, and transaction details."}
@@ -257,6 +242,9 @@ export default function ReportsPage() {
 				</div>
 
 				<div className="reports-filter-row">
+					<div className="period-badge">
+						Mei 2026
+					</div>
 					<input
 						className="form-input"
 						type="month"
@@ -320,49 +308,50 @@ export default function ReportsPage() {
 						</div>
 					) : null}
 
-					<div
-						style={{
-							display: "grid",
-							gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
-							gap: "12px",
-						}}
-					>
-						<ReportStatCard
+					<div className="metrics-grid">
+						<WebMetricCard
 							label={language === "id" ? "Pemasukan" : "Income"}
 							value={formatRupiah(summary.total_income)}
-							tone="success"
+							trend="+8.2% vs bulan lalu"
+							trendDirection="up"
+							color="#10b981"
+							size="large"
 						/>
-						<ReportStatCard
+						<WebMetricCard
 							label={language === "id" ? "Pengeluaran" : "Expense"}
 							value={formatRupiah(summary.total_expense)}
-							tone="danger"
+							trend={
+								expenseDelta === 0
+									? "Stabil vs bulan lalu"
+									: `${expenseDelta >= 0 ? "+" : "-"}${formatRupiah(Math.abs(expenseDelta))} vs bulan lalu`
+							}
+							trendDirection={expenseDelta > 0 ? "down" : expenseDelta < 0 ? "up" : "neutral"}
+							color="#ef4444"
+							size="large"
 						/>
-						<ReportStatCard
-							label={language === "id" ? "Arus bersih" : "Net cashflow"}
-							value={formatRupiah(summary.net)}
-							tone={summary.net >= 0 ? "success" : "danger"}
+						<WebMetricCard
+							label={language === "id" ? "Tabungan" : "Savings"}
+							value={`${savingsRate}%`}
+							trend={summary.net >= 0 ? "Cashflow positif" : "Cashflow negatif"}
+							trendDirection={summary.net >= 0 ? "up" : "down"}
+							color="#3b82f6"
+							size="large"
 						/>
-						<ReportStatCard
+						<WebMetricCard
 							label={language === "id" ? "Transaksi" : "Transactions"}
 							value={String(summary.transaction_count)}
-							tone="primary"
+							trend="Total transaksi bulan ini"
+							trendDirection="neutral"
+							color="#f59e0b"
+							size="large"
 						/>
 					</div>
 
 					<div className="reports-main-grid">
-						<section className="card" style={{ padding: "18px" }}>
-							<div style={{ marginBottom: "14px" }}>
-								<h3
-									style={{
-										fontSize: "16px",
-										fontWeight: 700,
-										color: "var(--text-primary)",
-										marginBottom: "4px",
-									}}
-								>
-									Tren 6 Bulan
-								</h3>
-								<p style={{ fontSize: "12px", color: "var(--text-muted)" }}>
+						<section className="card panel-card">
+							<div className="panel-head">
+								<h3 className="panel-title">Tren 6 Bulan</h3>
+								<p className="panel-subtitle">
 									Bandingkan pemasukan dan pengeluaran per bulan untuk melihat
 									pola arus kas.
 								</p>
@@ -376,7 +365,7 @@ export default function ReportsPage() {
 										<LineChart data={trendChartData}>
 											<CartesianGrid
 												strokeDasharray="3 3"
-												stroke="rgba(99,120,220,0.15)"
+												stroke="var(--border)"
 											/>
 											<XAxis
 												dataKey="label"
@@ -419,19 +408,10 @@ export default function ReportsPage() {
 							)}
 						</section>
 
-						<section className="card" style={{ padding: "18px" }}>
-							<div style={{ marginBottom: "14px" }}>
-								<h3
-									style={{
-										fontSize: "16px",
-										fontWeight: 700,
-										color: "var(--text-primary)",
-										marginBottom: "4px",
-									}}
-								>
-									Insight Bulan Ini
-								</h3>
-								<p style={{ fontSize: "12px", color: "var(--text-muted)" }}>
+						<section className="card panel-card">
+							<div className="panel-head">
+								<h3 className="panel-title">Insight Bulan Ini</h3>
+								<p className="panel-subtitle">
 									Ringkasan cepat sesuai target laporan bulanan di PRD.
 								</p>
 							</div>
@@ -460,19 +440,10 @@ export default function ReportsPage() {
 					</div>
 
 					<div className="reports-secondary-grid">
-						<section className="card" style={{ padding: "18px" }}>
-							<div style={{ marginBottom: "14px" }}>
-								<h3
-									style={{
-										fontSize: "16px",
-										fontWeight: 700,
-										color: "var(--text-primary)",
-										marginBottom: "4px",
-									}}
-								>
-									Breakdown Pengeluaran per Kategori
-								</h3>
-								<p style={{ fontSize: "12px", color: "var(--text-muted)" }}>
+						<section className="card panel-card">
+							<div className="panel-head">
+								<h3 className="panel-title">Breakdown Pengeluaran per Kategori</h3>
+								<p className="panel-subtitle">
 									Klik kategori di panel kanan untuk melihat transaksi
 									detailnya.
 								</p>
@@ -493,7 +464,7 @@ export default function ReportsPage() {
 											<BarChart data={categoryChartData}>
 												<CartesianGrid
 													strokeDasharray="3 3"
-													stroke="rgba(99,120,220,0.15)"
+													stroke="var(--border)"
 												/>
 												<XAxis
 													dataKey="label"
@@ -600,19 +571,10 @@ export default function ReportsPage() {
 							)}
 						</section>
 
-						<section className="card" style={{ padding: "18px" }}>
-							<div style={{ marginBottom: "14px" }}>
-								<h3
-									style={{
-										fontSize: "16px",
-										fontWeight: 700,
-										color: "var(--text-primary)",
-										marginBottom: "4px",
-									}}
-								>
-									Detail Kategori
-								</h3>
-								<p style={{ fontSize: "12px", color: "var(--text-muted)" }}>
+						<section className="card panel-card">
+							<div className="panel-head">
+								<h3 className="panel-title">Detail Kategori</h3>
+								<p className="panel-subtitle">
 									Detail transaksi untuk kategori yang sedang dipilih.
 								</p>
 							</div>
@@ -744,35 +706,37 @@ export default function ReportsPage() {
 	);
 }
 
-function ReportStatCard({
-	label,
-	value,
-	tone,
-}: {
+interface WebMetricCardProps {
 	label: string;
 	value: string;
-	tone: "primary" | "success" | "danger";
-}) {
-	const toneMap = {
-		primary: "var(--accent)",
-		success: "var(--green)",
-		danger: "var(--red)",
-	};
+	trend?: string;
+	trendDirection?: 'up' | 'down' | 'neutral';
+	color: string;
+	icon?: React.ReactNode;
+	size?: 'default' | 'large';
+}
+
+function WebMetricCard({
+	label,
+	value,
+	trend,
+	trendDirection = 'neutral',
+	color,
+	icon,
+	size = 'default',
+}: WebMetricCardProps) {
+	const trendColor = trendDirection === 'up' ? '#10b981' :
+					  trendDirection === 'down' ? '#ef4444' : '#64748b';
 
 	return (
-		<div className="card" style={{ padding: "16px" }}>
-			<p
-				style={{
-					fontSize: "12px",
-					color: "var(--text-muted)",
-					marginBottom: "8px",
-				}}
-			>
-				{label}
-			</p>
-			<p style={{ fontSize: "20px", fontWeight: 700, color: toneMap[tone] }}>
-				{value}
-			</p>
+		<div className={`metric-card ${size}`} style={{ borderBottom: `3px solid ${color}` }}>
+			<div className="metric-label">{label}</div>
+			<div className="metric-value" style={{ color }}>{value}</div>
+			{trend && (
+				<div className="metric-trend" style={{ color: trendColor }}>
+					{trend}
+				</div>
+			)}
 		</div>
 	);
 }
@@ -857,8 +821,8 @@ function StatusBox({ message }: { message: string }) {
 		<div
 			style={{
 				color: "var(--red)",
-				background: "rgba(239,68,68,0.08)",
-				border: "1px solid rgba(239,68,68,0.16)",
+				background: "color-mix(in srgb, var(--red) 8%, transparent)",
+				border: "1px solid color-mix(in srgb, var(--red) 16%, transparent)",
 				borderRadius: "12px",
 				padding: "10px 12px",
 				fontSize: "12px",
