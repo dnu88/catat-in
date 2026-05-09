@@ -410,32 +410,67 @@ export default function ReportsPage() {
 
 						<section className="card panel-card">
 							<div className="panel-head">
-								<h3 className="panel-title">Insight Bulan Ini</h3>
+								<h3 className="panel-title">Breakdown Kategori</h3>
 								<p className="panel-subtitle">
-									Ringkasan cepat sesuai target laporan bulanan di PRD.
+									Distribusi pengeluaran per kategori bulan ini.
 								</p>
 							</div>
 
-							<InsightCard
-								title="Tingkat tabungan"
-								description={`${savingsRate}% dari pemasukan bulan ini tersisa sebagai arus bersih.`}
-							/>
-							<InsightCard
-								title="Perbandingan bulan lalu"
-								description={
-									previousTrend && currentTrend
-										? `Pengeluaran ${expenseDelta >= 0 ? "naik" : "turun"} ${formatRupiah(Math.abs(expenseDelta))} dibanding ${monthLabel(previousTrend.year, previousTrend.month)}.`
-										: "Belum cukup data untuk membandingkan dengan bulan sebelumnya."
-								}
-							/>
-							<InsightCard
-								title="Kategori teratas"
-								description={
-									summary.expense_by_category[0]
-										? `${CATEGORY_LABEL[summary.expense_by_category[0].category] || summary.expense_by_category[0].category} menyumbang ${summary.expense_by_category[0].percentage}% dari total pengeluaran.`
-										: "Belum ada kategori pengeluaran pada periode ini."
-								}
-							/>
+							{categoryChartData.length === 0 ? (
+								<EmptyCardMessage message="Belum ada pengeluaran di bulan yang dipilih." />
+							) : (
+								<div className="category-table-container">
+									<table className="category-table">
+										<thead>
+											<tr>
+												<th>Kategori</th>
+												<th>Jumlah</th>
+												<th>Persentase</th>
+											</tr>
+										</thead>
+										<tbody>
+											{categoryChartData.map((item, index) => (
+												<tr key={item.category}>
+													<td>
+														<div className="category-cell">
+															<span
+																className="category-dot"
+																style={{
+																	background: CATEGORY_COLORS[index % CATEGORY_COLORS.length],
+																}}
+															/>
+															<span style={{ fontSize: "13px", fontWeight: 600, color: "#1e293b" }}>
+																{item.label}
+															</span>
+														</div>
+													</td>
+													<td>
+														<span style={{ fontSize: "13px", fontWeight: 600, color: "#1e293b" }}>
+															{formatRupiah(item.amount)}
+														</span>
+													</td>
+													<td>
+														<div className="percentage-cell">
+															<span style={{ fontSize: "12px", color: "#64748b", minWidth: "40px" }}>
+																{item.percentage}%
+															</span>
+															<div className="percentage-bar">
+																<div
+																	className="percentage-bar-fill"
+																	style={{
+																		width: `${item.percentage}%`,
+																		background: CATEGORY_COLORS[index % CATEGORY_COLORS.length],
+																	}}
+																/>
+															</div>
+														</div>
+													</td>
+												</tr>
+											))}
+										</tbody>
+									</table>
+								</div>
+							)}
 						</section>
 					</div>
 
