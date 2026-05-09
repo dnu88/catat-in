@@ -1,7 +1,8 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 
 import { useTheme } from '../../src/theme/theme-context'
+import { useSupabase } from '../../src/lib/supabase'
 
 const months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun']
 const incomeData = [4.2, 5.1, 6.8, 7.2, 8.5, 18.65]
@@ -28,12 +29,55 @@ const periodLabels: Record<PeriodFilter, string> = {
 
 export default function ReportsScreen() {
   const { theme } = useTheme()
+  const { supabase } = useSupabase()
   const styles = useMemo(() => createStyles(theme), [theme])
   const [activeTab, setActiveTab] = useState<Tab>('overview')
   const [periodFilter, setPeriodFilter] = useState<PeriodFilter>('month')
   const [selectedBar, setSelectedBar] = useState<number | null>(null)
+  const [dataLoading, setDataLoading] = useState(false)
+  const [dataError, setDataError] = useState<string | null>(null)
+  const [realTransactionCount, setRealTransactionCount] = useState<number | null>(null)
 
   const maxVal = Math.max(...incomeData, ...expenseData)
+
+  useEffect(() => {
+    const loadTransactionData = async () => {
+      setDataLoading(true)
+      setDataError(null)
+      try {
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) {
+          setDataError('Belum login')
+          return
+        }
+
+        const now = new Date()
+        const monthsBack = periodFilter === 'month' ? 1 :
+                         periodFilter === '3month' ? 3 :
+                         periodFilter === '6month' ? 6 : 12
+        const startDate = new Date(now.getFullYear(), now.getMonth() - monthsBack + 1, 1)
+        const endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0)
+
+        const { data: transactions, error } = await supabase
+          .from('transactions')
+          .select('nominal, type, kategori, tanggal')
+          .eq('user_id', user.id)
+          .gte('tanggal', startDate.toISOString().split('T')[0])
+          .lte('tanggal', endDate.toISOString().split('T')[0])
+
+        if (error) throw error
+
+        setRealTransactionCount(transactions?.length || 0)
+      } catch (err: any) {
+        console.error('Failed to load transaction data:', err)
+        setDataError('Gagal memuat data transaksi')
+      } finally {
+        setDataLoading(false)
+      }
+    }
+
+    loadTransactionData()
+  }, [periodFilter, supabase])
 
   return (
     <View style={styles.screen}>
@@ -81,6 +125,23 @@ export default function ReportsScreen() {
             <Text style={[styles.tabChipText, activeTab === 'category' && styles.tabChipTextActive]}>Kategori</Text>
           </Pressable>
         </View>
+
+        {/* Loading/Error State */}
+        {dataLoading && (
+          <View style={styles.loadingCard}>
+            <Text style={styles.loadingText}>Memuat data transaksi...</Text>
+          </View>
+        )}
+        {dataError && !dataLoading && (
+          <View style={styles.errorCard}>
+            <Text style={styles.errorText}>{dataError}</Text>
+          </View>
+        )}
+        {realTransactionCount !== null && !dataLoading && (
+          <View style={styles.infoCard}>
+            <Text style={styles.infoText}>{realTransactionCount} transaksi ditemukan</Text>
+          </View>
+        )}
 
         {activeTab === 'overview' ? (
           <>
@@ -268,6 +329,45 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
     },
     periodChipTextActive: {
       color: theme.colors.brandPrimary,
+    },
+    loadingCard: {
+      backgroundColor: theme.colors.surface,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: theme.colors.borderSoft,
+      paddingVertical: 10,
+      paddingHorizontal: 12,
+    },
+    loadingText: {
+      color: theme.colors.textSecondary,
+      fontSize: 12,
+      fontWeight: '600',
+    },
+    errorCard: {
+      backgroundColor: `${theme.colors.danger}12`,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: `${theme.colors.danger}40`,
+      paddingVertical: 10,
+      paddingHorizontal: 12,
+    },
+    errorText: {
+      color: theme.colors.danger,
+      fontSize: 12,
+      fontWeight: '600',
+    },
+    infoCard: {
+      backgroundColor: `${theme.colors.brandPrimary}10`,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: `${theme.colors.brandPrimary}35`,
+      paddingVertical: 10,
+      paddingHorizontal: 12,
+    },
+    infoText: {
+      color: theme.colors.brandPrimary,
+      fontSize: 12,
+      fontWeight: '600',
     },
     tabRow: { flexDirection: 'row', gap: 8 },
     tabChip: {
