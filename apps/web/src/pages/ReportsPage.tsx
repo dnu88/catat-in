@@ -228,6 +228,29 @@ export default function ReportsPage() {
 		}),
 	);
 
+	const handleExportPDF = () => {
+		window.print();
+	};
+
+	const handleShare = async () => {
+		const shareText = `Laporan ${selectedMonth}\nPemasukan: ${formatRupiah(summary?.total_income || 0)}\nPengeluaran: ${formatRupiah(summary?.total_expense || 0)}\nTabungan: ${formatRupiah(summary?.net || 0)}`;
+		if (navigator.share) {
+			try {
+				await navigator.share({
+					title: "Laporan Keuangan",
+					text: shareText,
+					url: window.location.href,
+				});
+				return;
+			} catch {
+				// ignore cancelled share
+			}
+		}
+
+		await navigator.clipboard.writeText(shareText);
+		alert("Ringkasan laporan disalin ke clipboard");
+	};
+
 	return (
 		<div className="animate-fade-in page-shell">
 			<div className="reports-top-row page-header">
@@ -534,10 +557,10 @@ export default function ReportsPage() {
 
 							{/* Action Buttons (Phase 2 placeholders) */}
 							<div className="action-buttons">
-								<button className="btn btn-secondary" style={{ flex: 1 }}>
+								<button className="btn btn-primary" style={{ flex: 1 }} onClick={handleExportPDF}>
 									Export PDF
 								</button>
-								<button className="btn btn-secondary" style={{ flex: 1 }}>
+								<button className="btn btn-outline" style={{ flex: 1 }} onClick={() => void handleShare()}>
 									Share
 								</button>
 							</div>
