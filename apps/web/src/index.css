@@ -1418,6 +1418,125 @@ body {
   border-radius: 2px;
 }
 
+/* ── DONUT CHART & SIDEBAR ───────────────────────────────────── */
+
+.donut-container {
+  display: flex;
+  justify-content: center;
+  padding: 20px 0;
+}
+
+.donut-chart {
+  width: 140px;
+  height: 140px;
+  border-radius: 50%;
+  border: 10px solid #3b82f6;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.donut-inner {
+  text-align: center;
+}
+
+.donut-value {
+  font-size: 18px;
+  font-weight: 800;
+  color: #1e293b;
+}
+
+.donut-label {
+  font-size: 11px;
+  color: #64748b;
+  margin-top: 2px;
+}
+
+.quick-insights {
+  margin: 20px 0;
+}
+
+.insights-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #1e293b;
+  margin-bottom: 12px;
+}
+
+.insight-item {
+  display: flex;
+  gap: 10px;
+  padding: 10px 0;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.insight-item:last-child {
+  border-bottom: none;
+}
+
+.insight-icon {
+  font-size: 16px;
+}
+
+.insight-text {
+  font-size: 13px;
+  color: #64748b;
+  line-height: 1.5;
+}
+
+.action-buttons {
+  display: flex;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.comparison-panel {
+  margin-top: 16px;
+}
+
+.comparison-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 0;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.comparison-row:last-child {
+  border-bottom: none;
+}
+
+.comparison-label {
+  font-size: 13px;
+  color: #64748b;
+}
+
+.comparison-values {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+}
+
+.current-value {
+  font-size: 14px;
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.delta {
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.delta.positive {
+  color: #10b981;
+}
+
+.delta.negative {
+  color: #ef4444;
+}
+
 /* ── UTILITY CLASSES ────────────────────────────────────────── */
 
 .text-income {

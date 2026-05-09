@@ -1,9 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import {
-	BarChart,
-	Bar,
 	CartesianGrid,
-	Cell,
 	LineChart,
 	Line,
 	ResponsiveContainer,
@@ -475,264 +472,148 @@ export default function ReportsPage() {
 					</div>
 
 					<div className="reports-secondary-grid">
+						{/* Left column: Donut chart + Quick insights + Action buttons */}
 						<section className="card panel-card">
 							<div className="panel-head">
-								<h3 className="panel-title">Breakdown Pengeluaran per Kategori</h3>
+								<h3 className="panel-title">Ringkasan</h3>
 								<p className="panel-subtitle">
-									Klik kategori di panel kanan untuk melihat transaksi
-									detailnya.
+									Visualisasi dan wawasan cepat.
 								</p>
 							</div>
 
-							{categoryChartData.length === 0 ? (
-								<EmptyCardMessage message="Belum ada pengeluaran di bulan yang dipilih." />
-							) : (
-								<>
-									<div
-										style={{
-											width: "100%",
-											height: "300px",
-											marginBottom: "12px",
-										}}
-									>
-										<ResponsiveContainer>
-											<BarChart data={categoryChartData}>
-												<CartesianGrid
-													strokeDasharray="3 3"
-													stroke="var(--border)"
-												/>
-												<XAxis
-													dataKey="label"
-													tick={{ fontSize: 12, fill: "var(--text-muted)" }}
-												/>
-												<YAxis
-													tickFormatter={shortCurrency}
-													tick={{ fontSize: 12, fill: "var(--text-muted)" }}
-												/>
-												<Tooltip
-													formatter={(value: number) =>
-														formatRupiah(Number(value))
-													}
-												/>
-												<Bar dataKey="amount" radius={[8, 8, 0, 0]}>
-													{categoryChartData.map((entry, index) => (
-														<Cell
-															key={entry.category}
-															fill={
-																CATEGORY_COLORS[index % CATEGORY_COLORS.length]
-															}
-														/>
-													))}
-												</Bar>
-											</BarChart>
-										</ResponsiveContainer>
+							{/* CSS-only Donut Chart */}
+							<div className="donut-container">
+								<div className="donut-chart">
+									<div className="donut-inner">
+										<div className="donut-value">{savingsRate}%</div>
+										<div className="donut-label">Tingkat Tabungan</div>
 									</div>
+								</div>
+							</div>
 
-									<div style={{ display: "grid", gap: "10px" }}>
-										{categoryChartData.map((item, index) => (
-											<button
-												key={item.category}
-												type="button"
-												className="card"
-												onClick={() => setSelectedCategory(item.category)}
-												style={{
-													padding: "12px 14px",
-													textAlign: "left",
-													cursor: "pointer",
-													background:
-														selectedCategory === item.category
-															? "var(--accent-light)"
-															: "var(--bg-card2)",
-													border:
-														selectedCategory === item.category
-															? "1px solid var(--accent)"
-															: "1px solid var(--border)",
-												}}
-											>
-												<div
-													style={{
-														display: "flex",
-														justifyContent: "space-between",
-														gap: "10px",
-														alignItems: "center",
-													}}
-												>
-													<div
-														style={{
-															display: "flex",
-															alignItems: "center",
-															gap: "8px",
-														}}
-													>
-														<span
-															style={{
-																width: "10px",
-																height: "10px",
-																borderRadius: "50%",
-																background:
-																	CATEGORY_COLORS[
-																		index % CATEGORY_COLORS.length
-																	],
-																display: "inline-block",
-															}}
-														/>
-														<span
-															style={{
-																fontSize: "13px",
-																fontWeight: 700,
-																color: "var(--text-primary)",
-															}}
-														>
-															{item.label}
-														</span>
-													</div>
-													<span className="badge badge-info">
-														{item.percentage}%
-													</span>
-												</div>
-												<div
-													style={{
-														fontSize: "12px",
-														color: "var(--text-secondary)",
-														marginTop: "6px",
-													}}
-												>
-													{formatRupiah(item.amount)}
-												</div>
-											</button>
-										))}
-									</div>
-								</>
-							)}
+							{/* Quick Insights */}
+							<div className="quick-insights">
+								<div className="insights-title">Wawasan Cepat</div>
+
+								<div className="insight-item">
+									<span className="insight-icon">💰</span>
+									<span className="insight-text">
+										{savingsRate}% dari pemasukan bulan ini tersisa sebagai arus bersih.
+									</span>
+								</div>
+
+								<div className="insight-item">
+									<span className="insight-icon">📊</span>
+									<span className="insight-text">
+										{previousTrend && currentTrend
+											? `Pengeluaran ${expenseDelta >= 0 ? "naik" : "turun"} ${formatRupiah(Math.abs(expenseDelta))} dibanding ${monthLabel(previousTrend.year, previousTrend.month)}.`
+											: "Belum cukup data untuk membandingkan dengan bulan sebelumnya."}
+									</span>
+								</div>
+
+								<div className="insight-item">
+									<span className="insight-icon">🏷️</span>
+									<span className="insight-text">
+										{summary.expense_by_category[0]
+											? `${CATEGORY_LABEL[summary.expense_by_category[0].category] || summary.expense_by_category[0].category} menyumbang ${summary.expense_by_category[0].percentage}% dari total pengeluaran.`
+											: "Belum ada kategori pengeluaran pada periode ini."}
+									</span>
+								</div>
+							</div>
+
+							{/* Action Buttons (Phase 2 placeholders) */}
+							<div className="action-buttons">
+								<button className="btn btn-secondary" style={{ flex: 1 }}>
+									Export PDF
+								</button>
+								<button className="btn btn-secondary" style={{ flex: 1 }}>
+									Share
+								</button>
+							</div>
 						</section>
 
+						{/* Right column: Comparison panel + Category breakdown */}
 						<section className="card panel-card">
 							<div className="panel-head">
-								<h3 className="panel-title">Detail Kategori</h3>
+								<h3 className="panel-title">Perbandingan Bulan Lalu</h3>
 								<p className="panel-subtitle">
-									Detail transaksi untuk kategori yang sedang dipilih.
+									Bandingkan dengan periode sebelumnya.
 								</p>
 							</div>
 
-							{detailLoading ? (
-								<EmptyCardMessage message="Memuat detail kategori..." />
-							) : !categoryDetail ? (
-								<EmptyCardMessage message="Pilih kategori untuk melihat transaksi detail." />
-							) : (
-								<>
-									<div
-										style={{
-											border: "1px solid var(--border)",
-											borderRadius: "14px",
-											padding: "14px",
-											background: "var(--bg-card2)",
-											marginBottom: "12px",
-										}}
-									>
-										<div
-											style={{
-												fontSize: "14px",
-												fontWeight: 700,
-												color: "var(--text-primary)",
-												marginBottom: "4px",
-											}}
-										>
-											{CATEGORY_LABEL[categoryDetail.category] ||
-												categoryDetail.category}
-										</div>
-										<div
-											style={{
-												fontSize: "12px",
-												color: "var(--text-secondary)",
-												marginBottom: "8px",
-											}}
-										>
-											{categoryDetail.transaction_count} transaksi di{" "}
-											{monthLabel(year, month)}
-										</div>
-										<div
-											style={{
-												fontSize: "18px",
-												fontWeight: 700,
-												color: "var(--text-primary)",
-											}}
-										>
-											{formatRupiah(categoryDetail.total)}
-										</div>
-									</div>
-
-									<div
-										style={{
-											display: "grid",
-											gap: "10px",
-											maxHeight: "420px",
-											overflowY: "auto",
-										}}
-									>
-										{categoryDetail.transactions.length === 0 ? (
-											<EmptyCardMessage message="Belum ada transaksi untuk kategori ini." />
-										) : (
-											categoryDetail.transactions.map((transaction) => (
-												<div
-													key={transaction.id}
-													style={{
-														border: "1px solid var(--border)",
-														borderRadius: "12px",
-														padding: "12px 14px",
-														background: "var(--bg-card)",
-													}}
-												>
-													<div
-														style={{
-															display: "flex",
-															justifyContent: "space-between",
-															gap: "12px",
-															alignItems: "flex-start",
-														}}
-													>
-														<div style={{ minWidth: 0 }}>
-															<div
-																style={{
-																	fontSize: "13px",
-																	fontWeight: 700,
-																	color: "var(--text-primary)",
-																	marginBottom: "4px",
-																}}
-															>
-																{transaction.merchant ||
-																	transaction.note ||
-																	"Tanpa deskripsi"}
-															</div>
-															<div
-																style={{
-																	fontSize: "12px",
-																	color: "var(--text-muted)",
-																}}
-															>
-																{formatDisplayDate(transaction.date)}
-															</div>
-														</div>
-														<div
-															style={{
-																fontSize: "13px",
-																fontWeight: 700,
-																color:
-																	transaction.type === "income"
-																		? "var(--green)"
-																		: "var(--red)",
-																whiteSpace: "nowrap",
-															}}
-														>
-															{transaction.type === "income" ? "+" : "-"}
-															{formatRupiah(Number(transaction.amount))}
-														</div>
-													</div>
-												</div>
-											))
+							{/* Comparison Panel */}
+							<div className="comparison-panel">
+								<div className="comparison-row">
+									<span className="comparison-label">Pemasukan</span>
+									<div className="comparison-values">
+										<span className="current-value">{formatRupiah(summary.total_income)}</span>
+										{previousTrend && currentTrend && (
+											<span className={`delta ${currentTrend.income >= previousTrend.income ? "positive" : "negative"}`}>
+												{currentTrend.income >= previousTrend.income ? "+" : ""}
+												{formatRupiah(currentTrend.income - previousTrend.income)}
+											</span>
 										)}
 									</div>
-								</>
-							)}
+								</div>
+
+								<div className="comparison-row">
+									<span className="comparison-label">Pengeluaran</span>
+									<div className="comparison-values">
+										<span className="current-value">{formatRupiah(summary.total_expense)}</span>
+										{previousTrend && currentTrend && (
+											<span className={`delta ${currentTrend.expense <= previousTrend.expense ? "positive" : "negative"}`}>
+												{currentTrend.expense >= previousTrend.expense ? "+" : ""}
+												{formatRupiah(currentTrend.expense - previousTrend.expense)}
+											</span>
+										)}
+									</div>
+								</div>
+
+								<div className="comparison-row">
+									<span className="comparison-label">Tabungan</span>
+									<div className="comparison-values">
+										<span className="current-value">{formatRupiah(summary.net)}</span>
+										{previousTrend && currentTrend && (
+											<span className={`delta ${currentTrend.net >= previousTrend.net ? "positive" : "negative"}`}>
+												{currentTrend.net >= previousTrend.net ? "+" : ""}
+												{formatRupiah(currentTrend.net - previousTrend.net)}
+											</span>
+										)}
+									</div>
+								</div>
+							</div>
+
+							{/* Category Breakdown List (simplified from original) */}
+							<div style={{ marginTop: "20px" }}>
+								<div className="insights-title">Top Kategori</div>
+								{categoryChartData.slice(0, 3).map((item, index) => (
+									<div
+										key={item.category}
+										style={{
+											display: "flex",
+											justifyContent: "space-between",
+											alignItems: "center",
+											padding: "10px 0",
+											borderBottom: "1px solid #f1f5f9",
+										}}
+									>
+										<div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+											<span
+												style={{
+													width: "8px",
+													height: "8px",
+													borderRadius: "50%",
+													background: CATEGORY_COLORS[index % CATEGORY_COLORS.length],
+												}}
+											/>
+											<span style={{ fontSize: "13px", color: "#1e293b" }}>{item.label}</span>
+										</div>
+										<span style={{ fontSize: "12px", fontWeight: 600, color: "#64748b" }}>
+											{item.percentage}%
+										</span>
+									</div>
+								))}
+							</div>
 						</section>
 					</div>
 				</>
