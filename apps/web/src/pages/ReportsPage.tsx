@@ -88,6 +88,8 @@ export default function ReportsPage() {
 		const now = new Date();
 		return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
 	});
+	type PeriodPreset = "month" | "3month" | "6month" | "year" | "custom";
+	const [periodPreset, setPeriodPreset] = useState<PeriodPreset>("month");
 	const [walletFilter, setWalletFilter] = useState("");
 	const [summary, setSummary] = useState<SummaryResponse | null>(null);
 	const [trends, setTrends] = useState<TrendPoint[]>([]);
@@ -239,14 +241,23 @@ export default function ReportsPage() {
 				</div>
 
 				<div className="reports-filter-row">
+					<div className="period-presets">
+						<button className={`period-preset-btn ${periodPreset === "month" ? "active" : ""}`} onClick={() => setPeriodPreset("month")}>1 Bulan</button>
+						<button className={`period-preset-btn ${periodPreset === "3month" ? "active" : ""}`} onClick={() => setPeriodPreset("3month")}>3 Bulan</button>
+						<button className={`period-preset-btn ${periodPreset === "6month" ? "active" : ""}`} onClick={() => setPeriodPreset("6month")}>6 Bulan</button>
+						<button className={`period-preset-btn ${periodPreset === "year" ? "active" : ""}`} onClick={() => setPeriodPreset("year")}>1 Tahun</button>
+					</div>
 					<div className="period-badge">
-						Mei 2026
+						{periodPreset === "month" ? "Mei 2026" : periodPreset === "3month" ? "Mar - Mei 2026" : periodPreset === "6month" ? "Jan - Jun 2026" : periodPreset === "year" ? "2026" : selectedMonth}
 					</div>
 					<input
 						className="form-input"
 						type="month"
 						value={selectedMonth}
-						onChange={(event) => setSelectedMonth(event.target.value)}
+						onChange={(event) => {
+							setSelectedMonth(event.target.value)
+							setPeriodPreset('custom')
+						}}
 						style={{ minWidth: "180px" }}
 					/>
 					<select

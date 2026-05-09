@@ -17,11 +17,21 @@ const categories = [
 ]
 
 type Tab = 'overview' | 'category'
+type PeriodFilter = 'month' | '3month' | '6month' | 'year'
+
+const periodLabels: Record<PeriodFilter, string> = {
+  month: '1 Bulan',
+  '3month': '3 Bulan',
+  '6month': '6 Bulan',
+  year: '1 Tahun',
+}
 
 export default function ReportsScreen() {
   const { theme } = useTheme()
   const styles = useMemo(() => createStyles(theme), [theme])
   const [activeTab, setActiveTab] = useState<Tab>('overview')
+  const [periodFilter, setPeriodFilter] = useState<PeriodFilter>('month')
+  const [selectedBar, setSelectedBar] = useState<number | null>(null)
 
   const maxVal = Math.max(...incomeData, ...expenseData)
 
@@ -34,9 +44,26 @@ export default function ReportsScreen() {
             <Text style={styles.title}>Laporan</Text>
             <Text style={styles.subtitle}>Ringkasan performa finansial bulanan.</Text>
           </View>
-          <View style={styles.monthBadge}>
-            <Text style={styles.monthBadgeText}>Mei 2026</Text>
+          <View style={styles.headerRight}>
+            <View style={styles.monthBadge}>
+              <Text style={styles.monthBadgeText}>Mei 2026</Text>
+            </View>
           </View>
+        </View>
+
+        {/* Period Selector */}
+        <View style={styles.periodRow}>
+          {(Object.keys(periodLabels) as PeriodFilter[]).map((key) => (
+            <Pressable
+              key={key}
+              style={[styles.periodChip, periodFilter === key && styles.periodChipActive]}
+              onPress={() => setPeriodFilter(key)}
+            >
+              <Text style={[styles.periodChipText, periodFilter === key && styles.periodChipTextActive]}>
+                {periodLabels[key]}
+              </Text>
+            </Pressable>
+          ))}
         </View>
 
         {/* Tab Selector */}
@@ -95,23 +122,41 @@ export default function ReportsScreen() {
 
               <View style={styles.chartArea}>
                 {months.map((month, idx) => (
-                  <View key={month} style={styles.chartColumn}>
+                  <Pressable
+                    key={month}
+                    style={styles.chartColumn}
+                    onPress={() => setSelectedBar(selectedBar === idx ? null : idx)}
+                  >
                     <View style={styles.chartBarsWrap}>
                       <View
                         style={[
                           styles.chartBar,
                           { height: `${(incomeData[idx] / maxVal) * 100}%`, backgroundColor: theme.colors.success },
+                          selectedBar === idx && styles.chartBarSelected,
                         ]}
                       />
                       <View
                         style={[
                           styles.chartBar,
                           { height: `${(expenseData[idx] / maxVal) * 100}%`, backgroundColor: `${theme.colors.danger}90` },
+                          selectedBar === idx && styles.chartBarSelected,
                         ]}
                       />
                     </View>
                     <Text style={styles.chartLabel}>{month}</Text>
-                  </View>
+
+                    {selectedBar === idx && (
+                      <View style={styles.chartTooltip}>
+                        <Text style={styles.tooltipTitle}>{month} 2026</Text>
+                        <Text style={[styles.tooltipValue, { color: theme.colors.success }]}>
+                          Pemasukan: Rp {incomeData[idx]} Jt
+                        </Text>
+                        <Text style={[styles.tooltipValue, { color: theme.colors.danger }]}>
+                          Pengeluaran: Rp {expenseData[idx]} Jt
+                        </Text>
+                      </View>
+                    )}
+                  </Pressable>
                 ))}
               </View>
 
@@ -198,6 +243,32 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
       paddingVertical: 6,
     },
     monthBadgeText: { color: theme.colors.brandPrimary, fontSize: 12, fontWeight: '700' },
+    headerRight: { alignItems: 'flex-end' },
+    periodRow: {
+      flexDirection: 'row',
+      gap: 8,
+      marginBottom: 8,
+    },
+    periodChip: {
+      paddingVertical: 6,
+      paddingHorizontal: 12,
+      borderRadius: 999,
+      borderWidth: 1,
+      borderColor: theme.colors.borderSoft,
+      backgroundColor: theme.colors.surface,
+    },
+    periodChipActive: {
+      backgroundColor: `${theme.colors.brandPrimary}1A`,
+      borderColor: theme.colors.brandPrimary,
+    },
+    periodChipText: {
+      fontSize: 11,
+      fontWeight: '600',
+      color: theme.colors.textSecondary,
+    },
+    periodChipTextActive: {
+      color: theme.colors.brandPrimary,
+    },
     tabRow: { flexDirection: 'row', gap: 8 },
     tabChip: {
       flex: 1,
@@ -264,6 +335,30 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
       borderTopLeftRadius: 6,
       borderTopRightRadius: 6,
     },
+    chartBarSelected: {
+      opacity: 0.85,
+      transform: [{ scale: 1.03 }],
+    },
+    chartTooltip: {
+      position: 'absolute',
+      top: -74,
+      left: '50%',
+      marginLeft: -62,
+      width: 124,
+      backgroundColor: theme.colors.surface,
+      borderRadius: 10,
+      padding: 8,
+      borderWidth: 1,
+      borderColor: theme.colors.borderSoft,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.1,
+      shadowRadius: 4,
+      elevation: 3,
+      zIndex: 12,
+    },
+    tooltipTitle: { fontSize: 11, fontWeight: '700', color: theme.colors.textPrimary, marginBottom: 4 },
+    tooltipValue: { fontSize: 10, fontWeight: '600', marginBottom: 2 },
     chartLabel: { color: theme.colors.textMuted, fontSize: 10, fontWeight: '700', marginTop: 6 },
     chartLegend: { flexDirection: 'row', gap: 16, marginTop: 4 },
     legendItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
