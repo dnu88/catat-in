@@ -1,9 +1,10 @@
 import { create } from "zustand";
-import type { Wallet } from "@catat-in/shared/types";
+import type { Wallet } from "@kaswise/shared/types";
 import {
 	addWallet,
 	listWallets,
 	patchWallet,
+	recalculateWalletBalances,
 	removeWallet,
 	requireAuthUid,
 } from "@lib/firestore";
@@ -27,6 +28,10 @@ interface WalletState {
 	addWallet: (data: WalletFormData) => Promise<void>;
 	updateWallet: (id: string, data: Partial<WalletFormData>) => Promise<void>;
 	deleteWallet: (id: string) => Promise<void>;
+	recalculateBalances: () => Promise<{
+		wallet_count: number;
+		updated_count: number;
+	}>;
 	totalBalance: () => number;
 	clearError: () => void;
 }
@@ -65,6 +70,13 @@ export const useWalletStore = create<WalletState>((set, get) => ({
 		const uid = requireAuthUid();
 		await removeWallet(uid, id);
 		await get().fetchWallets();
+	},
+
+	recalculateBalances: async () => {
+		const uid = requireAuthUid();
+		const summary = await recalculateWalletBalances(uid);
+		await get().fetchWallets();
+		return summary;
 	},
 
 	totalBalance: () =>

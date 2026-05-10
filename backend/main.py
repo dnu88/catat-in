@@ -3,36 +3,12 @@ Catat.in - FastAPI Backend
 Entry point utama aplikasi.
 """
 
-from contextlib import asynccontextmanager
-
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 
-from app.api.v1 import (
-    ai,
-    bills,
-    budgets,
-    categories,
-    groups,
-    imports,
-    professional,
-    reports,
-    transactions,
-    wallets,
-    webhooks,
-)
+from app.api.v1 import ai, imports, webhooks
 from app.core.config import settings
-from app.core.database import init_db
-from app.core.firebase import has_firebase_admin_config
-
-
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    print("Catat.in API starting up...")
-    await init_db()
-    yield
-    print("Catat.in API shutting down...")
 
 
 app = FastAPI(
@@ -41,7 +17,6 @@ app = FastAPI(
     version="0.1.0",
     docs_url="/docs" if settings.DEBUG else None,
     redoc_url="/redoc" if settings.DEBUG else None,
-    lifespan=lifespan,
 )
 
 if not settings.DEBUG:
@@ -64,29 +39,14 @@ app.add_middleware(
 API_PREFIX = "/api/v1"
 
 app.include_router(ai.router, prefix=f"{API_PREFIX}/ai", tags=["AI"])
-app.include_router(wallets.router, prefix=f"{API_PREFIX}/wallets", tags=["Wallets"])
-app.include_router(
-    transactions.router, prefix=f"{API_PREFIX}/transactions", tags=["Transactions"]
-)
-app.include_router(
-    categories.router, prefix=f"{API_PREFIX}/categories", tags=["Categories"]
-)
-app.include_router(bills.router, prefix=f"{API_PREFIX}/bills", tags=["Bills"])
-app.include_router(budgets.router, prefix=f"{API_PREFIX}/budgets", tags=["Budgets"])
-app.include_router(reports.router, prefix=f"{API_PREFIX}/reports", tags=["Reports"])
-app.include_router(groups.router, prefix=f"{API_PREFIX}/groups", tags=["Groups"])
 app.include_router(imports.router, prefix=f"{API_PREFIX}/imports", tags=["Import"])
 app.include_router(webhooks.router, prefix=f"{API_PREFIX}/webhooks", tags=["Webhooks"])
-app.include_router(professional.router, prefix=f"{API_PREFIX}", tags=["Professional"])
 
 
 @app.get("/health", tags=["System"])
 async def health_check():
-    firebase_status = "ok" if has_firebase_admin_config() else "missing-config"
-
     return {
-        "status": "ok" if firebase_status == "ok" else "degraded",
-        "firebase": firebase_status,
+        "status": "ok",
         "version": settings.VERSION,
         "environment": settings.ENVIRONMENT,
     }

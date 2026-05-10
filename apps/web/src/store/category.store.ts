@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import type { Category, TransactionType } from "@catat-in/shared/types";
+import type { Category, TransactionType } from "@kaswise/shared/types";
 import {
 	createCategory,
 	listCategories,

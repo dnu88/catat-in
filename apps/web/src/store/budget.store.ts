@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import type { Budget, BudgetFormData } from "@catat-in/shared/types";
+import type { Budget, BudgetFormData } from "@kaswise/shared/types";
 import {
 	createBudget,
 	listBudgets,

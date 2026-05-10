@@ -1,0 +1,116 @@
+{
+  "meta": {
+    "name": "Kaswise",
+    "register": "product",
+    "creativeNorthStar": "The Practical Companion"
+  },
+  "color": {
+    "strategy": "restrained",
+    "primary": "#1E3A8A",
+    "accent": "#1E40AF",
+    "success": "#4CAF50",
+    "danger": "#FF7B7B",
+    "warning": "#FFC06D",
+    "info": "#38BDF8",
+    "light": {
+      "bgBase": "#FFFFFF",
+      "bgSurface": "#F5F5F5",
+      "bgCard": "#FFFFFF",
+      "bgMuted": "#F8FAFD",
+      "textPrimary": "#28303F",
+      "textSecondary": "#4C5A78",
+      "textMuted": "#8A95AD",
+      "borderSoft": "#E2E7F2",
+      "borderStrong": "#CBD5E3"
+    },
+    "dark": {
+      "bgBase": "#1A1A2E",
+      "bgSurface": "#252538",
+      "bgCard": "#252538",
+      "bgMuted": "#2E2E42",
+      "textPrimary": "#F5F7FF",
+      "textSecondary": "#C7CEE0",
+      "textMuted": "#99A3BA",
+      "borderSoft": "#34344A",
+      "borderStrong": "#4A4A64"
+    }
+  },
+  "typography": {
+    "stack": "Inter, Poppins, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif",
+    "display": { "size": "32px", "weight": 700, "lineHeight": 1.2, "letterSpacing": "-0.5px" },
+    "headline": { "size": "24px", "weight": 700, "lineHeight": 1.3, "letterSpacing": "-0.3px" },
+    "title": { "size": "18px", "weight": 700, "lineHeight": 1.4, "letterSpacing": "-0.2px" },
+    "body": { "size": "16px", "weight": 400, "lineHeight": 1.6, "letterSpacing": "normal" },
+    "label": { "size": "13px", "weight": 600, "lineHeight": 1.4, "letterSpacing": "0.02em" },
+    "small": { "size": "11px", "weight": 400, "lineHeight": 1.4, "letterSpacing": "0.03em" }
+  },
+  "radius": {
+    "sm": "10px",
+    "md": "14px",
+    "lg": "18px",
+    "pill": "999px"
+  },
+  "spacing": {
+    "xs": "4px",
+    "sm": "8px",
+    "md": "12px",
+    "lg": "16px",
+    "xl": "20px",
+    "2xl": "24px",
+    "3xl": "32px"
+  },
+  "shadow": {
+    "ambient": "0 1px 3px rgba(15, 21, 35, 0.06), 0 4px 16px rgba(15, 21, 35, 0.08)",
+    "accentGlow": "0 4px 20px color-mix(in srgb, var(--ks-brand-primary) 36%, transparent)",
+    "focusRing": "0 0 0 3px color-mix(in srgb, var(--ks-brand-primary) 22%, transparent)"
+  },
+  "motion": {
+    "buttonHoverTransform": "translateY(-1px)",
+    "allowedAnimatedProps": ["transform", "opacity"],
+    "durationFast": "160ms",
+    "easing": "cubic-bezier(0.22, 1, 0.36, 1)"
+  },
+  "rules": {
+    "restrainedAccentMaxSurfacePercent": 10,
+    "gradientOnlyForLogo": true,
+    "noSerif": true,
+    "noInnerShadow": true,
+    "maxPrimaryFlowTapsMobile": 3,
+    "autosaveMinConfidence": 0.85,
+    "autosaveUndoSeconds": 5
+  },
+  "components": {
+    "buttonPrimary": {
+      "background": "#1E3A8A",
+      "text": "#FFFFFF",
+      "radius": "10px",
+      "padding": "9px 16px"
+    },
+    "buttonSecondary": {
+      "background": "#FFFFFF",
+      "text": "#4C5A78",
+      "radius": "10px",
+      "padding": "9px 16px"
+    },
+    "card": {
+      "background": "#FFFFFF",
+      "text": "#28303F",
+      "radius": "14px",
+      "padding": "18px"
+    },
+    "input": {
+      "background": "#FFFFFF",
+      "text": "#28303F",
+      "radius": "10px",
+      "padding": "10px 14px",
+      "focusBorder": "#1E3A8A"
+    },
+    "logo": {
+      "viewBox": "0 0 512 512",
+      "sizes": [32, 36, 72],
+      "variants": ["light", "dark"],
+      "indigoGradient": ["#818CF8", "#4F46E5"],
+      "emeraldGradient": ["#6EE7B7", "#10B981"]
+    }
+  }
+}

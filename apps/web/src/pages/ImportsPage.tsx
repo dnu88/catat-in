@@ -13,7 +13,7 @@ import { buildCategoryOptions } from "@lib/categories";
 import type {
 	TransactionCategory,
 	TransactionFormData,
-} from "@catat-in/shared/types";
+} from "@kaswise/shared/types";
 
 const IMPORT_SOURCES = [
 	{ value: "bca", label: "BCA" },
@@ -372,52 +372,24 @@ export default function ImportsPage() {
 	};
 
 	return (
-		<div
-			className="animate-fade-in"
-			style={{ display: "flex", flexDirection: "column", gap: "16px" }}
-		>
-			<div>
-				<h2
-					style={{
-						fontSize: "20px",
-						fontWeight: 700,
-						color: "var(--text-primary)",
-						marginBottom: "4px",
-					}}
-				>
-					{language === "id"
-						? "Import Mutasi & Struk"
-						: "Import Statements & Receipts"}
-				</h2>
-				<p
-					style={{
-						fontSize: "13px",
-						color: "var(--text-muted)",
-						maxWidth: "760px",
-					}}
-				>
-					Sekarang lane struk dan import mutasi sama-sama aktif. Upload struk
-					untuk OCR review, atau upload file CSV/Excel bank lalu preview hasil
-					parsing dan duplikat sebelum konfirmasi import.
-				</p>
+		<div className="animate-fade-in page-shell">
+			<div className="page-header">
+				<div>
+					<h2 className="page-title">
+						{language === "id"
+							? "Import Mutasi & Struk"
+							: "Import Statements & Receipts"}
+					</h2>
+					<p className="page-subtitle">
+						Sekarang lane struk dan import mutasi sama-sama aktif. Upload struk
+						untuk OCR review, atau upload file CSV/Excel bank lalu preview hasil
+						parsing dan duplikat sebelum konfirmasi import.
+					</p>
+				</div>
 			</div>
 
-			<div
-				style={{
-					display: "grid",
-					gridTemplateColumns: "minmax(0, 1.05fr) minmax(320px, 0.95fr)",
-					gap: "16px",
-				}}
-			>
-				<section
-					className="card"
-					style={{
-						padding: "18px",
-						display: "flex",
-						flexDirection: "column",
-						gap: "14px",
-					}}
-				>
+			<div className="imports-main-grid">
+				<section className="card panel-card">
 					<div
 						style={{
 							display: "flex",
@@ -426,18 +398,11 @@ export default function ImportsPage() {
 							flexWrap: "wrap",
 						}}
 					>
-						<div>
-							<h3
-								style={{
-									fontSize: "16px",
-									fontWeight: 700,
-									color: "var(--text-primary)",
-									marginBottom: "4px",
-								}}
-							>
+						<div className="panel-head">
+							<h3 className="panel-title">
 								{language === "id" ? "Upload Struk" : "Upload Receipt"}
 							</h3>
-							<p style={{ fontSize: "12px", color: "var(--text-muted)" }}>
+							<p className="panel-subtitle">
 								Format didukung: JPG, PNG, WEBP, atau PDF. Backend juga sudah
 								memvalidasi ukuran file.
 							</p>
@@ -559,27 +524,10 @@ export default function ImportsPage() {
 					) : null}
 				</section>
 
-				<section
-					className="card"
-					style={{
-						padding: "18px",
-						display: "flex",
-						flexDirection: "column",
-						gap: "14px",
-					}}
-				>
-					<div>
-						<h3
-							style={{
-								fontSize: "16px",
-								fontWeight: 700,
-								color: "var(--text-primary)",
-								marginBottom: "4px",
-							}}
-						>
-							Review OCR
-						</h3>
-						<p style={{ fontSize: "12px", color: "var(--text-muted)" }}>
+				<section className="card panel-card">
+					<div className="panel-head">
+						<h3 className="panel-title">Review OCR</h3>
+						<p className="panel-subtitle">
 							Sesuai PRD, hasil OCR harus selalu bisa diedit manual sebelum jadi
 							transaksi.
 						</p>
@@ -609,13 +557,7 @@ export default function ImportsPage() {
 								/>
 							) : null}
 
-							<div
-								style={{
-									display: "grid",
-									gridTemplateColumns: "1fr 1fr",
-									gap: "10px",
-								}}
-							>
+							<div className="form-grid-2">
 								<Field label="Nominal">
 									<input
 										className="form-input"
@@ -742,22 +684,8 @@ export default function ImportsPage() {
 				</section>
 			</div>
 
-			<div
-				style={{
-					display: "grid",
-					gridTemplateColumns: "minmax(0, 1.1fr) minmax(320px, 0.9fr)",
-					gap: "16px",
-				}}
-			>
-				<section
-					className="card"
-					style={{
-						padding: "18px",
-						display: "flex",
-						flexDirection: "column",
-						gap: "14px",
-					}}
-				>
+			<div className="imports-secondary-grid">
+				<section className="card panel-card">
 					<div
 						style={{
 							display: "flex",
@@ -766,20 +694,13 @@ export default function ImportsPage() {
 							flexWrap: "wrap",
 						}}
 					>
-						<div>
-							<h3
-								style={{
-									fontSize: "16px",
-									fontWeight: 700,
-									color: "var(--text-primary)",
-									marginBottom: "4px",
-								}}
-							>
+						<div className="panel-head">
+							<h3 className="panel-title">
 								{language === "id"
 									? "Import Mutasi Bank"
 									: "Import Bank Statements"}
 							</h3>
-							<p style={{ fontSize: "12px", color: "var(--text-muted)" }}>
+							<p className="panel-subtitle">
 								Upload CSV/Excel, preview hasil parsing, lalu konfirmasi import
 								ke wallet yang dipilih.
 							</p>
@@ -792,13 +713,7 @@ export default function ImportsPage() {
 						</span>
 					</div>
 
-					<div
-						style={{
-							display: "grid",
-							gridTemplateColumns: "1fr 1fr",
-							gap: "10px",
-						}}
-					>
+					<div className="form-grid-2">
 						<Field label="Sumber bank / dompet digital">
 							<select
 								className="form-input"
@@ -974,7 +889,7 @@ export default function ImportsPage() {
 								style={{
 									border: "1px solid var(--border)",
 									borderRadius: "14px",
-									overflow: "hidden",
+									overflowX: "auto",
 								}}
 							>
 								<div
@@ -1009,7 +924,7 @@ export default function ImportsPage() {
 												borderBottom: "1px solid var(--border)",
 												alignItems: "center",
 												background: row.is_duplicate
-													? "rgba(245,158,11,0.06)"
+													? "color-mix(in srgb, var(--amber) 10%, transparent)"
 													: "var(--bg-card)",
 												cursor: "pointer",
 											}}
@@ -1126,24 +1041,8 @@ export default function ImportsPage() {
 					)}
 				</section>
 
-				<section
-					className="card"
-					style={{
-						padding: "18px",
-						display: "flex",
-						flexDirection: "column",
-						gap: "14px",
-					}}
-				>
-					<h3
-						style={{
-							fontSize: "16px",
-							fontWeight: 700,
-							color: "var(--text-primary)",
-						}}
-					>
-						Checklist PRD untuk lane import
-					</h3>
+				<section className="card panel-card">
+					<h3 className="panel-title">Checklist PRD untuk lane import</h3>
 					<ChecklistItem text="Preview sebelum simpan sudah ada." done />
 					<ChecklistItem
 						text="Deteksi duplikat berdasarkan tanggal + nominal + deskripsi sudah aktif."
@@ -1222,18 +1121,18 @@ function StatusBox({
 	const tones = {
 		danger: {
 			color: "var(--red)",
-			background: "rgba(239,68,68,0.08)",
-			border: "1px solid rgba(239,68,68,0.16)",
+			background: "color-mix(in srgb, var(--red) 8%, transparent)",
+			border: "1px solid color-mix(in srgb, var(--red) 16%, transparent)",
 		},
 		success: {
 			color: "var(--green)",
-			background: "rgba(16,185,129,0.08)",
-			border: "1px solid rgba(16,185,129,0.16)",
+			background: "color-mix(in srgb, var(--green) 8%, transparent)",
+			border: "1px solid color-mix(in srgb, var(--green) 16%, transparent)",
 		},
 		warning: {
 			color: "var(--amber)",
-			background: "rgba(245,158,11,0.10)",
-			border: "1px solid rgba(245,158,11,0.18)",
+			background: "color-mix(in srgb, var(--amber) 10%, transparent)",
+			border: "1px solid color-mix(in srgb, var(--amber) 18%, transparent)",
 		},
 	} as const;
 

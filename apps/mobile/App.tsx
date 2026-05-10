@@ -1,12 +1,5 @@
-import { StatusBar } from 'expo-status-bar'
-
-import { MobileRoot } from './src/navigation/MobileRoot'
+import { Slot } from 'expo-router'
 
 export default function App() {
-  return (
-    <>
-      <StatusBar style="auto" />
-      <MobileRoot />
-    </>
-  )
+  return <Slot />
 }

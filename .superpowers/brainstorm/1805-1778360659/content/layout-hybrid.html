@@ -1,0 +1,172 @@
+<h2>Report Menu Layout - Hybrid Approach</h2>
+<p class="subtitle">Compact summary top + breathable detail bottom</p>
+
+<div class="mockup">
+  <div class="mockup-header">Preview: Reports Screen</div>
+  <div class="mockup-body" style="padding: 16px; background: #f8fafc; border-radius: 8px;">
+
+    <!-- Header -->
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+      <div>
+        <div style="font-size: 20px; font-weight: 800; color: #1e293b;">Laporan</div>
+        <div style="font-size: 12px; color: #64748b;">Ringkasan performa finansial</div>
+      </div>
+      <div style="background: #3b82f6; color: white; padding: 6px 12px; border-radius: 20px; font-size: 12px; font-weight: 700;">
+        Mei 2026
+      </div>
+    </div>
+
+    <!-- Compact Top Section -->
+    <div style="display: flex; gap: 10px; margin-bottom: 20px;">
+      <!-- Income vs Expense -->
+      <div style="flex: 1; background: white; border: 1px solid #e2e8f0; border-radius: 12px; padding: 12px; border-bottom: 3px solid #10b981;">
+        <div style="font-size: 11px; color: #64748b; font-weight: 600;">Pemasukan</div>
+        <div style="font-size: 16px; font-weight: 800; color: #10b981;">Rp 18,65 Jt</div>
+        <div style="font-size: 10px; color: #10b981; font-weight: 700; margin-top: 2px;">▲ 12.5%</div>
+      </div>
+
+      <!-- Total Transactions -->
+      <div style="flex: 1; background: white; border: 1px solid #e2e8f0; border-radius: 12px; padding: 12px; border-bottom: 3px solid #f59e0b;">
+        <div style="font-size: 11px; color: #64748b; font-weight: 600;">Transaksi</div>
+        <div style="font-size: 16px; font-weight: 800; color: #f59e0b;">142</div>
+        <div style="font-size: 10px; color: #64748b; margin-top: 2px;">bulan ini</div>
+      </div>
+
+      <!-- Quick Insight -->
+      <div style="flex: 1; background: white; border: 1px solid #e2e8f0; border-radius: 12px; padding: 12px; border-bottom: 3px solid #8b5cf6;">
+        <div style="font-size: 11px; color: #64748b; font-weight: 600;">Insight</div>
+        <div style="font-size: 12px; font-weight: 700; color: #1e293b; margin-top: 2px;">Pengeluaran ↓8%</div>
+        <div style="font-size: 10px; color: #64748b; margin-top: 2px;">vs bulan lalu</div>
+      </div>
+    </div>
+
+    <!-- Line Chart Section -->
+    <div style="background: white; border: 1px solid #e2e8f0; border-radius: 16px; padding: 16px; margin-bottom: 20px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+        <div>
+          <div style="font-size: 16px; font-weight: 800; color: #1e293b;">Tren 6 Bulan</div>
+          <div style="font-size: 12px; color: #64748b;">Pemasukan vs pengeluaran (juta Rp)</div>
+        </div>
+        <div style="font-size: 11px; color: #3b82f6; font-weight: 700;">Detail →</div>
+      </div>
+
+      <!-- Line Chart Mock -->
+      <div style="height: 120px; position: relative; margin-top: 8px;">
+        <!-- Grid lines -->
+        <div style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; display: flex; flex-direction: column; justify-content: space-between;">
+          <div style="border-top: 1px dashed #e2e8f0; width: 100%;"></div>
+          <div style="border-top: 1px dashed #e2e8f0; width: 100%;"></div>
+          <div style="border-top: 1px dashed #e2e8f0; width: 100%;"></div>
+        </div>
+
+        <!-- Line chart -->
+        <div style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; display: flex; align-items: flex-end; justify-content: space-around; padding: 0 8px;">
+          <!-- Income line (green) -->
+          <div style="position: absolute; top: 20%; left: 8%; width: 84%; height: 2px; background: linear-gradient(90deg, #10b981 0%, #10b981 100%); border-radius: 1px;"></div>
+          <!-- Expense line (red) -->
+          <div style="position: absolute; top: 60%; left: 8%; width: 84%; height: 2px; background: linear-gradient(90deg, #ef4444 0%, #ef4444 100%); border-radius: 1px; opacity: 0.8;"></div>
+
+          <!-- Data points -->
+          <div style="width: 6px; height: 6px; background: #10b981; border-radius: 50%; position: absolute; top: 20%; left: 8%;"></div>
+          <div style="width: 6px; height: 6px; background: #ef4444; border-radius: 50%; position: absolute; top: 60%; left: 8%;"></div>
+        </div>
+
+        <!-- Month labels -->
+        <div style="display: flex; justify-content: space-around; margin-top: 130px;">
+          <div style="font-size: 10px; color: #64748b; font-weight: 600;">Jan</div>
+          <div style="font-size: 10px; color: #64748b; font-weight: 600;">Feb</div>
+          <div style="font-size: 10px; color: #64748b; font-weight: 600;">Mar</div>
+          <div style="font-size: 10px; color: #64748b; font-weight: 600;">Apr</div>
+          <div style="font-size: 10px; color: #64748b; font-weight: 600;">Mei</div>
+          <div style="font-size: 10px; color: #64748b; font-weight: 600;">Jun</div>
+        </div>
+      </div>
+
+      <!-- Legend -->
+      <div style="display: flex; gap: 16px; margin-top: 12px;">
+        <div style="display: flex; align-items: center; gap: 6px;">
+          <div style="width: 8px; height: 8px; background: #10b981; border-radius: 50%;"></div>
+          <div style="font-size: 11px; color: #64748b; font-weight: 600;">Pemasukan</div>
+        </div>
+        <div style="display: flex; align-items: center; gap: 6px;">
+          <div style="width: 8px; height: 8px; background: #ef4444; border-radius: 50%;"></div>
+          <div style="font-size: 11px; color: #64748b; font-weight: 600;">Pengeluaran</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Donut + Category Breakdown -->
+    <div style="background: white; border: 1px solid #e2e8f0; border-radius: 16px; padding: 16px;">
+      <div style="margin-bottom: 12px;">
+        <div style="font-size: 16px; font-weight: 800; color: #1e293b;">Breakdown Pengeluaran</div>
+        <div style="font-size: 12px; color: #64748b;">Per kategori bulan Mei 2026</div>
+      </div>
+
+      <!-- Donut + List -->
+      <div style="display: flex; gap: 20px;">
+        <!-- Donut Chart -->
+        <div style="flex: 0 0 auto; position: relative; width: 100px; height: 100px;">
+          <div style="width: 100px; height: 100px; border-radius: 50%; border: 8px solid #3b82f6; display: flex; align-items: center; justify-content: center;">
+            <div style="text-align: center;">
+              <div style="font-size: 14px; font-weight: 800; color: #1e293b;">Rp 6,4 Jt</div>
+              <div style="font-size: 10px; color: #64748b;">Total</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Category List -->
+        <div style="flex: 1;">
+          <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid #f1f5f9;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <div style="font-size: 16px;">🍽</div>
+              <div>
+                <div style="font-size: 13px; font-weight: 700; color: #1e293b;">Makanan & Minuman</div>
+                <div style="font-size: 11px; color: #64748b;">Rp 2.050.000</div>
+              </div>
+            </div>
+            <div style="text-align: right;">
+              <div style="font-size: 13px; font-weight: 800; color: #3b82f6;">32%</div>
+              <div style="width: 60px; height: 4px; background: #e2e8f0; border-radius: 2px; margin-top: 4px;">
+                <div style="width: 32%; height: 100%; background: #3b82f6; border-radius: 2px;"></div>
+              </div>
+            </div>
+          </div>
+
+          <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid #f1f5f9;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <div style="font-size: 16px;">🚗</div>
+              <div>
+                <div style="font-size: 13px; font-weight: 700; color: #1e293b;">Transportasi</div>
+                <div style="font-size: 11px; color: #64748b;">Rp 1.408.000</div>
+              </div>
+            </div>
+            <div style="text-align: right;">
+              <div style="font-size: 13px; font-weight: 800; color: #3b82f6;">22%</div>
+              <div style="width: 60px; height: 4px; background: #e2e8f0; border-radius: 2px; margin-top: 4px;">
+                <div style="width: 22%; height: 100%; background: #3b82f6; border-radius: 2px;"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div class="options">
+  <div class="option" data-choice="approve" onclick="toggleSelect(this)">
+    <div class="letter">✓</div>
+    <div class="content">
+      <h3>Setuju dengan layout ini</h3>
+      <p>Lanjut ke detail visual style & interaksi</p>
+    </div>
+  </div>
+  <div class="option" data-choice="revise" onclick="toggleSelect(this)">
+    <div class="letter">✏️</div>
+    <div class="content">
+      <h3>Perlu revisi</h3>
+      <p>Ada bagian yang kurang pas</p>
+    </div>
+  </div>
+</div>

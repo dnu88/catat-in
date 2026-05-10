@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import type { BillFormData, BillReminder } from "@catat-in/shared/types";
+import type { BillFormData, BillReminder } from "@kaswise/shared/types";
 import {
 	createBill,
 	listBills,

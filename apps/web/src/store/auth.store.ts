@@ -8,7 +8,7 @@ import {
 	sendPasswordResetEmail,
 	updatePassword as firebaseUpdatePassword,
 } from "firebase/auth";
-import type { User } from "@catat-in/shared/types";
+import type { User } from "@kaswise/shared/types";
 import { auth, googleProvider, subscribeAuthState } from "@lib/firebase";
 
 const LOGIN_TIMEOUT_MS = 20_000;

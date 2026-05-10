@@ -22,9 +22,6 @@ anthropic==0.28.0
 # ── PAYMENT ──────────────────────────────────────────────────
 midtransclient==1.4.2
 
-# ── PUSH NOTIFICATION ────────────────────────────────────────
-firebase-admin==6.5.0
-
 # ── DATA PROCESSING (Import CSV) ─────────────────────────────
 pandas==2.2.2
 openpyxl==3.1.4              # Baca file .xlsx

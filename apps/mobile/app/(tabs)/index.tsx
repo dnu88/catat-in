@@ -1,102 +1,208 @@
 import { useMemo } from 'react'
-import { ScrollView, StyleSheet, Text, View } from 'react-native'
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
+import { useRouter } from 'expo-router'
 
 import { useTheme } from '../../src/theme/theme-context'
 
 const recentTransactions = [
-  { id: '1', title: 'Gaji Bulanan', date: '23 Mei 2024', amount: '+ Rp 8.500.000', tone: 'positive' },
-  { id: '2', title: 'Belanja Bulanan', date: '22 Mei 2024', amount: '- Rp 450.000', tone: 'negative' },
-  { id: '3', title: 'Transportasi', date: '22 Mei 2024', amount: '- Rp 75.000', tone: 'negative' },
-  { id: '4', title: 'Makan Siang', date: '22 Mei 2024', amount: '- Rp 45.000', tone: 'negative' },
+  { id: '1', title: 'Gaji Bulanan', date: '9 Mei 2026', amount: '+ Rp 8.500.000', tone: 'positive', category: 'Pemasukan' },
+  { id: '2', title: 'Belanja Bulanan', date: '8 Mei 2026', amount: '- Rp 450.000', tone: 'negative', category: 'Belanja' },
+  { id: '3', title: 'Transportasi', date: '8 Mei 2026', amount: '- Rp 75.000', tone: 'negative', category: 'Transport' },
+  { id: '4', title: 'Makan Siang', date: '7 Mei 2026', amount: '- Rp 45.000', tone: 'negative', category: 'Makanan' },
+]
+
+const budgetItems = [
+  { id: '1', name: 'Makan', spent: 620000, limit: 800000, icon: '🍽' },
+  { id: '2', name: 'Transport', spent: 180000, limit: 300000, icon: '🚗' },
+  { id: '3', name: 'Belanja', spent: 450000, limit: 500000, icon: '🛒' },
+]
+
+const quickActions = [
+  { id: 'text', label: 'Teks', icon: '✏️', route: '/(tabs)/capture' },
+  { id: 'photo', label: 'Foto', icon: '📷', route: '/(tabs)/capture' },
+  { id: 'voice', label: 'Suara', icon: '🎙️', route: '/(tabs)/capture' },
+  { id: 'import', label: 'Import', icon: '📥', route: '/(tabs)/imports' },
 ]
 
 export default function DashboardScreen() {
   const { theme } = useTheme()
+  const router = useRouter()
   const styles = useMemo(() => createStyles(theme), [theme])
 
+  const totalBudgetSpent = budgetItems.reduce((acc, item) => acc + item.spent, 0)
+  const totalBudgetLimit = budgetItems.reduce((acc, item) => acc + item.limit, 0)
+  const budgetPercentage = Math.round((totalBudgetSpent / totalBudgetLimit) * 100)
+
   return (
-    <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
-      <View style={styles.headerRow}>
-        <View>
-          <Text style={styles.greeting}>Halo, Andika! 👋</Text>
-          <Text style={styles.sub}>Kelola keuanganmu dengan bijak</Text>
-        </View>
-        <Text style={styles.profileChip}>Premium</Text>
-      </View>
-
-      <View style={styles.balanceCard}>
-        <Text style={styles.balanceLabel}>Saldo Total</Text>
-        <Text style={styles.balanceValue}>Rp 24.250.000</Text>
-        <Text style={styles.balanceTrend}>▲ 12.5% dari minggu lalu</Text>
-      </View>
-
-      <View style={styles.statRow}>
-        <View style={styles.statCard}>
-          <Text style={styles.statTitle}>Pemasukan</Text>
-          <Text style={styles.statValue}>Rp 18.650.000</Text>
-        </View>
-        <View style={styles.statCard}>
-          <Text style={styles.statTitle}>Pengeluaran</Text>
-          <Text style={[styles.statValue, { color: theme.colors.danger }]}>Rp 6.400.000</Text>
-        </View>
-      </View>
-
-      <View style={styles.sectionCard}>
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Ringkasan Kategori</Text>
-          <Text style={styles.sectionLink}>Lihat Semua</Text>
-        </View>
-        <View style={styles.donutWrap}>
-          <View style={styles.donutOuter}>
-            <View style={styles.donutInner}>
-              <Text style={styles.donutLabel}>Total</Text>
-              <Text style={styles.donutValue}>Rp 6.400.000</Text>
-            </View>
+    <View style={styles.screen}>
+      <ScrollView style={styles.scrollView} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        {/* Header */}
+        <View style={styles.headerRow}>
+          <View>
+            <Text style={styles.greeting}>Selamat datang, Danu</Text>
+            <Text style={styles.dateText}>Mei 2026</Text>
           </View>
-          <View style={styles.legendCol}>
-            <LegendDot color={theme.colors.success} textColor={theme.colors.textMuted} label="Makanan" />
-            <LegendDot color={theme.colors.warning} textColor={theme.colors.textMuted} label="Belanja" />
-            <LegendDot color={theme.colors.danger} textColor={theme.colors.textMuted} label="Tagihan" />
-            <LegendDot color={theme.colors.info} textColor={theme.colors.textMuted} label="Transport" />
+          <View style={styles.avatarWrap}>
+            <Text style={styles.avatarText}>DB</Text>
           </View>
         </View>
-      </View>
 
-      <View style={styles.sectionCard}>
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Transaksi Terbaru</Text>
-          <Text style={styles.sectionLink}>Lihat Semua</Text>
+        {/* Balance Hero */}
+        <View style={styles.heroCard}>
+          <View style={styles.heroTop}>
+            <Text style={styles.heroLabel}>Total Saldo</Text>
+            <View style={styles.heroBadge}>
+              <Text style={styles.heroBadgeText}>Premium</Text>
+            </View>
+          </View>
+          <Text style={styles.heroAmount}>Rp 24.250.000</Text>
+          <View style={styles.heroTrendRow}>
+            <View style={styles.trendDot}>
+              <Text style={styles.trendDotText}>▲</Text>
+            </View>
+            <Text style={styles.heroTrend}>+12.5% dari bulan lalu</Text>
+          </View>
+
+          <View style={styles.heroDivider} />
+
+          <View style={styles.heroStatsRow}>
+            <View style={styles.heroStat}>
+              <Text style={styles.heroStatLabel}>Pemasukan</Text>
+              <Text style={[styles.heroStatValue, { color: theme.colors.success }]}>+Rp 18.65 Jt</Text>
+            </View>
+            <View style={styles.heroStatDivider} />
+            <View style={styles.heroStat}>
+              <Text style={styles.heroStatLabel}>Pengeluaran</Text>
+              <Text style={[styles.heroStatValue, { color: theme.colors.danger }]}>-Rp 6.40 Jt</Text>
+            </View>
+          </View>
         </View>
 
-        {recentTransactions.map((transaction) => (
-          <View key={transaction.id} style={styles.txRow}>
-            <View style={styles.txIcon}>
-              <Text style={styles.txIconText}>{transaction.tone === 'positive' ? '↗' : '↘'}</Text>
+        {/* Quick Actions */}
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Catat Cepat</Text>
+        </View>
+        <View style={styles.quickActionRow}>
+          {quickActions.map((action) => (
+            <Pressable
+              key={action.id}
+              style={styles.quickActionCard}
+              onPress={() => router.push(action.route as any)}
+            >
+              <View style={styles.quickActionIconWrap}>
+                <Text style={styles.quickActionIcon}>{action.icon}</Text>
+              </View>
+              <Text style={styles.quickActionLabel}>{action.label}</Text>
+            </Pressable>
+          ))}
+        </View>
+
+        {/* Budget Overview */}
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Anggaran Bulan Ini</Text>
+          <Pressable style={styles.sectionLinkWrap}>
+            <Text style={styles.sectionLink}>Lihat Semua</Text>
+          </Pressable>
+        </View>
+        <View style={styles.budgetSummaryCard}>
+          <View style={styles.budgetSummaryTop}>
+            <View>
+              <Text style={styles.budgetSummaryLabel}>Terpakai</Text>
+              <Text style={styles.budgetSummaryValue}>{budgetPercentage}%</Text>
             </View>
-            <View style={styles.txInfo}>
-              <Text style={styles.txTitle}>{transaction.title}</Text>
-              <Text style={styles.txDate}>{transaction.date}</Text>
+            <View style={styles.budgetSummaryRight}>
+              <Text style={styles.budgetSummarySpent}>Rp {(totalBudgetSpent / 1000000).toFixed(2)} Jt</Text>
+              <Text style={styles.budgetSummaryLimit}>dari Rp {(totalBudgetLimit / 1000000).toFixed(1)} Jt</Text>
             </View>
-            <Text
+          </View>
+          <View style={styles.budgetProgressBar}>
+            <View
               style={[
-                styles.txAmount,
-                transaction.tone === 'positive' ? { color: theme.colors.success } : { color: theme.colors.danger },
+                styles.budgetProgressFill,
+                {
+                  width: `${budgetPercentage}%`,
+                  backgroundColor: budgetPercentage > 80 ? theme.colors.warning : theme.colors.brandPrimary,
+                },
+              ]}
+            />
+          </View>
+        </View>
+
+        {budgetItems.map((item, index) => {
+          const percentage = Math.round((item.spent / item.limit) * 100)
+          const isOver = percentage > 100
+          const isWarning = percentage > 80 && !isOver
+          return (
+            <View
+              key={item.id}
+              style={[
+                styles.budgetItemCard,
+                index === budgetItems.length - 1 && { borderBottomWidth: 0 },
               ]}
             >
-              {transaction.amount}
-            </Text>
-          </View>
-        ))}
-      </View>
-    </ScrollView>
-  )
-}
+              <View style={styles.budgetItemLeft}>
+                <Text style={styles.budgetItemIcon}>{item.icon}</Text>
+                <View>
+                  <Text style={styles.budgetItemName}>{item.name}</Text>
+                  <Text style={styles.budgetItemMeta}>
+                    Rp {(item.spent / 1000).toFixed(0)}rb / Rp {(item.limit / 1000).toFixed(0)}rb
+                  </Text>
+                </View>
+              </View>
+              <View style={styles.budgetItemRight}>
+                <Text
+                  style={[
+                    styles.budgetItemPct,
+                    isOver && { color: theme.colors.danger },
+                    isWarning && { color: theme.colors.warning },
+                  ]}
+                >
+                  {percentage}%
+                </Text>
+              </View>
+            </View>
+          )
+        })}
 
-function LegendDot({ color, textColor, label }: { color: string; textColor: string; label: string }) {
-  return (
-    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-      <View style={{ width: 8, height: 8, borderRadius: 999, backgroundColor: color }} />
-      <Text style={{ fontSize: 12, color: textColor }}>{label}</Text>
+        {/* Recent Transactions */}
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Transaksi Terbaru</Text>
+          <Pressable style={styles.sectionLinkWrap} onPress={() => router.push('/(tabs)/transactions')}>
+            <Text style={styles.sectionLink}>Lihat Semua</Text>
+          </Pressable>
+        </View>
+        <View style={styles.transactionCard}>
+          {recentTransactions.map((tx, index) => (
+            <Pressable
+              key={tx.id}
+              style={[
+                styles.txRow,
+                index === 0 && { borderTopWidth: 0 },
+              ]}
+            >
+              <View style={[styles.txIcon, tx.tone === 'positive' && { backgroundColor: `${theme.colors.success}15` }]}>
+                <Text style={[styles.txIconText, tx.tone === 'positive' && { color: theme.colors.success }]}>
+                  {tx.tone === 'positive' ? '↑' : '↓'}
+                </Text>
+              </View>
+              <View style={styles.txInfo}>
+                <Text style={styles.txTitle}>{tx.title}</Text>
+                <Text style={styles.txSub}>{tx.category} • {tx.date}</Text>
+              </View>
+              <Text
+                style={[
+                  styles.txAmount,
+                  tx.tone === 'positive' ? { color: theme.colors.success } : { color: theme.colors.textPrimary },
+                ]}
+              >
+                {tx.amount}
+              </Text>
+            </Pressable>
+          ))}
+        </View>
+
+        <View style={{ height: 100 }} />
+      </ScrollView>
     </View>
   )
 }
@@ -107,177 +213,299 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
       flex: 1,
       backgroundColor: theme.colors.background,
     },
+    scrollView: {
+      flex: 1,
+    },
     content: {
-      padding: 16,
-      gap: 12,
-      paddingBottom: 26,
+      padding: 20,
+      gap: 16,
     },
     headerRow: {
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
+      marginBottom: 4,
     },
     greeting: {
       color: theme.colors.textPrimary,
-      fontSize: 28,
+      fontSize: 24,
       fontWeight: '800',
-      letterSpacing: -0.4,
+      letterSpacing: -0.3,
     },
-    sub: {
+    dateText: {
       color: theme.colors.textSecondary,
-      fontSize: 13,
+      fontSize: 14,
       marginTop: 2,
+      fontWeight: '500',
     },
-    profileChip: {
-      backgroundColor: `${theme.colors.brandAccent}26`,
-      color: theme.colors.brandAccent,
-      borderWidth: 1,
-      borderColor: `${theme.colors.brandAccent}55`,
-      borderRadius: 999,
-      paddingHorizontal: 10,
-      paddingVertical: 5,
-      fontSize: 11,
+    avatarWrap: {
+      width: 44,
+      height: 44,
+      borderRadius: 22,
+      backgroundColor: theme.colors.brandPrimary,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    avatarText: {
+      color: '#FFFFFF',
+      fontSize: 14,
       fontWeight: '700',
-      overflow: 'hidden',
     },
-    balanceCard: {
-      backgroundColor: theme.colors.surface,
-      borderRadius: 16,
-      borderWidth: 1,
-      borderColor: theme.colors.borderSoft,
-      padding: 16,
-      gap: 4,
+    heroCard: {
+      backgroundColor: theme.colors.brandPrimary,
+      borderRadius: 20,
+      padding: 20,
+      gap: 12,
     },
-    balanceLabel: {
-      color: theme.colors.textSecondary,
+    heroTop: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+    },
+    heroLabel: {
+      color: 'rgba(255,255,255,0.75)',
       fontSize: 13,
       fontWeight: '600',
     },
-    balanceValue: {
-      color: theme.colors.textPrimary,
-      fontSize: 36,
+    heroBadge: {
+      backgroundColor: 'rgba(255,255,255,0.2)',
+      borderRadius: 999,
+      paddingHorizontal: 10,
+      paddingVertical: 4,
+    },
+    heroBadgeText: {
+      color: '#FFFFFF',
+      fontSize: 11,
+      fontWeight: '700',
+    },
+    heroAmount: {
+      color: '#FFFFFF',
+      fontSize: 32,
       fontWeight: '800',
       letterSpacing: -0.5,
     },
-    balanceTrend: {
+    heroTrendRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+    },
+    trendDot: {
+      width: 18,
+      height: 18,
+      borderRadius: 9,
+      backgroundColor: 'rgba(255,255,255,0.2)',
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    trendDotText: {
       color: theme.colors.success,
-      fontSize: 13,
+      fontSize: 8,
       fontWeight: '700',
     },
-    statRow: {
-      flexDirection: 'row',
-      gap: 10,
-    },
-    statCard: {
-      flex: 1,
-      backgroundColor: theme.colors.surface,
-      borderRadius: 14,
-      borderWidth: 1,
-      borderColor: theme.colors.borderSoft,
-      padding: 14,
-      gap: 4,
-    },
-    statTitle: {
-      color: theme.colors.textSecondary,
-      fontSize: 12,
+    heroTrend: {
+      color: theme.colors.success,
+      fontSize: 13,
       fontWeight: '600',
     },
-    statValue: {
-      color: theme.colors.textPrimary,
-      fontSize: 18,
-      fontWeight: '800',
-      letterSpacing: -0.2,
+    heroDivider: {
+      height: 1,
+      backgroundColor: 'rgba(255,255,255,0.15)',
     },
-    sectionCard: {
-      backgroundColor: theme.colors.surface,
-      borderRadius: 16,
-      borderWidth: 1,
-      borderColor: theme.colors.borderSoft,
-      padding: 14,
-      gap: 12,
+    heroStatsRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+    },
+    heroStat: {
+      flex: 1,
+      gap: 2,
+    },
+    heroStatDivider: {
+      width: 1,
+      height: 32,
+      backgroundColor: 'rgba(255,255,255,0.15)',
+      marginHorizontal: 16,
+    },
+    heroStatLabel: {
+      color: 'rgba(255,255,255,0.65)',
+      fontSize: 12,
+      fontWeight: '500',
+    },
+    heroStatValue: {
+      fontSize: 16,
+      fontWeight: '700',
+      marginTop: 2,
     },
     sectionHeader: {
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
+      marginTop: 4,
     },
     sectionTitle: {
       color: theme.colors.textPrimary,
-      fontSize: 16,
-      fontWeight: '800',
+      fontSize: 17,
+      fontWeight: '700',
+    },
+    sectionLinkWrap: {
+      paddingVertical: 4,
     },
     sectionLink: {
       color: theme.colors.brandPrimary,
-      fontSize: 12,
-      fontWeight: '700',
+      fontSize: 13,
+      fontWeight: '600',
     },
-    donutWrap: {
+    quickActionRow: {
       flexDirection: 'row',
-      alignItems: 'center',
-      gap: 18,
+      gap: 10,
     },
-    donutOuter: {
-      width: 120,
-      height: 120,
-      borderRadius: 60,
-      borderWidth: 14,
-      borderColor: theme.colors.brandPrimary,
+    quickActionCard: {
+      flex: 1,
+      backgroundColor: theme.colors.surface,
+      borderRadius: 16,
+      borderWidth: 1,
+      borderColor: theme.colors.borderSoft,
+      paddingVertical: 14,
+      paddingHorizontal: 8,
+      alignItems: 'center',
+      gap: 8,
+    },
+    quickActionIconWrap: {
+      width: 36,
+      height: 36,
+      borderRadius: 12,
+      backgroundColor: `${theme.colors.brandPrimary}10`,
       alignItems: 'center',
       justifyContent: 'center',
     },
-    donutInner: {
-      alignItems: 'center',
-      gap: 2,
+    quickActionIcon: {
+      fontSize: 18,
     },
-    donutLabel: {
-      color: theme.colors.textMuted,
-      fontSize: 11,
-    },
-    donutValue: {
-      color: theme.colors.textPrimary,
+    quickActionLabel: {
+      color: theme.colors.textSecondary,
       fontSize: 12,
+      fontWeight: '600',
+    },
+    budgetSummaryCard: {
+      backgroundColor: theme.colors.surface,
+      borderRadius: 16,
+      borderWidth: 1,
+      borderColor: theme.colors.borderSoft,
+      padding: 16,
+      gap: 12,
+    },
+    budgetSummaryTop: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+    },
+    budgetSummaryLabel: {
+      color: theme.colors.textSecondary,
+      fontSize: 12,
+      fontWeight: '500',
+    },
+    budgetSummaryValue: {
+      color: theme.colors.textPrimary,
+      fontSize: 28,
+      fontWeight: '800',
+      marginTop: 2,
+    },
+    budgetSummaryRight: {
+      alignItems: 'flex-end',
+    },
+    budgetSummarySpent: {
+      color: theme.colors.textPrimary,
+      fontSize: 15,
       fontWeight: '700',
     },
-    legendCol: {
-      gap: 10,
-      flex: 1,
+    budgetSummaryLimit: {
+      color: theme.colors.textMuted,
+      fontSize: 12,
+      marginTop: 2,
+    },
+    budgetProgressBar: {
+      height: 6,
+      backgroundColor: `${theme.colors.brandPrimary}15`,
+      borderRadius: 999,
+      overflow: 'hidden',
+    },
+    budgetProgressFill: {
+      height: '100%',
+      borderRadius: 999,
+    },
+    budgetItemCard: {
+      backgroundColor: theme.colors.surface,
+      paddingHorizontal: 16,
+      paddingVertical: 14,
+      borderBottomWidth: 1,
+      borderBottomColor: theme.colors.borderSoft,
+    },
+    budgetItemLeft: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+    },
+    budgetItemIcon: {
+      fontSize: 20,
+    },
+    budgetItemName: {
+      color: theme.colors.textPrimary,
+      fontSize: 14,
+      fontWeight: '600',
+    },
+    budgetItemMeta: {
+      color: theme.colors.textMuted,
+      fontSize: 12,
+      marginTop: 2,
+    },
+    budgetItemRight: {},
+    budgetItemPct: {
+      color: theme.colors.brandPrimary,
+      fontSize: 14,
+      fontWeight: '700',
+    },
+    transactionCard: {
+      backgroundColor: theme.colors.surface,
+      borderRadius: 16,
+      borderWidth: 1,
+      borderColor: theme.colors.borderSoft,
+      paddingHorizontal: 16,
     },
     txRow: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 10,
-      paddingVertical: 8,
+      gap: 12,
+      paddingVertical: 14,
       borderTopWidth: 1,
       borderTopColor: theme.colors.borderSoft,
     },
     txIcon: {
-      width: 30,
-      height: 30,
-      borderRadius: 10,
-      backgroundColor: theme.colors.mutedSurface,
+      width: 36,
+      height: 36,
+      borderRadius: 12,
+      backgroundColor: `${theme.colors.danger}10`,
       alignItems: 'center',
       justifyContent: 'center',
     },
     txIconText: {
-      color: theme.colors.brandPrimary,
-      fontSize: 12,
-      fontWeight: '800',
+      color: theme.colors.danger,
+      fontSize: 14,
+      fontWeight: '700',
     },
     txInfo: {
       flex: 1,
     },
     txTitle: {
       color: theme.colors.textPrimary,
-      fontSize: 13,
-      fontWeight: '700',
+      fontSize: 14,
+      fontWeight: '600',
     },
-    txDate: {
+    txSub: {
       color: theme.colors.textMuted,
-      fontSize: 11,
-      marginTop: 1,
+      fontSize: 12,
+      marginTop: 2,
     },
     txAmount: {
-      fontSize: 13,
+      fontSize: 14,
       fontWeight: '700',
     },
   })

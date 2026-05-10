@@ -1,23 +1,34 @@
 {
   "expo": {
-    "name": "CATAT-IN",
-    "slug": "catat-in",
-    "version": "0.1.0",
+    "name": "Kaswise",
+    "slug": "kaswise",
+    "version": "1.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
+    "scheme": "kaswise",
     "assetBundlePatterns": [
       "**/*"
     ],
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.kaswise.app"
     },
     "android": {
       "adaptiveIcon": {
         "backgroundColor": "#EAF1FF"
-      }
+      },
+      "package": "com.kaswise.app"
     },
     "web": {
-      "bundler": "metro"
+      "bundler": "metro",
+      "output": "single"
+    },
+    "plugins": [
+      "expo-router"
+    ],
+    "extra": {
+      "supabaseUrl": "${EXPO_PUBLIC_SUPABASE_URL}",
+      "supabaseAnonKey": "${EXPO_PUBLIC_SUPABASE_ANON_KEY}"
     }
   }
 }

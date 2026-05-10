@@ -20,8 +20,8 @@ export const kaswiseTokens = {
         strong: '#CBD5E3',
       },
       brand: {
-        primary: '#47D6A3',
-        accent: '#41C093',
+        primary: '#1E3A8A',
+        accent: '#1E40AF',
       },
       status: {
         success: '#4CAF50',
@@ -69,8 +69,8 @@ export const kaswiseTokens = {
         strong: '#4A4A64',
       },
       brand: {
-        primary: '#5EE8B0',
-        accent: '#47D6A3',
+        primary: '#60A5FA',
+        accent: '#3B82F6',
       },
       status: {
         success: '#4CAF50',

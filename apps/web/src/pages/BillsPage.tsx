@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useBillsStore } from "@store/bills.store";
-import type { BillReminder, BillFormData } from "@catat-in/shared/types";
+import type { BillReminder, BillFormData } from "@kaswise/shared/types";
 import { useI18nStore } from "@store/i18n.store";
 
 const getErrorMessage = (err: unknown, fallback: string) =>
@@ -30,13 +30,19 @@ function daysUntil(dateStr: string): number {
 	return Math.round((due.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
 }
 
+function getBillTone(bill: BillReminder): "paid" | "overdue" | "soon" | "normal" {
+	if (bill.is_paid) return "paid";
+	const days = daysUntil(bill.next_due_date);
+	if (days < 0) return "overdue";
+	if (days <= 3) return "soon";
+	return "normal";
+}
+
 const RECURRENCE_LABEL: Record<string, string> = {
 	once: "Sekali",
 	monthly: "Bulanan",
 	yearly: "Tahunan",
 };
-
-// ── ADD BILL MODAL ────────────────────────────────────────────
 
 function AddBillModal({
 	onClose,
@@ -79,29 +85,27 @@ function AddBillModal({
 	};
 
 	return (
-		<div style={modalStyles.overlay}>
-			<div style={modalStyles.box}>
-				<h3 style={modalStyles.title}>Tambah Tagihan</h3>
-				<form onSubmit={handleSubmit} style={modalStyles.form}>
-					<div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
-						<div style={{ flex: "0 0 auto" }}>
-							<label style={modalStyles.label}>Ikon</label>
+		<div className="modal-overlay">
+			<div className="modal-box animate-slide-up" style={{ maxWidth: "460px" }}>
+				<h3 style={{ margin: "0 0 16px", color: "var(--text-primary)" }}>
+					Tambah Tagihan
+				</h3>
+				<form onSubmit={handleSubmit} style={{ display: "grid", gap: "10px" }}>
+					<div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+						<div style={{ flex: "0 0 auto", width: "72px" }}>
+							<label className="form-label">Ikon</label>
 							<input
-								style={{
-									...modalStyles.input,
-									width: "60px",
-									textAlign: "center",
-									fontSize: "1.2rem",
-								}}
+								className="form-input"
+								style={{ textAlign: "center", fontSize: "18px" }}
 								value={icon}
 								onChange={(e) => setIcon(e.target.value)}
 								maxLength={2}
 							/>
 						</div>
 						<div style={{ flex: 1 }}>
-							<label style={modalStyles.label}>Nama Tagihan</label>
+							<label className="form-label">Nama Tagihan</label>
 							<input
-								style={modalStyles.input}
+								className="form-input"
 								value={name}
 								onChange={(e) => setName(e.target.value)}
 								placeholder="cth: Listrik PLN"
@@ -110,9 +114,9 @@ function AddBillModal({
 						</div>
 					</div>
 
-					<label style={modalStyles.label}>Nominal (Rp)</label>
+					<label className="form-label">Nominal (Rp)</label>
 					<input
-						style={modalStyles.input}
+						className="form-input"
 						type="number"
 						min="1000"
 						step="1000"
@@ -122,11 +126,11 @@ function AddBillModal({
 						required
 					/>
 
-					<div style={{ display: "flex", gap: "0.75rem" }}>
+					<div style={{ display: "flex", gap: "10px" }}>
 						<div style={{ flex: 1 }}>
-							<label style={modalStyles.label}>Tanggal Jatuh Tempo (Tgl)</label>
+							<label className="form-label">Tanggal Jatuh Tempo (Tgl)</label>
 							<input
-								style={modalStyles.input}
+								className="form-input"
 								type="number"
 								min="1"
 								max="31"
@@ -136,9 +140,9 @@ function AddBillModal({
 							/>
 						</div>
 						<div style={{ flex: 1 }}>
-							<label style={modalStyles.label}>Perulangan</label>
+							<label className="form-label">Perulangan</label>
 							<select
-								style={modalStyles.input}
+								className="form-input"
 								value={recurrence}
 								onChange={(e) =>
 									setRecurrence(e.target.value as BillFormData["recurrence"])
@@ -151,17 +155,15 @@ function AddBillModal({
 						</div>
 					</div>
 
-					{error && <p style={modalStyles.error}>{error}</p>}
+					{error ? (
+						<p style={errorStyle}>{error}</p>
+					) : null}
 
-					<div style={modalStyles.actions}>
-						<button
-							type="button"
-							onClick={onClose}
-							style={modalStyles.cancelBtn}
-						>
+					<div style={{ display: "flex", gap: "10px", marginTop: "4px" }}>
+						<button type="button" onClick={onClose} className="btn btn-secondary" style={{ flex: 1 }}>
 							Batal
 						</button>
-						<button type="submit" disabled={saving} style={modalStyles.saveBtn}>
+						<button type="submit" disabled={saving} className="btn btn-primary" style={{ flex: 1 }}>
 							{saving ? "Menyimpan..." : "Simpan"}
 						</button>
 					</div>
@@ -170,8 +172,6 @@ function AddBillModal({
 		</div>
 	);
 }
-
-// ── BILL CARD ─────────────────────────────────────────────────
 
 function BillCard({
 	bill,
@@ -182,54 +182,66 @@ function BillCard({
 	onPay: (id: string) => void;
 	onDelete: (id: string) => void;
 }) {
+	const tone = getBillTone(bill);
 	const days = daysUntil(bill.next_due_date);
-	const isOverdue = days < 0;
-	const isSoon = days >= 0 && days <= 3;
+	const accent =
+		tone === "paid"
+			? "var(--green)"
+			: tone === "overdue"
+				? "var(--red)"
+				: tone === "soon"
+					? "var(--amber)"
+					: "var(--accent)";
 
 	return (
-		<div
-			style={{
-				...cardStyles.card,
-				borderLeft: `4px solid ${isOverdue ? "#dc2626" : isSoon ? "#f59e0b" : "#2563eb"}`,
-			}}
-		>
-			<div style={cardStyles.header}>
-				<div style={cardStyles.iconName}>
-					<span style={cardStyles.icon}>{bill.icon || "📄"}</span>
+		<div className="card page-section-card" style={{ padding: "14px", border: `1px solid ${accent}`, background: tone === "paid" ? "var(--green-soft)" : tone === "overdue" ? "var(--red-soft)" : tone === "soon" ? "var(--amber-soft)" : "var(--bg-card2)" }}>
+			<div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "10px" }}>
+				<div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+					<span style={{ fontSize: "24px", lineHeight: 1 }}>{bill.icon || "📄"}</span>
 					<div>
-						<p style={cardStyles.name}>{bill.name}</p>
-						<p style={cardStyles.recurrence}>
+						<p style={{ margin: "0 0 2px", fontSize: "14px", fontWeight: 700, color: "var(--text-primary)" }}>{bill.name}</p>
+						<p style={{ margin: 0, fontSize: "12px", color: "var(--text-muted)" }}>
 							{RECURRENCE_LABEL[bill.recurrence]}
 						</p>
 					</div>
 				</div>
-				<button
-					onClick={() => onDelete(bill.id)}
-					style={cardStyles.deleteBtn}
-					title="Hapus"
-				>
+				<button onClick={() => onDelete(bill.id)} className="btn btn-danger" style={{ minHeight: "30px", padding: "5px 8px" }} title="Hapus">
 					✕
 				</button>
 			</div>
-			<div style={cardStyles.footer}>
+
+			<div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginTop: "10px", gap: "10px" }}>
 				<div>
-					<p style={cardStyles.amount}>{formatRupiah(Number(bill.amount))}</p>
+					<p style={{ margin: "0 0 3px", fontSize: "19px", fontWeight: 700, color: "var(--text-primary)" }}>
+						{formatRupiah(Number(bill.amount))}
+					</p>
 					<p
 						style={{
-							...cardStyles.dueInfo,
-							color: isOverdue ? "#dc2626" : isSoon ? "#d97706" : "#6b7280",
+							margin: 0,
+							fontSize: "12px",
+							color:
+								tone === "paid"
+									? "var(--green)"
+									: tone === "overdue"
+										? "var(--red)"
+										: tone === "soon"
+											? "var(--amber)"
+											: "var(--text-secondary)",
 						}}
 					>
-						{isOverdue
-							? `Telat ${Math.abs(days)} hari (${formatDate(bill.next_due_date)})`
-							: days === 0
-								? "Jatuh tempo hari ini!"
-								: `${days} hari lagi · ${formatDate(bill.next_due_date)}`}
+						{tone === "paid"
+							? `Dibayar ${bill.paid_at ? formatDate(bill.paid_at) : "-"}`
+							: tone === "overdue"
+								? `Telat ${Math.abs(days)} hari (${formatDate(bill.next_due_date)})`
+								: days === 0
+									? "Jatuh tempo hari ini!"
+									: `${days} hari lagi · ${formatDate(bill.next_due_date)}`}
 					</p>
 				</div>
 				<button
 					onClick={() => onPay(bill.id)}
-					style={{ ...cardStyles.payBtn, opacity: bill.is_paid ? 0.5 : 1 }}
+					className={bill.is_paid ? "btn btn-secondary" : "btn btn-primary"}
+					style={{ opacity: bill.is_paid ? 0.75 : 1, minHeight: "34px" }}
 					disabled={bill.is_paid}
 				>
 					{bill.is_paid ? "✓ Lunas" : "Bayar"}
@@ -238,8 +250,6 @@ function BillCard({
 		</div>
 	);
 }
-
-// ── BILLS PAGE ────────────────────────────────────────────────
 
 export default function BillsPage() {
 	const { language } = useI18nStore();
@@ -270,225 +280,90 @@ export default function BillsPage() {
 	};
 
 	const overdueCount = bills.filter(
-		(b) => daysUntil(b.next_due_date) < 0,
+		(b) => !b.is_paid && daysUntil(b.next_due_date) < 0,
 	).length;
 	const soonCount = bills.filter((b) => {
+		if (b.is_paid) return false;
 		const d = daysUntil(b.next_due_date);
 		return d >= 0 && d <= 3;
 	}).length;
 
 	return (
-		<div style={styles.page}>
-			<div style={styles.header}>
+		<div className="page-shell">
+			<div className="page-header">
 				<div>
-					<h2 style={styles.title}>
+					<h2 className="page-title">
 						{language === "id" ? "Tagihan & Cicilan" : "Bills & Installments"}
 					</h2>
 					{(overdueCount > 0 || soonCount > 0) && (
-						<p style={styles.alertText}>
-							{overdueCount > 0 && (
-								<span style={{ color: "#dc2626" }}>
+						<p className="page-subtitle" style={{ marginTop: "2px" }}>
+							{overdueCount > 0 ? (
+								<span style={{ color: "var(--red)", fontWeight: 700 }}>
 									{overdueCount} terlambat{" "}
 								</span>
-							)}
-							{soonCount > 0 && (
-								<span style={{ color: "#d97706" }}>
+							) : null}
+							{soonCount > 0 ? (
+								<span style={{ color: "var(--amber)", fontWeight: 700 }}>
 									{soonCount} jatuh tempo dalam 3 hari
 								</span>
-							)}
+							) : null}
 						</p>
 					)}
 				</div>
-				<button onClick={() => setShowModal(true)} style={styles.addBtn}>
+				<button onClick={() => setShowModal(true)} className="btn btn-primary">
 					+ {language === "id" ? "Tambah Tagihan" : "Add Bill"}
 				</button>
 			</div>
 
-			{isLoading && (
-				<p style={styles.info}>
-					{language === "id" ? "Memuat..." : "Loading..."}
-				</p>
-			)}
-			{error && <p style={styles.errorText}>{error}</p>}
+			{isLoading ? (
+				<div className="card page-section-card" style={{ textAlign: "center" }}>
+					<p style={{ margin: 0, color: "var(--text-secondary)" }}>
+						{language === "id" ? "Memuat..." : "Loading..."}
+					</p>
+				</div>
+			) : null}
 
-			{!isLoading && bills.length === 0 && (
-				<div style={styles.empty}>
-					<p style={styles.emptyIcon}>🔔</p>
-					<p>
+			{error ? (
+				<div className="page-section-card" style={errorPanelStyle}>
+					<p style={{ margin: 0, color: "var(--red)", fontWeight: 600 }}>{error}</p>
+				</div>
+			) : null}
+
+			{!isLoading && bills.length === 0 ? (
+				<div className="card page-section-card" style={{ textAlign: "center", padding: "30px 18px" }}>
+					<p style={{ fontSize: "36px", margin: "0 0 8px" }}>🔔</p>
+					<p style={{ margin: 0, color: "var(--text-secondary)", lineHeight: 1.6 }}>
 						{language === "id"
 							? "Belum ada tagihan. Tambahkan pengingat tagihan agar tidak terlewat!"
 							: "No bills yet. Add reminders so you never miss due dates."}
 					</p>
 				</div>
-			)}
+			) : null}
 
-			<div style={styles.grid}>
+			<div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "12px" }}>
 				{bills.map((b) => (
-					<BillCard
-						key={b.id}
-						bill={b}
-						onPay={handlePay}
-						onDelete={handleDelete}
-					/>
+					<BillCard key={b.id} bill={b} onPay={handlePay} onDelete={handleDelete} />
 				))}
 			</div>
 
-			{showModal && (
+			{showModal ? (
 				<AddBillModal onClose={() => setShowModal(false)} onSave={addBill} />
-			)}
+			) : null}
 		</div>
 	);
 }
 
-// ── STYLES ───────────────────────────────────────────────────
-
-const styles: Record<string, React.CSSProperties> = {
-	page: { padding: "1.5rem", maxWidth: "900px", margin: "0 auto" },
-	header: {
-		display: "flex",
-		justifyContent: "space-between",
-		alignItems: "flex-start",
-		marginBottom: "1.5rem",
-		flexWrap: "wrap",
-		gap: "1rem",
-	},
-	title: { margin: "0 0 0.2rem", fontSize: "1.5rem", color: "#1a1a1a" },
-	alertText: { margin: 0, fontSize: "0.85rem" },
-	addBtn: {
-		padding: "0.6rem 1.2rem",
-		backgroundColor: "#2563eb",
-		color: "white",
-		border: "none",
-		borderRadius: "8px",
-		fontWeight: 600,
-		cursor: "pointer",
-		fontSize: "0.9rem",
-	},
-	info: { color: "#666", textAlign: "center" },
-	errorText: {
-		color: "#dc2626",
-		backgroundColor: "#fee2e2",
-		padding: "0.75rem",
-		borderRadius: "8px",
-	},
-	empty: { textAlign: "center", padding: "3rem 1rem", color: "#9ca3af" },
-	emptyIcon: { fontSize: "3rem", margin: "0 0 0.5rem" },
-	grid: {
-		display: "grid",
-		gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))",
-		gap: "1rem",
-	},
+const errorStyle: React.CSSProperties = {
+	margin: 0,
+	fontSize: "12px",
+	color: "var(--red)",
+	background: "color-mix(in srgb, var(--red) 16%, transparent)",
+	border: "1px solid color-mix(in srgb, var(--red) 30%, transparent)",
+	padding: "8px 10px",
+	borderRadius: "var(--r-sm)",
 };
 
-const cardStyles: Record<string, React.CSSProperties> = {
-	card: {
-		backgroundColor: "white",
-		borderRadius: "12px",
-		padding: "1.25rem",
-		boxShadow: "0 1px 6px rgba(0,0,0,0.08)",
-	},
-	header: {
-		display: "flex",
-		justifyContent: "space-between",
-		alignItems: "flex-start",
-		marginBottom: "1rem",
-	},
-	iconName: { display: "flex", gap: "0.75rem", alignItems: "center" },
-	icon: { fontSize: "1.5rem", lineHeight: 1 },
-	name: {
-		margin: "0 0 0.15rem",
-		fontSize: "0.95rem",
-		fontWeight: 700,
-		color: "#1a1a1a",
-	},
-	recurrence: { margin: 0, fontSize: "0.75rem", color: "#9ca3af" },
-	deleteBtn: {
-		background: "none",
-		border: "none",
-		cursor: "pointer",
-		color: "#d1d5db",
-		fontSize: "0.85rem",
-	},
-	footer: {
-		display: "flex",
-		justifyContent: "space-between",
-		alignItems: "flex-end",
-	},
-	amount: {
-		margin: "0 0 0.15rem",
-		fontSize: "1.1rem",
-		fontWeight: 700,
-		color: "#1a1a1a",
-	},
-	dueInfo: { margin: 0, fontSize: "0.8rem" },
-	payBtn: {
-		padding: "0.5rem 1rem",
-		backgroundColor: "#16a34a",
-		color: "white",
-		border: "none",
-		borderRadius: "8px",
-		cursor: "pointer",
-		fontSize: "0.85rem",
-		fontWeight: 600,
-	},
-};
-
-const modalStyles: Record<string, React.CSSProperties> = {
-	overlay: {
-		position: "fixed",
-		inset: 0,
-		backgroundColor: "rgba(0,0,0,0.4)",
-		display: "flex",
-		alignItems: "center",
-		justifyContent: "center",
-		zIndex: 100,
-		padding: "1rem",
-	},
-	box: {
-		backgroundColor: "white",
-		borderRadius: "12px",
-		padding: "2rem",
-		width: "100%",
-		maxWidth: "440px",
-		boxShadow: "0 4px 24px rgba(0,0,0,0.15)",
-	},
-	title: { margin: "0 0 1.25rem", fontSize: "1.2rem", color: "#1a1a1a" },
-	form: { display: "flex", flexDirection: "column", gap: "0.75rem" },
-	label: {
-		fontSize: "0.85rem",
-		fontWeight: 600,
-		color: "#374151",
-		display: "block",
-		marginBottom: "0.25rem",
-	},
-	input: {
-		padding: "0.6rem 0.75rem",
-		border: "1px solid #d1d5db",
-		borderRadius: "8px",
-		fontSize: "0.95rem",
-		width: "100%",
-		boxSizing: "border-box",
-	},
-	error: { color: "#dc2626", fontSize: "0.85rem", margin: 0 },
-	actions: { display: "flex", gap: "0.75rem", marginTop: "0.5rem" },
-	cancelBtn: {
-		flex: 1,
-		padding: "0.65rem",
-		backgroundColor: "#f3f4f6",
-		color: "#374151",
-		border: "none",
-		borderRadius: "8px",
-		cursor: "pointer",
-		fontWeight: 600,
-	},
-	saveBtn: {
-		flex: 1,
-		padding: "0.65rem",
-		backgroundColor: "#2563eb",
-		color: "white",
-		border: "none",
-		borderRadius: "8px",
-		cursor: "pointer",
-		fontWeight: 600,
-	},
+const errorPanelStyle: React.CSSProperties = {
+	background: "color-mix(in srgb, var(--red) 12%, var(--bg-card))",
+	border: "1px solid color-mix(in srgb, var(--red) 28%, transparent)",
 };

@@ -145,7 +145,7 @@ function TxModal({
 									? {
 											background:
 												"linear-gradient(135deg, var(--red), color-mix(in srgb, var(--red) 72%, var(--bg-base)))",
-											color: "#fff",
+											color: "var(--on-brand)",
 											boxShadow: "0 4px 12px color-mix(in srgb, var(--red) 34%, transparent)",
 										}
 									: {}),
@@ -163,7 +163,7 @@ function TxModal({
 									? {
 											background:
 												"linear-gradient(135deg, var(--green), color-mix(in srgb, var(--green) 68%, var(--bg-base)))",
-											color: "#fff",
+											color: "var(--on-brand)",
 											boxShadow: "0 4px 12px color-mix(in srgb, var(--green) 34%, transparent)",
 										}
 									: {}),
@@ -289,10 +289,10 @@ function TxModal({
 							style={{
 								fontSize: "13px",
 								color: "var(--red)",
-								background: "rgba(239,68,68,0.08)",
+								background: "color-mix(in srgb, var(--red) 8%, transparent)",
 								padding: "10px 14px",
 								borderRadius: "8px",
-								border: "1px solid rgba(239,68,68,0.15)",
+								border: "1px solid color-mix(in srgb, var(--red) 15%, transparent)",
 								margin: 0,
 							}}
 						>
@@ -338,10 +338,12 @@ function TxRow({
 		<div
 			className="card"
 			style={{
-				padding: "12px 16px",
+				padding: "13px 16px",
 				display: "flex",
 				justifyContent: "space-between",
 				alignItems: "center",
+				gap: "10px",
+				flexWrap: "wrap",
 				transition: "transform 0.15s",
 				cursor: "default",
 			}}
@@ -359,9 +361,9 @@ function TxRow({
 						height: "34px",
 						borderRadius: "8px",
 						background: isIncome
-							? "rgba(16,185,129,0.1)"
-							: "rgba(239,68,68,0.08)",
-						border: `1px solid ${isIncome ? "rgba(16,185,129,0.2)" : "rgba(239,68,68,0.15)"}`,
+							? "color-mix(in srgb, var(--green) 10%, transparent)"
+							: "color-mix(in srgb, var(--red) 8%, transparent)",
+						border: `1px solid ${isIncome ? "color-mix(in srgb, var(--green) 20%, transparent)" : "color-mix(in srgb, var(--red) 15%, transparent)"}`,
 						display: "flex",
 						alignItems: "center",
 						justifyContent: "center",
@@ -419,8 +421,8 @@ function TxRow({
 					) : null}
 				</div>
 			</div>
-			<div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-				<div style={{ textAlign: "right" }}>
+			<div style={{ display: "flex", alignItems: "center", gap: "8px", marginLeft: "auto" }}>
+				<div style={{ textAlign: "right", minWidth: "132px" }}>
 					<p
 						style={{
 							margin: 0,
@@ -570,17 +572,11 @@ export default function TransactionPage() {
 
 	return (
 		<div className="animate-fade-in page-shell">
-			<div className="tx-header-row">
-				<h2
-					style={{
-						fontSize: "20px",
-						fontWeight: 700,
-						color: "var(--text-primary)",
-						margin: 0,
-					}}
-				>
-					{language === "id" ? "Transaksi" : "Transactions"}
-				</h2>
+			<div className="page-header">
+				<div>
+					<h2 className="page-title">{language === "id" ? "Transaksi" : "Transactions"}</h2>
+					<p className="page-subtitle">Pantau pemasukan dan pengeluaran dengan filter cepat.</p>
+				</div>
 				<button
 					onClick={() => {
 						setEditingTx(null);
@@ -599,7 +595,8 @@ export default function TransactionPage() {
 					style={{
 						padding: "14px 16px",
 						marginBottom: "12px",
-						borderLeft: "3px solid var(--amber)",
+						border: "1px solid var(--amber)",
+						background: "var(--amber-soft)",
 					}}
 				>
 					<p style={{ margin: 0, fontSize: "13px", color: "var(--amber)" }}>
@@ -608,7 +605,7 @@ export default function TransactionPage() {
 				</div>
 			) : null}
 
-			<div className="tx-filter-row">
+			<div className="tx-filter-row page-toolbar">
 				{(["income", "expense"] as const).map((type) => (
 					<button
 						key={type}
@@ -644,29 +641,12 @@ export default function TransactionPage() {
 						Semua
 					</button>
 				) : null}
-				<span
-					style={{
-						marginLeft: "auto",
-						fontSize: "12px",
-						color: "var(--text-muted)",
-					}}
-				>
-					{total} transaksi
-				</span>
+				<span className="page-toolbar-meta">{total} transaksi</span>
 			</div>
 
 			{savedViews.length > 0 ? (
-				<div
-					className="card"
-					style={{ padding: "10px 12px", marginBottom: "12px" }}
-				>
-					<div
-						style={{
-							fontSize: "12px",
-							color: "var(--text-muted)",
-							marginBottom: "8px",
-						}}
-					>
+				<div className="card" style={{ padding: "12px", marginBottom: "12px" }}>
+					<div className="panel-subtitle" style={{ marginBottom: "8px" }}>
 						Saved Views
 					</div>
 					<div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
@@ -703,7 +683,8 @@ export default function TransactionPage() {
 					style={{
 						padding: "14px 16px",
 						marginBottom: "12px",
-						borderLeft: "3px solid var(--red)",
+						border: "1px solid var(--red)",
+						background: "var(--red-soft)",
 					}}
 				>
 					<p style={{ margin: 0, fontSize: "13px", color: "var(--red)" }}>
@@ -760,15 +741,7 @@ export default function TransactionPage() {
 			</div>
 
 			{total > (filters.per_page || 20) ? (
-				<div
-					style={{
-						display: "flex",
-						justifyContent: "center",
-						alignItems: "center",
-						gap: "12px",
-						marginTop: "20px",
-					}}
-				>
+				<div className="page-toolbar" style={{ justifyContent: "center", marginTop: "6px" }}>
 					<button
 						disabled={(filters.page || 1) <= 1}
 						className="btn btn-secondary"

@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import type { Transaction, TransactionFormData } from "@catat-in/shared/types";
+import type { Transaction, TransactionFormData } from "@kaswise/shared/types";
 import {
 	createTransaction,
 	listTransactions,

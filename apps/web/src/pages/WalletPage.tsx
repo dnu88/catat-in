@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useWalletStore } from "@store/wallet.store";
-import type { Wallet, WalletType } from "@catat-in/shared/types";
+import type { Wallet, WalletType } from "@kaswise/shared/types";
 import type { WalletFormData } from "@store/wallet.store";
 import { useI18nStore } from "@store/i18n.store";
 
@@ -14,11 +14,14 @@ const WALLET_TYPE_LABEL: Record<string, string> = {
 	investment: "Investasi",
 };
 
-const WALLET_TYPE_COLOR: Record<string, string> = {
-	bank: "#2563eb",
-	ewallet: "#7c3aed",
-	cash: "#16a34a",
-	investment: "#d97706",
+export const getWalletTypeAccent = (type: string) => {
+	const map: Record<string, string> = {
+		bank: "var(--accent)",
+		ewallet: "var(--info)",
+		cash: "var(--green)",
+		investment: "var(--amber)",
+	};
+	return map[type] || "var(--border-strong)";
 };
 
 function formatRupiah(amount: number) {
@@ -28,8 +31,6 @@ function formatRupiah(amount: number) {
 		maximumFractionDigits: 0,
 	}).format(amount);
 }
-
-// ── WALLET MODAL (Add + Edit) ────────────────────────────────
 
 interface WalletModalProps {
 	initialData?: Wallet;
@@ -41,9 +42,7 @@ function WalletModal({ initialData, onClose, onSave }: WalletModalProps) {
 	const isEdit = Boolean(initialData);
 	const [name, setName] = useState(initialData?.name || "");
 	const [type, setType] = useState<WalletType>(initialData?.type || "bank");
-	const [balance, setBalance] = useState(
-		initialData?.balance?.toString() || "",
-	);
+	const [balance, setBalance] = useState(initialData?.balance?.toString() || "");
 	const [bankName, setBankName] = useState(initialData?.bank_name || "");
 	const [saving, setSaving] = useState(false);
 	const [error, setError] = useState("");
@@ -69,24 +68,24 @@ function WalletModal({ initialData, onClose, onSave }: WalletModalProps) {
 	};
 
 	return (
-		<div style={modalStyles.overlay}>
-			<div style={modalStyles.box}>
-				<h3 style={modalStyles.title}>
+		<div className="modal-overlay">
+			<div className="modal-box animate-slide-up" style={{ maxWidth: "460px" }}>
+				<h3 style={{ margin: "0 0 16px", color: "var(--text-primary)" }}>
 					{isEdit ? "Edit Wallet" : "Tambah Wallet Baru"}
 				</h3>
-				<form onSubmit={handleSubmit} style={modalStyles.form}>
-					<label style={modalStyles.label}>Nama Wallet</label>
+				<form onSubmit={handleSubmit} style={{ display: "grid", gap: "10px" }}>
+					<label className="form-label">Nama Wallet</label>
 					<input
-						style={modalStyles.input}
+						className="form-input"
 						value={name}
 						onChange={(e) => setName(e.target.value)}
 						placeholder="cth: BCA Utama"
 						required
 					/>
 
-					<label style={modalStyles.label}>Jenis</label>
+					<label className="form-label">Jenis</label>
 					<select
-						style={modalStyles.input}
+						className="form-input"
 						value={type}
 						onChange={(e) => setType(e.target.value as WalletType)}
 					>
@@ -96,21 +95,17 @@ function WalletModal({ initialData, onClose, onSave }: WalletModalProps) {
 						<option value="investment">Investasi</option>
 					</select>
 
-					<label style={modalStyles.label}>
-						Nama Bank / Platform (opsional)
-					</label>
+					<label className="form-label">Nama Bank / Platform (opsional)</label>
 					<input
-						style={modalStyles.input}
+						className="form-input"
 						value={bankName}
 						onChange={(e) => setBankName(e.target.value)}
 						placeholder="cth: BCA, GoPay, OVO"
 					/>
 
-					<label style={modalStyles.label}>
-						{isEdit ? "Saldo (Rp)" : "Saldo Awal (Rp)"}
-					</label>
+					<label className="form-label">{isEdit ? "Saldo (Rp)" : "Saldo Awal (Rp)"}</label>
 					<input
-						style={modalStyles.input}
+						className="form-input"
 						type="number"
 						min="0"
 						value={balance}
@@ -118,17 +113,27 @@ function WalletModal({ initialData, onClose, onSave }: WalletModalProps) {
 						placeholder="0"
 					/>
 
-					{error && <p style={modalStyles.error}>{error}</p>}
-
-					<div style={modalStyles.actions}>
-						<button
-							type="button"
-							onClick={onClose}
-							style={modalStyles.cancelBtn}
+					{error ? (
+						<p
+							style={{
+								margin: 0,
+								fontSize: "12px",
+								color: "var(--red)",
+								background: "color-mix(in srgb, var(--red) 16%, transparent)",
+								border: "1px solid color-mix(in srgb, var(--red) 30%, transparent)",
+								padding: "8px 10px",
+								borderRadius: "var(--r-sm)",
+							}}
 						>
+							{error}
+						</p>
+					) : null}
+
+					<div style={{ display: "flex", gap: "10px", marginTop: "4px" }}>
+						<button type="button" onClick={onClose} className="btn btn-secondary" style={{ flex: 1 }}>
 							Batal
 						</button>
-						<button type="submit" disabled={saving} style={modalStyles.saveBtn}>
+						<button type="submit" disabled={saving} className="btn btn-primary" style={{ flex: 1 }}>
 							{saving ? "Menyimpan..." : "Simpan"}
 						</button>
 					</div>
@@ -138,8 +143,6 @@ function WalletModal({ initialData, onClose, onSave }: WalletModalProps) {
 	);
 }
 
-// ── WALLET CARD ──────────────────────────────────────────────
-
 interface WalletCardProps {
 	wallet: Wallet;
 	onEdit: (wallet: Wallet) => void;
@@ -147,42 +150,34 @@ interface WalletCardProps {
 }
 
 function WalletCard({ wallet, onEdit, onDelete }: WalletCardProps) {
-	const color = WALLET_TYPE_COLOR[wallet.type] || "#6b7280";
+	const accent = getWalletTypeAccent(wallet.type);
 	return (
-		<div style={{ ...cardStyles.card, borderTop: `4px solid ${color}` }}>
-			<div style={cardStyles.header}>
+		<div className="card page-section-card" style={{ padding: "14px", borderTop: `4px solid ${accent}` }}>
+			<div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "12px" }}>
 				<div>
-					<p style={cardStyles.type}>
+					<p style={{ margin: "0 0 2px", fontSize: "11px", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
 						{WALLET_TYPE_LABEL[wallet.type] || wallet.type}
 					</p>
-					<h4 style={cardStyles.name}>{wallet.name}</h4>
-					{wallet.bank_name && (
-						<p style={cardStyles.bank}>{wallet.bank_name}</p>
-					)}
+					<h4 style={{ margin: "0 0 2px", fontSize: "15px", color: "var(--text-primary)" }}>{wallet.name}</h4>
+					{wallet.bank_name ? (
+						<p style={{ margin: 0, fontSize: "12px", color: "var(--text-secondary)" }}>{wallet.bank_name}</p>
+					) : null}
 				</div>
 				<div style={{ display: "flex", gap: "6px" }}>
-					<button
-						onClick={() => onEdit(wallet)}
-						style={{ ...cardStyles.iconBtn, color: "#6b7280" }}
-						title="Edit wallet"
-					>
+					<button onClick={() => onEdit(wallet)} className="btn btn-secondary" style={{ minHeight: "30px", padding: "5px 8px" }} title="Edit wallet">
 						✏️
 					</button>
-					<button
-						onClick={() => onDelete(wallet.id)}
-						style={cardStyles.deleteBtn}
-						title="Hapus wallet"
-					>
+					<button onClick={() => onDelete(wallet.id)} className="btn btn-danger" style={{ minHeight: "30px", padding: "5px 8px" }} title="Hapus wallet">
 						✕
 					</button>
 				</div>
 			</div>
-			<p style={cardStyles.balance}>{formatRupiah(Number(wallet.balance))}</p>
+			<p style={{ margin: "10px 0 0", fontSize: "22px", fontWeight: 700, color: "var(--text-primary)" }}>
+				{formatRupiah(Number(wallet.balance))}
+			</p>
 		</div>
 	);
 }
-
-// ── WALLET PAGE ──────────────────────────────────────────────
 
 export default function WalletPage() {
 	const { language } = useI18nStore();
@@ -194,10 +189,12 @@ export default function WalletPage() {
 		addWallet,
 		updateWallet,
 		deleteWallet,
+		recalculateBalances,
 		totalBalance,
 	} = useWalletStore();
 	const [showModal, setShowModal] = useState(false);
 	const [editingWallet, setEditingWallet] = useState<Wallet | null>(null);
+	const [isRecalculating, setIsRecalculating] = useState(false);
 
 	useEffect(() => {
 		fetchWallets();
@@ -225,214 +222,85 @@ export default function WalletPage() {
 		}
 	};
 
+	const handleRecalculate = async () => {
+		if (!window.confirm("Hitung ulang semua saldo wallet dari histori transaksi?")) return;
+		setIsRecalculating(true);
+		try {
+			const summary = await recalculateBalances();
+			alert(`Recalculate selesai. ${summary.updated_count}/${summary.wallet_count} wallet diperbarui.`);
+		} catch (err: unknown) {
+			alert(getErrorMessage(err, "Gagal menghitung ulang saldo wallet."));
+		} finally {
+			setIsRecalculating(false);
+		}
+	};
+
 	const handleCloseModal = () => {
 		setShowModal(false);
 		setEditingWallet(null);
 	};
 
 	return (
-		<div style={styles.page}>
-			<div style={styles.header}>
+		<div className="page-shell">
+			<div className="page-header">
 				<div>
-					<h2 style={styles.title}>
-						{language === "id" ? "Dompet & Rekening" : "Wallets & Accounts"}
-					</h2>
-					<p style={styles.totalLabel}>
-						Total Saldo:{" "}
-						<span style={styles.totalAmount}>
-							{formatRupiah(totalBalance())}
-						</span>
+					<h2 className="page-title">{language === "id" ? "Dompet & Rekening" : "Wallets & Accounts"}</h2>
+					<p className="page-subtitle">
+						Total Saldo: <strong style={{ color: "var(--accent)" }}>{formatRupiah(totalBalance())}</strong>
 					</p>
 				</div>
-				<button
-					onClick={() => {
-						setEditingWallet(null);
-						setShowModal(true);
-					}}
-					style={styles.addBtn}
-				>
-					+ {language === "id" ? "Tambah Wallet" : "Add Wallet"}
-				</button>
+				<div className="topbar-actions" style={{ alignSelf: "center" }}>
+					<button onClick={handleRecalculate} className="btn btn-secondary" disabled={isRecalculating}>
+						{isRecalculating ? "Menghitung ulang..." : "↻ Recalculate Saldo"}
+					</button>
+					<button
+						onClick={() => {
+							setEditingWallet(null);
+							setShowModal(true);
+						}}
+						className="btn btn-primary"
+					>
+						+ {language === "id" ? "Tambah Wallet" : "Add Wallet"}
+					</button>
+				</div>
 			</div>
 
-			{isLoading && (
-				<p style={styles.info}>
-					{language === "id" ? "Memuat..." : "Loading..."}
-				</p>
-			)}
-			{error && <p style={styles.errorText}>{error}</p>}
+			{isLoading ? (
+				<div className="card page-section-card" style={{ textAlign: "center" }}>
+					<p style={{ margin: 0, color: "var(--text-secondary)" }}>{language === "id" ? "Memuat..." : "Loading..."}</p>
+				</div>
+			) : null}
 
-			{!isLoading && wallets.length === 0 && (
-				<div style={styles.empty}>
-					<p style={styles.emptyIcon}>💳</p>
-					<p style={styles.emptyText}>
+			{error ? (
+				<div
+					className="page-section-card"
+					style={{
+						background: "color-mix(in srgb, var(--red) 12%, var(--bg-card))",
+						border: "1px solid color-mix(in srgb, var(--red) 28%, transparent)",
+					}}
+				>
+					<p style={{ margin: 0, color: "var(--red)", fontWeight: 600 }}>{error}</p>
+				</div>
+			) : null}
+
+			{!isLoading && wallets.length === 0 ? (
+				<div className="card page-section-card" style={{ textAlign: "center", padding: "30px 18px" }}>
+					<p style={{ fontSize: "36px", margin: "0 0 8px" }}>💳</p>
+					<p style={{ margin: 0, color: "var(--text-secondary)", lineHeight: 1.6 }}>
 						{language === "id"
 							? "Belum ada wallet. Tambahkan rekening atau dompet pertama kamu!"
 							: "No wallet yet. Add your first account or wallet."}
 					</p>
 				</div>
-			)}
+			) : null}
 
-			<div style={styles.grid}>
+			<div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: "12px" }}>
 				{wallets.map((w) => (
-					<WalletCard
-						key={w.id}
-						wallet={w}
-						onEdit={handleEdit}
-						onDelete={handleDelete}
-					/>
+					<WalletCard key={w.id} wallet={w} onEdit={handleEdit} onDelete={handleDelete} />
 				))}
 			</div>
 
-			{showModal && (
-				<WalletModal
-					initialData={editingWallet ?? undefined}
-					onClose={handleCloseModal}
-					onSave={handleSave}
-				/>
-			)}
+			{showModal ? <WalletModal initialData={editingWallet ?? undefined} onClose={handleCloseModal} onSave={handleSave} /> : null}
 		</div>
 	);
 }
-
-// ── STYLES ───────────────────────────────────────────────────
-
-const styles: Record<string, React.CSSProperties> = {
-	page: { padding: "1.5rem", maxWidth: "900px", margin: "0 auto" },
-	header: {
-		display: "flex",
-		justifyContent: "space-between",
-		alignItems: "flex-start",
-		marginBottom: "1.5rem",
-		flexWrap: "wrap",
-		gap: "1rem",
-	},
-	title: { margin: "0 0 0.25rem", fontSize: "1.5rem", color: "#1a1a1a" },
-	totalLabel: { margin: 0, fontSize: "0.9rem", color: "#666" },
-	totalAmount: { fontWeight: 700, color: "#2563eb" },
-	addBtn: {
-		padding: "0.6rem 1.2rem",
-		backgroundColor: "#2563eb",
-		color: "white",
-		border: "none",
-		borderRadius: "8px",
-		fontSize: "0.9rem",
-		fontWeight: 600,
-		cursor: "pointer",
-	},
-	grid: {
-		display: "grid",
-		gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))",
-		gap: "1rem",
-	},
-	info: { color: "#666", textAlign: "center" },
-	errorText: {
-		color: "#dc2626",
-		backgroundColor: "#fee2e2",
-		padding: "0.75rem",
-		borderRadius: "8px",
-	},
-	empty: { textAlign: "center", padding: "3rem 1rem", color: "#9ca3af" },
-	emptyIcon: { fontSize: "3rem", margin: "0 0 0.5rem" },
-	emptyText: { margin: 0, fontSize: "0.95rem" },
-};
-
-const cardStyles: Record<string, React.CSSProperties> = {
-	card: {
-		backgroundColor: "white",
-		borderRadius: "12px",
-		padding: "1.25rem",
-		boxShadow: "0 1px 6px rgba(0,0,0,0.08)",
-	},
-	header: {
-		display: "flex",
-		justifyContent: "space-between",
-		alignItems: "flex-start",
-		marginBottom: "1rem",
-	},
-	type: {
-		margin: "0 0 0.2rem",
-		fontSize: "0.75rem",
-		color: "#9ca3af",
-		textTransform: "uppercase",
-		letterSpacing: "0.05em",
-	},
-	name: { margin: "0 0 0.2rem", fontSize: "1rem", color: "#1a1a1a" },
-	bank: { margin: 0, fontSize: "0.8rem", color: "#6b7280" },
-	balance: {
-		margin: 0,
-		fontSize: "1.25rem",
-		fontWeight: 700,
-		color: "#1a1a1a",
-	},
-	iconBtn: {
-		background: "none",
-		border: "none",
-		cursor: "pointer",
-		fontSize: "0.9rem",
-		padding: "0.25rem",
-		lineHeight: 1,
-	},
-	deleteBtn: {
-		background: "none",
-		border: "none",
-		cursor: "pointer",
-		color: "#d1d5db",
-		fontSize: "1rem",
-		padding: "0.25rem",
-		lineHeight: 1,
-	},
-};
-
-const modalStyles: Record<string, React.CSSProperties> = {
-	overlay: {
-		position: "fixed",
-		inset: 0,
-		backgroundColor: "rgba(0,0,0,0.4)",
-		display: "flex",
-		alignItems: "center",
-		justifyContent: "center",
-		zIndex: 100,
-	},
-	box: {
-		backgroundColor: "white",
-		borderRadius: "12px",
-		padding: "2rem",
-		width: "100%",
-		maxWidth: "420px",
-		boxShadow: "0 4px 24px rgba(0,0,0,0.15)",
-	},
-	title: { margin: "0 0 1.5rem", fontSize: "1.2rem", color: "#1a1a1a" },
-	form: { display: "flex", flexDirection: "column", gap: "0.75rem" },
-	label: { fontSize: "0.85rem", fontWeight: 600, color: "#374151" },
-	input: {
-		padding: "0.6rem 0.75rem",
-		border: "1px solid #d1d5db",
-		borderRadius: "8px",
-		fontSize: "0.95rem",
-		width: "100%",
-		boxSizing: "border-box",
-	},
-	error: { color: "#dc2626", fontSize: "0.85rem", margin: 0 },
-	actions: { display: "flex", gap: "0.75rem", marginTop: "0.5rem" },
-	cancelBtn: {
-		flex: 1,
-		padding: "0.65rem",
-		backgroundColor: "#f3f4f6",
-		color: "#374151",
-		border: "none",
-		borderRadius: "8px",
-		cursor: "pointer",
-		fontWeight: 600,
-	},
-	saveBtn: {
-		flex: 1,
-		padding: "0.65rem",
-		backgroundColor: "#2563eb",
-		color: "white",
-		border: "none",
-		borderRadius: "8px",
-		cursor: "pointer",
-		fontWeight: 600,
-	},
-};

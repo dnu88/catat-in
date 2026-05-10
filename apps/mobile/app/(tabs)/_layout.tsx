@@ -98,6 +98,12 @@ export default function TabsLayout() {
           tabBarIcon: ({ color }) => <Text style={{ color, fontSize: 15 }}>⚙</Text>,
         }}
       />
+
+      <Tabs.Screen name="wallets" options={{ href: null, title: 'Wallets', headerTitle: 'Wallets' }} />
+      <Tabs.Screen name="budgets" options={{ href: null, title: 'Budgets', headerTitle: 'Budgets' }} />
+      <Tabs.Screen name="bills" options={{ href: null, title: 'Bills', headerTitle: 'Bills' }} />
+      <Tabs.Screen name="groups" options={{ href: null, title: 'Groups', headerTitle: 'Groups' }} />
+      <Tabs.Screen name="imports" options={{ href: null, title: 'Imports', headerTitle: 'Imports' }} />
     </Tabs>
   )
 }

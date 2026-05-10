@@ -273,77 +273,36 @@ export default function GroupsPage() {
 	const isAdmin = selectedGroup?.my_role === "admin";
 
 	return (
-		<div
-			className="animate-fade-in"
-			style={{ display: "flex", flexDirection: "column", gap: "16px" }}
-		>
-			<div
-				style={{
-					background: "linear-gradient(135deg, #1E40AF, #2563EB 50%, #3B82F6)",
-					borderRadius: "16px",
-					padding: "20px",
-					color: "#fff",
-				}}
-			>
-				<p
-					style={{
-						fontSize: "12px",
-						color: "rgba(255,255,255,0.72)",
-						marginBottom: "4px",
-					}}
-				>
-					{language === "id" ? "Fitur premium" : "Premium feature"}
-				</p>
-				<h2 style={{ fontSize: "22px", fontWeight: 700, marginBottom: "8px" }}>
-					{language === "id"
-						? "Grup Keuangan Bersama"
-						: "Shared Finance Groups"}
-				</h2>
-				<p
-					style={{
-						fontSize: "13px",
-						lineHeight: 1.7,
-						color: "rgba(255,255,255,0.86)",
-						maxWidth: "760px",
-					}}
-				>
-					Sekarang halaman grup sudah tersambung ke backend: kamu bisa membuat
-					grup, join pakai kode undangan, melihat anggota aktif, dan melakukan
-					manajemen role dasar sesuai wireframe dan PRD.
-				</p>
+		<div className="animate-fade-in page-shell">
+			<div className="groups-hero">
+				<div className="page-header">
+					<div>
+						<p className="groups-eyebrow">
+							{language === "id" ? "Fitur premium" : "Premium feature"}
+						</p>
+						<h2 className="page-title">
+							{language === "id"
+								? "Grup Keuangan Bersama"
+								: "Shared Finance Groups"}
+						</h2>
+						<p className="page-subtitle">
+							Sekarang halaman grup sudah tersambung ke backend: kamu bisa membuat
+							grup, join pakai kode undangan, melihat anggota aktif, dan melakukan
+							manajemen role dasar sesuai wireframe dan PRD.
+						</p>
+					</div>
+					<span className="badge badge-info">Realtime backend</span>
+				</div>
 			</div>
 
 			{error ? <StatusBox tone="danger" message={error} /> : null}
 			{message ? <StatusBox tone="success" message={message} /> : null}
 
-			<div
-				style={{
-					display: "grid",
-					gridTemplateColumns: "minmax(300px, 0.9fr) minmax(0, 1.3fr)",
-					gap: "16px",
-				}}
-			>
-				<section
-					className="card"
-					style={{
-						padding: "18px",
-						display: "flex",
-						flexDirection: "column",
-						gap: "14px",
-					}}
-				>
-					<div>
-						<h3
-							style={{
-								fontSize: "16px",
-								fontWeight: 700,
-								color: "var(--text-primary)",
-								marginBottom: "4px",
-							}}
-						>
-							{language === "id" ? "Grup Saya" : "My Groups"}
-						</h3>
-						<p style={{ fontSize: "12px", color: "var(--text-muted)" }}>
+			<div className="groups-main-grid">
+				<section className="card panel-card">
+					<div className="panel-head">
+						<h3 className="panel-title">{language === "id" ? "Grup Saya" : "My Groups"}</h3>
+						<p className="panel-subtitle">
 							{language === "id"
 								? "Daftar grup aktif yang kamu ikuti."
 								: "List of active groups you joined."}
@@ -496,15 +455,7 @@ export default function GroupsPage() {
 					</section>
 				</section>
 
-				<section
-					className="card"
-					style={{
-						padding: "18px",
-						display: "flex",
-						flexDirection: "column",
-						gap: "14px",
-					}}
-				>
+				<section className="card panel-card">
 					{!selectedGroupId ? (
 						<EmptyBox message="Pilih salah satu grup di panel kiri untuk melihat detail." />
 					) : isLoadingDetail ? (
@@ -516,10 +467,10 @@ export default function GroupsPage() {
 							{/* Header grup */}
 							<div
 								style={{
-									background: "linear-gradient(135deg, #1E40AF, #2563EB)",
+									background: "var(--g-card)",
 									borderRadius: "14px",
 									padding: "18px",
-									color: "#fff",
+									color: "var(--on-brand)",
 								}}
 							>
 								<div
@@ -534,7 +485,7 @@ export default function GroupsPage() {
 								<div
 									style={{
 										fontSize: "13px",
-										color: "rgba(255,255,255,0.86)",
+										color: "color-mix(in srgb, var(--on-brand) 86%, transparent)",
 										lineHeight: 1.7,
 										marginBottom: "14px",
 									}}
@@ -599,13 +550,7 @@ export default function GroupsPage() {
 
 							{/* Tab: Anggota */}
 							{activeTab === "anggota" && (
-								<div
-									style={{
-										display: "grid",
-										gridTemplateColumns: "minmax(0, 1fr) minmax(260px, 0.9fr)",
-										gap: "16px",
-									}}
-								>
+								<div className="groups-members-grid">
 									<section
 										className="card"
 										style={{ padding: "14px", background: "var(--bg-card2)" }}
@@ -671,7 +616,7 @@ export default function GroupsPage() {
 																		height: "34px",
 																		borderRadius: "50%",
 																		background: "var(--g-income)",
-																		color: "#fff",
+																		color: "var(--on-brand)",
 																		display: "flex",
 																		alignItems: "center",
 																		justifyContent: "center",
@@ -1003,8 +948,8 @@ function HeroStat({ label, value }: { label: string; value: string }) {
 	return (
 		<div
 			style={{
-				background: "rgba(255,255,255,0.12)",
-				border: "1px solid rgba(255,255,255,0.12)",
+				background: "var(--on-brand-surface)",
+				border: "1px solid var(--on-brand-border)",
 				borderRadius: "10px",
 				padding: "10px 12px",
 			}}
@@ -1012,7 +957,7 @@ function HeroStat({ label, value }: { label: string; value: string }) {
 			<div
 				style={{
 					fontSize: "10px",
-					color: "rgba(255,255,255,0.7)",
+					color: "var(--on-brand-soft)",
 					marginBottom: "3px",
 				}}
 			>
@@ -1116,13 +1061,13 @@ function StatusBox({
 	const tones = {
 		danger: {
 			color: "var(--red)",
-			background: "rgba(239,68,68,0.08)",
-			border: "1px solid rgba(239,68,68,0.16)",
+			background: "color-mix(in srgb, var(--red) 8%, transparent)",
+			border: "1px solid color-mix(in srgb, var(--red) 16%, transparent)",
 		},
 		success: {
 			color: "var(--green)",
-			background: "rgba(16,185,129,0.08)",
-			border: "1px solid rgba(16,185,129,0.16)",
+			background: "color-mix(in srgb, var(--green) 8%, transparent)",
+			border: "1px solid color-mix(in srgb, var(--green) 16%, transparent)",
 		},
 	} as const;
 

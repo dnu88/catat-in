@@ -1,16 +1,15 @@
 """
-Catat.in - Import Router (Firebase)
+Catat.in - Import Router (Supabase)
 Endpoint untuk import mutasi bank via CSV/Excel.
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
 from pydantic import BaseModel
 
 from app.core.auth import get_current_user
 from app.core.config import settings
-from app.core.firebase import get_firestore_client
 from app.services.import_service import generate_tx_hash, parse_bank_csv
 
 router = APIRouter()
@@ -36,27 +35,42 @@ class ConfirmImportRequest(BaseModel):
     skip_duplicates: bool = True
 
 
+def _get_supabase_client():
+    try:
+        from supabase import create_client
+        return create_client(settings.SUPABASE_URL, settings.SUPABASE_SERVICE_ROLE_KEY)
+    except Exception:
+        return None
+
+
 def _get_plan_type(user_id: str) -> str:
-    db = get_firestore_client()
-    profile = db.collection("users").document(user_id).get()
-    if not profile.exists:
+    client = _get_supabase_client()
+    if not client:
         return "free"
-    return (profile.to_dict() or {}).get("plan_type", "free")
+    try:
+        result = client.table("profiles").select("plan_type").eq("id", user_id).single().execute()
+        return (result.data or {}).get("plan_type", "free")
+    except Exception:
+        return "free"
 
 
 def _load_existing_hashes(user_id: str) -> set[str]:
-    db = get_firestore_client()
-    docs = db.collection("users").document(user_id).collection("transactions").stream()
-    hashes: set[str] = set()
-    for doc in docs:
-        data = doc.to_dict() or {}
-        merchant = data.get("merchant") or data.get("note") or data.get("description") or ""
-        amount = float(data.get("amount", 0))
-        date = str(data.get("date", ""))
-        if not date:
-            continue
-        hashes.add(generate_tx_hash(date, merchant, amount))
-    return hashes
+    client = _get_supabase_client()
+    if not client:
+        return set()
+    try:
+        result = client.table("transactions").select("nominal,merchant,tanggal").eq("user_id", user_id).execute()
+        hashes: set[str] = set()
+        for row in result.data or []:
+            merchant = row.get("merchant") or ""
+            amount = float(row.get("nominal") or 0)
+            date = str(row.get("tanggal") or "")
+            if not date:
+                continue
+            hashes.add(generate_tx_hash(date, merchant, amount))
+        return hashes
+    except Exception:
+        return set()
 
 
 @router.post("/preview", response_model=ImportPreviewResponse)
@@ -115,17 +129,6 @@ async def confirm_import(
             detail="Tidak ada transaksi untuk diimpor.",
         )
 
-    db = get_firestore_client()
-    user_id = current_user["user_id"]
-    wallet_ref = db.collection("users").document(user_id).collection("wallets").document(body.wallet_id)
-    wallet_doc = wallet_ref.get()
-    if not wallet_doc.exists:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Wallet tidak ditemukan")
-
-    wallet_data = wallet_doc.to_dict() or {}
-    if wallet_data.get("is_active") is False:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Wallet tidak aktif")
-
     to_import = [
         tx for tx in body.transactions
         if not (body.skip_duplicates and tx.get("is_duplicate"))
@@ -139,64 +142,54 @@ async def confirm_import(
             "message": "Semua transaksi sudah ada sebelumnya, tidak ada yang baru diimpor.",
         }
 
-    now = datetime.utcnow().isoformat()
-    tx_collection = db.collection("users").document(user_id).collection("transactions")
-    balance_delta = 0.0
+    client = _get_supabase_client()
+    if not client:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Database tidak tersedia.",
+        )
 
-    # Firestore batch max 500 ops.
-    batch = db.batch()
-    op_count = 0
+    user_id = current_user["user_id"]
+
+    # Verify wallet exists and is active.
+    wallet_result = client.table("wallets").select("id,is_active").eq("id", body.wallet_id).eq("user_id", user_id).single().execute()
+    if not wallet_result.data:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Wallet tidak ditemukan")
+    if wallet_result.data.get("is_active") is False:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Wallet tidak aktif")
+
+    now = datetime.now(timezone.utc).isoformat()
+    records = []
+    balance_delta = 0.0
 
     for tx in to_import:
         tx_type = tx.get("type", "expense")
         amount = float(tx.get("amount", 0))
         description = (tx.get("description") or "").strip()
 
-        record = {
+        records.append({
             "wallet_id": body.wallet_id,
             "user_id": user_id,
             "type": tx_type,
-            "amount": amount,
-            "category": tx.get("category", "other"),
-            "note": description or None,
+            "nominal": amount,
+            "kategori": tx.get("category", "other"),
+            "catatan": description or None,
             "merchant": description[:100] if description else None,
-            "date": tx.get("date"),
-            "is_shared": False,
-            "visibility": "private",
-            "created_by": user_id,
-            "is_disputed": False,
+            "tanggal": tx.get("date"),
+            "input_type": "import",
+            "status": "done",
+            "is_verified": True,
             "created_at": now,
-            "ai_extracted": False,
-        }
-
-        doc_ref = tx_collection.document()
-        batch.set(doc_ref, {k: v for k, v in record.items() if v is not None})
-        op_count += 1
-
-        if op_count >= 450:
-            batch.commit()
-            batch = db.batch()
-            op_count = 0
+        })
 
         balance_delta += amount if tx_type == "income" else -amount
 
-    if op_count > 0:
-        batch.commit()
+    # Bulk insert transactions.
+    client.table("transactions").insert(records).execute()
 
     # Update wallet balance.
-    current_balance = float(wallet_data.get("balance", 0))
-    wallet_ref.update({"balance": current_balance + balance_delta})
-
-    # Simple import log for audit.
-    db.collection("users").document(user_id).collection("import_logs").document().set({
-        "created_at": now,
-        "total_rows": len(body.transactions),
-        "imported_rows": len(to_import),
-        "skipped_rows": len(body.transactions) - len(to_import),
-        "duplicate_rows": len(body.transactions) - len(to_import),
-        "status": "completed",
-        "wallet_id": body.wallet_id,
-    })
+    wallet_bal = float((wallet_result.data or {}).get("balance", 0))
+    client.table("wallets").update({"balance": wallet_bal + balance_delta}).eq("id", body.wallet_id).execute()
 
     return {
         "success": True,

@@ -28,7 +28,7 @@ const ENTRY_POINTS = [
     description: 'Unggah foto nota atau struk, lalu review hasil OCR sebelum simpan.',
     action: 'Upload struk',
     href: '/imports',
-    tone: 'rgba(16,185,129,0.10)',
+    tone: 'color-mix(in srgb, var(--green) 10%, transparent)',
   },
   {
     title: 'Import Mutasi',
@@ -36,7 +36,7 @@ const ENTRY_POINTS = [
     description: 'Import CSV atau Excel dari bank dan dompet digital dengan review duplikat.',
     action: 'Buka import',
     href: '/imports',
-    tone: 'rgba(245,158,11,0.12)',
+    tone: 'color-mix(in srgb, var(--amber) 12%, transparent)',
   },
 ] as const
 
@@ -289,23 +289,21 @@ export default function CapturePage() {
 
   return (
     <div className="animate-fade-in page-shell">
-      <div>
-        <h2 style={{ fontSize: '20px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '4px' }}>
-          {language === 'id' ? 'Tambah Transaksi' : 'Add Transaction'}
-        </h2>
-        <p style={{ fontSize: '13px', color: 'var(--text-muted)', maxWidth: '720px' }}>
-          AI chat input transaksi dengan flow confidence-based saving: auto-save jika yakin, review dulu jika masih ambigu.
-        </p>
+      <div className="page-header">
+        <div>
+          <h2 className="page-title">{language === 'id' ? 'Tambah Transaksi' : 'Add Transaction'}</h2>
+          <p className="page-subtitle">
+            AI chat input transaksi dengan flow confidence-based saving: auto-save jika yakin, review dulu jika masih ambigu.
+          </p>
+        </div>
       </div>
 
       <div className="capture-main-grid">
-        <section className="card" style={{ padding: '18px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+        <section className="card panel-card">
           <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap' }}>
-            <div>
-              <h3 style={{ fontSize: '16px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '4px' }}>
-                AI Chat
-              </h3>
-              <p style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
+            <div className="panel-head">
+              <h3 className="panel-title">AI Chat</h3>
+              <p className="panel-subtitle">
                 Contoh: "beli kopi 25rb pakai GoPay", "gaji 8 juta masuk BCA", atau "bayar listrik 285rb kemarin".
               </p>
             </div>
@@ -351,7 +349,7 @@ export default function CapturePage() {
                   padding: '12px 14px',
                   borderRadius: '14px',
                   background: message.role === 'user' ? 'var(--accent)' : 'var(--bg-card)',
-                  color: message.role === 'user' ? '#fff' : 'var(--text-primary)',
+                  color: message.role === 'user' ? 'var(--on-brand)' : 'var(--text-primary)',
                   border: message.role === 'user' ? 'none' : '1px solid var(--border)',
                   boxShadow: message.role === 'user' ? 'var(--shadow-accent)' : 'none',
                 }}
@@ -401,8 +399,8 @@ export default function CapturePage() {
                 style={{
                   fontSize: '12px',
                   color: 'var(--red)',
-                  background: 'rgba(239,68,68,0.08)',
-                  border: '1px solid rgba(239,68,68,0.15)',
+                  background: 'color-mix(in srgb, var(--red) 8%, transparent)',
+                  border: '1px solid color-mix(in srgb, var(--red) 15%, transparent)',
                   borderRadius: '12px',
                   padding: '10px 12px',
                 }}
@@ -413,12 +411,10 @@ export default function CapturePage() {
           </div>
         </section>
 
-        <section className="card" style={{ padding: '18px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
-          <div>
-            <h3 style={{ fontSize: '16px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '4px' }}>
-              Hasil AI
-            </h3>
-            <p style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
+        <section className="card panel-card">
+          <div className="panel-head">
+            <h3 className="panel-title">Hasil AI</h3>
+            <p className="panel-subtitle">
               Auto-save akan muncul dengan opsi batalkan 5 detik. Sisanya tetap perlu review manual.
             </p>
           </div>
@@ -430,8 +426,8 @@ export default function CapturePage() {
                   key={entry.localId}
                   style={{
                     borderRadius: '12px',
-                    border: '1px solid rgba(16,185,129,0.16)',
-                    background: 'rgba(16,185,129,0.08)',
+                    border: '1px solid color-mix(in srgb, var(--green) 16%, transparent)',
+                    background: 'color-mix(in srgb, var(--green) 8%, transparent)',
                     padding: '12px',
                   }}
                 >
@@ -458,8 +454,8 @@ export default function CapturePage() {
               style={{
                 borderRadius: '12px',
                 padding: '14px',
-                border: '1px solid rgba(245,158,11,0.25)',
-                background: 'rgba(245,158,11,0.10)',
+                border: '1px solid color-mix(in srgb, var(--amber) 25%, transparent)',
+                background: 'color-mix(in srgb, var(--amber) 10%, transparent)',
                 color: 'var(--text-secondary)',
                 fontSize: '13px',
                 lineHeight: 1.7,
@@ -508,7 +504,7 @@ export default function CapturePage() {
           <button
             key={item.title}
             type="button"
-            className="card"
+            className="card entry-link-card"
             onClick={() => navigate(item.href)}
             style={{ padding: '18px', textAlign: 'left', cursor: 'pointer', background: `linear-gradient(180deg, ${item.tone}, var(--bg-card))` }}
           >
@@ -584,7 +580,7 @@ function ReviewCard({
   const disabled = needsWallet || needsAmount || status === 'saving'
 
   return (
-    <div style={{ border: `1px solid ${isLowConfidence ? 'rgba(245,158,11,0.3)' : 'var(--border)'}`, borderRadius: '14px', padding: '14px', background: 'var(--bg-card2)' }}>
+    <div style={{ border: `1px solid ${isLowConfidence ? 'color-mix(in srgb, var(--amber) 30%, transparent)' : 'var(--border)'}`, borderRadius: '14px', padding: '14px', background: 'var(--bg-card2)' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', alignItems: 'center', marginBottom: '10px', flexWrap: 'wrap' }}>
         <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)' }}>
           Review transaksi AI
@@ -594,7 +590,7 @@ function ReviewCard({
         </span>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+      <div className="review-grid-2">
         <Field label="Tipe">
           <select className="form-input" value={item.type} onChange={(event) => onChange(item.localId, 'type', event.target.value as TransactionType)}>
             <option value="expense">Pengeluaran</option>
@@ -648,8 +644,8 @@ function ReviewCard({
             marginTop: '10px',
             fontSize: '12px',
             color: 'var(--amber)',
-            background: 'rgba(245,158,11,0.10)',
-            border: '1px solid rgba(245,158,11,0.20)',
+            background: 'color-mix(in srgb, var(--amber) 10%, transparent)',
+            border: '1px solid color-mix(in srgb, var(--amber) 20%, transparent)',
             borderRadius: '12px',
             padding: '10px 12px',
             lineHeight: 1.7,

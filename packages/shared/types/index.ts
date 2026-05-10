@@ -7,13 +7,29 @@
 
 export type TransactionType = 'income' | 'expense'
 
-export type TransactionCategory = string | 'food' | 'transport' | 'shopping' | 'health' | 'entertainment' | 'education' | 'housing' | 'salary' | 'freelance' | 'investment' | 'other'
+export type TransactionCategory =
+  | string
+  | 'food'
+  | 'transport'
+  | 'shopping'
+  | 'health'
+  | 'entertainment'
+  | 'education'
+  | 'housing'
+  | 'salary'
+  | 'freelance'
+  | 'investment'
+  | 'other'
 
 export type WalletType = 'bank' | 'ewallet' | 'cash' | 'investment'
 
+export type InputType = 'manual' | 'text' | 'image' | 'voice' | 'import'
+
+export type TransactionStatus = 'processing' | 'done' | 'error'
+
 export type TransactionVisibility = 'private' | 'group' | 'admin_only'
 
-export type GroupRole = 'admin' | 'editor' | 'viewer'
+export type GroupRole = 'admin' | 'member'
 
 export type MemberStatus = 'pending' | 'active' | 'left' | 'removed'
 
@@ -53,33 +69,41 @@ export interface Transaction {
   id: string
   wallet_id: string
   user_id: string
+  group_id?: string
+  input_type?: InputType
+  raw_input?: string
+  status?: TransactionStatus
+  error_message?: string
   type: TransactionType
   amount: number
   category: TransactionCategory
   note?: string
   merchant?: string
-  date: string               // ISO date string
+  date: string // ISO date string
   receipt_url?: string
   is_shared: boolean
   visibility: TransactionVisibility
-  group_id?: string
-  on_behalf_of?: string      // user_id (input atas nama)
-  created_by: string         // user_id yang menginput
-  is_disputed: boolean
+  on_behalf_of?: string // user_id (input atas nama)
+  created_by: string // user_id yang menginput
+  is_verified?: boolean
+  review_required?: boolean
+  confidence?: number // 0-1 untuk AI extraction
+  is_disputed?: boolean
   dispute_resolved_at?: string
   created_at: string
+  updated_at?: string
 }
 
 export interface Budget {
   id: string
   user_id: string
-  group_id?: string          // null = budget pribadi
+  group_id?: string // null = budget pribadi
   category: TransactionCategory
   limit_amount: number
-  spent_amount: number       // computed/cached
-  period: 'monthly'
-  period_start: string       // YYYY-MM-01
-  notify_at_percent: number  // default 80
+  spent_amount: number // computed/cached
+  period: 'monthly' | 'weekly'
+  period_start: string // YYYY-MM-01
+  notify_at_percent: number // default 80
   is_active: boolean
   created_at: string
 }
@@ -89,7 +113,7 @@ export interface BillReminder {
   user_id: string
   name: string
   amount: number
-  due_day: number            // 1-31
+  due_day: number // 1-31
   recurrence: BillRecurrence
   next_due_date: string
   icon?: string
@@ -101,7 +125,7 @@ export interface BillReminder {
     amount: number
     next_due_date_before_payment?: string
   }>
-  notify_before_days: number[]  // [3, 1] = H-3 dan H-1
+  notify_before_days: number[] // H-berapa hari
   created_at: string
 }
 
@@ -120,9 +144,8 @@ export interface Group {
   description?: string
   owner_id: string
   invite_code: string
-  invite_link: string
   max_members: number
-  member_count: number       // computed
+  member_count: number // computed
   created_at: string
 }
 
@@ -142,6 +165,18 @@ export interface GroupMember {
 
 // ── AI TYPES ─────────────────────────────────────────────────
 
+export interface ConfidenceScore {
+  overall: number // 0-1
+  fields: {
+    type?: number
+    amount?: number
+    category?: number
+    merchant?: number
+    wallet?: number
+    date?: number
+  }
+}
+
 export interface AIExtractedTransaction {
   type: TransactionType
   amount: number
@@ -151,7 +186,8 @@ export interface AIExtractedTransaction {
   wallet_hint?: string | null
   date?: string
   wallet_id?: string
-  confidence: number         // 0-1
+  confidence: number
+  review_required?: boolean
 }
 
 export interface AIChatMessage {

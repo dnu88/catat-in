@@ -1,10 +1,5 @@
 import { FormEvent, useEffect, useState } from "react";
-import {
-	createSavingsGoal,
-	deleteSavingsGoal,
-	listSavingsGoals,
-	requireAuthUid,
-} from "@lib/firestore";
+import { createSavingsGoal, deleteSavingsGoal, listSavingsGoals, requireAuthUid } from "@lib/firestore";
 import { useT } from "@lib/i18n";
 import { useI18nStore } from "@store/i18n.store";
 
@@ -16,11 +11,7 @@ type Goal = {
 };
 
 function rupiah(v: number) {
-	return new Intl.NumberFormat("id-ID", {
-		style: "currency",
-		currency: "IDR",
-		maximumFractionDigits: 0,
-	}).format(v);
+	return new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 }).format(v);
 }
 
 export default function SavingsGoalsPage() {
@@ -38,8 +29,7 @@ export default function SavingsGoalsPage() {
 		setError("");
 		try {
 			const uid = requireAuthUid();
-			const rows = await listSavingsGoals(uid);
-			setGoals(rows);
+			setGoals(await listSavingsGoals(uid));
 		} catch (err: any) {
 			setError(err.message || "Gagal memuat goals");
 		} finally {
@@ -56,11 +46,7 @@ export default function SavingsGoalsPage() {
 		setError("");
 		try {
 			const uid = requireAuthUid();
-			await createSavingsGoal(uid, {
-				name,
-				target_amount: Number(target),
-				current_amount: Number(current),
-			});
+			await createSavingsGoal(uid, { name, target_amount: Number(target), current_amount: Number(current) });
 			setName("");
 			await load();
 		} catch (err: any) {
@@ -80,99 +66,39 @@ export default function SavingsGoalsPage() {
 	};
 
 	return (
-		<div className="animate-fade-in" style={{ display: "grid", gap: 12 }}>
-			<h2 style={{ margin: 0 }}>{t("goals")}</h2>
-			<form
-				className="card"
-				style={{ padding: 12, display: "grid", gap: 8 }}
-				onSubmit={create}
-			>
-				<input
-					className="form-input"
-					value={name}
-					onChange={(e) => setName(e.target.value)}
-					placeholder={language === "id" ? "Nama target" : "Goal name"}
-					required
-				/>
-				<input
-					className="form-input"
-					type="number"
-					value={target}
-					onChange={(e) => setTarget(e.target.value)}
-					required
-				/>
-				<input
-					className="form-input"
-					type="number"
-					value={current}
-					onChange={(e) => setCurrent(e.target.value)}
-					required
-				/>
-				<button className="btn btn-primary" type="submit">
-					{language === "id" ? "Tambah Goal" : "Add Goal"}
-				</button>
+		<div className="animate-fade-in page-shell">
+			<div className="page-header">
+				<div>
+					<h2 className="page-title">{t("goals")}</h2>
+					<p className="page-subtitle">Pantau progres target tabungan dengan progress bar real-time.</p>
+				</div>
+			</div>
+
+			<form className="card page-section-card" style={{ padding: 14, display: "grid", gap: 8 }} onSubmit={create}>
+				<input className="form-input" value={name} onChange={(e) => setName(e.target.value)} placeholder={language === "id" ? "Nama target" : "Goal name"} required />
+				<input className="form-input" type="number" value={target} onChange={(e) => setTarget(e.target.value)} required />
+				<input className="form-input" type="number" value={current} onChange={(e) => setCurrent(e.target.value)} required />
+				<button className="btn btn-primary" type="submit">{language === "id" ? "Tambah Goal" : "Add Goal"}</button>
 			</form>
 
-			{error ? (
-				<div className="card" style={{ padding: 12, color: "var(--red)" }}>
-					{error}
-				</div>
-			) : null}
-			{isLoading ? (
-				<div className="card" style={{ padding: 12 }}>
-					{language === "id" ? "Memuat goals..." : "Loading goals..."}
-				</div>
-			) : null}
+			{error ? <div className="page-section-card" style={{ color: "var(--red)", background: "color-mix(in srgb, var(--red) 12%, var(--bg-card))", border: "1px solid color-mix(in srgb, var(--red) 28%, transparent)" }}>{error}</div> : null}
+			{isLoading ? <div className="card page-section-card">{language === "id" ? "Memuat goals..." : "Loading goals..."}</div> : null}
+
 			<div style={{ display: "grid", gap: 8 }}>
-				{!isLoading && goals.length === 0 ? (
-					<div
-						className="card"
-						style={{
-							padding: 16,
-							textAlign: "center",
-							color: "var(--text-muted)",
-						}}
-					>
-						{language === "id"
-							? "Belum ada target tabungan."
-							: "No savings goals yet."}
-					</div>
-				) : null}
+				{!isLoading && goals.length === 0 ? <div className="card page-section-card" style={{ textAlign: "center", color: "var(--text-muted)" }}>{language === "id" ? "Belum ada target tabungan." : "No savings goals yet."}</div> : null}
 				{goals.map((g) => {
-					const pct =
-						g.target_amount > 0
-							? Math.min(
-									100,
-									Math.round((g.current_amount / g.target_amount) * 100),
-								)
-							: 0;
+					const pct = g.target_amount > 0 ? Math.min(100, Math.round((g.current_amount / g.target_amount) * 100)) : 0;
 					return (
-						<div key={g.id} className="card" style={{ padding: 12 }}>
-							<div
-								style={{
-									display: "flex",
-									justifyContent: "space-between",
-									gap: 8,
-								}}
-							>
+						<div key={g.id} className="card page-section-card" style={{ padding: 12 }}>
+							<div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
 								<div>
-									<div style={{ fontWeight: 700 }}>{g.name}</div>
-									<div style={{ fontSize: 12, color: "var(--text-muted)" }}>
-										{rupiah(g.current_amount)} / {rupiah(g.target_amount)}
-									</div>
+									<div style={{ fontWeight: 700, color: "var(--text-primary)" }}>{g.name}</div>
+									<div style={{ fontSize: 12, color: "var(--text-muted)" }}>{rupiah(g.current_amount)} / {rupiah(g.target_amount)}</div>
 								</div>
-								<button
-									className="btn btn-danger"
-									onClick={() => void remove(g.id)}
-								>
-									{t("delete")}
-								</button>
+								<button className="btn btn-danger" onClick={() => void remove(g.id)}>{t("delete")}</button>
 							</div>
 							<div className="progress-track" style={{ marginTop: 8 }}>
-								<div
-									className="progress-fill ok"
-									style={{ width: `${pct}%` }}
-								/>
+								<div className="progress-fill ok" style={{ width: `${pct}%` }} />
 							</div>
 						</div>
 					);

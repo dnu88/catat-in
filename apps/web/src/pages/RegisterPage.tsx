@@ -1,5 +1,7 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth'
+import AuthShell from '@components/auth/AuthShell'
 import { auth } from '@lib/firebase'
 import { ensureUserProfileFromAuth } from '@lib/firestore'
 import { useI18nStore } from '@store/i18n.store'
@@ -20,6 +22,7 @@ export default function RegisterPage() {
       setError('Password minimal 8 karakter.')
       return
     }
+
     setIsLoading(true)
     try {
       const credential = await createUserWithEmailAndPassword(auth, email, password)
@@ -35,81 +38,51 @@ export default function RegisterPage() {
     }
   }
 
-  if (success) {
-    return (
-      <div className="login-page">
-        <div className="login-brand">
-          <div className="login-brand-bg" />
-          <div className="login-brand-circle login-brand-circle-1" />
-          <div className="login-brand-circle login-brand-circle-2" />
-          <div className="login-brand-content">
-            <div style={{ width: '72px', height: '72px', borderRadius: '50%', background: 'rgba(16, 185, 129, 0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '36px', margin: '0 auto 20px', border: '1px solid rgba(255,255,255,0.25)' }}>
-              ✓
-            </div>
-            <h1 className="login-logo-name">{language === 'id' ? 'Pendaftaran Berhasil!' : 'Registration Successful!'}</h1>
-            <p className="login-tagline">
-              Akun untuk <strong style={{ color: '#fff' }}>{email}</strong> berhasil dibuat. Lanjut login untuk mulai mencatat keuanganmu.
-            </p>
-            <a
-              href="/login"
-              style={{
-                display: 'inline-block',
-                marginTop: '16px',
-                background: '#fff',
-                color: 'var(--accent)',
-                padding: '12px 28px',
-                borderRadius: 'var(--r-pill)',
-                fontWeight: 700,
-                fontSize: '14px',
-                textDecoration: 'none',
-                boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-              }}
-            >
-              {language === 'id' ? 'Kembali ke Login' : 'Back to Login'}
-            </a>
-          </div>
-        </div>
-        <style>{registerStyles}</style>
-      </div>
-    )
-  }
-
   return (
-    <div className="login-page">
-      {/* Left side — branding */}
-      <div className="login-brand">
-        <div className="login-brand-bg" />
-        <div className="login-brand-circle login-brand-circle-1" />
-        <div className="login-brand-circle login-brand-circle-2" />
-        <div className="login-brand-content">
-          <div className="login-logo-mark">💰</div>
-          <h1 className="login-logo-name">kaswise</h1>
-          <p className="login-tagline">
-            Mulai kelola keuanganmu<br />dengan cara yang lebih cerdas.
+    <AuthShell
+      tagline={
+        language === 'id' ? (
+          <>
+            Mulai kelola keuanganmu,
+            <br />
+            dengan cara yang lebih cerdas.
+          </>
+        ) : (
+          <>
+            Start managing your finances,
+            <br />
+            in a smarter way.
+          </>
+        )
+      }
+      features={['✨ Gratis untuk fitur dasar', '🔒 Data aman & privat', '⚡ Setup cepat']}
+    >
+      {success ? (
+        <div className="auth-success-state">
+          <div className="auth-success-icon">✓</div>
+          <h2 className="auth-card-title">{language === 'id' ? 'Pendaftaran berhasil!' : 'Registration successful!'}</h2>
+          <p className="auth-card-subtitle">
+            {language === 'id'
+              ? `Akun untuk ${email} berhasil dibuat. Lanjut login untuk mulai mencatat keuanganmu.`
+              : `Account for ${email} has been created. Continue to sign in and start tracking.`}
           </p>
-          <div className="login-features">
-            <div className="login-feature">✨ Gratis selamanya untuk fitur dasar</div>
-            <div className="login-feature">🔒 Data kamu aman & privat</div>
-            <div className="login-feature">⚡ Setup dalam 30 detik</div>
-          </div>
+          <Link to="/login" className="btn btn-primary auth-submit">
+            {language === 'id' ? 'Kembali ke Login' : 'Back to Login'}
+          </Link>
         </div>
-      </div>
-
-      {/* Right side — register form */}
-      <div className="login-form-side">
-        <div className="login-card">
-          <div className="login-card-header">
-            <h2 className="login-card-title">{language === 'id' ? 'Buat akun baru' : 'Create new account'}</h2>
-            <p className="login-card-sub">
+      ) : (
+        <>
+          <div className="auth-card-header">
+            <h2 className="auth-card-title">{language === 'id' ? 'Buat akun baru' : 'Create new account'}</h2>
+            <p className="auth-card-subtitle">
               {language === 'id' ? 'Daftar gratis dan mulai catat keuangan' : 'Sign up for free and start tracking your finances'}
             </p>
           </div>
 
-          <form onSubmit={handleRegister} className="login-form">
-            <div className="login-field">
-              <label className="form-label" htmlFor="reg-name">{language === 'id' ? 'Nama Lengkap' : 'Full Name'}</label>
+          <form onSubmit={handleRegister} className="auth-form">
+            <label className="auth-field">
+              <span className="form-label">{language === 'id' ? 'Nama lengkap' : 'Full name'}</span>
               <input
-                id="reg-name"
                 className="form-input"
                 type="text"
                 value={fullName}
@@ -118,12 +91,11 @@ export default function RegisterPage() {
                 required
                 autoComplete="name"
               />
-            </div>
+            </label>
 
-            <div className="login-field">
-              <label className="form-label" htmlFor="reg-email">Email</label>
+            <label className="auth-field">
+              <span className="form-label">Email</span>
               <input
-                id="reg-email"
                 className="form-input"
                 type="email"
                 value={email}
@@ -132,12 +104,11 @@ export default function RegisterPage() {
                 required
                 autoComplete="email"
               />
-            </div>
+            </label>
 
-            <div className="login-field">
-              <label className="form-label" htmlFor="reg-password">{language === 'id' ? 'Password' : 'Password'}</label>
+            <label className="auth-field">
+              <span className="form-label">Password</span>
               <input
-                id="reg-password"
                 className="form-input"
                 type="password"
                 value={password}
@@ -146,186 +117,23 @@ export default function RegisterPage() {
                 required
                 autoComplete="new-password"
               />
-            </div>
+            </label>
 
-            {error && <p className="login-error">{error}</p>}
+            {error ? <p className="auth-alert auth-alert-error">{error}</p> : null}
 
-            <button type="submit" disabled={isLoading} className="btn btn-primary login-submit">
-              {isLoading ? (language === 'id' ? 'Mendaftarkan...' : 'Registering...') : (language === 'id' ? 'Daftar Sekarang' : 'Register Now')}
+            <button type="submit" disabled={isLoading} className="btn btn-primary auth-submit">
+              {isLoading ? (language === 'id' ? 'Mendaftarkan...' : 'Registering...') : (language === 'id' ? 'Daftar sekarang' : 'Register now')}
             </button>
           </form>
 
-          <p className="login-register-text">
+          <p className="auth-footnote">
             {language === 'id' ? 'Sudah punya akun?' : 'Already have an account?'}{' '}
-            <a href="/login" className="login-register-link">{language === 'id' ? 'Masuk di sini' : 'Sign in here'}</a>
+            <Link to="/login" className="auth-link">
+              {language === 'id' ? 'Masuk di sini' : 'Sign in here'}
+            </Link>
           </p>
-        </div>
-      </div>
-
-      <style>{registerStyles}</style>
-    </div>
+        </>
+      )}
+    </AuthShell>
   )
 }
-
-const registerStyles = `
-  .login-page {
-    min-height: 100vh;
-    display: flex;
-  }
-  .login-brand {
-    flex: 1;
-    position: relative;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    overflow: hidden;
-  }
-  .login-brand-bg {
-    position: absolute;
-    inset: 0;
-    background: var(--g-card);
-  }
-  .login-brand-circle {
-    position: absolute;
-    border-radius: 50%;
-    background: rgba(255, 255, 255, 0.07);
-  }
-  .login-brand-circle-1 {
-    top: -80px;
-    right: -80px;
-    width: 300px;
-    height: 300px;
-  }
-  .login-brand-circle-2 {
-    bottom: -60px;
-    left: -60px;
-    width: 250px;
-    height: 250px;
-  }
-  .login-brand-content {
-    position: relative;
-    z-index: 1;
-    text-align: center;
-    padding: 40px;
-  }
-  .login-logo-mark {
-    width: 72px;
-    height: 72px;
-    border-radius: 18px;
-    background: rgba(255, 255, 255, 0.2);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 36px;
-    margin: 0 auto 20px;
-    border: 1px solid rgba(255, 255, 255, 0.25);
-    backdrop-filter: blur(10px);
-  }
-  .login-logo-name {
-    font-size: 32px;
-    font-weight: 700;
-    color: #fff;
-    letter-spacing: -0.5px;
-    margin-bottom: 8px;
-  }
-  .login-tagline {
-    font-size: 15px;
-    color: rgba(255, 255, 255, 0.75);
-    line-height: 1.7;
-    margin-bottom: 32px;
-  }
-  .login-features {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-    align-items: center;
-  }
-  .login-feature {
-    background: rgba(255, 255, 255, 0.12);
-    border: 1px solid rgba(255, 255, 255, 0.15);
-    border-radius: var(--r-pill);
-    padding: 8px 20px;
-    font-size: 13px;
-    color: rgba(255, 255, 255, 0.9);
-    font-weight: 500;
-  }
-  .login-form-side {
-    flex: 1;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 40px;
-    background: var(--bg-base);
-  }
-  .login-card {
-    width: 100%;
-    max-width: 400px;
-  }
-  .login-card-header {
-    margin-bottom: 28px;
-  }
-  .login-card-title {
-    font-size: 24px;
-    font-weight: 700;
-    color: var(--text-primary);
-    letter-spacing: -0.3px;
-    margin-bottom: 6px;
-  }
-  .login-card-sub {
-    font-size: 14px;
-    color: var(--text-muted);
-  }
-  .login-form {
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-  }
-  .login-field {
-    display: flex;
-    flex-direction: column;
-  }
-  .login-error {
-    font-size: 13px;
-    color: var(--red);
-    background: rgba(239, 68, 68, 0.08);
-    border: 1px solid rgba(239, 68, 68, 0.15);
-    padding: 10px 14px;
-    border-radius: var(--r-sm);
-    margin: 0;
-  }
-  .login-submit {
-    width: 100%;
-    padding: 12px;
-    font-size: 15px;
-    margin-top: 4px;
-  }
-  .login-register-text {
-    text-align: center;
-    margin-top: 24px;
-    color: var(--text-muted);
-    font-size: 14px;
-  }
-  .login-register-link {
-    color: var(--accent);
-    text-decoration: none;
-    font-weight: 600;
-  }
-  .login-register-link:hover {
-    text-decoration: underline;
-  }
-  @media (max-width: 768px) {
-    .login-page {
-      flex-direction: column;
-    }
-    .login-brand {
-      min-height: 260px;
-      flex: none;
-    }
-    .login-features {
-      display: none;
-    }
-    .login-form-side {
-      padding: 24px;
-    }
-  }
-`

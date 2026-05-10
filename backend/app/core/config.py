@@ -76,10 +76,10 @@ class Settings(BaseSettings):
     MIDTRANS_CLIENT_KEY: str | None = None
     MIDTRANS_IS_PRODUCTION: bool = False
 
-    # Firebase
-    FIREBASE_PROJECT_ID: str | None = None
-    FIREBASE_PRIVATE_KEY: str | None = None
-    FIREBASE_CLIENT_EMAIL: str | None = None
+    # Supabase
+    SUPABASE_URL: str | None = None
+    SUPABASE_ANON_KEY: str | None = None
+    SUPABASE_SERVICE_ROLE_KEY: str | None = None
 
     # CORS / trusted hosts. See _ListFriendlyEnvSource above.
     ALLOWED_ORIGINS: List[str] = [

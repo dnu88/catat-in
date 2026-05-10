@@ -1,4 +1,5 @@
-import type { ReactNode } from 'react'
+import { ReactNode } from 'react'
+import Logo from '../Logo'
 
 type AuthShellProps = {
   tagline: ReactNode
@@ -15,10 +16,7 @@ export default function AuthShell({ tagline, features = [], children }: AuthShel
         <div className="auth-brand-circle auth-brand-circle-2" />
         <div className="auth-brand-content">
           <div className="auth-logo-mark" aria-hidden>
-            <svg width="52" height="52" viewBox="0 0 52 52" fill="none">
-              <circle cx="26" cy="26" r="26" fill="white" />
-              <text x="26" y="34" textAnchor="middle" fontSize="22" fontWeight="800" fill="#47D6A3" fontFamily="Inter, sans-serif">KW</text>
-            </svg>
+            <Logo size={72} variant="dark" />
           </div>
           <h1 className="auth-logo-name">kaswise</h1>
           <p className="auth-tagline">{tagline}</p>

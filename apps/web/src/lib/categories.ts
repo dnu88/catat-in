@@ -1,4 +1,4 @@
-import type { Category, TransactionType } from '@catat-in/shared/types'
+import type { Category, TransactionType } from '@kaswise/shared/types'
 
 export const CATEGORY_LABEL: Record<string, string> = {
   food: 'Makan & Minum',

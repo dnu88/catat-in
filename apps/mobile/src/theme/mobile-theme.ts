@@ -1,4 +1,4 @@
-import { kaswiseTokens, type ThemeMode } from '@kaswise/shared/theme'
+import { kaswiseTokens, type ThemeMode } from './tokens'
 
 export function toMobileTheme(mode: ThemeMode) {
   const token = kaswiseTokens[mode]

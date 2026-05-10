@@ -118,13 +118,9 @@ body {
 .sidebar-logo-mark {
   width: 36px;
   height: 36px;
-  background: var(--g-card);
-  border-radius: 10px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 18px;
-  box-shadow: var(--shadow-accent);
   flex-shrink: 0;
 }
 
@@ -494,14 +490,10 @@ body {
 .auth-logo-mark {
   width: 72px;
   height: 72px;
-  border-radius: 18px;
-  background: rgba(255, 255, 255, 0.2);
   display: flex;
   align-items: center;
   justify-content: center;
   margin: 0 auto 20px;
-  border: 1px solid rgba(255, 255, 255, 0.25);
-  backdrop-filter: blur(10px);
 }
 
 .auth-logo-name {
@@ -1709,5 +1701,25 @@ body {
   .metric-card,
   .comparison-panel {
     margin-bottom: 12pt;
+  }
+
+  /* Force deep navy accent on legacy report elements */
+  .period-preset-btn.active,
+  .period-badge,
+  .donut-chart,
+  .action-buttons .btn-primary {
+    background: #1E3A8A !important;
+    border-color: #1E3A8A !important;
+    color: #fff !important;
+  }
+
+  .action-buttons .btn-outline,
+  .text-accent {
+    color: #1E3A8A !important;
+    border-color: #1E3A8A !important;
+  }
+
+  .action-buttons .btn-outline {
+    background: transparent !important;
   }
 }
