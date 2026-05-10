@@ -4,13 +4,13 @@ export const kaswiseTokens = {
   light: {
     color: {
       bg: {
-        base: '#F3F5FA',
-        surface: '#FFFFFF',
+        base: '#FFFFFF',
+        surface: '#F5F5F5',
         card: '#FFFFFF',
         muted: '#F8FAFD',
       },
       text: {
-        primary: '#0C1A3A',
+        primary: '#28303F',
         secondary: '#4C5A78',
         muted: '#8A95AD',
         inverse: '#FFFFFF',
@@ -20,13 +20,13 @@ export const kaswiseTokens = {
         strong: '#CBD5E3',
       },
       brand: {
-        primary: '#4F46E5',
-        accent: '#10B981',
+        primary: '#47D6A3',
+        accent: '#41C093',
       },
       status: {
-        success: '#10B981',
-        danger: '#EF4444',
-        warning: '#F59E0B',
+        success: '#4CAF50',
+        danger: '#FF7B7B',
+        warning: '#FFC06D',
         info: '#38BDF8',
       },
     },
@@ -53,30 +53,30 @@ export const kaswiseTokens = {
   dark: {
     color: {
       bg: {
-        base: '#050C1B',
-        surface: '#08132A',
-        card: '#0A1730',
-        muted: '#0E1E3D',
+        base: '#1A1A2E',
+        surface: '#252538',
+        card: '#252538',
+        muted: '#2E2E42',
       },
       text: {
-        primary: '#F8FAFF',
-        secondary: '#B4C0DA',
-        muted: '#7D8CA9',
-        inverse: '#050C1B',
+        primary: '#F5F7FF',
+        secondary: '#C7CEE0',
+        muted: '#99A3BA',
+        inverse: '#1A1A2E',
       },
       border: {
-        soft: '#1A2A4C',
-        strong: '#223861',
+        soft: '#34344A',
+        strong: '#4A4A64',
       },
       brand: {
-        primary: '#4F46E5',
-        accent: '#10B981',
+        primary: '#5EE8B0',
+        accent: '#47D6A3',
       },
       status: {
-        success: '#10B981',
-        danger: '#EF4444',
-        warning: '#F59E0B',
-        info: '#38BDF8',
+        success: '#4CAF50',
+        danger: '#FF7060',
+        warning: '#FFC06D',
+        info: '#5EE8B0',
       },
     },
     radius: {

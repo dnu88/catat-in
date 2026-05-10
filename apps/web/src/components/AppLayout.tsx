@@ -141,7 +141,12 @@ export default function AppLayout() {
 
 			<aside className={`sidebar ${sidebarOpen ? "open" : ""}`}>
 				<div className="sidebar-logo">
-					<div className="sidebar-logo-mark">K</div>
+					<div className="sidebar-logo-mark">
+						<svg width="36" height="36" viewBox="0 0 36 36" fill="none">
+							<circle cx="18" cy="18" r="18" fill="white" />
+							<text x="18" y="23" textAnchor="middle" fontSize="14" fontWeight="800" fill="#47D6A3" fontFamily="Inter, sans-serif">KW</text>
+						</svg>
+					</div>
 					<div>
 						<div className="sidebar-logo-text">kaswise</div>
 						<div className="sidebar-logo-sub">Catat Keuangan, Bijak Setiap Hari</div>
@@ -228,6 +233,7 @@ export default function AppLayout() {
 							className="mobile-menu-btn btn btn-secondary"
 							style={{ padding: "6px 10px" }}
 							onClick={() => setSidebarOpen(!sidebarOpen)}
+							aria-label={language === "id" ? "Buka/tutup menu samping" : "Toggle sidebar"}
 						>
 							☰
 						</button>

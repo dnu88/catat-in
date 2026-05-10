@@ -313,7 +313,7 @@ body {
   justify-content: center;
   gap: 6px;
   padding: 9px 16px;
-  min-height: 36px;
+  min-height: 44px;
   border-radius: var(--r-sm);
   font-size: 13px;
   font-weight: 600;
@@ -1622,8 +1622,8 @@ body {
 
   /* Reset layout for print */
   body {
-    background: white;
-    color: black;
+    background: var(--bg-base);
+    color: var(--text-primary);
     font-size: 11pt;
     line-height: 1.5;
   }
@@ -1650,7 +1650,7 @@ body {
   /* Card styling for print */
   .card,
   .metric-card {
-    border: 1px solid #e2e8f0;
+    border: 1px solid var(--border);
     box-shadow: none;
     page-break-inside: avoid;
     margin-bottom: 12pt;
@@ -1661,25 +1661,25 @@ body {
     display: block;
     margin-bottom: 20pt;
     padding-bottom: 12pt;
-    border-bottom: 2pt solid #3b82f6;
+    border-bottom: 2pt solid var(--accent);
   }
 
   .print-header h1 {
     font-size: 18pt;
     font-weight: 700;
-    color: #1e293b;
+    color: var(--text-primary);
     margin-bottom: 6pt;
   }
 
   .print-header .period-info {
     font-size: 11pt;
-    color: #64748b;
+    color: var(--text-secondary);
     margin-bottom: 4pt;
   }
 
   .print-header .generated-date {
     font-size: 9pt;
-    color: #94a3b8;
+    color: var(--text-muted);
   }
 
   /* Ensure charts/images print */
@@ -1697,7 +1697,7 @@ body {
   .category-table th,
   .category-table td {
     padding: 8pt;
-    border: 1px solid #e2e8f0;
+    border: 1px solid var(--border);
   }
 
   /* Remove interactive elements */
