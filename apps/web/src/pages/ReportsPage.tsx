@@ -9,7 +9,7 @@ import {
 	YAxis,
 } from "recharts";
 import { useWalletStore } from "@store/wallet.store";
-import { buildMonthlyReport, requireAuthUid } from "@lib/firestore";
+import { buildMonthlyReport, buildDateRangeReport, buildComparativeReport, requireAuthUid } from "@lib/firestore";
 import { api } from "@lib/api";
 import { useI18nStore } from "@store/i18n.store";
 
@@ -90,6 +90,8 @@ export default function ReportsPage() {
 	});
 	type PeriodPreset = "month" | "3month" | "6month" | "year" | "custom";
 	const [periodPreset, setPeriodPreset] = useState<PeriodPreset>("month");
+	const [customStart, setCustomStart] = useState("");
+	const [customEnd, setCustomEnd] = useState("");
 	const [walletFilter, setWalletFilter] = useState("");
 	const [summary, setSummary] = useState<SummaryResponse | null>(null);
 	const [trends, setTrends] = useState<TrendPoint[]>([]);
@@ -104,6 +106,22 @@ export default function ReportsPage() {
 	const [error, setError] = useState<string | null>(null);
 	const [healthScore, setHealthScore] = useState<number | null>(null);
 	const [healthTips, setHealthTips] = useState<string[]>([]);
+	const [copied, setCopied] = useState(false);
+	const [comparativeData, setComparativeData] = useState<{
+		current: any;
+		previous: any;
+		delta: {
+			income: number;
+			expense: number;
+			net: number;
+			category_changes: Array<{
+				category: string;
+				current: number;
+				previous: number;
+				delta: number;
+			}>;
+		};
+	} | null>(null);
 
 	const [year, month] = selectedMonth.split("-").map(Number);
 
@@ -168,12 +186,24 @@ export default function ReportsPage() {
 
 		try {
 			const uid = requireAuthUid();
-			const report = await buildMonthlyReport(
-				uid,
-				year,
-				month,
-				walletFilter || undefined,
-			);
+
+			let report;
+			if (periodPreset === "custom" && customStart && customEnd) {
+				report = await buildDateRangeReport(
+					uid,
+					customStart,
+					customEnd,
+					walletFilter || undefined,
+				);
+			} else {
+				report = await buildMonthlyReport(
+					uid,
+					year,
+					month,
+					walletFilter || undefined,
+				);
+			}
+
 			setSummary({
 				period: report.period,
 				total_income: report.total_income,
@@ -194,6 +224,14 @@ export default function ReportsPage() {
 					category: item.category,
 				})),
 			);
+
+			const comparative = await buildComparativeReport(
+				uid,
+				year,
+				month,
+				walletFilter || undefined,
+			);
+			setComparativeData(comparative);
 		} catch (err: any) {
 			setError(err.message || "Gagal memuat laporan.");
 		} finally {
@@ -234,6 +272,8 @@ export default function ReportsPage() {
 
 	const handleShare = async () => {
 		const shareText = `Laporan ${selectedMonth}\nPemasukan: ${formatRupiah(summary?.total_income || 0)}\nPengeluaran: ${formatRupiah(summary?.total_expense || 0)}\nTabungan: ${formatRupiah(summary?.net || 0)}`;
+
+		// Try native share first
 		if (navigator.share) {
 			try {
 				await navigator.share({
@@ -247,12 +287,45 @@ export default function ReportsPage() {
 			}
 		}
 
-		await navigator.clipboard.writeText(shareText);
-		alert("Ringkasan laporan disalin ke clipboard");
+		// Email fallback for desktop browsers without navigator.share
+		const subject = encodeURIComponent("Laporan Keuangan");
+		const body = encodeURIComponent(shareText);
+		const mailtoLink = `mailto:?subject=${subject}&body=${body}`;
+
+		// Try opening email client
+		const emailWindow = window.open(mailtoLink, "_blank");
+		if (emailWindow) {
+			return;
+		}
+
+		// Final fallback: clipboard with toast
+		try {
+			await navigator.clipboard.writeText(shareText);
+			setCopied(true);
+			setTimeout(() => setCopied(false), 2000);
+		} catch {
+			// Clipboard failed, silent fallback
+		}
 	};
 
 	return (
 		<div className="animate-fade-in page-shell">
+			{copied && (
+				<div style={{
+					position: 'fixed',
+					top: '20px',
+					right: '20px',
+					background: '#10b981',
+					color: 'white',
+					padding: '12px 20px',
+					borderRadius: '8px',
+					boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+					zIndex: 9999,
+					fontWeight: 500
+				}}>
+					Disalin!
+				</div>
+			)}
 			<div className="reports-top-row page-header">
 				<div>
 					<h2 className="page-title">{language === "id" ? "Laporan & Grafik" : "Reports & Charts"}</h2>
@@ -269,20 +342,50 @@ export default function ReportsPage() {
 						<button className={`period-preset-btn ${periodPreset === "3month" ? "active" : ""}`} onClick={() => setPeriodPreset("3month")}>3 Bulan</button>
 						<button className={`period-preset-btn ${periodPreset === "6month" ? "active" : ""}`} onClick={() => setPeriodPreset("6month")}>6 Bulan</button>
 						<button className={`period-preset-btn ${periodPreset === "year" ? "active" : ""}`} onClick={() => setPeriodPreset("year")}>1 Tahun</button>
+							<button className={`period-preset-btn ${periodPreset === "custom" ? "active" : ""}`} onClick={() => setPeriodPreset("custom")}>Kustom</button>
 					</div>
 					<div className="period-badge">
-						{periodPreset === "month" ? "Mei 2026" : periodPreset === "3month" ? "Mar - Mei 2026" : periodPreset === "6month" ? "Jan - Jun 2026" : periodPreset === "year" ? "2026" : selectedMonth}
+						{periodPreset === "custom" && customStart && customEnd
+							? `${customStart} - ${customEnd}`
+							: periodPreset === "month"
+								? "Mei 2026"
+								: periodPreset === "3month"
+									? "Mar - Mei 2026"
+									: periodPreset === "6month"
+										? "Jan - Jun 2026"
+										: periodPreset === "year"
+											? "2026"
+											: selectedMonth}
 					</div>
-					<input
-						className="form-input"
-						type="month"
-						value={selectedMonth}
-						onChange={(event) => {
-							setSelectedMonth(event.target.value)
-							setPeriodPreset('custom')
-						}}
-						style={{ minWidth: "180px" }}
-					/>
+					{periodPreset === "custom" ? (
+						<>
+							<input
+								className="form-input"
+								type="date"
+								value={customStart}
+								onChange={(event) => setCustomStart(event.target.value)}
+								style={{ minWidth: "180px" }}
+							/>
+							<input
+								className="form-input"
+								type="date"
+								value={customEnd}
+								onChange={(event) => setCustomEnd(event.target.value)}
+								style={{ minWidth: "180px" }}
+							/>
+						</>
+					) : (
+						<input
+							className="form-input"
+							type="month"
+							value={selectedMonth}
+							onChange={(event) => {
+								setSelectedMonth(event.target.value)
+								setPeriodPreset('custom')
+							}}
+							style={{ minWidth: "180px" }}
+						/>
+					) }
 					<select
 						className="form-input"
 						value={walletFilter}
@@ -581,10 +684,10 @@ export default function ReportsPage() {
 									<span className="comparison-label">Pemasukan</span>
 									<div className="comparison-values">
 										<span className="current-value">{formatRupiah(summary.total_income)}</span>
-										{previousTrend && currentTrend && (
-											<span className={`delta ${currentTrend.income >= previousTrend.income ? "positive" : "negative"}`}>
-												{currentTrend.income >= previousTrend.income ? "+" : ""}
-												{formatRupiah(currentTrend.income - previousTrend.income)}
+										{comparativeData && (
+											<span className={`delta ${comparativeData.delta.income >= 0 ? "positive" : "negative"}`}>
+												{comparativeData.delta.income >= 0 ? "+" : ""}
+												{formatRupiah(comparativeData.delta.income)}
 											</span>
 										)}
 									</div>
@@ -594,10 +697,10 @@ export default function ReportsPage() {
 									<span className="comparison-label">Pengeluaran</span>
 									<div className="comparison-values">
 										<span className="current-value">{formatRupiah(summary.total_expense)}</span>
-										{previousTrend && currentTrend && (
-											<span className={`delta ${currentTrend.expense <= previousTrend.expense ? "positive" : "negative"}`}>
-												{currentTrend.expense >= previousTrend.expense ? "+" : ""}
-												{formatRupiah(currentTrend.expense - previousTrend.expense)}
+										{comparativeData && (
+											<span className={`delta ${comparativeData.delta.expense <= 0 ? "positive" : "negative"}`}>
+												{comparativeData.delta.expense >= 0 ? "+" : ""}
+												{formatRupiah(comparativeData.delta.expense)}
 											</span>
 										)}
 									</div>
@@ -607,14 +710,40 @@ export default function ReportsPage() {
 									<span className="comparison-label">Tabungan</span>
 									<div className="comparison-values">
 										<span className="current-value">{formatRupiah(summary.net)}</span>
-										{previousTrend && currentTrend && (
-											<span className={`delta ${currentTrend.net >= previousTrend.net ? "positive" : "negative"}`}>
-												{currentTrend.net >= previousTrend.net ? "+" : ""}
-												{formatRupiah(currentTrend.net - previousTrend.net)}
+										{comparativeData && (
+											<span className={`delta ${comparativeData.delta.net >= 0 ? "positive" : "negative"}`}>
+												{comparativeData.delta.net >= 0 ? "+" : ""}
+												{formatRupiah(comparativeData.delta.net)}
 											</span>
 										)}
 									</div>
 								</div>
+
+								{comparativeData && comparativeData.delta.category_changes.length > 0 && (
+									<>
+										<div style={{ marginTop: "16px", paddingTop: "16px", borderTop: "1px solid #e5e7eb" }}>
+											<h4 style={{ fontSize: "14px", fontWeight: 600, marginBottom: "12px", color: "#374151" }}>
+												Perubahan per Kategori
+											</h4>
+										</div>
+										{comparativeData.delta.category_changes.slice(0, 5).map((item) => (
+											<div key={item.category} className="comparison-row" style={{ fontSize: "13px" }}>
+												<span className="comparison-label" style={{ fontSize: "13px" }}>
+													{CATEGORY_LABEL[item.category] || item.category}
+												</span>
+												<div className="comparison-values">
+													<span className="current-value" style={{ fontSize: "13px" }}>
+														{formatRupiah(item.current)}
+													</span>
+													<span className={`delta ${item.delta <= 0 ? "positive" : "negative"}`} style={{ fontSize: "12px" }}>
+														{item.delta >= 0 ? "+" : ""}
+														{formatRupiah(item.delta)}
+													</span>
+												</div>
+											</div>
+										))}
+									</>
+								)}
 							</div>
 
 							{/* Category Breakdown List (simplified from original) */}

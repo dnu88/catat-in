@@ -30,7 +30,7 @@ import {
 	type TransactionType,
 	type User,
 	type Wallet,
-} from "@catat-in/shared/types";
+} from "@kaswise/shared/types";
 import { auth, currentAuthUser } from "./firebase";
 import { db } from "./firebase-db";
 
@@ -410,6 +410,40 @@ export async function removeWallet(uid: string, walletId: string) {
 	await deleteDoc(doc(db, "users", uid, "wallets", walletId));
 }
 
+export async function recalculateWalletBalances(uid: string): Promise<{
+	wallet_count: number;
+	updated_count: number;
+}> {
+	const [walletSnapshot, transactionSnapshot] = await Promise.all([
+		getDocs(
+			query(usersCollection(uid, "wallets"), orderBy("created_at", "desc")),
+		),
+		getDocs(
+			query(usersCollection(uid, "transactions"), orderBy("date", "desc")),
+		),
+	]);
+
+	const walletIds = walletSnapshot.docs.map((item) => item.id);
+	const transactions = transactionSnapshot.docs.map((item) =>
+		toTransaction({ id: item.id, data: item.data() as Record<string, any> }),
+	);
+	const computed = computeWalletBalancesFromTransactions(transactions);
+
+	await Promise.all(
+		walletIds.map(async (walletId) => {
+			const nextBalance = Number(computed[walletId] || 0);
+			await updateDoc(doc(db, "users", uid, "wallets", walletId), {
+				balance: nextBalance,
+			});
+		}),
+	);
+
+	return {
+		wallet_count: walletIds.length,
+		updated_count: walletIds.length,
+	};
+}
+
 function applyTransactionFilters(
 	items: Transaction[],
 	filters: TransactionFilters,
@@ -452,6 +486,62 @@ function toTransaction(item: {
 
 function signedAmount(type: TransactionType, amount: number) {
 	return type === "income" ? amount : -amount;
+}
+
+export function mergeAndDeduplicateTransactions(
+	ownRows: Transaction[],
+	sharedRows: Transaction[],
+): Transaction[] {
+	const merged = [...ownRows, ...sharedRows];
+	const deduped = Array.from(
+		new Map(merged.map((tx) => [`${tx.user_id}:${tx.id}`, tx])).values(),
+	);
+	deduped.sort((a, b) =>
+		`${String(b.date || "")}${String(b.created_at || "")}`.localeCompare(
+			`${String(a.date || "")}${String(a.created_at || "")}`,
+		),
+	);
+	return deduped;
+}
+
+export function computeWalletBalancesFromTransactions(
+	transactions: Array<Pick<Transaction, "wallet_id" | "type" | "amount">>,
+): Record<string, number> {
+	const balances: Record<string, number> = {};
+	transactions.forEach((tx) => {
+		if (!tx.wallet_id) return;
+		const amount = Number(tx.amount || 0);
+		const delta = signedAmount(tx.type, amount);
+		balances[tx.wallet_id] = (balances[tx.wallet_id] || 0) + delta;
+	});
+	return balances;
+}
+
+export function shouldIncludeBillInList(bill: BillReminder): boolean {
+	if (bill.is_active) return true;
+	return bill.recurrence === "once" && bill.is_paid;
+}
+
+export function computeBudgetSpentForPeriod(
+	budget: Pick<Budget, "category" | "period_start">,
+	transactions: Array<
+		Pick<Transaction, "type" | "category" | "date" | "amount">
+	>,
+): number {
+	const [year, month] = budget.period_start.split("-").map(Number);
+	const nextMonth = month === 12 ? 1 : month + 1;
+	const nextYear = month === 12 ? year + 1 : year;
+	const periodEnd = `${nextYear}-${String(nextMonth).padStart(2, "0")}-01`;
+
+	return transactions
+		.filter(
+			(tx) =>
+				tx.type === "expense" &&
+				tx.category === budget.category &&
+				tx.date >= budget.period_start &&
+				tx.date < periodEnd,
+		)
+		.reduce((sum, tx) => sum + Number(tx.amount || 0), 0);
 }
 
 async function applyWalletDelta(uid: string, walletId: string, delta: number) {
@@ -522,17 +612,9 @@ export async function listTransactions(
 		// fallback ke transaksi milik user sendiri
 	}
 
-	const merged = [...own, ...sharedRows];
-	const deduped = Array.from(
-		new Map(merged.map((tx) => [`${tx.user_id}:${tx.id}`, tx])).values(),
-	);
-	deduped.sort((a, b) =>
-		`${String(b.date || "")}${String(b.created_at || "")}`.localeCompare(
-			`${String(a.date || "")}${String(a.created_at || "")}`,
-		),
-	);
+	const merged = mergeAndDeduplicateTransactions(own, sharedRows);
 
-	const filtered = applyTransactionFilters(deduped, filters);
+	const filtered = applyTransactionFilters(merged, filters);
 	const page = filters.page || 1;
 	const perPage = filters.per_page || 20;
 	const start = (page - 1) * perPage;
@@ -703,28 +785,45 @@ export async function listBudgets(
 
 	if (budgets.length === 0) return [];
 
-	// Hitung spent_amount secara dinamis dari transaksi aktual agar selalu akurat
-	const txSnapshot = await getDocs(usersCollection(uid, "transactions"));
-	const allTx = txSnapshot.docs.map((d) => d.data() as Record<string, any>);
+	const ownSnapshot = await getDocs(usersCollection(uid, "transactions"));
+	const ownRows = ownSnapshot.docs.map((item) =>
+		toTransaction({ id: item.id, data: item.data() as Record<string, any> }),
+	);
+
+	const sharedRows: Transaction[] = [];
+	try {
+		const groupRoles = await getMyActiveGroupRoles(uid);
+		await Promise.all(
+			Array.from(groupRoles.keys()).map(async (groupId) => {
+				try {
+					const snap = await getDocs(
+						query(
+							collectionGroup(db, "transactions"),
+							where("group_id", "==", groupId),
+							where("is_shared", "==", true),
+						),
+					);
+					snap.docs.forEach((docSnap) => {
+						const tx = toTransaction({
+							id: docSnap.id,
+							data: docSnap.data() as Record<string, any>,
+						});
+						if (tx.user_id !== uid) sharedRows.push(tx);
+					});
+				} catch {
+					// abaikan shared jika rules Firestore belum mengizinkan collectionGroup query
+				}
+			}),
+		);
+	} catch {
+		// fallback: hitung dari transaksi milik sendiri saja
+	}
+
+	const allTx = mergeAndDeduplicateTransactions(ownRows, sharedRows);
 
 	return budgets
 		.map((budget) => {
-			const [year, month] = budget.period_start.split("-").map(Number);
-			const nextMonth = month === 12 ? 1 : month + 1;
-			const nextYear = month === 12 ? year + 1 : year;
-			const periodEnd = `${nextYear}-${String(nextMonth).padStart(2, "0")}-01`;
-
-			const spent = allTx
-				.filter(
-					(tx) =>
-						tx.type === "expense" &&
-						tx.category === budget.category &&
-						typeof tx.date === "string" &&
-						tx.date >= budget.period_start &&
-						tx.date < periodEnd,
-				)
-				.reduce((sum, tx) => sum + Number(tx.amount || 0), 0);
-
+			const spent = computeBudgetSpentForPeriod(budget, allTx);
 			return { ...budget, spent_amount: spent };
 		})
 		.sort((a, b) =>
@@ -830,7 +929,7 @@ export async function listBills(uid: string): Promise<BillReminder[]> {
 		.map((item) =>
 			toBill({ id: item.id, data: item.data() as Record<string, any> }),
 		)
-		.filter((item) => item.is_active);
+		.filter(shouldIncludeBillInList);
 }
 
 export async function createBill(
@@ -1422,10 +1521,7 @@ export async function buildMonthlyReport(
 		// fallback ke transaksi milik sendiri
 	}
 
-	const merged = [...ownRows, ...sharedRows];
-	const rows = Array.from(
-		new Map(merged.map((tx) => [`${tx.user_id}:${tx.id}`, tx])).values(),
-	);
+	const rows = mergeAndDeduplicateTransactions(ownRows, sharedRows);
 
 	const monthPrefix = `${year}-${String(month).padStart(2, "0")}`;
 	const monthly = rows.filter((tx) => {
@@ -1497,5 +1593,184 @@ export async function buildMonthlyReport(
 		expense_by_category: expenseByCategory,
 		trends,
 		transactions: monthly,
+	};
+}
+
+export async function buildDateRangeReport(
+	uid: string,
+	startDate: string,
+	endDate: string,
+	walletId?: string,
+) {
+	const ownSnapshot = await getDocs(
+		query(usersCollection(uid, "transactions"), orderBy("date", "desc")),
+	);
+	const ownRows = ownSnapshot.docs.map((item) =>
+		toTransaction({ id: item.id, data: item.data() as Record<string, any> }),
+	);
+
+	const sharedRows: Transaction[] = [];
+	try {
+		const groupRoles = await getMyActiveGroupRoles(uid);
+		await Promise.all(
+			Array.from(groupRoles.keys()).map(async (groupId) => {
+				try {
+					const snap = await getDocs(
+						query(
+							collectionGroup(db, "transactions"),
+							where("group_id", "==", groupId),
+							where("is_shared", "==", true),
+						),
+					);
+					snap.docs.forEach((docSnap) => {
+						const tx = toTransaction({
+							id: docSnap.id,
+							data: docSnap.data() as Record<string, any>,
+						});
+						if (tx.user_id !== uid) sharedRows.push(tx);
+					});
+				} catch {
+					// ignore
+				}
+			}),
+		);
+	} catch {
+		// fallback
+	}
+
+	const rows = mergeAndDeduplicateTransactions(ownRows, sharedRows);
+
+	const rangeFiltered = rows.filter((tx) => {
+		if (tx.date < startDate || tx.date > endDate) return false;
+		if (walletId && tx.wallet_id !== walletId) return false;
+		return true;
+	});
+
+	const totalIncome = rangeFiltered
+		.filter((item) => item.type === "income")
+		.reduce((sum, item) => sum + item.amount, 0);
+	const totalExpense = rangeFiltered
+		.filter((item) => item.type === "expense")
+		.reduce((sum, item) => sum + item.amount, 0);
+
+	const byCategoryMap = new Map<string, number>();
+	rangeFiltered
+		.filter((item) => item.type === "expense")
+		.forEach((item) =>
+			byCategoryMap.set(
+				item.category,
+				(byCategoryMap.get(item.category) || 0) + item.amount,
+			),
+		);
+
+	const expenseByCategory = [...byCategoryMap.entries()]
+		.map(([category, amount]) => ({
+			category,
+			amount,
+			percentage:
+				totalExpense > 0 ? Math.round((amount / totalExpense) * 100) : 0,
+		}))
+		.sort((a, b) => b.amount - a.amount);
+
+	const monthlyBucket = new Map<string, { income: number; expense: number }>();
+	rows.forEach((item) => {
+		const key = String(item.date || "").slice(0, 7);
+		const current = monthlyBucket.get(key) || { income: 0, expense: 0 };
+		if (item.type === "income") current.income += item.amount;
+		if (item.type === "expense") current.expense += item.amount;
+		monthlyBucket.set(key, current);
+	});
+
+	const trends = [...monthlyBucket.entries()]
+		.sort(([a], [b]) => a.localeCompare(b))
+		.slice(-6)
+		.map(([key, value]) => {
+			const [yy, mm] = key.split("-").map(Number);
+			return {
+				year: yy,
+				month: mm,
+				income: value.income,
+				expense: value.expense,
+				net: value.income - value.expense,
+			};
+		});
+
+	return {
+		period: {
+			year: 0,
+			month: 0,
+			start: startDate,
+			end: endDate,
+		},
+		total_income: totalIncome,
+		total_expense: totalExpense,
+		net: totalIncome - totalExpense,
+		transaction_count: rangeFiltered.length,
+		expense_by_category: expenseByCategory,
+		trends,
+		transactions: rangeFiltered,
+	};
+}
+
+export async function buildComparativeReport(
+	uid: string,
+	year: number,
+	month: number,
+	walletId?: string,
+) {
+	const currentStart = `${year}-${String(month).padStart(2, "0")}-01`;
+	const currentEnd = `${year}-${String(month).padStart(2, "0")}-31`;
+
+	const previousDate = new Date(year, month - 2, 1);
+	const previousYear = previousDate.getFullYear();
+	const previousMonth = previousDate.getMonth() + 1;
+	const previousStart = `${previousYear}-${String(previousMonth).padStart(2, "0")}-01`;
+	const previousEnd = `${previousYear}-${String(previousMonth).padStart(2, "0")}-31`;
+
+	const current = await buildDateRangeReport(uid, currentStart, currentEnd, walletId);
+	const previous = await buildDateRangeReport(uid, previousStart, previousEnd, walletId);
+
+	const categoryMap = new Map<string, { current: number; previous: number; delta: number }>();
+
+	current.expense_by_category.forEach((item) => {
+		categoryMap.set(item.category, {
+			current: item.amount,
+			previous: 0,
+			delta: item.amount,
+		});
+	});
+
+	previous.expense_by_category.forEach((item) => {
+		const existing = categoryMap.get(item.category);
+		if (existing) {
+			existing.previous = item.amount;
+			existing.delta = existing.current - existing.previous;
+		} else {
+			categoryMap.set(item.category, {
+				current: 0,
+				previous: item.amount,
+				delta: -item.amount,
+			});
+		}
+	});
+
+	const category_changes = [...categoryMap.entries()]
+		.map(([category, values]) => ({
+			category,
+			current: values.current,
+			previous: values.previous,
+			delta: values.delta,
+		}))
+		.sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta));
+
+	return {
+		current,
+		previous,
+		delta: {
+			income: current.total_income - previous.total_income,
+			expense: current.total_expense - previous.total_expense,
+			net: current.net - previous.net,
+			category_changes,
+		},
 	};
 }

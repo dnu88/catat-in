@@ -1598,3 +1598,116 @@ body {
 .text-accent {
   color: var(--accent);
 }
+
+/* ── PRINT STYLESHEET (PDF EXPORT) ──────────────────────────── */
+
+@media print {
+  @page {
+    size: A4;
+    margin: 20mm;
+  }
+
+  /* Hide non-printable elements */
+  .sidebar,
+  .topbar,
+  .action-buttons,
+  .period-presets,
+  .reports-filter-row,
+  .btn,
+  .nav-item,
+  .sidebar-bottom,
+  .topbar-actions {
+    display: none !important;
+  }
+
+  /* Reset layout for print */
+  body {
+    background: white;
+    color: black;
+    font-size: 11pt;
+    line-height: 1.5;
+  }
+
+  .main-content {
+    margin-left: 0;
+    padding: 0;
+  }
+
+  .page-content {
+    padding: 0;
+    max-width: 100%;
+  }
+
+  /* Force single column layout */
+  .reports-main-grid,
+  .reports-secondary-grid,
+  .metrics-grid {
+    grid-template-columns: 1fr !important;
+    gap: 12pt;
+    page-break-inside: avoid;
+  }
+
+  /* Card styling for print */
+  .card,
+  .metric-card {
+    border: 1px solid #e2e8f0;
+    box-shadow: none;
+    page-break-inside: avoid;
+    margin-bottom: 12pt;
+  }
+
+  /* Print header */
+  .print-header {
+    display: block;
+    margin-bottom: 20pt;
+    padding-bottom: 12pt;
+    border-bottom: 2pt solid #3b82f6;
+  }
+
+  .print-header h1 {
+    font-size: 18pt;
+    font-weight: 700;
+    color: #1e293b;
+    margin-bottom: 6pt;
+  }
+
+  .print-header .period-info {
+    font-size: 11pt;
+    color: #64748b;
+    margin-bottom: 4pt;
+  }
+
+  .print-header .generated-date {
+    font-size: 9pt;
+    color: #94a3b8;
+  }
+
+  /* Ensure charts/images print */
+  .donut-chart,
+  .category-table {
+    page-break-inside: avoid;
+  }
+
+  /* Table improvements */
+  .category-table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  .category-table th,
+  .category-table td {
+    padding: 8pt;
+    border: 1px solid #e2e8f0;
+  }
+
+  /* Remove interactive elements */
+  a[href]:after {
+    content: none;
+  }
+
+  /* Ensure proper spacing */
+  .metric-card,
+  .comparison-panel {
+    margin-bottom: 12pt;
+  }
+}

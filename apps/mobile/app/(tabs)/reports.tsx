@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
+import { Pressable, ScrollView, StyleSheet, Text, View, Share, Modal } from 'react-native'
 
 import { useTheme } from '../../src/theme/theme-context'
 import { useSupabase } from '../../src/lib/supabase'
@@ -17,14 +17,15 @@ const categories = [
   { label: 'Lainnya', percent: 5, amount: 'Rp 320.000', emoji: '📦' },
 ]
 
-type Tab = 'overview' | 'category'
-type PeriodFilter = 'month' | '3month' | '6month' | 'year'
+type Tab = 'overview' | 'category' | 'compare'
+type PeriodFilter = 'month' | '3month' | '6month' | 'year' | 'custom'
 
 const periodLabels: Record<PeriodFilter, string> = {
   month: '1 Bulan',
   '3month': '3 Bulan',
   '6month': '6 Bulan',
   year: '1 Tahun',
+  custom: 'Kustom',
 }
 
 export default function ReportsScreen() {
@@ -37,8 +38,72 @@ export default function ReportsScreen() {
   const [dataLoading, setDataLoading] = useState(false)
   const [dataError, setDataError] = useState<string | null>(null)
   const [realTransactionCount, setRealTransactionCount] = useState<number | null>(null)
+  const [showDateModal, setShowDateModal] = useState(false)
+  const [customStartYear, setCustomStartYear] = useState(new Date().getFullYear())
+  const [customStartMonth, setCustomStartMonth] = useState(new Date().getMonth() + 1)
+  const [customEndYear, setCustomEndYear] = useState(new Date().getFullYear())
+  const [customEndMonth, setCustomEndMonth] = useState(new Date().getMonth() + 1)
+  const [tempStartYear, setTempStartYear] = useState(customStartYear)
+  const [tempStartMonth, setTempStartMonth] = useState(customStartMonth)
+  const [tempEndYear, setTempEndYear] = useState(customEndYear)
+  const [tempEndMonth, setTempEndMonth] = useState(customEndMonth)
+  const [compareData, setCompareData] = useState<{
+    current: { income: number; expense: number; net: number; count: number } | null
+    previous: { income: number; expense: number; net: number; count: number } | null
+  } | null>(null)
 
   const maxVal = Math.max(...incomeData, ...expenseData)
+
+  const formatRupiah = (valueInJuta: number) => `Rp ${(valueInJuta * 1_000_000).toLocaleString('id-ID')}`
+
+  const totalIncomeJuta = incomeData[incomeData.length - 1] ?? 0
+  const totalExpenseJuta = expenseData[expenseData.length - 1] ?? 0
+  const netJuta = totalIncomeJuta - totalExpenseJuta
+
+  const monthName = (month: number) => ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'][month - 1]
+
+  const customRangeLabel = `${monthName(customStartMonth)} ${customStartYear} - ${monthName(customEndMonth)} ${customEndYear}`
+
+  const openCustomDateModal = () => {
+    setTempStartYear(customStartYear)
+    setTempStartMonth(customStartMonth)
+    setTempEndYear(customEndYear)
+    setTempEndMonth(customEndMonth)
+    setShowDateModal(true)
+  }
+
+  const confirmCustomDateRange = () => {
+    const tempStart = new Date(tempStartYear, tempStartMonth - 1, 1)
+    const tempEnd = new Date(tempEndYear, tempEndMonth - 1, 1)
+    if (tempStart > tempEnd) {
+      setDataError('Rentang tanggal tidak valid')
+      return
+    }
+
+    setCustomStartYear(tempStartYear)
+    setCustomStartMonth(tempStartMonth)
+    setCustomEndYear(tempEndYear)
+    setCustomEndMonth(tempEndMonth)
+    setShowDateModal(false)
+  }
+
+  const handleShare = async () => {
+    const periodText = periodFilter === 'custom' ? customRangeLabel : periodLabels[periodFilter]
+    const shareText = [
+      `Laporan Keuangan (${periodText})`,
+      `Pemasukan: ${formatRupiah(totalIncomeJuta)}`,
+      `Pengeluaran: ${formatRupiah(totalExpenseJuta)}`,
+      `Tabungan: ${formatRupiah(netJuta)}`,
+      realTransactionCount !== null ? `Jumlah transaksi: ${realTransactionCount}` : null,
+    ]
+      .filter(Boolean)
+      .join('\n')
+
+    await Share.share({
+      title: 'Laporan Keuangan',
+      message: shareText,
+    })
+  }
 
   useEffect(() => {
     const loadTransactionData = async () => {
@@ -51,12 +116,20 @@ export default function ReportsScreen() {
           return
         }
 
-        const now = new Date()
-        const monthsBack = periodFilter === 'month' ? 1 :
-                         periodFilter === '3month' ? 3 :
-                         periodFilter === '6month' ? 6 : 12
-        const startDate = new Date(now.getFullYear(), now.getMonth() - monthsBack + 1, 1)
-        const endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0)
+        let startDate: Date
+        let endDate: Date
+
+        if (periodFilter === 'custom') {
+          startDate = new Date(customStartYear, customStartMonth - 1, 1)
+          endDate = new Date(customEndYear, customEndMonth, 0)
+        } else {
+          const now = new Date()
+          const monthsBack = periodFilter === 'month' ? 1 :
+                           periodFilter === '3month' ? 3 :
+                           periodFilter === '6month' ? 6 : 12
+          startDate = new Date(now.getFullYear(), now.getMonth() - monthsBack + 1, 1)
+          endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0)
+        }
 
         const { data: transactions, error } = await supabase
           .from('transactions')
@@ -68,6 +141,56 @@ export default function ReportsScreen() {
         if (error) throw error
 
         setRealTransactionCount(transactions?.length || 0)
+
+        // Load compare data if activeTab is 'compare'
+        if (activeTab === 'compare') {
+          const prevStartDate = new Date(startDate)
+          prevStartDate.setMonth(prevStartDate.getMonth() - 1)
+          const prevEndDate = new Date(endDate)
+          prevEndDate.setMonth(prevEndDate.getMonth() - 1)
+
+          const { data: prevTransactions, error: prevError } = await supabase
+            .from('transactions')
+            .select('nominal, type')
+            .eq('user_id', user.id)
+            .gte('tanggal', prevStartDate.toISOString().split('T')[0])
+            .lte('tanggal', prevEndDate.toISOString().split('T')[0])
+
+          if (prevError) console.error('Failed to load previous period:', prevError)
+
+          const currentIncome = transactions
+            ?.filter((t) => t.type === 'income')
+            .reduce((sum, t) => sum + t.nominal, 0) || 0
+          const currentExpense = transactions
+            ?.filter((t) => t.type === 'expense')
+            .reduce((sum, t) => sum + t.nominal, 0) || 0
+          const currentNet = currentIncome - currentExpense
+
+          const prevIncome = prevTransactions
+            ?.filter((t) => t.type === 'income')
+            .reduce((sum, t) => sum + t.nominal, 0) || 0
+          const prevExpense = prevTransactions
+            ?.filter((t) => t.type === 'expense')
+            .reduce((sum, t) => sum + t.nominal, 0) || 0
+          const prevNet = prevIncome - prevExpense
+
+          setCompareData({
+            current: {
+              income: currentIncome,
+              expense: currentExpense,
+              net: currentNet,
+              count: transactions?.length || 0,
+            },
+            previous: {
+              income: prevIncome,
+              expense: prevExpense,
+              net: prevNet,
+              count: prevTransactions?.length || 0,
+            },
+          })
+        } else {
+          setCompareData(null)
+        }
       } catch (err: any) {
         console.error('Failed to load transaction data:', err)
         setDataError('Gagal memuat data transaksi')
@@ -77,7 +200,7 @@ export default function ReportsScreen() {
     }
 
     loadTransactionData()
-  }, [periodFilter, supabase])
+  }, [activeTab, periodFilter, customStartYear, customStartMonth, customEndYear, customEndMonth, supabase])
 
   return (
     <View style={styles.screen}>
@@ -92,6 +215,15 @@ export default function ReportsScreen() {
             <View style={styles.monthBadge}>
               <Text style={styles.monthBadgeText}>Mei 2026</Text>
             </View>
+            <Pressable
+              style={({ pressed }) => [
+                styles.shareButton,
+                pressed && { opacity: 0.7 },
+              ]}
+              onPress={handleShare}
+            >
+              <Text style={styles.shareButtonText}>Bagikan</Text>
+            </Pressable>
           </View>
         </View>
 
@@ -101,7 +233,12 @@ export default function ReportsScreen() {
             <Pressable
               key={key}
               style={[styles.periodChip, periodFilter === key && styles.periodChipActive]}
-              onPress={() => setPeriodFilter(key)}
+              onPress={() => {
+                setPeriodFilter(key)
+                if (key === 'custom') {
+                  openCustomDateModal()
+                }
+              }}
             >
               <Text style={[styles.periodChipText, periodFilter === key && styles.periodChipTextActive]}>
                 {periodLabels[key]}
@@ -109,6 +246,11 @@ export default function ReportsScreen() {
             </Pressable>
           ))}
         </View>
+        {periodFilter === 'custom' && (
+          <Pressable style={styles.customRangeBadge} onPress={openCustomDateModal}>
+            <Text style={styles.customRangeBadgeText}>{customRangeLabel}</Text>
+          </Pressable>
+        )}
 
         {/* Tab Selector */}
         <View style={styles.tabRow}>
@@ -123,6 +265,18 @@ export default function ReportsScreen() {
             onPress={() => setActiveTab('category')}
           >
             <Text style={[styles.tabChipText, activeTab === 'category' && styles.tabChipTextActive]}>Kategori</Text>
+          </Pressable>
+          <Pressable
+            style={[styles.tabChip, activeTab === 'compare' && styles.tabChipActive]}
+            onPress={() => setActiveTab('compare')}
+          >
+            <Text style={[styles.tabChipText, activeTab === 'compare' && styles.tabChipTextActive]}>Perbandingan</Text>
+          </Pressable>
+          <Pressable
+            style={[styles.tabChip, activeTab === 'compare' && styles.tabChipActive]}
+            onPress={() => setActiveTab('compare')}
+          >
+            <Text style={[styles.tabChipText, activeTab === 'compare' && styles.tabChipTextActive]}>Perbandingan</Text>
           </Pressable>
         </View>
 
@@ -143,7 +297,7 @@ export default function ReportsScreen() {
           </View>
         )}
 
-        {activeTab === 'overview' ? (
+        {activeTab === 'overview' && (
           <>
             {/* Key Metrics */}
             <View style={styles.metricRow}>
@@ -233,7 +387,8 @@ export default function ReportsScreen() {
               </View>
             </View>
           </>
-        ) : (
+        )}
+        {activeTab === 'category' && (
           <>
             {/* Category Breakdown */}
             <View style={styles.categoryCard}>
@@ -276,9 +431,164 @@ export default function ReportsScreen() {
             </View>
           </>
         )}
+        {activeTab === 'compare' && (
+          <>
+            {/* Comparison Panel */}
+            <View style={styles.categoryCard}>
+              <Text style={styles.categoryCardTitle}>Perbandingan Bulan Lalu</Text>
+              <Text style={styles.categoryCardSub}>Bandingkan dengan periode sebelumnya</Text>
+
+              {dataLoading && (
+                <View style={styles.loadingCard}>
+                  <Text style={styles.loadingText}>Memuat data perbandingan...</Text>
+                </View>
+              )}
+
+              {compareData && compareData.current && compareData.previous && (
+                <>
+                  <View style={styles.compareRow}>
+                    <Text style={styles.compareLabel}>Pemasukan</Text>
+                    <View style={styles.compareValues}>
+                      <Text style={styles.compareCurrent}>{formatRupiah(compareData.current.income / 1_000_000)}</Text>
+                      <Text style={[styles.compareDelta, compareData.current.income >= compareData.previous.income ? styles.compareDeltaPositive : styles.compareDeltaNegative]}>
+                        {compareData.current.income >= compareData.previous.income ? '▲' : '▼'} {formatRupiah(Math.abs(compareData.current.income - compareData.previous.income) / 1_000_000)}
+                      </Text>
+                    </View>
+                  </View>
+                  <View style={styles.compareRow}>
+                    <Text style={styles.compareLabel}>Pengeluaran</Text>
+                    <View style={styles.compareValues}>
+                      <Text style={styles.compareCurrent}>{formatRupiah(compareData.current.expense / 1_000_000)}</Text>
+                      <Text style={[styles.compareDelta, compareData.current.expense <= compareData.previous.expense ? styles.compareDeltaPositive : styles.compareDeltaNegative]}>
+                        {compareData.current.expense <= compareData.previous.expense ? '▼' : '▲'} {formatRupiah(Math.abs(compareData.current.expense - compareData.previous.expense) / 1_000_000)}
+                      </Text>
+                    </View>
+                  </View>
+                  <View style={styles.compareRow}>
+                    <Text style={styles.compareLabel}>Tabungan</Text>
+                    <View style={styles.compareValues}>
+                      <Text style={styles.compareCurrent}>{formatRupiah(compareData.current.net / 1_000_000)}</Text>
+                      <Text style={[styles.compareDelta, compareData.current.net >= compareData.previous.net ? styles.compareDeltaPositive : styles.compareDeltaNegative]}>
+                        {compareData.current.net >= compareData.previous.net ? '▲' : '▼'} {formatRupiah(Math.abs(compareData.current.net - compareData.previous.net) / 1_000_000)}
+                      </Text>
+                    </View>
+                  </View>
+                  <View style={styles.compareRow}>
+                    <Text style={styles.compareLabel}>Jumlah Transaksi</Text>
+                    <View style={styles.compareValues}>
+                      <Text style={styles.compareCurrent}>{compareData.current.count}</Text>
+                      <Text style={[styles.compareDelta, compareData.current.count >= compareData.previous.count ? styles.compareDeltaPositive : styles.compareDeltaNegative]}>
+                        {compareData.current.count >= compareData.previous.count ? '▲' : '▼'} {Math.abs(compareData.current.count - compareData.previous.count)}
+                      </Text>
+                    </View>
+                  </View>
+                </>
+              )}
+
+              {compareData && (!compareData.current || !compareData.previous) && (
+                <View style={styles.infoCard}>
+                  <Text style={styles.infoText}>Tidak ada data periode sebelumnya untuk dibandingkan.</Text>
+                </View>
+              )}
+            </View>
+          </>
+        )}
 
         <View style={{ height: 100 }} />
       </ScrollView>
+
+      {/* Date Range Modal */}
+      <Modal
+        visible={showDateModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowDateModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Pilih Rentang Tanggal</Text>
+
+            <View style={styles.modalSection}>
+              <Text style={styles.modalSectionTitle}>Mulai</Text>
+              <View style={styles.modalRow}>
+                <Pressable
+                  style={styles.modalButton}
+                  onPress={() => setTempStartYear(tempStartYear - 1)}
+                >
+                  <Text style={styles.modalButtonText}>-</Text>
+                </Pressable>
+                <Text style={styles.modalValue}>{tempStartYear}</Text>
+                <Pressable
+                  style={styles.modalButton}
+                  onPress={() => setTempStartYear(tempStartYear + 1)}
+                >
+                  <Text style={styles.modalButtonText}>+</Text>
+                </Pressable>
+              </View>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.monthScroll}>
+                {[1,2,3,4,5,6,7,8,9,10,11,12].map((m) => (
+                  <Pressable
+                    key={m}
+                    style={[styles.monthChip, tempStartMonth === m && styles.monthChipActive]}
+                    onPress={() => setTempStartMonth(m)}
+                  >
+                    <Text style={[styles.monthChipText, tempStartMonth === m && styles.monthChipTextActive]}>
+                      {monthName(m)}
+                    </Text>
+                  </Pressable>
+                ))}
+              </ScrollView>
+            </View>
+
+            <View style={styles.modalSection}>
+              <Text style={styles.modalSectionTitle}>Selesai</Text>
+              <View style={styles.modalRow}>
+                <Pressable
+                  style={styles.modalButton}
+                  onPress={() => setTempEndYear(tempEndYear - 1)}
+                >
+                  <Text style={styles.modalButtonText}>-</Text>
+                </Pressable>
+                <Text style={styles.modalValue}>{tempEndYear}</Text>
+                <Pressable
+                  style={styles.modalButton}
+                  onPress={() => setTempEndYear(tempEndYear + 1)}
+                >
+                  <Text style={styles.modalButtonText}>+</Text>
+                </Pressable>
+              </View>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.monthScroll}>
+                {[1,2,3,4,5,6,7,8,9,10,11,12].map((m) => (
+                  <Pressable
+                    key={m}
+                    style={[styles.monthChip, tempEndMonth === m && styles.monthChipActive]}
+                    onPress={() => setTempEndMonth(m)}
+                  >
+                    <Text style={[styles.monthChipText, tempEndMonth === m && styles.monthChipTextActive]}>
+                      {monthName(m)}
+                    </Text>
+                  </Pressable>
+                ))}
+              </ScrollView>
+            </View>
+
+            <View style={styles.modalActions}>
+              <Pressable
+                style={[styles.modalActionButton, styles.modalActionCancel]}
+                onPress={() => setShowDateModal(false)}
+              >
+                <Text style={styles.modalActionCancelText}>Batal</Text>
+              </Pressable>
+              <Pressable
+                style={[styles.modalActionButton, styles.modalActionConfirm]}
+                onPress={confirmCustomDateRange}
+              >
+                <Text style={styles.modalActionConfirmText}>Terapkan</Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   )
 }
@@ -304,7 +614,14 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
       paddingVertical: 6,
     },
     monthBadgeText: { color: theme.colors.brandPrimary, fontSize: 12, fontWeight: '700' },
-    headerRight: { alignItems: 'flex-end' },
+    headerRight: { alignItems: 'flex-end', gap: 8 },
+    shareButton: {
+      backgroundColor: theme.colors.brandPrimary,
+      borderRadius: 999,
+      paddingHorizontal: 12,
+      paddingVertical: 6,
+    },
+    shareButtonText: { color: theme.colors.textInverse, fontSize: 11, fontWeight: '700' },
     periodRow: {
       flexDirection: 'row',
       gap: 8,
@@ -503,5 +820,158 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
     catPct: { color: theme.colors.brandPrimary, fontSize: 13, fontWeight: '800' },
     catBar: { width: 60, height: 4, borderRadius: 999, backgroundColor: theme.colors.mutedSurface },
     catBarFill: { height: '100%', borderRadius: 999 },
+    customRangeBadge: {
+      backgroundColor: `${theme.colors.brandPrimary}1A`,
+      borderWidth: 1,
+      borderColor: theme.colors.brandPrimary,
+      borderRadius: 12,
+      paddingHorizontal: 12,
+      paddingVertical: 8,
+    },
+    customRangeBadgeText: {
+      color: theme.colors.brandPrimary,
+      fontSize: 12,
+      fontWeight: '700',
+    },
+    modalOverlay: {
+      flex: 1,
+      backgroundColor: 'rgba(0,0,0,0.5)',
+      justifyContent: 'flex-end',
+    },
+    modalContent: {
+      backgroundColor: theme.colors.surface,
+      borderTopLeftRadius: 24,
+      borderTopRightRadius: 24,
+      padding: 20,
+      paddingBottom: 40,
+      maxHeight: '80%',
+    },
+    modalTitle: {
+      color: theme.colors.textPrimary,
+      fontSize: 18,
+      fontWeight: '800',
+      textAlign: 'center',
+      marginBottom: 20,
+    },
+    modalSection: {
+      marginBottom: 16,
+    },
+    modalSectionTitle: {
+      color: theme.colors.textSecondary,
+      fontSize: 12,
+      fontWeight: '600',
+      marginBottom: 8,
+    },
+    modalRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 16,
+      marginBottom: 12,
+    },
+    modalButton: {
+      width: 40,
+      height: 40,
+      borderRadius: 20,
+      backgroundColor: theme.colors.mutedSurface,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    modalButtonText: {
+      color: theme.colors.textPrimary,
+      fontSize: 20,
+      fontWeight: '700',
+    },
+    modalValue: {
+      color: theme.colors.textPrimary,
+      fontSize: 20,
+      fontWeight: '800',
+      minWidth: 60,
+      textAlign: 'center',
+    },
+    monthScroll: {
+      marginHorizontal: -20,
+      paddingHorizontal: 20,
+    },
+    monthChip: {
+      paddingVertical: 8,
+      paddingHorizontal: 14,
+      borderRadius: 999,
+      borderWidth: 1,
+      borderColor: theme.colors.borderSoft,
+      backgroundColor: theme.colors.background,
+      marginRight: 8,
+    },
+    monthChipActive: {
+      backgroundColor: theme.colors.brandPrimary,
+      borderColor: theme.colors.brandPrimary,
+    },
+    monthChipText: {
+      color: theme.colors.textSecondary,
+      fontSize: 12,
+      fontWeight: '600',
+    },
+    monthChipTextActive: {
+      color: theme.colors.textInverse,
+    },
+    modalActions: {
+      flexDirection: 'row',
+      gap: 12,
+      marginTop: 8,
+    },
+    modalActionButton: {
+      flex: 1,
+      paddingVertical: 14,
+      borderRadius: 12,
+      alignItems: 'center',
+    },
+    modalActionCancel: {
+      backgroundColor: theme.colors.mutedSurface,
+    },
+    modalActionConfirm: {
+      backgroundColor: theme.colors.brandPrimary,
+    },
+    modalActionCancelText: {
+      color: theme.colors.textSecondary,
+      fontSize: 14,
+      fontWeight: '700',
+    },
+    modalActionConfirmText: {
+      color: theme.colors.textInverse,
+      fontSize: 14,
+      fontWeight: '700',
+    },
+    compareRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      paddingVertical: 12,
+      borderBottomWidth: 1,
+      borderBottomColor: theme.colors.borderSoft,
+    },
+    compareLabel: {
+      color: theme.colors.textSecondary,
+      fontSize: 13,
+      fontWeight: '600',
+    },
+    compareValues: {
+      alignItems: 'flex-end',
+      gap: 4,
+    },
+    compareCurrent: {
+      color: theme.colors.textPrimary,
+      fontSize: 14,
+      fontWeight: '800',
+    },
+    compareDelta: {
+      fontSize: 11,
+      fontWeight: '700',
+    },
+    compareDeltaPositive: {
+      color: theme.colors.success,
+    },
+    compareDeltaNegative: {
+      color: theme.colors.danger,
+    },
   })
 }
