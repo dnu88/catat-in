@@ -1,31 +1,31 @@
-/** @type {import('tailwindcss').Config} */
 module.exports = {
-  content: ["./app/**/*.{js,jsx,ts,tsx}", "./src/**/*.{js,jsx,ts,tsx}"],
-  presets: [require("nativewind/preset")],
+  presets: [require('nativewind/preset')],
+  content: [
+    './app/**/*.{js,jsx,ts,tsx}',
+    './src/**/*.{js,jsx,ts,tsx}',
+    './components/**/*.{js,jsx,ts,tsx}',
+  ],
   theme: {
     extend: {
       colors: {
         kaswise: {
-          bg: '#F3F5FA',
-          surface: '#FFFFFF',
-          card: '#FFFFFF',
-          muted: '#F8FAFD',
-          text: '#0C1A3A',
-          secondary: '#4C5A78',
-          mutedText: '#8A95AD',
-          border: '#E2E7F2',
-          borderStrong: '#CBD5E3',
-          primary: '#4F46E5',
-          accent: '#10B981',
-          success: '#10B981',
-          danger: '#EF4444',
-          warning: '#F59E0B',
+          navy: '#0F172A',
+          cardbg: '#1E293B',
+          elevated: '#243247',
+          slateBorder: '#334155',
+          indigo: '#6366F1',
+          emerald: '#10B981',
+          rose: '#F43F5E',
+          sky: '#38BDF8',
+          lightBg: '#F8FAFC',
+          lightSurface: '#FFFFFF',
+          lightBorder: '#E2E8F0',
+          lightText: '#0F172A',
         },
       },
       boxShadow: {
-        soft: '0 10px 30px rgba(12, 26, 58, 0.08)',
+        soft: '0 10px 18px rgba(15, 23, 42, 0.08)',
       },
     },
   },
-  plugins: [],
 }

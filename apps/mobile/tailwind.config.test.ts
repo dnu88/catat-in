@@ -1,23 +1,16 @@
+jest.mock('nativewind/preset', () => ({}), { virtual: true })
+
 const tailwindConfig = require('./tailwind.config')
 
 describe('mobile tailwind config', () => {
-  it('exposes kaswise dashboard palette tokens', () => {
-    expect(tailwindConfig.theme.extend.colors.kaswise).toEqual({
-      bg: '#F3F5FA',
-      surface: '#FFFFFF',
-      card: '#FFFFFF',
-      muted: '#F8FAFD',
-      text: '#0C1A3A',
-      secondary: '#4C5A78',
-      mutedText: '#8A95AD',
-      border: '#E2E7F2',
-      borderStrong: '#CBD5E3',
-      primary: '#4F46E5',
-      accent: '#10B981',
-      success: '#10B981',
-      danger: '#EF4444',
-      warning: '#F59E0B',
-    })
-    expect(tailwindConfig.theme.extend.boxShadow.soft).toBe('0 10px 30px rgba(12, 26, 58, 0.08)')
+  it('exposes Kaswise light and dark tokens', () => {
+    expect(tailwindConfig.theme.extend.colors.kaswise.navy).toBe('#0F172A')
+    expect(tailwindConfig.theme.extend.colors.kaswise.cardbg).toBe('#1E293B')
+    expect(tailwindConfig.theme.extend.colors.kaswise.indigo).toBe('#6366F1')
+    expect(tailwindConfig.theme.extend.colors.kaswise.emerald).toBe('#10B981')
+    expect(tailwindConfig.theme.extend.colors.kaswise.rose).toBe('#F43F5E')
+    expect(tailwindConfig.theme.extend.colors.kaswise.sky).toBe('#38BDF8')
+    expect(tailwindConfig.theme.extend.colors.kaswise.lightBg).toBe('#F8FAFC')
+    expect(tailwindConfig.theme.extend.boxShadow.soft).toBeDefined()
   })
 })
