@@ -152,7 +152,7 @@ async def confirm_import(
     user_id = current_user["user_id"]
 
     # Verify wallet exists and is active.
-    wallet_result = client.table("wallets").select("id,is_active").eq("id", body.wallet_id).eq("user_id", user_id).single().execute()
+    wallet_result = client.table("wallets").select("id,is_active,balance").eq("id", body.wallet_id).eq("user_id", user_id).single().execute()
     if not wallet_result.data:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Wallet tidak ditemukan")
     if wallet_result.data.get("is_active") is False:

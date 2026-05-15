@@ -20,12 +20,12 @@ class TestHealthEndpoint:
         assert "status" in data
         assert data["status"] in ("ok", "degraded")
 
-    def test_health_includes_firebase_status(self, client):
-        """Health endpoint should report Firebase status."""
+    def test_health_includes_environment(self, client):
+        """Health endpoint should include current environment."""
         response = client.get("/health")
         data = response.json()
-        assert "firebase" in data
-        assert data["firebase"] in ("ok", "missing-config")
+        assert "environment" in data
+        assert isinstance(data["environment"], str)
 
     def test_health_includes_version(self, client):
         """Health endpoint should include app version."""

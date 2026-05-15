@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+import os
+
 import httpx
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from jose import JWTError, jwt
+from jose import JWTError, jwk, jwt
 from jose.exceptions import ExpiredSignatureError
 from jose.utils import base64url_decode
 import json
@@ -77,9 +79,17 @@ def get_current_user(
         key_type = signing_key.get("kty")
 
         if key_type == "RSA":
-            key = jwt.algorithms.RSAAlgorithm.from_jwk(json.dumps(signing_key))
+            key = jwk.construct(signing_key, algorithm="RS256").to_pem()
+            algorithms = ["RS256"]
         elif key_type == "oct":
-            key = signing_key.get("k")
+            encoded_key = signing_key.get("k")
+            if not encoded_key:
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="Token tidak valid.",
+                )
+            key = base64url_decode(encoded_key.encode("utf-8") + b"==")
+            algorithms = ["HS256"]
         else:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
@@ -89,8 +99,8 @@ def get_current_user(
         decoded = jwt.decode(
             token,
             key=key,
-            algorithms=["RS256"],
-            audience=settings.SUPABASE_URL,
+            algorithms=algorithms,
+            audience=os.getenv("SUPABASE_JWT_AUDIENCE", "authenticated"),
             options={"verify_iat": True},
         )
 
