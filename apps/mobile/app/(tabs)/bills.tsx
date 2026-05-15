@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 
 import type { KaswiseIconName } from '../../src/components/icons/kaswise-icons'
-import { EmptyState, FilterChip, IconBubble, ScreenHeader, StatusBadge } from '../../src/components/ui'
+import { EmptyState, FilterChip, IconBubble, ScreenHeader, StateMessage, StatusBadge } from '../../src/components/ui'
 import { useTheme } from '../../src/theme/theme-context'
 import { listBills, updateBill, type Bill } from '../../src/services/bills'
 
@@ -26,6 +26,8 @@ export default function BillsScreen() {
   const [filter, setFilter] = useState<FilterStatus>('all')
   const [bills, setBills] = useState<Bill[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState<string | null>(null)
+  const [payingId, setPayingId] = useState<string | null>(null)
 
   useEffect(() => {
     loadBills()
@@ -33,21 +35,29 @@ export default function BillsScreen() {
 
   const loadBills = async () => {
     try {
+      setLoadError(null)
       const data = await listBills()
       setBills(data)
     } catch (error) {
       console.error('Error loading bills:', error)
+      setLoadError('Gagal memuat tagihan. Coba lagi sebentar.')
     } finally {
       setLoading(false)
     }
   }
 
   const markAsPaid = async (id: string) => {
+    if (payingId) return
+
     try {
+      setPayingId(id)
       await updateBill(id, { is_paid: true })
-      loadBills() // Reload data
+      await loadBills()
     } catch (error) {
       console.error('Error marking bill as paid:', error)
+      setLoadError('Gagal update status tagihan. Coba lagi.')
+    } finally {
+      setPayingId(null)
     }
   }
 
@@ -114,6 +124,8 @@ export default function BillsScreen() {
           </View>
         </View>
 
+        {loadError ? <StateMessage message={loadError} tone="error" /> : null}
+
         {/* Filter Row */}
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterRow}>
           {(['all', 'upcoming', 'overdue', 'paid'] as FilterStatus[]).map((f) => (
@@ -164,7 +176,7 @@ export default function BillsScreen() {
                     />
                     <View style={{ flex: 1 }}>
                       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                        <Text style={styles.billName}>{bill.name}</Text>
+                        <Text style={styles.billName} numberOfLines={1} ellipsizeMode="tail">{bill.name}</Text>
                         <StatusBadge label={statusLabel} color={statusColor} />
                       </View>
                       <Text style={styles.billDue}>Jatuh tempo: {formattedDate}</Text>
@@ -175,8 +187,12 @@ export default function BillsScreen() {
                 <View style={styles.billBottom}>
                   <Text style={styles.billAmount}>Rp {bill.amount.toLocaleString('id-ID')}</Text>
                   {bill.status === 'upcoming' && (
-                    <Pressable style={styles.payButton} onPress={() => markAsPaid(bill.id)}>
-                      <Text style={styles.payButtonText}>Tandai Lunas</Text>
+                    <Pressable
+                      style={[styles.payButton, payingId === bill.id && { opacity: 0.7 }]}
+                      onPress={() => markAsPaid(bill.id)}
+                      disabled={payingId === bill.id}
+                    >
+                      <Text style={styles.payButtonText}>{payingId === bill.id ? 'Memproses...' : 'Tandai Lunas'}</Text>
                     </Pressable>
                   )}
                 </View>

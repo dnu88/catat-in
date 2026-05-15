@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 
 import type { KaswiseIconName } from '../../src/components/icons/kaswise-icons'
-import { EmptyState, IconBubble, ScreenHeader } from '../../src/components/ui'
+import { EmptyState, IconBubble, ScreenHeader, StateMessage } from '../../src/components/ui'
 import { useTheme } from '../../src/theme/theme-context'
 import { listBudgets, type Budget } from '../../src/services/budgets'
 import { listTransactions } from '../../src/services/transactions'
@@ -28,6 +28,7 @@ export default function BudgetsScreen() {
   const [period, setPeriod] = useState<Period>('current')
   const [budgets, setBudgets] = useState<Budget[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState<string | null>(null)
 
   useEffect(() => {
     loadBudgets()
@@ -35,6 +36,7 @@ export default function BudgetsScreen() {
 
   const loadBudgets = async () => {
     try {
+      setLoadError(null)
       const [budgetData, txData] = await Promise.all([listBudgets(), listTransactions()])
       const active = budgetData.filter((b) => b.is_active)
 
@@ -54,6 +56,7 @@ export default function BudgetsScreen() {
       setBudgets(withSpent)
     } catch (error) {
       console.error('Error loading budgets:', error)
+      setLoadError('Gagal memuat data anggaran. Coba lagi sebentar.')
     } finally {
       setLoading(false)
     }
@@ -98,6 +101,8 @@ export default function BudgetsScreen() {
             <Text style={[styles.periodText, period === 'prev' && styles.periodTextActive]}>Apr 2026</Text>
           </Pressable>
         </View>
+
+        {loadError ? <StateMessage message={loadError} tone="error" /> : null}
 
         {/* Total Budget Overview */}
         <View style={styles.overviewCard}>
@@ -160,7 +165,7 @@ export default function BudgetsScreen() {
                       size={44}
                     />
                     <View>
-                      <Text style={styles.budgetCategory}>{categoryName}</Text>
+                      <Text style={styles.budgetCategory} numberOfLines={1} ellipsizeMode="tail">{categoryName}</Text>
                       <Text style={styles.budgetMeta}>
                         Rp {(spent / 1000).toFixed(0)}rb / Rp {(budget.limit_amount / 1000).toFixed(0)}rb
                       </Text>

@@ -3,7 +3,7 @@ import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from
 import { useRouter } from 'expo-router'
 
 import { KaswiseIcon } from '../../src/components/icons/kaswise-icons'
-import { EmptyState, FilterChip, IconBubble, ScreenHeader, StatCard } from '../../src/components/ui'
+import { EmptyState, FilterChip, IconBubble, ScreenHeader, StatCard, StateMessage } from '../../src/components/ui'
 import { useTheme } from '../../src/theme/theme-context'
 import { listTransactions, type Transaction } from '../../src/services/transactions'
 
@@ -18,6 +18,7 @@ export default function TransactionsScreen() {
   const [activePeriod, setActivePeriod] = useState<Period>('month')
   const [transactions, setTransactions] = useState<Transaction[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState<string | null>(null)
 
   useEffect(() => {
     loadTransactions()
@@ -25,10 +26,12 @@ export default function TransactionsScreen() {
 
   const loadTransactions = async () => {
     try {
+      setLoadError(null)
       const data = await listTransactions()
       setTransactions(data)
     } catch (error) {
       console.error('Error loading transactions:', error)
+      setLoadError('Gagal memuat transaksi. Coba lagi sebentar.')
     } finally {
       setLoading(false)
     }
@@ -67,6 +70,8 @@ export default function TransactionsScreen() {
             </View>
           )}
         />
+
+        {loadError ? <StateMessage message={loadError} tone="error" /> : null}
 
         {/* Period Chips */}
         <View style={styles.periodRow}>
@@ -144,7 +149,7 @@ export default function TransactionsScreen() {
                     />
                   </View>
                   <View style={styles.rowInfo}>
-                    <Text style={styles.rowTitle}>{title}</Text>
+                    <Text style={styles.rowTitle} numberOfLines={1} ellipsizeMode="tail">{title}</Text>
                     {item.merchant && item.merchant !== title && (
                       <Text style={styles.rowMerchant}>{item.merchant}</Text>
                     )}
