@@ -1,0 +1,332 @@
+import { ReactNode, useMemo } from 'react'
+import { ActivityIndicator, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native'
+
+import type { IconBubbleTone } from './IconBubble'
+import { IconBubble } from './IconBubble'
+import { KaswiseIcon } from '../icons/kaswise-icons'
+import { useTheme } from '../../theme/theme-context'
+
+type AuthScreenLayoutProps = {
+  children: ReactNode
+}
+
+export function AuthScreenLayout({ children }: AuthScreenLayoutProps) {
+  const { theme } = useTheme()
+  const styles = useMemo(() => createLayoutStyles(theme), [theme])
+
+  return (
+    <SafeAreaView style={styles.screen}>
+      <ScrollView
+        contentContainerStyle={styles.content}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
+        {children}
+      </ScrollView>
+    </SafeAreaView>
+  )
+}
+
+import type { KaswiseIconName } from '../icons/kaswise-icons'
+
+type AuthHeroPanelProps = {
+  icon: KaswiseIconName
+  iconTone?: IconBubbleTone
+  eyebrow?: string
+  title: string
+  description?: string
+  stats?: { icon: KaswiseIconName; label: string; color?: string }[]
+}
+
+export function AuthHeroPanel({
+  icon,
+  iconTone = 'primary',
+  eyebrow = 'Kaswise',
+  title,
+  description,
+  stats,
+}: AuthHeroPanelProps) {
+  const { theme } = useTheme()
+  const styles = useMemo(() => createHeroStyles(theme), [theme])
+
+  return (
+    <View style={styles.heroPanel}>
+      <View style={styles.heroBadgeRow}>
+        <IconBubble name={icon} tone={iconTone} size={52} />
+        <View style={styles.brandCopy}>
+          <Text style={styles.brandEyebrow}>{eyebrow}</Text>
+          <Text style={styles.brandTitle}>{title}</Text>
+        </View>
+      </View>
+
+      {description ? <Text style={styles.heroBody}>{description}</Text> : null}
+
+      {stats && stats.length > 0 ? (
+        <View style={styles.heroStatsRow}>
+          {stats.map((stat, index) => (
+            <View key={index} style={styles.heroStat}>
+              <KaswiseIcon
+                name={stat.icon}
+                size={16}
+                color={stat.color || theme.colors.brandPrimary}
+                weight="bold"
+              />
+              <Text style={styles.heroStatText}>{stat.label}</Text>
+            </View>
+          ))}
+        </View>
+      ) : null}
+    </View>
+  )
+}
+
+type AuthFormCardProps = {
+  title: string
+  subtitle?: string
+  children: ReactNode
+}
+
+export function AuthFormCard({ title, subtitle, children }: AuthFormCardProps) {
+  const { theme } = useTheme()
+  const styles = useMemo(() => createCardStyles(theme), [theme])
+
+  return (
+    <View style={styles.card}>
+      <View style={styles.cardHeader}>
+        <Text style={styles.cardTitle}>{title}</Text>
+        {subtitle ? <Text style={styles.cardSubtitle}>{subtitle}</Text> : null}
+      </View>
+      <View style={styles.formArea}>{children}</View>
+    </View>
+  )
+}
+
+type AuthButtonProps = {
+  label: string
+  onPress: () => void
+  loading?: boolean
+  disabled?: boolean
+}
+
+export function AuthButton({ label, onPress, loading, disabled }: AuthButtonProps) {
+  const { theme } = useTheme()
+  const styles = useMemo(() => createButtonStyles(theme), [theme])
+
+  return (
+    <Pressable
+      style={[styles.primaryButton, (loading || disabled) && styles.primaryButtonDisabled]}
+      onPress={onPress}
+      disabled={loading || disabled}
+    >
+      {loading ? (
+        <ActivityIndicator color={theme.colors.textInverse} />
+      ) : (
+        <Text style={styles.primaryButtonText}>{label}</Text>
+      )}
+    </Pressable>
+  )
+}
+
+type AuthFooterProps = {
+  question: string
+  linkLabel: string
+  linkHref: string
+}
+
+export function AuthFooter({ question, linkLabel, linkHref }: AuthFooterProps) {
+  const { theme } = useTheme()
+  const styles = useMemo(() => createFooterStyles(theme), [theme])
+
+  return (
+    <View style={styles.footerRow}>
+      <Text style={styles.footerText}>{question}</Text>
+      <Pressable onPress={() => {}}>
+        <Text style={styles.linkPrimary}>{linkLabel}</Text>
+      </Pressable>
+    </View>
+  )
+}
+
+type AuthBackButtonProps = {
+  onPress: () => void
+  label?: string
+}
+
+export function AuthBackButton({ onPress, label = 'Kembali' }: AuthBackButtonProps) {
+  const { theme } = useTheme()
+  const styles = useMemo(() => createBackStyles(theme), [theme])
+
+  return (
+    <Pressable style={styles.backRow} onPress={onPress} accessibilityRole="button" accessibilityLabel={label}>
+      <KaswiseIcon name="back" size={18} color={theme.colors.textSecondary} weight="bold" />
+      <Text style={styles.backLabel}>{label}</Text>
+    </Pressable>
+  )
+}
+
+// Style factories
+function createLayoutStyles(theme: ReturnType<typeof useTheme>['theme']) {
+  return StyleSheet.create({
+    screen: {
+      flex: 1,
+      backgroundColor: theme.colors.background,
+    },
+    content: {
+      flexGrow: 1,
+      justifyContent: 'center',
+      paddingHorizontal: theme.spacing.lg,
+      paddingVertical: theme.spacing['2xl'],
+      gap: theme.spacing.lg,
+    },
+  })
+}
+
+function createHeroStyles(theme: ReturnType<typeof useTheme>['theme']) {
+  return StyleSheet.create({
+    heroPanel: {
+      backgroundColor: theme.colors.mutedSurface,
+      borderRadius: theme.radius.xl,
+      borderWidth: 1,
+      borderColor: theme.colors.borderSoft,
+      padding: theme.spacing.xl,
+      gap: theme.spacing.md,
+    },
+    heroBadgeRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: theme.spacing.md,
+    },
+    brandCopy: {
+      flex: 1,
+      gap: 4,
+    },
+    brandEyebrow: {
+      color: theme.colors.brandPrimary,
+      fontSize: theme.typography.support.fontSize,
+      fontWeight: '800',
+      textTransform: 'uppercase',
+      letterSpacing: 0.6,
+    },
+    brandTitle: {
+      color: theme.colors.textPrimary,
+      fontSize: 22,
+      fontWeight: '800',
+      lineHeight: 28,
+    },
+    heroBody: {
+      color: theme.colors.textSecondary,
+      fontSize: 14,
+      lineHeight: 22,
+    },
+    heroStatsRow: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: theme.spacing.sm,
+    },
+    heroStat: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      paddingHorizontal: theme.spacing.md,
+      paddingVertical: theme.spacing.sm,
+      borderRadius: theme.radius.pill,
+      backgroundColor: theme.colors.surfaceElevated,
+      borderWidth: 1,
+      borderColor: theme.colors.borderSoft,
+    },
+    heroStatText: {
+      color: theme.colors.textSecondary,
+      fontSize: theme.typography.support.fontSize,
+      fontWeight: '700',
+    },
+  })
+}
+
+function createCardStyles(theme: ReturnType<typeof useTheme>['theme']) {
+  return StyleSheet.create({
+    card: {
+      backgroundColor: theme.colors.surface,
+      borderRadius: theme.radius.xl,
+      borderWidth: 1,
+      borderColor: theme.colors.borderSoft,
+      padding: theme.spacing.xl,
+      gap: theme.spacing.lg,
+    },
+    cardHeader: {
+      gap: theme.spacing.xs,
+    },
+    cardTitle: {
+      color: theme.colors.textPrimary,
+      fontSize: theme.typography.cardTitle.fontSize,
+      fontWeight: theme.typography.cardTitle.fontWeight,
+    },
+    cardSubtitle: {
+      color: theme.colors.textSecondary,
+      fontSize: 13,
+    },
+    formArea: {
+      gap: theme.spacing.md,
+    },
+  })
+}
+
+function createButtonStyles(theme: ReturnType<typeof useTheme>['theme']) {
+  return StyleSheet.create({
+    primaryButton: {
+      backgroundColor: theme.colors.brandPrimary,
+      borderRadius: theme.radius.pill,
+      minHeight: 50,
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingHorizontal: theme.spacing.lg,
+      paddingVertical: theme.spacing.md,
+      marginTop: 4,
+    },
+    primaryButtonDisabled: {
+      opacity: 0.7,
+    },
+    primaryButtonText: {
+      color: theme.colors.textInverse,
+      fontSize: 15,
+      fontWeight: '800',
+    },
+  })
+}
+
+function createFooterStyles(theme: ReturnType<typeof useTheme>['theme']) {
+  return StyleSheet.create({
+    footerRow: {
+      flexDirection: 'row',
+      justifyContent: 'center',
+      flexWrap: 'wrap',
+      gap: 6,
+    },
+    footerText: {
+      color: theme.colors.textMuted,
+      fontSize: 13,
+    },
+    linkPrimary: {
+      color: theme.colors.brandPrimary,
+      fontSize: 13,
+      fontWeight: '800',
+    },
+  })
+}
+
+function createBackStyles(theme: ReturnType<typeof useTheme>['theme']) {
+  return StyleSheet.create({
+    backRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      alignSelf: 'flex-start',
+      paddingVertical: 6,
+      paddingHorizontal: 4,
+    },
+    backLabel: {
+      color: theme.colors.textSecondary,
+      fontSize: 13,
+      fontWeight: '700',
+    },
+  })
+}
