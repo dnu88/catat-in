@@ -17,12 +17,12 @@ export function InputField({
   const { theme } = useTheme()
 
   return (
-    <View style={{ gap: 6 }}>
+    <View style={{ gap: theme.spacing.xs + 2 }}>
       <Text
         style={{
           color: theme.colors.textSecondary,
-          fontSize: 12,
-          fontWeight: '600',
+          fontSize: theme.typography.support.fontSize,
+          fontWeight: theme.typography.support.fontWeight,
         }}
       >
         {label}
@@ -33,8 +33,9 @@ export function InputField({
         placeholder={placeholder}
         placeholderTextColor={theme.colors.textMuted}
         style={{
+          backgroundColor: theme.colors.surface,
           borderWidth: 1,
-          borderColor: theme.colors.borderStrong,
+          borderColor: theme.colors.borderSoft,
           borderRadius: theme.radius.md,
           color: theme.colors.textPrimary,
           paddingHorizontal: theme.spacing.md,
