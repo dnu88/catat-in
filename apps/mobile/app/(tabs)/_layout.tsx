@@ -2,6 +2,7 @@ import { Redirect, Tabs, useRouter } from 'expo-router'
 import { useEffect, useState } from 'react'
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native'
 
+import { KaswiseIcon } from '../../src/components/icons/kaswise-icons'
 import { useSupabase } from '../../src/lib/supabase'
 import { useTheme } from '../../src/theme/theme-context'
 
@@ -39,32 +40,47 @@ export default function TabsLayout() {
     return <Redirect href="/(auth)/login" />
   }
 
+  const hiddenScreenOptions = {
+    href: null,
+    headerLeft: () => (
+      <Pressable onPress={() => router.back()} style={styles.headerBackButton}>
+        <KaswiseIcon name="back" color={theme.colors.textPrimary} size={18} weight="bold" />
+        <Text style={[styles.headerBackText, { color: theme.colors.textPrimary }]}>Kembali</Text>
+      </Pressable>
+    ),
+  } as const
+
   return (
     <Tabs
       screenOptions={{
         headerShown: true,
         tabBarStyle: {
-          backgroundColor: theme.colors.surface,
-          borderTopColor: theme.colors.borderSoft,
+          backgroundColor: theme.colors.tabBarBackground,
+          borderTopColor: theme.colors.headerDivider,
           borderTopWidth: 1,
-          height: 56,
-          paddingBottom: 5,
+          height: 58,
+          paddingBottom: 6,
           paddingTop: 4,
+          elevation: theme.mode === 'dark' ? 0 : 8,
         },
         tabBarActiveTintColor: theme.colors.brandPrimary,
         tabBarInactiveTintColor: theme.colors.textMuted,
         tabBarLabelStyle: {
           fontSize: 10,
           fontWeight: '700',
-          marginTop: -1,
+          marginTop: -2,
         },
         tabBarItemStyle: {
           paddingVertical: 2,
         },
         headerStyle: {
-          backgroundColor: theme.colors.surface,
+          backgroundColor: theme.colors.headerBackground,
         },
         headerTintColor: theme.colors.textPrimary,
+        headerTitleStyle: {
+          fontWeight: '800',
+        },
+        headerShadowVisible: false,
       }}
     >
       <Tabs.Screen
@@ -72,83 +88,67 @@ export default function TabsLayout() {
         options={{
           title: 'Dashboard',
           headerTitle: 'Kaswise',
-          tabBarIcon: ({ color }) => <Text style={{ color, fontSize: 15 }}>🏠</Text>,
+          tabBarIcon: ({ color, focused }) => (
+            <KaswiseIcon name="home" color={color} size={focused ? 24 : 22} weight={focused ? 'fill' : 'regular'} />
+          ),
         }}
       />
       <Tabs.Screen
         name="transactions"
         options={{
           title: 'Transaksi',
-          tabBarIcon: ({ color }) => <Text style={{ color, fontSize: 15 }}>📋</Text>,
+          tabBarIcon: ({ color, focused }) => (
+            <KaswiseIcon
+              name="transactions"
+              color={color}
+              size={focused ? 24 : 22}
+              weight={focused ? 'fill' : 'regular'}
+            />
+          ),
         }}
       />
       <Tabs.Screen
         name="capture"
         options={{
           title: 'Catat',
-          tabBarIcon: ({ color }) => <Text style={{ color, fontSize: 16 }}>✦</Text>,
+          tabBarLabel: '',
+          tabBarIcon: ({ focused }) => (
+            <View
+              style={[
+                styles.captureTabIcon,
+                { backgroundColor: theme.colors.brandPrimary, borderColor: theme.colors.background },
+              ]}
+            >
+              <KaswiseIcon name="capture" color="#FFFFFF" size={24} weight={focused ? 'fill' : 'bold'} />
+            </View>
+          ),
         }}
       />
       <Tabs.Screen
         name="reports"
         options={{
           title: 'Laporan',
-          tabBarIcon: ({ color }) => <Text style={{ color, fontSize: 15 }}>📊</Text>,
+          tabBarIcon: ({ color, focused }) => (
+            <KaswiseIcon name="reports" color={color} size={focused ? 24 : 22} weight={focused ? 'fill' : 'regular'} />
+          ),
         }}
       />
       <Tabs.Screen
         name="settings"
         options={{
           title: 'Pengaturan',
-          tabBarIcon: ({ color }) => <Text style={{ color, fontSize: 15 }}>⚙</Text>,
+          tabBarIcon: ({ color, focused }) => (
+            <KaswiseIcon name="settings" color={color} size={focused ? 24 : 22} weight={focused ? 'fill' : 'regular'} />
+          ),
         }}
       />
 
-      <Tabs.Screen
-        name="wallets"
-        options={{
-          href: null,
-          title: 'Wallets',
-          headerTitle: 'Dompet',
-          headerLeft: () => (
-            <Pressable onPress={() => router.back()} style={styles.headerBackButton}>
-              <Text style={[styles.headerBackText, { color: theme.colors.textPrimary }]}>← Kembali</Text>
-            </Pressable>
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="budgets"
-        options={{
-          href: null,
-          title: 'Budgets',
-          headerTitle: 'Anggaran',
-          headerLeft: () => (
-            <Pressable onPress={() => router.back()} style={styles.headerBackButton}>
-              <Text style={[styles.headerBackText, { color: theme.colors.textPrimary }]}>← Kembali</Text>
-            </Pressable>
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="bills"
-        options={{
-          href: null,
-          title: 'Bills',
-          headerTitle: 'Tagihan',
-          headerLeft: () => (
-            <Pressable onPress={() => router.back()} style={styles.headerBackButton}>
-              <Text style={[styles.headerBackText, { color: theme.colors.textPrimary }]}>← Kembali</Text>
-            </Pressable>
-          ),
-        }}
-      />
-      <Tabs.Screen name="groups" options={{ href: null, title: 'Groups', headerTitle: 'Groups' }} />
-      <Tabs.Screen name="imports" options={{ href: null, title: 'Imports', headerTitle: 'Imports' }} />
-      <Tabs.Screen
-        name="transaction-new"
-        options={{ href: null, title: 'Catat Manual', headerTitle: 'Catat Manual' }}
-      />
+      <Tabs.Screen name="wallets" options={{ ...hiddenScreenOptions, title: 'Wallets', headerTitle: 'Dompet' }} />
+      <Tabs.Screen name="budgets" options={{ ...hiddenScreenOptions, title: 'Budgets', headerTitle: 'Anggaran' }} />
+      <Tabs.Screen name="bills" options={{ ...hiddenScreenOptions, title: 'Bills', headerTitle: 'Tagihan' }} />
+      <Tabs.Screen name="groups" options={{ ...hiddenScreenOptions, title: 'Groups', headerTitle: 'Groups' }} />
+      <Tabs.Screen name="imports" options={{ ...hiddenScreenOptions, title: 'Imports', headerTitle: 'Imports' }} />
+      <Tabs.Screen name="transaction-new" options={{ ...hiddenScreenOptions, title: 'Catat Manual', headerTitle: 'Catat Manual' }} />
     </Tabs>
   )
 }
@@ -159,12 +159,23 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  captureTabIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    borderWidth: 4,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: -18,
+  },
   headerBackButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginLeft: 16,
   },
   headerBackText: {
-    fontSize: 14,
-    fontWeight: '700',
+    fontSize: 16,
+    fontWeight: '600',
   },
 })
