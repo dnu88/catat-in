@@ -3,6 +3,8 @@ import { useMemo, useState } from 'react'
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 
 import { useSupabase } from '../../src/lib/supabase'
+import type { KaswiseIconName } from '../../src/components/icons/kaswise-icons'
+import { IconBubble } from '../../src/components/ui'
 import { useTheme } from '../../src/theme/theme-context'
 
 export default function SettingsScreen() {
@@ -80,21 +82,24 @@ export default function SettingsScreen() {
           <Text style={styles.sectionSub}>Kelola pengingat penting.</Text>
 
           <ToggleRow
-            icon="📊"
+            icon="chart"
+            tone="info"
             title="Ringkasan Harian"
             helper="Notifikasi kondisi keuangan setiap malam"
             value={dailyReminder}
             onToggle={() => setDailyReminder((v) => !v)}
           />
           <ToggleRow
-            icon="📄"
+            icon="bills"
+            tone="warning"
             title="Pengingat Tagihan"
             helper="Notifikasi sebelum jatuh tempo"
             value={billReminder}
             onToggle={() => setBillReminder((v) => !v)}
           />
           <ToggleRow
-            icon="🎯"
+            icon="budgets"
+            tone="primary"
             title="Alert Anggaran"
             helper="Notifikasi saat budget hampir habis"
             value={budgetAlert}
@@ -107,20 +112,20 @@ export default function SettingsScreen() {
           <Text style={styles.sectionTitle}>Akses Cepat</Text>
           <Text style={styles.sectionSub}>Navigasi ke halaman lain.</Text>
 
-          <NavRow icon="💳" title="Dompet" helper="Kelola saldo akun" onPress={() => router.push('/(tabs)/wallets')} />
-          <NavRow icon="🎯" title="Anggaran" helper="Batas pengeluaran" onPress={() => router.push('/(tabs)/budgets')} />
-          <NavRow icon="📄" title="Tagihan" helper="Pengingat rutin" onPress={() => router.push('/(tabs)/bills')} />
-          <NavRow icon="👥" title="Grup" helper="Keuangan bersama" onPress={() => router.push('/(tabs)/groups')} />
-          <NavRow icon="📥" title="Import" helper="Mutasi & struk" onPress={() => router.push('/(tabs)/imports')} />
+          <NavRow icon="wallets" tone="primary" title="Dompet" helper="Kelola saldo akun" onPress={() => router.push('/(tabs)/wallets')} />
+          <NavRow icon="budgets" tone="warning" title="Anggaran" helper="Batas pengeluaran" onPress={() => router.push('/(tabs)/budgets')} />
+          <NavRow icon="bills" tone="accent" title="Tagihan" helper="Pengingat rutin" onPress={() => router.push('/(tabs)/bills')} />
+          <NavRow icon="groups" tone="info" title="Grup" helper="Keuangan bersama" onPress={() => router.push('/(tabs)/groups')} />
+          <NavRow icon="imports" tone="accent" title="Import" helper="Mutasi & struk" onPress={() => router.push('/(tabs)/imports')} />
         </View>
 
         {/* Account Section */}
         <View style={styles.sectionCard}>
           <Text style={styles.sectionTitle}>Akun & Keamanan</Text>
 
-          <NavRow icon="🔐" title="Ubah Password" helper="Perbarui password akun" onPress={() => {}} />
-          <NavRow icon="🌐" title="Bahasa" helper="Bahasa Indonesia" onPress={() => {}} />
-          <NavRow icon="📋" title="Kebijakan Privasi" helper="Baca syarat & ketentuan" onPress={() => {}} />
+          <NavRow icon="lock" tone="danger" title="Ubah Password" helper="Perbarui password akun" onPress={() => {}} />
+          <NavRow icon="settings" tone="info" title="Bahasa" helper="Bahasa Indonesia" onPress={() => {}} />
+          <NavRow icon="file" tone="accent" title="Kebijakan Privasi" helper="Baca syarat & ketentuan" onPress={() => {}} />
         </View>
 
         {/* App Info */}
@@ -142,12 +147,14 @@ export default function SettingsScreen() {
 
 function ToggleRow({
   icon,
+  tone,
   title,
   helper,
   value,
   onToggle,
 }: {
-  icon: string
+  icon: KaswiseIconName
+  tone: 'primary' | 'success' | 'warning' | 'danger' | 'accent' | 'info'
   title: string
   helper: string
   value: boolean
@@ -169,7 +176,7 @@ function ToggleRow({
       }}
     >
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 }}>
-        <Text style={{ fontSize: 18 }}>{icon}</Text>
+        <IconBubble name={icon} tone={tone} size={32} />
         <View style={{ flex: 1 }}>
           <Text style={{ color: theme.colors.textPrimary, fontSize: 13, fontWeight: '700' }}>{title}</Text>
           <Text style={{ color: theme.colors.textMuted, fontSize: 11, marginTop: 1 }}>{helper}</Text>
@@ -201,11 +208,13 @@ function ToggleRow({
 
 function NavRow({
   icon,
+  tone,
   title,
   helper,
   onPress,
 }: {
-  icon: string
+  icon: KaswiseIconName
+  tone: 'primary' | 'success' | 'warning' | 'danger' | 'accent' | 'info'
   title: string
   helper: string
   onPress: () => void
@@ -226,7 +235,7 @@ function NavRow({
       }}
     >
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 }}>
-        <Text style={{ fontSize: 18 }}>{icon}</Text>
+        <IconBubble name={icon} tone={tone} size={32} />
         <View>
           <Text style={{ color: theme.colors.textPrimary, fontSize: 13, fontWeight: '700' }}>{title}</Text>
           <Text style={{ color: theme.colors.textMuted, fontSize: 11, marginTop: 1 }}>{helper}</Text>
