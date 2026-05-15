@@ -292,32 +292,29 @@ create policy "group_members_select_member" on public.group_members
       where g.id = group_members.group_id and g.owner_id = auth.uid()
     )
   );
-create policy "group_members_insert_admin_or_owner" on public.group_members
+create policy "group_members_insert_owner" on public.group_members
   for insert with check (
-    auth.uid() = user_id
-    or exists (
+    exists (
       select 1
       from public.groups g
       where g.id = group_members.group_id and g.owner_id = auth.uid()
     )
   );
-create policy "group_members_update_admin_or_owner" on public.group_members
+create policy "group_members_update_owner" on public.group_members
   for update using (
-    auth.uid() = user_id
-    or exists (
+    exists (
       select 1
       from public.groups g
       where g.id = group_members.group_id and g.owner_id = auth.uid()
     )
   ) with check (
-    auth.uid() = user_id
-    or exists (
+    exists (
       select 1
       from public.groups g
       where g.id = group_members.group_id and g.owner_id = auth.uid()
     )
   );
-create policy "group_members_delete_admin_or_owner" on public.group_members
+create policy "group_members_delete_owner_or_self" on public.group_members
   for delete using (
     auth.uid() = user_id
     or exists (
