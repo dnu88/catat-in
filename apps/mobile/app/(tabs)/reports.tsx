@@ -3,18 +3,20 @@ import { Pressable, ScrollView, StyleSheet, Text, View, Share, Modal } from 'rea
 
 import { useTheme } from '../../src/theme/theme-context'
 import { useSupabase } from '../../src/lib/supabase'
+import { IconBubble } from '../../src/components/ui'
+import type { KaswiseIconName } from '../../src/components/icons/kaswise-icons'
 
 const months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun']
 const incomeData = [4.2, 5.1, 6.8, 7.2, 8.5, 18.65]
 const expenseData = [3.1, 3.8, 4.2, 5.0, 4.8, 6.4]
 
 const categories = [
-  { label: 'Makanan & Minuman', percent: 32, amount: 'Rp 2.050.000', emoji: '🍽' },
-  { label: 'Transportasi', percent: 22, amount: 'Rp 1.408.000', emoji: '🚗' },
-  { label: 'Belanja', percent: 18, amount: 'Rp 1.152.000', emoji: '🛒' },
-  { label: 'Tagihan', percent: 15, amount: 'Rp 960.000', emoji: '📄' },
-  { label: 'Hiburan', percent: 8, amount: 'Rp 512.000', emoji: '🎮' },
-  { label: 'Lainnya', percent: 5, amount: 'Rp 320.000', emoji: '📦' },
+  { label: 'Makanan & Minuman', percent: 32, amount: 'Rp 2.050.000', icon: 'bills' as KaswiseIconName },
+  { label: 'Transportasi', percent: 22, amount: 'Rp 1.408.000', icon: 'card' as KaswiseIconName },
+  { label: 'Belanja', percent: 18, amount: 'Rp 1.152.000', icon: 'wallets' as KaswiseIconName },
+  { label: 'Tagihan', percent: 15, amount: 'Rp 960.000', icon: 'file' as KaswiseIconName },
+  { label: 'Hiburan', percent: 8, amount: 'Rp 512.000', icon: 'insight' as KaswiseIconName },
+  { label: 'Lainnya', percent: 5, amount: 'Rp 320.000', icon: 'chart' as KaswiseIconName },
 ]
 
 type Tab = 'overview' | 'category' | 'compare'
@@ -272,12 +274,6 @@ export default function ReportsScreen() {
           >
             <Text style={[styles.tabChipText, activeTab === 'compare' && styles.tabChipTextActive]}>Perbandingan</Text>
           </Pressable>
-          <Pressable
-            style={[styles.tabChip, activeTab === 'compare' && styles.tabChipActive]}
-            onPress={() => setActiveTab('compare')}
-          >
-            <Text style={[styles.tabChipText, activeTab === 'compare' && styles.tabChipTextActive]}>Perbandingan</Text>
-          </Pressable>
         </View>
 
         {/* Loading/Error State */}
@@ -414,7 +410,7 @@ export default function ReportsScreen() {
                   ]}
                 >
                   <View style={styles.catLeft}>
-                    <Text style={styles.catEmoji}>{cat.emoji}</Text>
+                    <IconBubble name={cat.icon} tone="primary" size={36} />
                     <View>
                       <Text style={styles.catName}>{cat.label}</Text>
                       <Text style={styles.catAmount}>{cat.amount}</Text>
