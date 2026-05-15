@@ -1,30 +1,26 @@
-import { useMemo, useState } from 'react'
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
+import { useEffect, useMemo, useState } from 'react'
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 
+import type { KaswiseIconName } from '../../src/components/icons/kaswise-icons'
+import { IconBubble } from '../../src/components/ui'
 import { useTheme } from '../../src/theme/theme-context'
+import { listWallets, type Wallet } from '../../src/services/wallets'
 
-type WalletType = 'bank' | 'ewallet' | 'cash' | 'investment'
-
-const wallets = [
-  { id: '1', name: 'BCA Utama', type: 'bank' as WalletType, balance: 12450000, icon: '🏦', accountHint: '••• 4821' },
-  { id: '2', name: 'GoPay', type: 'ewallet' as WalletType, balance: 1350000, icon: '💳', accountHint: '081•••4512' },
-  { id: '3', name: 'OVO', type: 'ewallet' as WalletType, balance: 725000, icon: '💳', accountHint: '081•••4512' },
-  { id: '4', name: 'Dompet Tunai', type: 'cash' as WalletType, balance: 425000, icon: '💵', accountHint: '' },
-  { id: '5', name: 'Reksadana Bareksa', type: 'investment' as WalletType, balance: 9300000, icon: '📈', accountHint: '' },
-]
+type WalletType = 'bank' | 'cash'
 
 const typeLabels: Record<WalletType, string> = {
   bank: 'Bank',
-  ewallet: 'E-Wallet',
   cash: 'Tunai',
-  investment: 'Investasi',
 }
 
 const typeColors: Record<WalletType, string> = {
   bank: '#2563EB',
-  ewallet: '#8B5CF6',
   cash: '#10B981',
-  investment: '#F59E0B',
+}
+
+const typeIcons: Record<WalletType, KaswiseIconName> = {
+  bank: 'card',
+  cash: 'wallets',
 }
 
 type FilterType = 'all' | WalletType
@@ -33,9 +29,34 @@ export default function WalletsScreen() {
   const { theme } = useTheme()
   const styles = useMemo(() => createStyles(theme), [theme])
   const [filter, setFilter] = useState<FilterType>('all')
+  const [wallets, setWallets] = useState<Wallet[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    loadWallets()
+  }, [])
+
+  const loadWallets = async () => {
+    try {
+      const data = await listWallets()
+      setWallets(data.filter(w => w.is_active))
+    } catch (error) {
+      console.error('Error loading wallets:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
 
   const filtered = filter === 'all' ? wallets : wallets.filter((w) => w.type === filter)
-  const totalBalance = wallets.reduce((a, b) => a + b.balance, 0)
+  const totalBalance = wallets.reduce((a, b) => a + (b.balance || 0), 0)
+
+  if (loading) {
+    return (
+      <View style={[styles.screen, { justifyContent: 'center', alignItems: 'center' }]}>
+        <ActivityIndicator size="large" color={theme.colors.brandPrimary} />
+      </View>
+    )
+  }
 
   return (
     <View style={styles.screen}>
@@ -64,7 +85,7 @@ export default function WalletsScreen() {
 
         {/* Filter Row */}
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterRow}>
-          {(['all', 'bank', 'ewallet', 'cash', 'investment'] as FilterType[]).map((f) => (
+          {(['all', 'bank', 'cash'] as FilterType[]).map((f) => (
             <Pressable
               key={f}
               onPress={() => setFilter(f)}
@@ -86,29 +107,41 @@ export default function WalletsScreen() {
         </ScrollView>
 
         {/* Wallet Cards */}
-        {filtered.map((wallet) => (
-          <Pressable key={wallet.id} style={styles.walletCard}>
-            <View style={styles.walletTop}>
-              <View style={[styles.walletIcon, { backgroundColor: `${typeColors[wallet.type]}15` }]}>
-                <Text style={styles.walletIconText}>{wallet.icon}</Text>
-              </View>
-              <View style={styles.walletInfo}>
-                <Text style={styles.walletName}>{wallet.name}</Text>
-                <View style={styles.walletMeta}>
-                  <View style={[styles.typeBadge, { backgroundColor: `${typeColors[wallet.type]}15` }]}>
-                    <Text style={[styles.typeBadgeText, { color: typeColors[wallet.type] }]}>
-                      {typeLabels[wallet.type]}
-                    </Text>
+        {filtered.length === 0 ? (
+          <View style={styles.emptyCard}>
+            <IconBubble name="wallets" tone="accent" size={56} />
+            <Text style={styles.emptyTitle}>Belum ada dompet</Text>
+            <Text style={styles.emptySub}>Tambahkan dompet baru untuk mulai mencatat transaksi.</Text>
+          </View>
+        ) : (
+          filtered.map((wallet) => (
+            <Pressable key={wallet.id} style={styles.walletCard}>
+              <View style={styles.walletTop}>
+                <View style={styles.walletIcon}>
+                  <IconBubble
+                    name={typeIcons[wallet.type as WalletType]}
+                    tone={wallet.type === 'bank' ? 'info' : 'success'}
+                    size={46}
+                  />
+                </View>
+                <View style={styles.walletInfo}>
+                  <Text style={styles.walletName}>{wallet.name}</Text>
+                  <View style={styles.walletMeta}>
+                    <View style={[styles.typeBadge, { backgroundColor: `${typeColors[wallet.type as WalletType]}15` }]}>
+                      <Text style={[styles.typeBadgeText, { color: typeColors[wallet.type as WalletType] }]}>
+                        {typeLabels[wallet.type as WalletType]}
+                      </Text>
+                    </View>
+                    {wallet.account_number ? <Text style={styles.walletHint}>••• {wallet.account_number.slice(-4)}</Text> : null}
                   </View>
-                  {wallet.accountHint ? <Text style={styles.walletHint}>{wallet.accountHint}</Text> : null}
                 </View>
               </View>
-            </View>
-            <View style={styles.walletBottom}>
-              <Text style={styles.walletBalance}>Rp {wallet.balance.toLocaleString('id-ID')}</Text>
-            </View>
-          </Pressable>
-        ))}
+              <View style={styles.walletBottom}>
+                <Text style={styles.walletBalance}>Rp {(wallet.balance || 0).toLocaleString('id-ID')}</Text>
+              </View>
+            </Pressable>
+          ))
+        )}
 
         <View style={{ height: 100 }} />
       </ScrollView>
@@ -177,7 +210,6 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
       alignItems: 'center',
       justifyContent: 'center',
     },
-    walletIconText: { fontSize: 22 },
     walletInfo: { flex: 1, gap: 4 },
     walletName: { color: theme.colors.textPrimary, fontSize: 15, fontWeight: '700' },
     walletMeta: { flexDirection: 'row', alignItems: 'center', gap: 8 },
@@ -190,5 +222,17 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
       paddingTop: 10,
     },
     walletBalance: { color: theme.colors.textPrimary, fontSize: 18, fontWeight: '800' },
+  emptyCard: {
+    backgroundColor: theme.colors.surface,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: theme.colors.borderSoft,
+    borderStyle: 'dashed',
+    padding: 24,
+    alignItems: 'center',
+    gap: 8,
+  },
+  emptyTitle: { color: theme.colors.textPrimary, fontSize: 15, fontWeight: '800' },
+  emptySub: { color: theme.colors.textMuted, fontSize: 13, textAlign: 'center', lineHeight: 20 },
   })
 }

@@ -1,17 +1,22 @@
-import { useMemo, useState } from 'react'
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
+import { useEffect, useMemo, useState } from 'react'
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 
+import type { KaswiseIconName } from '../../src/components/icons/kaswise-icons'
+import { IconBubble } from '../../src/components/ui'
 import { useTheme } from '../../src/theme/theme-context'
+import { listBills, updateBill, type Bill } from '../../src/services/bills'
 
 type BillStatus = 'paid' | 'upcoming' | 'overdue'
 
-const bills = [
-  { id: '1', name: 'Internet Rumah', due: '12 Mei 2026', status: 'upcoming' as BillStatus, amount: 450000, emoji: '📡' },
-  { id: '2', name: 'Listrik PLN', due: '08 Mei 2026', status: 'overdue' as BillStatus, amount: 675000, emoji: '⚡' },
-  { id: '3', name: 'Netflix Premium', due: '15 Mei 2026', status: 'upcoming' as BillStatus, amount: 186000, emoji: '🎬' },
-  { id: '4', name: 'Spotify Family', due: '03 Mei 2026', status: 'paid' as BillStatus, amount: 54990, emoji: '🎵' },
-  { id: '5', name: 'Asuransi Kesehatan', due: '20 Mei 2026', status: 'upcoming' as BillStatus, amount: 1200000, emoji: '🏥' },
-]
+const billIcons: Record<string, KaswiseIconName> = {
+  'Internet': 'insight',
+  'Listrik': 'budgets',
+  'Netflix': 'insight',
+  'Spotify': 'insight',
+  'Asuransi': 'budgets',
+  'Air': 'budgets',
+  'Telepon': 'notification',
+}
 
 type FilterStatus = 'all' | BillStatus
 
@@ -19,10 +24,61 @@ export default function BillsScreen() {
   const { theme } = useTheme()
   const styles = useMemo(() => createStyles(theme), [theme])
   const [filter, setFilter] = useState<FilterStatus>('all')
+  const [bills, setBills] = useState<Bill[]>([])
+  const [loading, setLoading] = useState(true)
 
-  const filtered = filter === 'all' ? bills : bills.filter((b) => b.status === filter)
-  const totalUpcoming = bills.filter((b) => b.status === 'upcoming').reduce((a, b) => a + b.amount, 0)
-  const overdueCount = bills.filter((b) => b.status === 'overdue').length
+  useEffect(() => {
+    loadBills()
+  }, [])
+
+  const loadBills = async () => {
+    try {
+      const data = await listBills()
+      setBills(data)
+    } catch (error) {
+      console.error('Error loading bills:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const markAsPaid = async (id: string) => {
+    try {
+      await updateBill(id, { is_paid: true })
+      loadBills() // Reload data
+    } catch (error) {
+      console.error('Error marking bill as paid:', error)
+    }
+  }
+
+  // Determine status for each bill
+  const billsWithStatus = bills.map(bill => {
+    const dueDate = new Date(bill.next_due_date)
+    const today = new Date()
+    let status: BillStatus = 'upcoming'
+
+    if (bill.is_paid) {
+      status = 'paid'
+    } else if (dueDate < today) {
+      status = 'overdue'
+    } else {
+      status = 'upcoming'
+    }
+
+    return { ...bill, status }
+  })
+
+  const filtered = filter === 'all' ? billsWithStatus : billsWithStatus.filter((b) => b.status === filter)
+  const totalUpcoming = billsWithStatus.filter((b) => b.status === 'upcoming').reduce((a, b) => a + b.amount, 0)
+  const overdueCount = billsWithStatus.filter((b) => b.status === 'overdue').length
+
+  if (loading) {
+    return (
+      <View style={[styles.screen, { justifyContent: 'center', alignItems: 'center' }]}>
+        <ActivityIndicator size="large" color={theme.colors.brandPrimary} />
+      </View>
+    )
+  }
 
   return (
     <View style={styles.screen}>
@@ -41,9 +97,7 @@ export default function BillsScreen() {
         {/* Alert Card */}
         {overdueCount > 0 && (
           <View style={styles.alertCard}>
-            <View style={styles.alertIcon}>
-              <Text style={styles.alertIconText}>⚠️</Text>
-            </View>
+            <IconBubble name="bills" tone="danger" size={44} />
             <View style={styles.alertContent}>
               <Text style={styles.alertTitle}>Ada {overdueCount} tagihan terlambat</Text>
               <Text style={styles.alertSub}>Segera bayar untuk menghindari denda.</Text>
@@ -80,45 +134,62 @@ export default function BillsScreen() {
         </ScrollView>
 
         {/* Bill Cards */}
-        {filtered.map((bill) => {
-          const statusColor =
-            bill.status === 'paid'
-              ? theme.colors.success
-              : bill.status === 'overdue'
-                ? theme.colors.danger
-                : theme.colors.warning
+        {filtered.length === 0 ? (
+          <View style={styles.emptyCard}>
+            <IconBubble name="bills" tone="accent" size={56} />
+            <Text style={styles.emptyTitle}>Belum ada tagihan</Text>
+            <Text style={styles.emptySub}>Tambahkan tagihan berulang untuk diingatkan.</Text>
+          </View>
+        ) : (
+          filtered.map((bill) => {
+            const statusColor =
+              bill.status === 'paid'
+                ? theme.colors.success
+                : bill.status === 'overdue'
+                  ? theme.colors.danger
+                  : theme.colors.warning
 
-          const statusLabel =
-            bill.status === 'paid' ? 'Lunas' : bill.status === 'overdue' ? 'Terlambat' : 'Akan Datang'
+            const statusLabel =
+              bill.status === 'paid' ? 'Lunas' : bill.status === 'overdue' ? 'Terlambat' : 'Akan Datang'
 
-          return (
-            <Pressable key={bill.id} style={[styles.billCard, { borderLeftColor: statusColor, borderLeftWidth: 4 }]}>
-              <View style={styles.billTop}>
-                <View style={styles.billLeft}>
-                  <View style={[styles.billEmoji, { backgroundColor: `${statusColor}15` }]}>
-                    <Text style={styles.billEmojiText}>{bill.emoji}</Text>
+            const dueDate = new Date(bill.next_due_date)
+            const formattedDate = dueDate.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })
+
+            // Find icon based on bill name
+            const iconKey = Object.keys(billIcons).find(key => bill.name.includes(key)) || 'bills'
+            const icon = billIcons[iconKey] || 'bills'
+
+            return (
+              <Pressable key={bill.id} style={[styles.billCard, { borderLeftColor: statusColor, borderLeftWidth: 4 }]}>
+                <View style={styles.billTop}>
+                  <View style={styles.billLeft}>
+                    <IconBubble
+                      name={icon as KaswiseIconName}
+                      tone={bill.status === 'paid' ? 'success' : bill.status === 'overdue' ? 'danger' : 'warning'}
+                      size={44}
+                    />
+                    <View>
+                      <Text style={styles.billName}>{bill.name}</Text>
+                      <Text style={styles.billDue}>Jatuh tempo: {formattedDate}</Text>
+                    </View>
                   </View>
-                  <View>
-                    <Text style={styles.billName}>{bill.name}</Text>
-                    <Text style={styles.billDue}>Jatuh tempo: {bill.due}</Text>
+                  <View style={[styles.statusBadge, { backgroundColor: `${statusColor}15`, borderColor: `${statusColor}40` }]}>
+                    <Text style={[styles.statusBadgeText, { color: statusColor }]}>{statusLabel}</Text>
                   </View>
                 </View>
-                <View style={[styles.statusBadge, { backgroundColor: `${statusColor}15`, borderColor: `${statusColor}40` }]}>
-                  <Text style={[styles.statusBadgeText, { color: statusColor }]}>{statusLabel}</Text>
-                </View>
-              </View>
 
-              <View style={styles.billBottom}>
-                <Text style={styles.billAmount}>Rp {bill.amount.toLocaleString('id-ID')}</Text>
-                {bill.status === 'upcoming' && (
-                  <Pressable style={styles.payButton}>
-                    <Text style={styles.payButtonText}>Tandai Lunas</Text>
-                  </Pressable>
-                )}
-              </View>
-            </Pressable>
-          )
-        })}
+                <View style={styles.billBottom}>
+                  <Text style={styles.billAmount}>Rp {bill.amount.toLocaleString('id-ID')}</Text>
+                  {bill.status === 'upcoming' && (
+                    <Pressable style={styles.payButton} onPress={() => markAsPaid(bill.id)}>
+                      <Text style={styles.payButtonText}>Tandai Lunas</Text>
+                    </Pressable>
+                  )}
+                </View>
+              </Pressable>
+            )
+          })
+        )}
 
         <View style={{ height: 100 }} />
       </ScrollView>
@@ -154,15 +225,6 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
       gap: 12,
       alignItems: 'center',
     },
-    alertIcon: {
-      width: 40,
-      height: 40,
-      borderRadius: 12,
-      backgroundColor: `${theme.colors.danger}20`,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    alertIconText: { fontSize: 20 },
     alertContent: { flex: 1 },
     alertTitle: { color: theme.colors.danger, fontSize: 14, fontWeight: '800' },
     alertSub: { color: theme.colors.textSecondary, fontSize: 12, marginTop: 2 },
@@ -197,14 +259,6 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
     },
     billTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
     billLeft: { flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 },
-    billEmoji: {
-      width: 42,
-      height: 42,
-      borderRadius: 14,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    billEmojiText: { fontSize: 20 },
     billName: { color: theme.colors.textPrimary, fontSize: 14, fontWeight: '700' },
     billDue: { color: theme.colors.textMuted, fontSize: 12, marginTop: 2 },
     statusBadge: {
@@ -230,5 +284,17 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
       paddingVertical: 6,
     },
     payButtonText: { color: theme.colors.textInverse, fontSize: 11, fontWeight: '700' },
+    emptyCard: {
+      backgroundColor: theme.colors.surface,
+      borderRadius: 18,
+      borderWidth: 1,
+      borderColor: theme.colors.borderSoft,
+      borderStyle: 'dashed',
+      padding: 24,
+      alignItems: 'center',
+      gap: 8,
+    },
+    emptyTitle: { color: theme.colors.textPrimary, fontSize: 15, fontWeight: '800' },
+    emptySub: { color: theme.colors.textMuted, fontSize: 13, textAlign: 'center', lineHeight: 20 },
   })
 }

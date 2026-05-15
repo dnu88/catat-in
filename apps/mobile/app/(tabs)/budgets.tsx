@@ -1,26 +1,75 @@
-import { useMemo, useState } from 'react'
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
+import { useEffect, useMemo, useState } from 'react'
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 
+import type { KaswiseIconName } from '../../src/components/icons/kaswise-icons'
+import { IconBubble } from '../../src/components/ui'
 import { useTheme } from '../../src/theme/theme-context'
+import { listBudgets, type Budget } from '../../src/services/budgets'
+import { listTransactions } from '../../src/services/transactions'
 
 type Period = 'current' | 'prev'
 
-const budgets = [
-  { id: '1', category: 'Makan & Minum', spent: 2050000, limit: 3000000, emoji: '🍽' },
-  { id: '2', category: 'Transportasi', spent: 820000, limit: 1200000, emoji: '🚗' },
-  { id: '3', category: 'Belanja', spent: 1700000, limit: 1500000, emoji: '🛒' },
-  { id: '4', category: 'Hiburan', spent: 300000, limit: 500000, emoji: '🎮' },
-  { id: '5', category: 'Tagihan', spent: 960000, limit: 1000000, emoji: '📄' },
-]
+const categoryIcons: Record<string, KaswiseIconName> = {
+  'Makan': 'chart',
+  'Makanan': 'chart',
+  'Transport': 'transactions',
+  'Transportasi': 'transactions',
+  'Belanja': 'wallets',
+  'Hiburan': 'insight',
+  'Tagihan': 'bills',
+  'Kesehatan': 'budgets',
+  'Pendidikan': 'file',
+  'Lainnya': 'card',
+}
 
 export default function BudgetsScreen() {
   const { theme } = useTheme()
   const styles = useMemo(() => createStyles(theme), [theme])
   const [period, setPeriod] = useState<Period>('current')
+  const [budgets, setBudgets] = useState<Budget[]>([])
+  const [loading, setLoading] = useState(true)
 
-  const totalSpent = budgets.reduce((a, b) => a + b.spent, 0)
-  const totalLimit = budgets.reduce((a, b) => a + b.limit, 0)
-  const totalPct = Math.round((totalSpent / totalLimit) * 100)
+  useEffect(() => {
+    loadBudgets()
+  }, [])
+
+  const loadBudgets = async () => {
+    try {
+      const [budgetData, txData] = await Promise.all([listBudgets(), listTransactions()])
+      const active = budgetData.filter((b) => b.is_active)
+
+      const spentByCategory = new Map<string, number>()
+      for (const tx of txData) {
+        if (tx.transaction_type !== 'expense' || !tx.category) continue
+        const key = tx.category.toLowerCase()
+        spentByCategory.set(key, (spentByCategory.get(key) ?? 0) + Number(tx.amount ?? 0))
+      }
+
+      const withSpent = active.map((b) => {
+        const name = b.category?.name?.toLowerCase()
+        const spent = name ? spentByCategory.get(name) ?? 0 : 0
+        return { ...b, spent_amount: spent }
+      })
+
+      setBudgets(withSpent)
+    } catch (error) {
+      console.error('Error loading budgets:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const totalSpent = budgets.reduce((a, b) => a + (b.spent_amount ?? 0), 0)
+  const totalLimit = budgets.reduce((a, b) => a + b.limit_amount, 0)
+  const totalPct = totalLimit > 0 ? Math.round((totalSpent / totalLimit) * 100) : 0
+
+  if (loading) {
+    return (
+      <View style={[styles.screen, { justifyContent: 'center', alignItems: 'center' }]}>
+        <ActivityIndicator size="large" color={theme.colors.brandPrimary} />
+      </View>
+    )
+  }
 
   return (
     <View style={styles.screen}>
@@ -83,44 +132,57 @@ export default function BudgetsScreen() {
         </View>
 
         {/* Budget Cards */}
-        {budgets.map((budget) => {
-          const pct = Math.round((budget.spent / budget.limit) * 100)
-          const over = budget.spent > budget.limit
-          const warn = pct >= 80 && !over
-          const remaining = budget.limit - budget.spent
-          const toneColor = over ? theme.colors.danger : warn ? theme.colors.warning : theme.colors.brandPrimary
+        {budgets.length === 0 ? (
+          <View style={styles.emptyCard}>
+            <IconBubble name="budgets" tone="primary" size={56} />
+            <Text style={styles.emptyTitle}>Belum ada anggaran</Text>
+            <Text style={styles.emptySub}>Tambahkan anggaran baru untuk memantau pengeluaran.</Text>
+          </View>
+        ) : (
+          budgets.map((budget) => {
+            const spent = budget.spent_amount ?? 0
+            const pct = budget.limit_amount > 0 ? Math.round((spent / budget.limit_amount) * 100) : 0
+            const over = spent > budget.limit_amount
+            const warn = pct >= 80 && !over
+            const remaining = budget.limit_amount - spent
+            const toneColor = over ? theme.colors.danger : warn ? theme.colors.warning : theme.colors.brandPrimary
+            const categoryName = budget.category?.name ?? 'Kategori'
+            const categoryIcon = categoryIcons[categoryName] ?? 'card'
 
-          return (
-            <Pressable key={budget.id} style={styles.budgetCard}>
-              <View style={styles.budgetTop}>
-                <View style={styles.budgetLeft}>
-                  <View style={styles.budgetEmoji}>
-                    <Text style={styles.budgetEmojiText}>{budget.emoji}</Text>
+            return (
+              <Pressable key={budget.id} style={styles.budgetCard}>
+                <View style={styles.budgetTop}>
+                  <View style={styles.budgetLeft}>
+                    <IconBubble
+                      name={categoryIcon}
+                      tone={over ? 'danger' : warn ? 'warning' : 'primary'}
+                      size={44}
+                    />
+                    <View>
+                      <Text style={styles.budgetCategory}>{categoryName}</Text>
+                      <Text style={styles.budgetMeta}>
+                        Rp {(spent / 1000).toFixed(0)}rb / Rp {(budget.limit_amount / 1000).toFixed(0)}rb
+                      </Text>
+                    </View>
                   </View>
-                  <View>
-                    <Text style={styles.budgetCategory}>{budget.category}</Text>
-                    <Text style={styles.budgetMeta}>
-                      Rp {(budget.spent / 1000).toFixed(0)}rb / Rp {(budget.limit / 1000).toFixed(0)}rb
-                    </Text>
+                  <View style={[styles.budgetBadge, { backgroundColor: `${toneColor}15`, borderColor: `${toneColor}40` }]}>
+                    <Text style={[styles.budgetBadgeText, { color: toneColor }]}>{pct}%</Text>
                   </View>
                 </View>
-                <View style={[styles.budgetBadge, { backgroundColor: `${toneColor}15`, borderColor: `${toneColor}40` }]}>
-                  <Text style={[styles.budgetBadgeText, { color: toneColor }]}>{pct}%</Text>
+
+                <View style={styles.budgetBar}>
+                  <View style={[styles.budgetBarFill, { width: `${Math.min(pct, 100)}%`, backgroundColor: toneColor }]} />
                 </View>
-              </View>
 
-              <View style={styles.budgetBar}>
-                <View style={[styles.budgetBarFill, { width: `${Math.min(pct, 100)}%`, backgroundColor: toneColor }]} />
-              </View>
-
-              <Text style={styles.budgetFooter}>
-                {over
-                  ? `Melebihi anggaran Rp ${Math.abs(remaining / 1000).toFixed(0)}rb`
-                  : `Sisa Rp ${(remaining / 1000).toFixed(0)}rb`}
-              </Text>
-            </Pressable>
-          )
-        })}
+                <Text style={styles.budgetFooter}>
+                  {over
+                    ? `Melebihi anggaran Rp ${Math.abs(remaining / 1000).toFixed(0)}rb`
+                    : `Sisa Rp ${Math.max(remaining, 0).toLocaleString('id-ID', { maximumFractionDigits: 0 })}`}
+                </Text>
+              </Pressable>
+            )
+          })
+        )}
 
         <View style={{ height: 100 }} />
       </ScrollView>
@@ -198,15 +260,6 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
     },
     budgetTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
     budgetLeft: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-    budgetEmoji: {
-      width: 42,
-      height: 42,
-      borderRadius: 14,
-      backgroundColor: theme.colors.mutedSurface,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    budgetEmojiText: { fontSize: 20 },
     budgetCategory: { color: theme.colors.textPrimary, fontSize: 14, fontWeight: '700' },
     budgetMeta: { color: theme.colors.textMuted, fontSize: 12, marginTop: 2 },
     budgetBadge: {
@@ -224,5 +277,17 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
     },
     budgetBarFill: { height: '100%', borderRadius: 999 },
     budgetFooter: { color: theme.colors.textMuted, fontSize: 11, fontWeight: '600' },
+    emptyCard: {
+      backgroundColor: theme.colors.surface,
+      borderRadius: 18,
+      borderWidth: 1,
+      borderColor: theme.colors.borderSoft,
+      borderStyle: 'dashed',
+      padding: 24,
+      alignItems: 'center',
+      gap: 8,
+    },
+    emptyTitle: { color: theme.colors.textPrimary, fontSize: 15, fontWeight: '800' },
+    emptySub: { color: theme.colors.textMuted, fontSize: 13, textAlign: 'center', lineHeight: 20 },
   })
 }

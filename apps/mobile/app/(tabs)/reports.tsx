@@ -1,6 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Pressable, ScrollView, StyleSheet, Text, View, Share, Modal } from 'react-native'
 
+import { KaswiseIcon } from '../../src/components/icons/kaswise-icons'
+import type { KaswiseIconName } from '../../src/components/icons/kaswise-icons'
+import { IconBubble } from '../../src/components/ui'
 import { useTheme } from '../../src/theme/theme-context'
 import { useSupabase } from '../../src/lib/supabase'
 
@@ -17,18 +20,18 @@ const periodLabels: Record<PeriodFilter, string> = {
   custom: 'Kustom',
 }
 
-const categoryEmojis: Record<string, string> = {
-  'Makanan': '🍽',
-  'Makan': '🍽',
-  'Transport': '🚗',
-  'Transportasi': '🚗',
-  'Belanja': '🛒',
-  'Hiburan': '🎮',
-  'Tagihan': '📄',
-  'Kesehatan': '💊',
-  'Pendidikan': '📚',
-  'Pendapatan': '💰',
-  'Lainnya': '📦',
+const categoryIcons: Record<string, KaswiseIconName> = {
+  'Makanan': 'chart',
+  'Makan': 'chart',
+  'Transport': 'transactions',
+  'Transportasi': 'transactions',
+  'Belanja': 'wallets',
+  'Hiburan': 'insight',
+  'Tagihan': 'bills',
+  'Kesehatan': 'budgets',
+  'Pendidikan': 'file',
+  'Pendapatan': 'card',
+  'Lainnya': 'card',
 }
 
 export default function ReportsScreen() {
@@ -66,7 +69,7 @@ export default function ReportsScreen() {
     category: string
     amount: number
     percent: number
-    emoji: string
+    icon: KaswiseIconName
   }>>([])
   const [chartData, setChartData] = useState<{
     months: string[]
@@ -192,7 +195,7 @@ export default function ReportsScreen() {
             category,
             amount,
             percent: totalExpenseForCategory > 0 ? Math.round((amount / totalExpenseForCategory) * 100) : 0,
-            emoji: categoryEmojis[category] || '📦',
+            icon: categoryIcons[category] || 'card',
           }))
           .sort((a, b) => b.amount - a.amount)
 
@@ -401,7 +404,7 @@ export default function ReportsScreen() {
                 {incomeGrowth !== 0 && (
                   <View style={styles.metricTrend}>
                     <Text style={[styles.metricTrendText, { color: incomeGrowth >= 0 ? theme.colors.success : theme.colors.danger }]}>
-                      {incomeGrowth >= 0 ? '▲' : '▼'} {Math.abs(incomeGrowth).toFixed(1)}%
+                      <KaswiseIcon name="back" size={10} color={incomeGrowth >= 0 ? theme.colors.success : theme.colors.danger} weight="bold" /> {Math.abs(incomeGrowth).toFixed(1)}%
                     </Text>
                   </View>
                 )}
@@ -414,7 +417,7 @@ export default function ReportsScreen() {
                 {expenseGrowth !== 0 && (
                   <View style={styles.metricTrend}>
                     <Text style={[styles.metricTrendText, { color: expenseGrowth >= 0 ? theme.colors.danger : theme.colors.success }]}>
-                      {expenseGrowth >= 0 ? '▲' : '▼'} {Math.abs(expenseGrowth).toFixed(1)}%
+                      <KaswiseIcon name="back" size={10} color={expenseGrowth >= 0 ? theme.colors.danger : theme.colors.success} weight="bold" /> {Math.abs(expenseGrowth).toFixed(1)}%
                     </Text>
                   </View>
                 )}
@@ -517,7 +520,7 @@ export default function ReportsScreen() {
 
               {categoryData.length === 0 ? (
                 <View style={styles.emptyCard}>
-                  <Text style={styles.emptyIcon}>📊</Text>
+                  <IconBubble name="reports" tone="primary" size={56} />
                   <Text style={styles.emptyTitle}>Belum ada data</Text>
                   <Text style={styles.emptySub}>Catat transaksi pengeluaran untuk melihat breakdown.</Text>
                 </View>
@@ -531,7 +534,7 @@ export default function ReportsScreen() {
                     ]}
                   >
                     <View style={styles.catLeft}>
-                      <Text style={styles.catEmoji}>{cat.emoji}</Text>
+                      <IconBubble name={cat.icon} tone="primary" size={36} />
                       <View>
                         <Text style={styles.catName}>{cat.category}</Text>
                         <Text style={styles.catAmount}>{formatRupiah(cat.amount)}</Text>
@@ -569,7 +572,7 @@ export default function ReportsScreen() {
                     <View style={styles.compareValues}>
                       <Text style={styles.compareCurrent}>{formatRupiah(compareData.current.income)}</Text>
                       <Text style={[styles.compareDelta, compareData.current.income >= compareData.previous.income ? styles.compareDeltaPositive : styles.compareDeltaNegative]}>
-                        {compareData.current.income >= compareData.previous.income ? '▲' : '▼'} {formatRupiah(Math.abs(compareData.current.income - compareData.previous.income))}
+                        {compareData.current.income >= compareData.previous.income ? 'Naik' : 'Turun'} {formatRupiah(Math.abs(compareData.current.income - compareData.previous.income))}
                       </Text>
                     </View>
                   </View>
@@ -578,7 +581,7 @@ export default function ReportsScreen() {
                     <View style={styles.compareValues}>
                       <Text style={styles.compareCurrent}>{formatRupiah(compareData.current.expense)}</Text>
                       <Text style={[styles.compareDelta, compareData.current.expense <= compareData.previous.expense ? styles.compareDeltaPositive : styles.compareDeltaNegative]}>
-                        {compareData.current.expense <= compareData.previous.expense ? '▼' : '▲'} {formatRupiah(Math.abs(compareData.current.expense - compareData.previous.expense))}
+                        {compareData.current.expense <= compareData.previous.expense ? 'Turun' : 'Naik'} {formatRupiah(Math.abs(compareData.current.expense - compareData.previous.expense))}
                       </Text>
                     </View>
                   </View>
@@ -587,7 +590,7 @@ export default function ReportsScreen() {
                     <View style={styles.compareValues}>
                       <Text style={styles.compareCurrent}>{formatRupiah(compareData.current.net)}</Text>
                       <Text style={[styles.compareDelta, compareData.current.net >= compareData.previous.net ? styles.compareDeltaPositive : styles.compareDeltaNegative]}>
-                        {compareData.current.net >= compareData.previous.net ? '▲' : '▼'} {formatRupiah(Math.abs(compareData.current.net - compareData.previous.net))}
+                        {compareData.current.net >= compareData.previous.net ? 'Naik' : 'Turun'} {formatRupiah(Math.abs(compareData.current.net - compareData.previous.net))}
                       </Text>
                     </View>
                   </View>
@@ -596,7 +599,7 @@ export default function ReportsScreen() {
                     <View style={styles.compareValues}>
                       <Text style={styles.compareCurrent}>{compareData.current.count}</Text>
                       <Text style={[styles.compareDelta, compareData.current.count >= compareData.previous.count ? styles.compareDeltaPositive : styles.compareDeltaNegative]}>
-                        {compareData.current.count >= compareData.previous.count ? '▲' : '▼'} {Math.abs(compareData.current.count - compareData.previous.count)}
+                        {compareData.current.count >= compareData.previous.count ? 'Naik' : 'Turun'} {Math.abs(compareData.current.count - compareData.previous.count)}
                       </Text>
                     </View>
                   </View>
@@ -931,7 +934,6 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
       borderTopColor: theme.colors.borderSoft,
     },
     catLeft: { flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 },
-    catEmoji: { fontSize: 18 },
     catName: { color: theme.colors.textPrimary, fontSize: 13, fontWeight: '700' },
     catAmount: { color: theme.colors.textMuted, fontSize: 11, marginTop: 1 },
     catRight: { alignItems: 'flex-end', gap: 4 },
@@ -948,7 +950,6 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
       alignItems: 'center',
       gap: 8,
     },
-    emptyIcon: { fontSize: 32, marginBottom: 4 },
     emptyTitle: { color: theme.colors.textPrimary, fontSize: 15, fontWeight: '800' },
     emptySub: { color: theme.colors.textMuted, fontSize: 13, textAlign: 'center', lineHeight: 20 },
     customRangeBadge: {
