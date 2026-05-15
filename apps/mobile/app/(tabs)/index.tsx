@@ -3,14 +3,15 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { useRouter } from 'expo-router'
 
 import { useTheme } from '../../src/theme/theme-context'
+import { useI18n } from '../../src/i18n/i18n-context'
 import { IconBubble } from '../../src/components/ui/IconBubble'
 import type { KaswiseIconName } from '../../src/components/icons/kaswise-icons'
 
 const recentTransactions = [
-  { id: '1', title: 'Gaji Bulanan', date: '9 Mei 2026', amount: '+ Rp 8.500.000', tone: 'positive', category: 'Pemasukan' },
-  { id: '2', title: 'Belanja Bulanan', date: '8 Mei 2026', amount: '- Rp 450.000', tone: 'negative', category: 'Belanja' },
-  { id: '3', title: 'Transportasi', date: '8 Mei 2026', amount: '- Rp 75.000', tone: 'negative', category: 'Transport' },
-  { id: '4', title: 'Makan Siang', date: '7 Mei 2026', amount: '- Rp 45.000', tone: 'negative', category: 'Makanan' },
+  { id: '1', title: 'Gaji Bulanan', date: new Date(2026, 4, 9), amount: 8500000, tone: 'positive', category: 'Pemasukan', type: 'income' },
+  { id: '2', title: 'Belanja Bulanan', date: new Date(2026, 4, 8), amount: 450000, tone: 'negative', category: 'Belanja', type: 'expense' },
+  { id: '3', title: 'Transportasi', date: new Date(2026, 4, 8), amount: 75000, tone: 'negative', category: 'Transport', type: 'expense' },
+  { id: '4', title: 'Makan Siang', date: new Date(2026, 4, 7), amount: 45000, tone: 'negative', category: 'Makanan', type: 'expense' },
 ]
 
 const budgetItems: Array<{ id: string; name: string; spent: number; limit: number; icon: KaswiseIconName }> = [
@@ -19,21 +20,27 @@ const budgetItems: Array<{ id: string; name: string; spent: number; limit: numbe
   { id: '3', name: 'Belanja', spent: 450000, limit: 500000, icon: 'wallets' },
 ]
 
-const quickActions: Array<{ id: string; label: string; icon: KaswiseIconName; route: string }> = [
-  { id: 'text', label: 'Teks', icon: 'transactions', route: '/(tabs)/capture' },
-  { id: 'photo', label: 'Foto', icon: 'capture', route: '/(tabs)/capture' },
-  { id: 'voice', label: 'Suara', icon: 'file', route: '/(tabs)/capture' },
-  { id: 'import', label: 'Import', icon: 'imports', route: '/(tabs)/imports' },
-]
-
 export default function DashboardScreen() {
   const { theme } = useTheme()
+  const { language } = useI18n()
   const router = useRouter()
   const styles = useMemo(() => createStyles(theme), [theme])
+
+  const formatDate = (date: Date) => date.toLocaleDateString(language === 'id' ? 'id-ID' : 'en-US', { day: 'numeric', month: 'short', year: 'numeric' })
+  const formatCurrency = (amount: number) => amount.toLocaleString(language === 'id' ? 'id-ID' : 'en-US', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0, maximumFractionDigits: 0 })
 
   const totalBudgetSpent = budgetItems.reduce((acc, item) => acc + item.spent, 0)
   const totalBudgetLimit = budgetItems.reduce((acc, item) => acc + item.limit, 0)
   const budgetPercentage = Math.round((totalBudgetSpent / totalBudgetLimit) * 100)
+
+  const quickActions: Array<{ id: string; label: string; icon: KaswiseIconName; route: string }> = [
+    { id: 'text', label: language === 'id' ? 'Teks' : 'Text', icon: 'transactions', route: '/(tabs)/capture' },
+    { id: 'photo', label: language === 'id' ? 'Foto' : 'Photo', icon: 'capture', route: '/(tabs)/capture' },
+    { id: 'voice', label: language === 'id' ? 'Suara' : 'Voice', icon: 'file', route: '/(tabs)/capture' },
+    { id: 'import', label: language === 'id' ? 'Import' : 'Import', icon: 'imports', route: '/(tabs)/imports' },
+  ]
+
+  const currentMonth = new Date().toLocaleDateString(language === 'id' ? 'id-ID' : 'en-US', { month: 'long', year: 'numeric' })
 
   return (
     <View style={styles.screen}>
@@ -41,8 +48,8 @@ export default function DashboardScreen() {
         {/* Header */}
         <View style={styles.headerRow}>
           <View>
-            <Text style={styles.greeting}>Selamat datang, Danu</Text>
-            <Text style={styles.dateText}>Mei 2026</Text>
+            <Text style={styles.greeting}>{language === 'id' ? 'Selamat datang, Danu' : 'Welcome, Danu'}</Text>
+            <Text style={styles.dateText}>{currentMonth}</Text>
           </View>
           <View style={styles.avatarWrap}>
             <Text style={styles.avatarText}>DB</Text>
@@ -52,37 +59,37 @@ export default function DashboardScreen() {
         {/* Balance Hero */}
         <View style={styles.heroCard}>
           <View style={styles.heroTop}>
-            <Text style={styles.heroLabel}>Total Saldo</Text>
+            <Text style={styles.heroLabel}>{language === 'id' ? 'Total Saldo' : 'Total Balance'}</Text>
             <View style={styles.heroBadge}>
-              <Text style={styles.heroBadgeText}>Premium</Text>
+              <Text style={styles.heroBadgeText}>{language === 'id' ? 'Premium' : 'Premium'}</Text>
             </View>
           </View>
-          <Text style={styles.heroAmount}>Rp 24.250.000</Text>
+          <Text style={styles.heroAmount}>{formatCurrency(24250000)}</Text>
           <View style={styles.heroTrendRow}>
             <View style={styles.trendDot}>
               <Text style={styles.trendDotText}>▲</Text>
             </View>
-            <Text style={styles.heroTrend}>+12.5% dari bulan lalu</Text>
+            <Text style={styles.heroTrend}>{language === 'id' ? '+12.5% dari bulan lalu' : '+12.5% from last month'}</Text>
           </View>
 
           <View style={styles.heroDivider} />
 
           <View style={styles.heroStatsRow}>
             <View style={styles.heroStat}>
-              <Text style={styles.heroStatLabel}>Pemasukan</Text>
-              <Text style={[styles.heroStatValue, { color: theme.colors.success }]}>+Rp 18.65 Jt</Text>
+              <Text style={styles.heroStatLabel}>{language === 'id' ? 'Pemasukan' : 'Income'}</Text>
+              <Text style={[styles.heroStatValue, { color: theme.colors.success }]}>+{formatCurrency(18650000)}</Text>
             </View>
             <View style={styles.heroStatDivider} />
             <View style={styles.heroStat}>
-              <Text style={styles.heroStatLabel}>Pengeluaran</Text>
-              <Text style={[styles.heroStatValue, { color: theme.colors.danger }]}>-Rp 6.40 Jt</Text>
+              <Text style={styles.heroStatLabel}>{language === 'id' ? 'Pengeluaran' : 'Expense'}</Text>
+              <Text style={[styles.heroStatValue, { color: theme.colors.danger }]}>-{formatCurrency(6400000)}</Text>
             </View>
           </View>
         </View>
 
         {/* Quick Actions */}
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Catat Cepat</Text>
+          <Text style={styles.sectionTitle}>{language === 'id' ? 'Catat Cepat' : 'Quick Capture'}</Text>
         </View>
         <View style={styles.quickActionRow}>
           {quickActions.map((action) => (
@@ -99,20 +106,20 @@ export default function DashboardScreen() {
 
         {/* Budget Overview */}
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Anggaran Bulan Ini</Text>
+          <Text style={styles.sectionTitle}>{language === 'id' ? 'Anggaran Bulan Ini' : 'This Month Budget'}</Text>
           <Pressable style={styles.sectionLinkWrap}>
-            <Text style={styles.sectionLink}>Lihat Semua</Text>
+            <Text style={styles.sectionLink}>{language === 'id' ? 'Lihat Semua' : 'View All'}</Text>
           </Pressable>
         </View>
         <View style={styles.budgetSummaryCard}>
           <View style={styles.budgetSummaryTop}>
             <View>
-              <Text style={styles.budgetSummaryLabel}>Terpakai</Text>
+              <Text style={styles.budgetSummaryLabel}>{language === 'id' ? 'Terpakai' : 'Used'}</Text>
               <Text style={styles.budgetSummaryValue}>{budgetPercentage}%</Text>
             </View>
             <View style={styles.budgetSummaryRight}>
-              <Text style={styles.budgetSummarySpent}>Rp {(totalBudgetSpent / 1000000).toFixed(2)} Jt</Text>
-              <Text style={styles.budgetSummaryLimit}>dari Rp {(totalBudgetLimit / 1000000).toFixed(1)} Jt</Text>
+              <Text style={styles.budgetSummarySpent}>{formatCurrency(totalBudgetSpent)}</Text>
+              <Text style={styles.budgetSummaryLimit}>{language === 'id' ? 'dari' : 'of'} {formatCurrency(totalBudgetLimit)}</Text>
             </View>
           </View>
           <View style={styles.budgetProgressBar}>
@@ -145,7 +152,7 @@ export default function DashboardScreen() {
                 <View>
                   <Text style={styles.budgetItemName}>{item.name}</Text>
                   <Text style={styles.budgetItemMeta}>
-                    Rp {(item.spent / 1000).toFixed(0)}rb / Rp {(item.limit / 1000).toFixed(0)}rb
+                    {formatCurrency(item.spent)} / {formatCurrency(item.limit)}
                   </Text>
                 </View>
               </View>
@@ -166,9 +173,9 @@ export default function DashboardScreen() {
 
         {/* Recent Transactions */}
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Transaksi Terbaru</Text>
+          <Text style={styles.sectionTitle}>{language === 'id' ? 'Transaksi Terbaru' : 'Recent Transactions'}</Text>
           <Pressable style={styles.sectionLinkWrap} onPress={() => router.push('/(tabs)/transactions')}>
-            <Text style={styles.sectionLink}>Lihat Semua</Text>
+            <Text style={styles.sectionLink}>{language === 'id' ? 'Lihat Semua' : 'View All'}</Text>
           </Pressable>
         </View>
         <View style={styles.transactionCard}>
@@ -187,7 +194,7 @@ export default function DashboardScreen() {
               </View>
               <View style={styles.txInfo}>
                 <Text style={styles.txTitle}>{tx.title}</Text>
-                <Text style={styles.txSub}>{tx.category} • {tx.date}</Text>
+                <Text style={styles.txSub}>{tx.category} • {formatDate(tx.date)}</Text>
               </View>
               <Text
                 style={[
@@ -195,7 +202,7 @@ export default function DashboardScreen() {
                   tx.tone === 'positive' ? { color: theme.colors.success } : { color: theme.colors.textPrimary },
                 ]}
               >
-                {tx.amount}
+                {tx.type === 'income' ? '+' : '-'} {formatCurrency(tx.amount)}
               </Text>
             </Pressable>
           ))}

@@ -6,10 +6,12 @@ import { useSupabase } from '../../src/lib/supabase'
 import type { KaswiseIconName } from '../../src/components/icons/kaswise-icons'
 import { IconBubble } from '../../src/components/ui'
 import { useTheme } from '../../src/theme/theme-context'
+import { useI18n } from '../../src/i18n/i18n-context'
 
 export default function SettingsScreen() {
   const { supabase } = useSupabase()
   const { theme, preference, setPreference } = useTheme()
+  const { language, setLanguage, t } = useI18n()
   const styles = useMemo(() => createStyles(theme), [theme])
   const [dailyReminder, setDailyReminder] = useState(true)
   const [billReminder, setBillReminder] = useState(true)
@@ -20,14 +22,20 @@ export default function SettingsScreen() {
     router.replace('/(auth)/login')
   }
 
+  const themeLabels = {
+    system: language === 'id' ? 'Sistem' : 'System',
+    light: language === 'id' ? 'Terang' : 'Light',
+    dark: language === 'id' ? 'Gelap' : 'Dark',
+  }
+
   return (
     <View style={styles.screen}>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         {/* Header */}
         <View style={styles.headerRow}>
           <View>
-            <Text style={styles.title}>Pengaturan</Text>
-            <Text style={styles.subtitle}>Sesuaikan pengalaman aplikasi.</Text>
+            <Text style={styles.title}>{t('settingsTitle')}</Text>
+            <Text style={styles.subtitle}>{t('settingsSubtitle')}</Text>
           </View>
         </View>
 
@@ -41,14 +49,14 @@ export default function SettingsScreen() {
             <Text style={styles.profileEmail}>danu@example.com</Text>
           </View>
           <Pressable style={styles.profileEdit}>
-            <Text style={styles.profileEditText}>Edit</Text>
+            <Text style={styles.profileEditText}>{language === 'id' ? 'Edit' : 'Edit'}</Text>
           </Pressable>
         </View>
 
         {/* Theme Section */}
         <View style={styles.sectionCard}>
-          <Text style={styles.sectionTitle}>Tampilan</Text>
-          <Text style={styles.sectionSub}>Pilih tema yang nyaman di mata.</Text>
+          <Text style={styles.sectionTitle}>{language === 'id' ? 'Tampilan' : 'Appearance'}</Text>
+          <Text style={styles.sectionSub}>{language === 'id' ? 'Pilih tema yang nyaman di mata.' : 'Choose a comfortable theme.'}</Text>
 
           <View style={styles.themeGrid}>
             {(['system', 'light', 'dark'] as const).map((mode) => (
@@ -69,7 +77,38 @@ export default function SettingsScreen() {
                     preference === mode && { color: theme.colors.textInverse },
                   ]}
                 >
-                  {mode === 'system' ? 'Sistem' : mode === 'light' ? 'Terang' : 'Gelap'}
+                  {themeLabels[mode]}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+        </View>
+
+        {/* Language Section */}
+        <View style={styles.sectionCard}>
+          <Text style={styles.sectionTitle}>{t('languageSection')}</Text>
+          <Text style={styles.sectionSub}>{t('languageSectionHelper')}</Text>
+
+          <View style={styles.themeGrid}>
+            {(['id', 'en'] as const).map((lang) => (
+              <Pressable
+                key={lang}
+                onPress={() => setLanguage(lang)}
+                style={[
+                  styles.themeChip,
+                  language === lang && {
+                    backgroundColor: theme.colors.brandPrimary,
+                    borderColor: theme.colors.brandPrimary,
+                  },
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.themeChipText,
+                    language === lang && { color: theme.colors.textInverse },
+                  ]}
+                >
+                  {lang === 'id' ? t('indonesian') : t('english')}
                 </Text>
               </Pressable>
             ))}
@@ -78,65 +117,68 @@ export default function SettingsScreen() {
 
         {/* Notifications Section */}
         <View style={styles.sectionCard}>
-          <Text style={styles.sectionTitle}>Notifikasi</Text>
-          <Text style={styles.sectionSub}>Kelola pengingat penting.</Text>
+          <Text style={styles.sectionTitle}>{language === 'id' ? 'Notifikasi' : 'Notifications'}</Text>
+          <Text style={styles.sectionSub}>{language === 'id' ? 'Kelola pengingat penting.' : 'Manage important reminders.'}</Text>
 
           <ToggleRow
             icon="chart"
             tone="info"
-            title="Ringkasan Harian"
-            helper="Notifikasi kondisi keuangan setiap malam"
+            title={language === 'id' ? 'Ringkasan Harian' : 'Daily Summary'}
+            helper={language === 'id' ? 'Notifikasi kondisi keuangan setiap malam' : 'Nightly financial condition notification'}
             value={dailyReminder}
             onToggle={() => setDailyReminder((v) => !v)}
+            theme={theme}
           />
           <ToggleRow
             icon="bills"
             tone="warning"
-            title="Pengingat Tagihan"
-            helper="Notifikasi sebelum jatuh tempo"
+            title={language === 'id' ? 'Pengingat Tagihan' : 'Bill Reminder'}
+            helper={language === 'id' ? 'Notifikasi sebelum jatuh tempo' : 'Notification before due date'}
             value={billReminder}
             onToggle={() => setBillReminder((v) => !v)}
+            theme={theme}
           />
           <ToggleRow
             icon="budgets"
             tone="primary"
-            title="Alert Anggaran"
-            helper="Notifikasi saat budget hampir habis"
+            title={language === 'id' ? 'Alert Anggaran' : 'Budget Alert'}
+            helper={language === 'id' ? 'Notifikasi saat budget hampir habis' : 'Notification when budget is nearly depleted'}
             value={budgetAlert}
             onToggle={() => setBudgetAlert((v) => !v)}
+            theme={theme}
           />
         </View>
 
         {/* Quick Links */}
         <View style={styles.sectionCard}>
-          <Text style={styles.sectionTitle}>Akses Cepat</Text>
-          <Text style={styles.sectionSub}>Navigasi ke halaman lain.</Text>
+          <Text style={styles.sectionTitle}>{language === 'id' ? 'Akses Cepat' : 'Quick Access'}</Text>
+          <Text style={styles.sectionSub}>{language === 'id' ? 'Navigasi ke halaman lain.' : 'Navigate to other pages.'}</Text>
 
-          <NavRow icon="wallets" tone="primary" title="Dompet" helper="Kelola saldo akun" onPress={() => router.push('/(tabs)/wallets')} />
-          <NavRow icon="budgets" tone="warning" title="Anggaran" helper="Batas pengeluaran" onPress={() => router.push('/(tabs)/budgets')} />
-          <NavRow icon="bills" tone="accent" title="Tagihan" helper="Pengingat rutin" onPress={() => router.push('/(tabs)/bills')} />
-          <NavRow icon="groups" tone="info" title="Grup" helper="Keuangan bersama" onPress={() => router.push('/(tabs)/groups')} />
-          <NavRow icon="imports" tone="accent" title="Import" helper="Mutasi & struk" onPress={() => router.push('/(tabs)/imports')} />
+          <NavRow icon="wallets" tone="primary" title={t('headerWallets')} helper={language === 'id' ? 'Kelola saldo akun' : 'Manage account balances'} onPress={() => router.push('/(tabs)/wallets')} />
+          <NavRow icon="budgets" tone="warning" title={t('headerBudgets')} helper={language === 'id' ? 'Batas pengeluaran' : 'Spending limits'} onPress={() => router.push('/(tabs)/budgets')} />
+          <NavRow icon="bills" tone="accent" title={t('headerBills')} helper={language === 'id' ? 'Pengingat rutin' : 'Recurring reminders'} onPress={() => router.push('/(tabs)/bills')} />
+          <NavRow icon="groups" tone="info" title={t('headerGroups')} helper={language === 'id' ? 'Keuangan bersama' : 'Shared finances'} onPress={() => router.push('/(tabs)/groups')} />
+          <NavRow icon="imports" tone="accent" title={t('headerImports')} helper={language === 'id' ? 'Mutasi & struk' : 'Statements & receipts'} onPress={() => router.push('/(tabs)/imports')} />
         </View>
 
         {/* Account Section */}
         <View style={styles.sectionCard}>
-          <Text style={styles.sectionTitle}>Akun & Keamanan</Text>
+          <Text style={styles.sectionTitle}>{language === 'id' ? 'Akun & Keamanan' : 'Account & Security'}</Text>
 
-          <NavRow icon="lock" tone="danger" title="Ubah Password" helper="Perbarui password akun" onPress={() => {}} />
-          <NavRow icon="settings" tone="info" title="Bahasa" helper="Bahasa Indonesia" onPress={() => {}} />
-          <NavRow icon="file" tone="accent" title="Kebijakan Privasi" helper="Baca syarat & ketentuan" onPress={() => {}} />
+          <NavRow icon="lock" tone="danger" title={language === 'id' ? 'Ubah Password' : 'Change Password'} helper={language === 'id' ? 'Perbarui password akun' : 'Update account password'} onPress={() => {}} />
+          <NavRow icon="settings" tone="info" title={t('language')} helper={t('languageHelper')} onPress={() => {}} />
+          <NavRow icon="file" tone="accent" title={language === 'id' ? 'Kebijakan Privasi' : 'Privacy Policy'} helper={language === 'id' ? 'Baca syarat & ketentuan' : 'Read terms & conditions'} onPress={() => {}} />
         </View>
 
         {/* App Info */}
         <View style={styles.appInfo}>
           <Text style={styles.appName}>kaswise v1.0.0</Text>
-          <Text style={styles.appTagline}>Catat Keuangan, Bijak Setiap Hari</Text>
+          <Text style={styles.appTagline}>{language === 'id' ? 'Catat Keuangan, Bijak Setiap Hari' : 'Track Finances, Wise Every Day'}</Text>
         </View>
 
         {/* Logout */}
         <Pressable style={styles.logoutBtn} onPress={onLogout}>
-          <Text style={styles.logoutText}>Keluar dari Akun</Text>
+          <Text style={styles.logoutText}>{language === 'id' ? 'Keluar dari Akun' : 'Sign Out'}</Text>
         </Pressable>
 
         <View style={{ height: 100 }} />
@@ -152,6 +194,7 @@ function ToggleRow({
   helper,
   value,
   onToggle,
+  theme,
 }: {
   icon: KaswiseIconName
   tone: 'primary' | 'success' | 'warning' | 'danger' | 'accent' | 'info'
@@ -159,9 +202,8 @@ function ToggleRow({
   helper: string
   value: boolean
   onToggle: () => void
+  theme: ReturnType<typeof useTheme>['theme']
 }) {
-  const { theme } = useTheme()
-
   return (
     <Pressable
       onPress={onToggle}

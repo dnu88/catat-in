@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
+import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from 'react-native'
 
 import type { KaswiseIconName } from '../../src/components/icons/kaswise-icons'
 import { EmptyState, IconBubble, ScreenHeader, StateMessage } from '../../src/components/ui'
@@ -8,6 +8,14 @@ import { listBudgets, type Budget } from '../../src/services/budgets'
 import { listTransactions } from '../../src/services/transactions'
 
 type Period = 'current' | 'prev'
+
+type BudgetWithSpent = Budget & { spent_amount: number }
+
+type BudgetRowProps = {
+  item: BudgetWithSpent
+  theme: ReturnType<typeof useTheme>['theme']
+  styles: ReturnType<typeof createStyles>
+}
 
 const categoryIcons: Record<string, KaswiseIconName> = {
   'Makan': 'chart',
@@ -22,11 +30,55 @@ const categoryIcons: Record<string, KaswiseIconName> = {
   'Lainnya': 'card',
 }
 
+function BudgetRow({ item: budget, theme, styles }: BudgetRowProps) {
+  const spent = budget.spent_amount ?? 0
+  const pct = budget.limit_amount > 0 ? Math.round((spent / budget.limit_amount) * 100) : 0
+  const over = spent > budget.limit_amount
+  const warn = pct >= 80 && !over
+  const remaining = budget.limit_amount - spent
+  const toneColor = over ? theme.colors.danger : warn ? theme.colors.warning : theme.colors.brandPrimary
+  const categoryName = budget.category?.name ?? 'Kategori'
+  const categoryIcon = categoryIcons[categoryName] ?? 'card'
+
+  return (
+    <Pressable style={styles.budgetCard}>
+      <View style={styles.budgetTop}>
+        <View style={styles.budgetLeft}>
+          <IconBubble
+            name={categoryIcon}
+            tone={over ? 'danger' : warn ? 'warning' : 'primary'}
+            size={44}
+          />
+          <View>
+            <Text style={styles.budgetCategory} numberOfLines={1} ellipsizeMode="tail">{categoryName}</Text>
+            <Text style={styles.budgetMeta}>
+              Rp {(spent / 1000).toFixed(0)}rb / Rp {(budget.limit_amount / 1000).toFixed(0)}rb
+            </Text>
+          </View>
+        </View>
+        <View style={[styles.budgetBadge, { backgroundColor: `${toneColor}15`, borderColor: `${toneColor}40` }]}>
+          <Text style={[styles.budgetBadgeText, { color: toneColor }]}>{pct}%</Text>
+        </View>
+      </View>
+
+      <View style={styles.budgetBar}>
+        <View style={[styles.budgetBarFill, { width: `${Math.min(pct, 100)}%`, backgroundColor: toneColor }]} />
+      </View>
+
+      <Text style={styles.budgetFooter}>
+        {over
+          ? `Melebihi anggaran Rp ${Math.abs(remaining / 1000).toFixed(0)}rb`
+          : `Sisa Rp ${Math.max(remaining, 0).toLocaleString('id-ID', { maximumFractionDigits: 0 })}`}
+      </Text>
+    </Pressable>
+  )
+}
+
 export default function BudgetsScreen() {
   const { theme } = useTheme()
   const styles = useMemo(() => createStyles(theme), [theme])
   const [period, setPeriod] = useState<Period>('current')
-  const [budgets, setBudgets] = useState<Budget[]>([])
+  const [budgets, setBudgets] = useState<BudgetWithSpent[]>([])
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
 
@@ -83,124 +135,99 @@ export default function BudgetsScreen() {
     )
   }
 
+  const renderBudget = ({ item }: { item: BudgetWithSpent }) => (
+    <BudgetRow item={item} theme={theme} styles={styles} />
+  )
+
+  const keyExtractor = (item: BudgetWithSpent) => item.id
+
+  const ListHeader = () => (
+    <>
+      <ScreenHeader
+        title="Anggaran"
+        subtitle="Kelola batas pengeluaranmu per kategori."
+        action={(
+          <Pressable style={styles.addButton}>
+            <Text style={styles.addButtonText}>+ Baru</Text>
+          </Pressable>
+        )}
+      />
+
+      <View style={styles.periodRow}>
+        <Pressable
+          style={[styles.periodChip, period === 'current' && styles.periodChipActive]}
+          onPress={() => setPeriod('current')}
+        >
+          <Text style={[styles.periodText, period === 'current' && styles.periodTextActive]}>Mei 2026</Text>
+        </Pressable>
+        <Pressable
+          style={[styles.periodChip, period === 'prev' && styles.periodChipActive]}
+          onPress={() => setPeriod('prev')}
+        >
+          <Text style={[styles.periodText, period === 'prev' && styles.periodTextActive]}>Apr 2026</Text>
+        </Pressable>
+      </View>
+
+      {loadError ? <StateMessage message={loadError} tone="error" /> : null}
+
+      <View style={styles.overviewCard}>
+        <View style={styles.overviewTop}>
+          <View>
+            <Text style={styles.overviewLabel}>Total Anggaran Terpakai</Text>
+            <Text style={styles.overviewPct}>{totalPct}%</Text>
+          </View>
+          <View style={styles.overviewRight}>
+            <Text style={styles.overviewSpent}>Rp {(totalSpent / 1000000).toFixed(2)} Jt</Text>
+            <Text style={styles.overviewLimit}>dari Rp {(totalLimit / 1000000).toFixed(1)} Jt</Text>
+          </View>
+        </View>
+        <View style={styles.overviewBar}>
+          <View
+            style={[
+              styles.overviewBarFill,
+              {
+                width: `${Math.min(totalPct, 100)}%`,
+                backgroundColor: totalPct > 80 ? theme.colors.warning : theme.colors.brandPrimary,
+              },
+            ]}
+          />
+        </View>
+        <Text style={styles.overviewHelper}>
+          {totalPct < 50
+            ? 'Kamu masih punya ruang anggaran yang baik.'
+            : totalPct < 80
+              ? 'Penggunaan anggaran masih terkontrol.'
+              : 'Hati-hati, anggaranmu hampir habis bulan ini.'}
+        </Text>
+      </View>
+    </>
+  )
+
+  const ListEmpty = () => (
+    <EmptyState
+      icon="budgets"
+      tone="primary"
+      title="Belum ada anggaran"
+      description="Tambahkan anggaran baru untuk memantau pengeluaran."
+    />
+  )
+
   return (
     <View style={styles.screen}>
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <ScreenHeader
-          title="Anggaran"
-          subtitle="Kelola batas pengeluaranmu per kategori."
-          action={(
-            <Pressable style={styles.addButton}>
-              <Text style={styles.addButtonText}>+ Baru</Text>
-            </Pressable>
-          )}
-        />
-
-        <View style={styles.periodRow}>
-          <Pressable
-            style={[styles.periodChip, period === 'current' && styles.periodChipActive]}
-            onPress={() => setPeriod('current')}
-          >
-            <Text style={[styles.periodText, period === 'current' && styles.periodTextActive]}>Mei 2026</Text>
-          </Pressable>
-          <Pressable
-            style={[styles.periodChip, period === 'prev' && styles.periodChipActive]}
-            onPress={() => setPeriod('prev')}
-          >
-            <Text style={[styles.periodText, period === 'prev' && styles.periodTextActive]}>Apr 2026</Text>
-          </Pressable>
-        </View>
-
-        {loadError ? <StateMessage message={loadError} tone="error" /> : null}
-
-        {/* Total Budget Overview */}
-        <View style={styles.overviewCard}>
-          <View style={styles.overviewTop}>
-            <View>
-              <Text style={styles.overviewLabel}>Total Anggaran Terpakai</Text>
-              <Text style={styles.overviewPct}>{totalPct}%</Text>
-            </View>
-            <View style={styles.overviewRight}>
-              <Text style={styles.overviewSpent}>Rp {(totalSpent / 1000000).toFixed(2)} Jt</Text>
-              <Text style={styles.overviewLimit}>dari Rp {(totalLimit / 1000000).toFixed(1)} Jt</Text>
-            </View>
-          </View>
-          <View style={styles.overviewBar}>
-            <View
-              style={[
-                styles.overviewBarFill,
-                {
-                  width: `${Math.min(totalPct, 100)}%`,
-                  backgroundColor: totalPct > 80 ? theme.colors.warning : theme.colors.brandPrimary,
-                },
-              ]}
-            />
-          </View>
-          <Text style={styles.overviewHelper}>
-            {totalPct < 50
-              ? 'Kamu masih punya ruang anggaran yang baik.'
-              : totalPct < 80
-                ? 'Penggunaan anggaran masih terkontrol.'
-                : 'Hati-hati, anggaranmu hampir habis bulan ini.'}
-          </Text>
-        </View>
-
-        {/* Budget Cards */}
-        {budgets.length === 0 ? (
-          <EmptyState
-            icon="budgets"
-            tone="primary"
-            title="Belum ada anggaran"
-            description="Tambahkan anggaran baru untuk memantau pengeluaran."
-          />
-        ) : (
-          budgets.map((budget) => {
-            const spent = budget.spent_amount ?? 0
-            const pct = budget.limit_amount > 0 ? Math.round((spent / budget.limit_amount) * 100) : 0
-            const over = spent > budget.limit_amount
-            const warn = pct >= 80 && !over
-            const remaining = budget.limit_amount - spent
-            const toneColor = over ? theme.colors.danger : warn ? theme.colors.warning : theme.colors.brandPrimary
-            const categoryName = budget.category?.name ?? 'Kategori'
-            const categoryIcon = categoryIcons[categoryName] ?? 'card'
-
-            return (
-              <Pressable key={budget.id} style={styles.budgetCard}>
-                <View style={styles.budgetTop}>
-                  <View style={styles.budgetLeft}>
-                    <IconBubble
-                      name={categoryIcon}
-                      tone={over ? 'danger' : warn ? 'warning' : 'primary'}
-                      size={44}
-                    />
-                    <View>
-                      <Text style={styles.budgetCategory} numberOfLines={1} ellipsizeMode="tail">{categoryName}</Text>
-                      <Text style={styles.budgetMeta}>
-                        Rp {(spent / 1000).toFixed(0)}rb / Rp {(budget.limit_amount / 1000).toFixed(0)}rb
-                      </Text>
-                    </View>
-                  </View>
-                  <View style={[styles.budgetBadge, { backgroundColor: `${toneColor}15`, borderColor: `${toneColor}40` }]}>
-                    <Text style={[styles.budgetBadgeText, { color: toneColor }]}>{pct}%</Text>
-                  </View>
-                </View>
-
-                <View style={styles.budgetBar}>
-                  <View style={[styles.budgetBarFill, { width: `${Math.min(pct, 100)}%`, backgroundColor: toneColor }]} />
-                </View>
-
-                <Text style={styles.budgetFooter}>
-                  {over
-                    ? `Melebihi anggaran Rp ${Math.abs(remaining / 1000).toFixed(0)}rb`
-                    : `Sisa Rp ${Math.max(remaining, 0).toLocaleString('id-ID', { maximumFractionDigits: 0 })}`}
-                </Text>
-              </Pressable>
-            )
-          })
-        )}
-
-        <View style={{ height: 100 }} />
-      </ScrollView>
+      <FlatList
+        data={budgets}
+        renderItem={renderBudget}
+        keyExtractor={keyExtractor}
+        ListHeaderComponent={ListHeader}
+        ListEmptyComponent={ListEmpty}
+        ListFooterComponent={<View style={{ height: 100 }} />}
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+        initialNumToRender={10}
+        maxToRenderPerBatch={10}
+        windowSize={5}
+        removeClippedSubviews
+      />
     </View>
   )
 }

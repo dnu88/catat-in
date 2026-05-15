@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
+import { ActivityIndicator, FlatList, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 
 import type { KaswiseIconName } from '../../src/components/icons/kaswise-icons'
 import { EmptyState, FilterChip, IconBubble, ScreenHeader, StateMessage, StatusBadge } from '../../src/components/ui'
@@ -19,6 +19,68 @@ const billIcons: Record<string, KaswiseIconName> = {
 }
 
 type FilterStatus = 'all' | BillStatus
+
+type BillWithStatus = Bill & { status: BillStatus }
+
+type BillRowProps = {
+  item: BillWithStatus
+  theme: ReturnType<typeof useTheme>['theme']
+  styles: ReturnType<typeof createStyles>
+  payingId: string | null
+  onMarkPaid: (id: string) => void
+}
+
+function BillRow({ item: bill, theme, styles, payingId, onMarkPaid }: BillRowProps) {
+  const statusColor =
+    bill.status === 'paid'
+      ? theme.colors.success
+      : bill.status === 'overdue'
+        ? theme.colors.danger
+        : theme.colors.warning
+
+  const statusLabel =
+    bill.status === 'paid' ? 'Lunas' : bill.status === 'overdue' ? 'Terlambat' : 'Akan Datang'
+
+  const dueDate = new Date(bill.next_due_date)
+  const formattedDate = dueDate.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })
+
+  const iconKey = Object.keys(billIcons).find(key => bill.name.includes(key)) || 'bills'
+  const icon = billIcons[iconKey] || 'bills'
+
+  return (
+    <Pressable style={styles.billCard}>
+      <View style={styles.billTop}>
+        <View style={styles.billLeft}>
+          <IconBubble
+            name={icon as KaswiseIconName}
+            tone={bill.status === 'paid' ? 'success' : bill.status === 'overdue' ? 'danger' : 'warning'}
+            size={44}
+          />
+          <View style={{ flex: 1 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <Text style={styles.billName} numberOfLines={1} ellipsizeMode="tail">{bill.name}</Text>
+              <StatusBadge label={statusLabel} color={statusColor} />
+            </View>
+            <Text style={styles.billDue}>Jatuh tempo: {formattedDate}</Text>
+          </View>
+        </View>
+      </View>
+
+      <View style={styles.billBottom}>
+        <Text style={styles.billAmount}>Rp {bill.amount.toLocaleString('id-ID')}</Text>
+        {bill.status === 'upcoming' && (
+          <Pressable
+            style={[styles.payButton, payingId === bill.id && { opacity: 0.7 }]}
+            onPress={() => onMarkPaid(bill.id)}
+            disabled={payingId === bill.id}
+          >
+            <Text style={styles.payButtonText}>{payingId === bill.id ? 'Memproses...' : 'Tandai Lunas'}</Text>
+          </Pressable>
+        )}
+      </View>
+    </Pressable>
+  )
+}
 
 export default function BillsScreen() {
   const { theme } = useTheme()
@@ -102,119 +164,89 @@ export default function BillsScreen() {
     )
   }
 
-  return (
-    <View style={styles.screen}>
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <ScreenHeader
-          title="Tagihan"
-          subtitle="Kelola pengingat tagihan rutin."
-          action={(
-            <Pressable style={styles.addButton}>
-              <Text style={styles.addButtonText}>+ Baru</Text>
-            </Pressable>
-          )}
-        />
+  const renderBill = ({ item }: { item: BillWithStatus }) => (
+    <BillRow
+      item={item}
+      theme={theme}
+      styles={styles}
+      payingId={payingId}
+      onMarkPaid={markAsPaid}
+    />
+  )
 
-        {/* Alert Card */}
-        {overdueCount > 0 && (
-          <View style={styles.alertCard}>
-            <IconBubble name="bills" tone="danger" size={44} />
-            <View style={styles.alertContent}>
-              <Text style={styles.alertTitle}>Ada {overdueCount} tagihan terlambat</Text>
-              <Text style={styles.alertSub}>Segera bayar untuk menghindari denda.</Text>
-            </View>
-          </View>
+  const keyExtractor = (item: BillWithStatus) => item.id
+
+  const ListHeader = () => (
+    <>
+      <ScreenHeader
+        title="Tagihan"
+        subtitle="Kelola pengingat tagihan rutin."
+        action={(
+          <Pressable style={styles.addButton}>
+            <Text style={styles.addButtonText}>+ Baru</Text>
+          </Pressable>
         )}
+      />
 
-        {/* Summary Card */}
-        <View style={styles.summaryCard}>
-          <View style={styles.summaryRow}>
-            <View style={styles.summaryItem}>
-              <Text style={styles.summaryLabel}>Total Tagihan Bulan Ini</Text>
-              <Text style={styles.summaryValue}>Rp {totalUpcoming.toLocaleString('id-ID')}</Text>
-            </View>
+      {overdueCount > 0 && (
+        <View style={styles.alertCard}>
+          <IconBubble name="bills" tone="danger" size={44} />
+          <View style={styles.alertContent}>
+            <Text style={styles.alertTitle}>Ada {overdueCount} tagihan terlambat</Text>
+            <Text style={styles.alertSub}>Segera bayar untuk menghindari denda.</Text>
           </View>
         </View>
+      )}
 
-        {loadError ? <StateMessage message={loadError} tone="error" /> : null}
+      <View style={styles.summaryCard}>
+        <View style={styles.summaryRow}>
+          <View style={styles.summaryItem}>
+            <Text style={styles.summaryLabel}>Total Tagihan Bulan Ini</Text>
+            <Text style={styles.summaryValue}>Rp {totalUpcoming.toLocaleString('id-ID')}</Text>
+          </View>
+        </View>
+      </View>
 
-        {/* Filter Row */}
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterRow}>
-          {(['all', 'upcoming', 'overdue', 'paid'] as FilterStatus[]).map((f) => (
-            <FilterChip
-              key={f}
-              label={f === 'all' ? 'Semua' : f === 'upcoming' ? 'Akan Datang' : f === 'overdue' ? 'Terlambat' : 'Lunas'}
-              selected={filter === f}
-              onPress={() => setFilter(f)}
-            />
-          ))}
-        </ScrollView>
+      {loadError ? <StateMessage message={loadError} tone="error" /> : null}
 
-        {/* Bill Cards */}
-        {filtered.length === 0 ? (
-          <EmptyState
-            icon="bills"
-            tone="accent"
-            title="Belum ada tagihan"
-            description="Tambahkan tagihan berulang untuk diingatkan."
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterRow}>
+        {(['all', 'upcoming', 'overdue', 'paid'] as FilterStatus[]).map((f) => (
+          <FilterChip
+            key={f}
+            label={f === 'all' ? 'Semua' : f === 'upcoming' ? 'Akan Datang' : f === 'overdue' ? 'Terlambat' : 'Lunas'}
+            selected={filter === f}
+            onPress={() => setFilter(f)}
           />
-        ) : (
-          filtered.map((bill) => {
-            const statusColor =
-              bill.status === 'paid'
-                ? theme.colors.success
-                : bill.status === 'overdue'
-                  ? theme.colors.danger
-                  : theme.colors.warning
-
-            const statusLabel =
-              bill.status === 'paid' ? 'Lunas' : bill.status === 'overdue' ? 'Terlambat' : 'Akan Datang'
-
-            const dueDate = new Date(bill.next_due_date)
-            const formattedDate = dueDate.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })
-
-            // Find icon based on bill name
-            const iconKey = Object.keys(billIcons).find(key => bill.name.includes(key)) || 'bills'
-            const icon = billIcons[iconKey] || 'bills'
-
-            return (
-              <Pressable key={bill.id} style={styles.billCard}>
-                <View style={styles.billTop}>
-                  <View style={styles.billLeft}>
-                    <IconBubble
-                      name={icon as KaswiseIconName}
-                      tone={bill.status === 'paid' ? 'success' : bill.status === 'overdue' ? 'danger' : 'warning'}
-                      size={44}
-                    />
-                    <View style={{ flex: 1 }}>
-                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                        <Text style={styles.billName} numberOfLines={1} ellipsizeMode="tail">{bill.name}</Text>
-                        <StatusBadge label={statusLabel} color={statusColor} />
-                      </View>
-                      <Text style={styles.billDue}>Jatuh tempo: {formattedDate}</Text>
-                    </View>
-                  </View>
-                </View>
-
-                <View style={styles.billBottom}>
-                  <Text style={styles.billAmount}>Rp {bill.amount.toLocaleString('id-ID')}</Text>
-                  {bill.status === 'upcoming' && (
-                    <Pressable
-                      style={[styles.payButton, payingId === bill.id && { opacity: 0.7 }]}
-                      onPress={() => markAsPaid(bill.id)}
-                      disabled={payingId === bill.id}
-                    >
-                      <Text style={styles.payButtonText}>{payingId === bill.id ? 'Memproses...' : 'Tandai Lunas'}</Text>
-                    </Pressable>
-                  )}
-                </View>
-              </Pressable>
-            )
-          })
-        )}
-
-        <View style={{ height: 100 }} />
+        ))}
       </ScrollView>
+    </>
+  )
+
+  const ListEmpty = () => (
+    <EmptyState
+      icon="bills"
+      tone="accent"
+      title="Belum ada tagihan"
+      description="Tambahkan tagihan berulang untuk diingatkan."
+    />
+  )
+
+  return (
+    <View style={styles.screen}>
+      <FlatList
+        data={filtered}
+        renderItem={renderBill}
+        keyExtractor={keyExtractor}
+        ListHeaderComponent={ListHeader}
+        ListEmptyComponent={ListEmpty}
+        ListFooterComponent={<View style={{ height: 100 }} />}
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+        initialNumToRender={10}
+        maxToRenderPerBatch={10}
+        windowSize={5}
+        removeClippedSubviews
+      />
     </View>
   )
 }

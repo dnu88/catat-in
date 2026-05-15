@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
+import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from 'react-native'
 import { useRouter } from 'expo-router'
 
 import { KaswiseIcon } from '../../src/components/icons/kaswise-icons'
@@ -9,6 +9,56 @@ import { listTransactions, type Transaction } from '../../src/services/transacti
 
 type Filter = 'all' | 'income' | 'expense'
 type Period = 'week' | 'month' | 'year'
+
+type TransactionListItem = {
+  item: Transaction
+  index: number
+  total: number
+  theme: ReturnType<typeof useTheme>['theme']
+  styles: ReturnType<typeof createStyles>
+}
+
+function TransactionRow({ item, index, total, theme, styles }: TransactionListItem) {
+  const formattedDate = new Date(
+    item.date || item.created_at || Date.now(),
+  ).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })
+  const amount = Number(item.amount ?? 0)
+  const title = item.description || item.merchant || item.category || 'Transaksi'
+
+  return (
+    <Pressable
+      style={[
+        styles.row,
+        index < total - 1 && { borderBottomWidth: 1, borderBottomColor: theme.colors.borderSoft },
+      ]}
+    >
+      <View style={styles.rowIcon}>
+        <IconBubble
+          name={item.transaction_type === 'income' ? 'chart' : 'transactions'}
+          tone={item.transaction_type === 'income' ? 'success' : 'danger'}
+          size={40}
+        />
+      </View>
+      <View style={styles.rowInfo}>
+        <Text style={styles.rowTitle} numberOfLines={1} ellipsizeMode="tail">{title}</Text>
+        {item.merchant && item.merchant !== title && (
+          <Text style={styles.rowMerchant}>{item.merchant}</Text>
+        )}
+        <Text style={styles.rowSub}>
+          {(item.category || '-')} • {formattedDate}
+        </Text>
+      </View>
+      <Text
+        style={[
+          styles.rowAmount,
+          item.transaction_type === 'income' ? { color: theme.colors.success } : { color: theme.colors.textPrimary },
+        ]}
+      >
+        {item.transaction_type === 'income' ? '+' : '-'} Rp {amount.toLocaleString('id-ID')}
+      </Text>
+    </Pressable>
+  )
+}
 
 export default function TransactionsScreen() {
   const { theme } = useTheme()
@@ -69,121 +119,100 @@ export default function TransactionsScreen() {
     )
   }
 
-  return (
-    <View style={styles.screen}>
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <ScreenHeader
-          title="Transaksi"
-          subtitle="Pantau arus kas harianmu dengan detail."
-          action={(
-            <View style={styles.summaryBadge}>
-              <Text style={styles.summaryBadgeText}>{list.length} item</Text>
-            </View>
-          )}
-        />
+  const renderTransaction = ({ item, index }: { item: Transaction; index: number }) => (
+    <TransactionRow
+      item={item}
+      index={index}
+      total={list.length}
+      theme={theme}
+      styles={styles}
+    />
+  )
 
-        {loadError ? <StateMessage message={loadError} tone="error" /> : null}
+  const keyExtractor = (item: Transaction) => item.id
 
-        {/* Period Chips */}
-        <View style={styles.periodRow}>
-          {(['week', 'month', 'year'] as Period[]).map((period) => (
-            <Pressable
-              key={period}
-              onPress={() => setActivePeriod(period)}
-              style={[
-                styles.periodChip,
-                activePeriod === period && {
-                  backgroundColor: theme.colors.brandPrimary,
-                  borderColor: theme.colors.brandPrimary,
-                },
-              ]}
-            >
-              <Text
-                style={[
-                  styles.periodChipText,
-                  activePeriod === period && { color: theme.colors.textInverse },
-                ]}
-              >
-                {period === 'week' ? 'Minggu' : period === 'month' ? 'Bulan' : 'Tahun'}
-              </Text>
-            </Pressable>
-          ))}
-        </View>
-
-        {/* Stats Row */}
-        <View style={styles.statRow}>
-          <StatCard label="Pemasukan" value={`Rp ${(totalIncome / 1000000).toFixed(1)} Jt`} icon="chart" tone="success" />
-          <StatCard label="Pengeluaran" value={`Rp ${(totalExpense / 1000000).toFixed(1)} Jt`} icon="transactions" tone="danger" />
-        </View>
-
-        {/* Filter Row */}
-        <View style={styles.filterRow}>
-          {(['all', 'income', 'expense'] as Filter[]).map((filter) => (
-            <FilterChip
-              key={filter}
-              label={filter === 'all' ? 'Semua' : filter === 'income' ? 'Pemasukan' : 'Pengeluaran'}
-              selected={activeFilter === filter}
-              onPress={() => setActiveFilter(filter)}
-            />
-          ))}
-        </View>
-
-        {/* Transaction List */}
-        {list.length === 0 ? (
-          <EmptyState
-            icon="transactions"
-            tone="accent"
-            title="Belum ada transaksi"
-            description="Coba ubah filter atau tambahkan transaksi baru dari tab Capture."
-          />
-        ) : (
-          <View style={styles.listCard}>
-            {list.map((item, index) => {
-              const formattedDate = new Date(
-                item.date || item.created_at || Date.now(),
-              ).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })
-              const amount = Number(item.amount ?? 0)
-              const title = item.description || item.merchant || item.category || 'Transaksi'
-              return (
-                <Pressable
-                  key={item.id}
-                  style={[
-                    styles.row,
-                    index < list.length - 1 && { borderBottomWidth: 1, borderBottomColor: theme.colors.borderSoft },
-                  ]}
-                >
-                  <View style={styles.rowIcon}>
-                    <IconBubble
-                      name={item.transaction_type === 'income' ? 'chart' : 'transactions'}
-                      tone={item.transaction_type === 'income' ? 'success' : 'danger'}
-                      size={40}
-                    />
-                  </View>
-                  <View style={styles.rowInfo}>
-                    <Text style={styles.rowTitle} numberOfLines={1} ellipsizeMode="tail">{title}</Text>
-                    {item.merchant && item.merchant !== title && (
-                      <Text style={styles.rowMerchant}>{item.merchant}</Text>
-                    )}
-                    <Text style={styles.rowSub}>
-                      {(item.category || '-')} • {formattedDate}
-                    </Text>
-                  </View>
-                  <Text
-                    style={[
-                      styles.rowAmount,
-                      item.transaction_type === 'income' ? { color: theme.colors.success } : { color: theme.colors.textPrimary },
-                    ]}
-                  >
-                    {item.transaction_type === 'income' ? '+' : '-'} Rp {amount.toLocaleString('id-ID')}
-                  </Text>
-                </Pressable>
-              )
-            })}
+  const ListHeader = () => (
+    <>
+      <ScreenHeader
+        title="Transaksi"
+        subtitle="Pantau arus kas harianmu dengan detail."
+        action={(
+          <View style={styles.summaryBadge}>
+            <Text style={styles.summaryBadgeText}>{list.length} item</Text>
           </View>
         )}
+      />
 
-        <View style={{ height: 100 }} />
-      </ScrollView>
+      {loadError ? <StateMessage message={loadError} tone="error" /> : null}
+
+      <View style={styles.periodRow}>
+        {(['week', 'month', 'year'] as Period[]).map((period) => (
+          <Pressable
+            key={period}
+            onPress={() => setActivePeriod(period)}
+            style={[
+              styles.periodChip,
+              activePeriod === period && {
+                backgroundColor: theme.colors.brandPrimary,
+                borderColor: theme.colors.brandPrimary,
+              },
+            ]}
+          >
+            <Text
+              style={[
+                styles.periodChipText,
+                activePeriod === period && { color: theme.colors.textInverse },
+              ]}
+            >
+              {period === 'week' ? 'Minggu' : period === 'month' ? 'Bulan' : 'Tahun'}
+            </Text>
+          </Pressable>
+        ))}
+      </View>
+
+      <View style={styles.statRow}>
+        <StatCard label="Pemasukan" value={`Rp ${(totalIncome / 1000000).toFixed(1)} Jt`} icon="chart" tone="success" />
+        <StatCard label="Pengeluaran" value={`Rp ${(totalExpense / 1000000).toFixed(1)} Jt`} icon="transactions" tone="danger" />
+      </View>
+
+      <View style={styles.filterRow}>
+        {(['all', 'income', 'expense'] as Filter[]).map((filter) => (
+          <FilterChip
+            key={filter}
+            label={filter === 'all' ? 'Semua' : filter === 'income' ? 'Pemasukan' : 'Pengeluaran'}
+            selected={activeFilter === filter}
+            onPress={() => setActiveFilter(filter)}
+          />
+        ))}
+      </View>
+    </>
+  )
+
+  const ListEmpty = () => (
+    <EmptyState
+      icon="transactions"
+      tone="accent"
+      title="Belum ada transaksi"
+      description="Coba ubah filter atau tambahkan transaksi baru dari tab Capture."
+    />
+  )
+
+  return (
+    <View style={styles.screen}>
+      <FlatList
+        data={list}
+        renderItem={renderTransaction}
+        keyExtractor={keyExtractor}
+        ListHeaderComponent={ListHeader}
+        ListEmptyComponent={ListEmpty}
+        ListFooterComponent={<View style={{ height: 100 }} />}
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+        initialNumToRender={10}
+        maxToRenderPerBatch={10}
+        windowSize={5}
+        removeClippedSubviews
+      />
 
       <Pressable style={styles.fab} onPress={() => router.push('/(tabs)/transaction-new')}>
         <KaswiseIcon name="capture" color={theme.colors.textInverse} size={26} weight="bold" />
@@ -222,13 +251,6 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
     periodChipText: { color: theme.colors.textSecondary, fontSize: 13, fontWeight: '700' },
     statRow: { flexDirection: 'row', gap: 10 },
     filterRow: { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
-    listCard: {
-      backgroundColor: theme.colors.surface,
-      borderRadius: 18,
-      borderWidth: 1,
-      borderColor: theme.colors.borderSoft,
-      paddingHorizontal: 14,
-    },
     row: {
       flexDirection: 'row',
       alignItems: 'center',
@@ -242,7 +264,6 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
       alignItems: 'center',
       justifyContent: 'center',
     },
-    rowIconText: { fontSize: 16, fontWeight: '800' },
     rowInfo: { flex: 1 },
     rowTitle: { color: theme.colors.textPrimary, fontSize: 14, fontWeight: '700' },
     rowMerchant: { color: theme.colors.textSecondary, fontSize: 12, marginTop: 1 },

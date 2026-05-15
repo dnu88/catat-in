@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
+import { FlatList, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 
 import { KaswiseIcon } from '../../src/components/icons/kaswise-icons'
 import { Card, IconBubble, SectionHeader } from '../../src/components/ui'
@@ -14,73 +14,83 @@ export default function ImportsScreen() {
   const { theme } = useTheme()
   const styles = useMemo(() => createStyles(theme), [theme])
 
+  const renderHistoryItem = ({ item, index }: { item: (typeof importHistory)[number]; index: number }) => (
+    <View style={[styles.historyRow, index < importHistory.length - 1 && styles.historyRowBorder]}>
+      <View style={styles.historyLeft}>
+        <IconBubble name={item.icon} tone="info" size={42} />
+        <View>
+          <Text style={styles.historySource}>{item.source}</Text>
+          <Text style={styles.historyMeta}>
+            {item.count} transaksi • {item.date}
+          </Text>
+        </View>
+      </View>
+      <View style={styles.statusBadge}>
+        <KaswiseIcon name="chart" size={14} color={theme.colors.success} weight="bold" />
+        <Text style={styles.statusBadgeText}>Berhasil</Text>
+      </View>
+    </View>
+  )
+
+  const ListHeader = () => (
+    <>
+      <SectionHeader
+        title="Import Mutasi"
+        subtitle="Import otomatis dari bank, e-wallet, dan struk."
+        action={<Pressable style={styles.badge}><Text style={styles.badgeText}>Beta</Text></Pressable>}
+      />
+
+      <Card variant="elevated" style={styles.heroCard}>
+        <View style={styles.heroRow}>
+          <IconBubble name="imports" tone="info" size={54} />
+          <View style={styles.heroCopy}>
+            <Text style={styles.heroTitle}>Import otomatis lebih cepat</Text>
+            <Text style={styles.heroSub}>
+              Upload file CSV atau Excel, lalu lanjutkan review hasil parsing sebelum transaksi disimpan.
+            </Text>
+          </View>
+        </View>
+      </Card>
+
+      <View style={styles.methodGrid}>
+        <Card variant="default" style={styles.methodCard}>
+          <IconBubble name="file" tone="primary" size={48} />
+          <Text style={styles.methodLabel}>CSV / Excel</Text>
+          <Text style={styles.methodSub}>Upload mutasi bank</Text>
+        </Card>
+
+        <Card variant="default" style={styles.methodCard}>
+          <IconBubble name="capture" tone="accent" size={48} />
+          <Text style={styles.methodLabel}>Scan Struk</Text>
+          <Text style={styles.methodSub}>OCR struk belanja</Text>
+        </Card>
+      </View>
+
+      <SectionHeader title="Riwayat Import" subtitle="Sumber terakhir yang berhasil diproses." />
+      <Card variant="default" style={styles.listCard}>
+        <FlatList
+          data={importHistory}
+          renderItem={renderHistoryItem}
+          keyExtractor={(item) => item.id}
+          scrollEnabled={false}
+          initialNumToRender={10}
+        />
+      </Card>
+
+      <Card variant="muted" style={styles.placeholderCard}>
+        <IconBubble name="ai" tone="warning" size={56} />
+        <Text style={styles.placeholderTitle}>Flow import penuh segera hadir</Text>
+        <Text style={styles.placeholderSub}>
+          Untuk saat ini, gunakan Capture AI atau catat manual jika ingin input lebih cepat.
+        </Text>
+      </Card>
+    </>
+  )
+
   return (
     <View style={styles.screen}>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <SectionHeader
-          title="Import Mutasi"
-          subtitle="Import otomatis dari bank, e-wallet, dan struk."
-          action={<Pressable style={styles.badge}><Text style={styles.badgeText}>Beta</Text></Pressable>}
-        />
-
-        <Card variant="elevated" style={styles.heroCard}>
-          <View style={styles.heroRow}>
-            <IconBubble name="imports" tone="info" size={54} />
-            <View style={styles.heroCopy}>
-              <Text style={styles.heroTitle}>Import otomatis lebih cepat</Text>
-              <Text style={styles.heroSub}>
-                Upload file CSV atau Excel, lalu lanjutkan review hasil parsing sebelum transaksi disimpan.
-              </Text>
-            </View>
-          </View>
-        </Card>
-
-        <View style={styles.methodGrid}>
-          <Card variant="default" style={styles.methodCard}>
-            <IconBubble name="file" tone="primary" size={48} />
-            <Text style={styles.methodLabel}>CSV / Excel</Text>
-            <Text style={styles.methodSub}>Upload mutasi bank</Text>
-          </Card>
-
-          <Card variant="default" style={styles.methodCard}>
-            <IconBubble name="capture" tone="accent" size={48} />
-            <Text style={styles.methodLabel}>Scan Struk</Text>
-            <Text style={styles.methodSub}>OCR struk belanja</Text>
-          </Card>
-        </View>
-
-        <SectionHeader title="Riwayat Import" subtitle="Sumber terakhir yang berhasil diproses." />
-        <Card variant="default" style={styles.listCard}>
-          {importHistory.map((item, index) => (
-            <View
-              key={item.id}
-              style={[styles.historyRow, index < importHistory.length - 1 && styles.historyRowBorder]}
-            >
-              <View style={styles.historyLeft}>
-                <IconBubble name={item.icon} tone="info" size={42} />
-                <View>
-                  <Text style={styles.historySource}>{item.source}</Text>
-                  <Text style={styles.historyMeta}>
-                    {item.count} transaksi • {item.date}
-                  </Text>
-                </View>
-              </View>
-              <View style={styles.statusBadge}>
-                <KaswiseIcon name="chart" size={14} color={theme.colors.success} weight="bold" />
-                <Text style={styles.statusBadgeText}>Berhasil</Text>
-              </View>
-            </View>
-          ))}
-        </Card>
-
-        <Card variant="muted" style={styles.placeholderCard}>
-          <IconBubble name="ai" tone="warning" size={56} />
-          <Text style={styles.placeholderTitle}>Flow import penuh segera hadir</Text>
-          <Text style={styles.placeholderSub}>
-            Untuk saat ini, gunakan Capture AI atau catat manual jika ingin input lebih cepat.
-          </Text>
-        </Card>
-
+        <ListHeader />
         <View style={{ height: 100 }} />
       </ScrollView>
     </View>
