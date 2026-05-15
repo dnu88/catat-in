@@ -4,6 +4,13 @@ import { supabase } from '../lib/supabase';
 jest.mock('../lib/supabase');
 
 describe('Bill Service', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    (supabase as any).auth = {
+      getUser: jest.fn().mockResolvedValue({ data: { user: { id: 'user-123' } }, error: null }),
+    };
+  });
+
   test('createBill should insert with defaults and return bill', async () => {
     const mockBill = { id: 'bill-1', name: 'Internet', amount: 300000, notify_before_days: 3, is_paid: false, payment_history: [] };
     const mockSingle = jest.fn().mockResolvedValue({ data: mockBill, error: null });
@@ -20,6 +27,7 @@ describe('Bill Service', () => {
     });
 
     expect(mockInsert).toHaveBeenCalledWith({
+      user_id: 'user-123',
       name: 'Internet',
       amount: 300000,
       due_day: 15,

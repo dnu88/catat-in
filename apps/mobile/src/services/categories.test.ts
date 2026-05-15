@@ -4,8 +4,15 @@ import { supabase } from '../lib/supabase';
 jest.mock('../lib/supabase');
 
 describe('Category Service', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    (supabase as any).auth = {
+      getUser: jest.fn().mockResolvedValue({ data: { user: { id: 'user-123' } }, error: null }),
+    };
+  });
+
   test('createCategory should insert with defaults and return category', async () => {
-    const mockCategory = { id: 'cat-1', name: 'Food', icon: '📦', is_default: false, budget_limit: 0 };
+    const mockCategory = { id: 'cat-1', name: 'Food', icon: '📦', is_default: false };
     const mockSingle = jest.fn().mockResolvedValue({ data: mockCategory, error: null });
     const mockSelect = jest.fn().mockReturnValue({ single: mockSingle });
     const mockInsert = jest.fn().mockReturnValue({ select: mockSelect });
@@ -14,27 +21,27 @@ describe('Category Service', () => {
     const result = await createCategory({ name: 'Food' });
 
     expect(mockInsert).toHaveBeenCalledWith({
+      user_id: 'user-123',
       name: 'Food',
       icon: '📦',
-      budget_limit: 0,
       is_default: false,
     });
     expect(result.id).toBe('cat-1');
     expect(result.is_default).toBe(false);
   });
 
-  test('createCategory should use provided icon and budget_limit', async () => {
-    const mockCategory = { id: 'cat-2', name: 'Transport', icon: '🚗', budget_limit: 300000 };
+  test('createCategory should use provided icon and type', async () => {
+    const mockCategory = { id: 'cat-2', name: 'Transport', icon: '🚗', type: 'expense' };
     const mockSingle = jest.fn().mockResolvedValue({ data: mockCategory, error: null });
     const mockSelect = jest.fn().mockReturnValue({ single: mockSingle });
     const mockInsert = jest.fn().mockReturnValue({ select: mockSelect });
     (supabase.from as jest.Mock).mockReturnValue({ insert: mockInsert });
 
-    await createCategory({ name: 'Transport', icon: '🚗', budget_limit: 300000 });
+    await createCategory({ name: 'Transport', icon: '🚗', type: 'expense' });
 
     expect(mockInsert).toHaveBeenCalledWith(expect.objectContaining({
       icon: '🚗',
-      budget_limit: 300000,
+      type: 'expense',
     }));
   });
 

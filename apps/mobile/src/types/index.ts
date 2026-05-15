@@ -2,37 +2,35 @@ export type TransactionType = 'income' | 'expense'
 
 export type TransactionCategory = string
 
-export type InputType = 'manual' | 'text' | 'image' | 'voice' | 'import'
-
-export type TransactionStatus = 'processing' | 'done' | 'error'
-
 export type TransactionVisibility = 'private' | 'group' | 'admin_only'
 
 export interface Transaction {
   id: string
-  wallet_id: string
+  wallet_id: string | null
   user_id: string
-  group_id?: string
-  input_type?: InputType
-  raw_input?: string
-  status?: TransactionStatus
-  error_message?: string
-  type: TransactionType
+  group_id?: string | null
+  transaction_type: TransactionType
+  type?: string | null
   amount: number
   category: TransactionCategory
-  note?: string
-  merchant?: string
-  date: string // ISO date string
-  receipt_url?: string
-  is_shared: boolean
-  visibility: TransactionVisibility
-  on_behalf_of?: string // user_id (input atas nama)
-  created_by: string // user_id yang menginput
-  is_verified?: boolean
-  review_required?: boolean
-  confidence?: number // 0-1 untuk AI extraction
+  description: string
+  merchant?: string | null
+  date: string
+  note?: string | null
+  payment_method?: string | null
+  receipt_url?: string | null
+  is_shared?: boolean
+  visibility?: TransactionVisibility | null
+  on_behalf_of?: string | null
+  created_by?: string | null
+  ai_confidence?: number | null
+  ai_extracted?: Record<string, unknown> | null
   is_disputed?: boolean
-  dispute_resolved_at?: string
+  dispute_resolved_at?: string | null
   created_at: string
   updated_at?: string
+  // Speculative fields written by edge functions but not present in deployed schema.
+  // Marked optional so consumers can degrade gracefully when missing.
+  status?: 'processing' | 'done' | 'error'
+  confidence?: number | null
 }

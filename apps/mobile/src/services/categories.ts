@@ -1,30 +1,36 @@
 import { supabase } from '../lib/supabase';
+import { getCurrentUserId } from './currentUser';
 
 export interface CategoryCreate {
   name: string;
   icon?: string;
-  budget_limit?: number;
+  type?: 'income' | 'expense' | null;
 }
 
-export interface Category extends CategoryCreate {
+export interface Category {
   id: string;
   user_id: string;
-  icon: string;
+  name: string;
+  icon: string | null;
   is_default: boolean;
-  budget_limit: number;
+  type: 'income' | 'expense' | null;
   created_at: string;
-  updated_at: string;
 }
 
 export async function createCategory(category: CategoryCreate): Promise<Category> {
+  const userId = await getCurrentUserId();
+
+  const payload: Record<string, unknown> = {
+    user_id: userId,
+    name: category.name,
+    icon: category.icon ?? '📦',
+    is_default: false,
+  };
+  if (category.type) payload.type = category.type;
+
   const { data, error } = await supabase
     .from('categories')
-    .insert({
-      ...category,
-      icon: category.icon ?? '📦',
-      budget_limit: category.budget_limit ?? 0,
-      is_default: false,
-    })
+    .insert(payload)
     .select()
     .single();
 
@@ -39,7 +45,7 @@ export async function listCategories(): Promise<Category[]> {
     .order('name', { ascending: true });
 
   if (error) throw error;
-  return data as Category[];
+  return (data ?? []) as Category[];
 }
 
 export async function updateCategory(id: string, updates: Partial<CategoryCreate>): Promise<Category> {

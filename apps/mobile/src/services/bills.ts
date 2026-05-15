@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase';
+import { getCurrentUserId } from './currentUser';
 
 export interface BillCreate {
   name: string;
@@ -20,10 +21,13 @@ export interface Bill extends BillCreate {
 }
 
 export async function createBill(bill: BillCreate): Promise<Bill> {
+  const userId = await getCurrentUserId();
+
   const { data, error } = await supabase
     .from('bill_reminders')
     .insert({
       ...bill,
+      user_id: userId,
       notify_before_days: bill.notify_before_days ?? 3,
       is_paid: false,
       payment_history: [],

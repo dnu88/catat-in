@@ -13,6 +13,9 @@ jest.mock('../lib/supabase');
 describe('Wallet + Transaction Integration Flow', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    (supabase as any).auth = {
+      getUser: jest.fn().mockResolvedValue({ data: { user: { id: 'user-123' } }, error: null }),
+    };
   });
 
   test('wallet creation returns id and passes correct payload', async () => {
@@ -33,6 +36,7 @@ describe('Wallet + Transaction Integration Flow', () => {
     const wallet = await createWallet({ name: 'Main Wallet', type: 'cash' });
 
     expect(mockInsert).toHaveBeenCalledWith({
+      user_id: 'user-123',
       name: 'Main Wallet',
       type: 'cash',
       balance: 0,
@@ -55,13 +59,10 @@ describe('Wallet + Transaction Integration Flow', () => {
     const mockTx = {
       id: 'tx-chain',
       wallet_id: mockWallet.id,
-      type: 'expense',
-      nominal: 15000,
-      kategori: 'Food',
-      input_type: 'manual',
-      status: 'done',
-      is_verified: false,
-      review_required: false,
+      transaction_type: 'expense',
+      amount: 15000,
+      category: 'Food',
+      description: 'Lunch',
     };
 
     // Mock wallet creation
@@ -81,9 +82,10 @@ describe('Wallet + Transaction Integration Flow', () => {
     const wallet = await createWallet({ name: 'Chained Wallet', type: 'cash', balance: 50000 });
     const tx = await createTransaction({
       wallet_id: wallet.id,
-      type: 'expense',
-      nominal: 15000,
-      kategori: 'Food',
+      transaction_type: 'expense',
+      amount: 15000,
+      category: 'Food',
+      description: 'Lunch',
     });
 
     expect(wallet.id).toBe('wallet-chain');
@@ -96,13 +98,10 @@ describe('Wallet + Transaction Integration Flow', () => {
     const mockTx = {
       id: 'tx-xyz',
       wallet_id: walletId,
-      type: 'expense',
-      nominal: 25000,
-      kategori: 'Food',
-      input_type: 'manual',
-      status: 'done',
-      is_verified: false,
-      review_required: false,
+      transaction_type: 'expense',
+      amount: 25000,
+      category: 'Food',
+      description: 'Lunch',
     };
 
     const mockSingle = jest.fn().mockResolvedValue({ data: mockTx, error: null });
@@ -112,9 +111,10 @@ describe('Wallet + Transaction Integration Flow', () => {
 
     const tx = await createTransaction({
       wallet_id: walletId,
-      type: 'expense',
-      nominal: 25000,
-      kategori: 'Food',
+      transaction_type: 'expense',
+      amount: 25000,
+      category: 'Food',
+      description: 'Lunch',
     });
 
     expect(tx.id).toBe('tx-xyz');
@@ -145,9 +145,10 @@ describe('Wallet + Transaction Integration Flow', () => {
     await expect(
       createTransaction({
         wallet_id: 'nonexistent-wallet',
-        type: 'expense',
-        nominal: 5000,
-        kategori: 'Transport',
+        transaction_type: 'expense',
+        amount: 5000,
+        category: 'Transport',
+        description: 'Grab',
       })
     ).rejects.toEqual(mockError);
   });

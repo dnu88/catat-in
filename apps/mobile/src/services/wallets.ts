@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase';
+import { getCurrentUserId } from './currentUser';
 
 export interface WalletCreate {
   name: string;
@@ -18,10 +19,13 @@ export interface Wallet extends WalletCreate {
 }
 
 export async function createWallet(wallet: WalletCreate): Promise<Wallet> {
+  const userId = await getCurrentUserId();
+
   const { data, error } = await supabase
     .from('wallets')
     .insert({
       ...wallet,
+      user_id: userId,
       balance: wallet.balance ?? 0,
       currency: wallet.currency || 'IDR',
       is_active: true,

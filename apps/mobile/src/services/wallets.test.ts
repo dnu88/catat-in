@@ -4,6 +4,13 @@ import { supabase } from '../lib/supabase';
 jest.mock('../lib/supabase');
 
 describe('Wallet Service', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    (supabase as any).auth = {
+      getUser: jest.fn().mockResolvedValue({ data: { user: { id: 'user-123' } }, error: null }),
+    };
+  });
+
   test('createWallet should insert wallet into Supabase', async () => {
     const mockSingle = jest.fn().mockResolvedValue({ data: { id: 'wallet-123' }, error: null });
     const mockSelect = jest.fn().mockReturnValue({ single: mockSingle });
@@ -17,6 +24,7 @@ describe('Wallet Service', () => {
     });
 
     expect(mockInsert).toHaveBeenCalledWith({
+      user_id: 'user-123',
       name: 'My Wallet',
       type: 'cash',
       balance: 100000,

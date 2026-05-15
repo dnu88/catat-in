@@ -4,22 +4,40 @@ import { supabase } from '../lib/supabase';
 jest.mock('../lib/supabase');
 
 describe('Budget Service', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    (supabase as any).auth = {
+      getUser: jest.fn().mockResolvedValue({ data: { user: { id: 'user-123' } }, error: null }),
+    };
+  });
+
   test('createBudget should insert with defaults and return budget', async () => {
-    const mockBudget = { id: 'b-1', category: 'food', limit_amount: 500000, period: 'monthly', notify_at_percent: 80, spent_amount: 0, is_active: true };
+    const mockBudget = {
+      id: 'b-1',
+      category_id: 'cat-1',
+      limit_amount: 500000,
+      period: 'monthly',
+      notify_at_percent: 80,
+      is_active: true,
+    };
     const mockSingle = jest.fn().mockResolvedValue({ data: mockBudget, error: null });
     const mockSelect = jest.fn().mockReturnValue({ single: mockSingle });
     const mockInsert = jest.fn().mockReturnValue({ select: mockSelect });
     (supabase.from as jest.Mock).mockReturnValue({ insert: mockInsert });
 
-    const result = await createBudget({ category: 'food', limit_amount: 500000, period_start: '2026-05-01' });
+    const result = await createBudget({
+      category_id: 'cat-1',
+      limit_amount: 500000,
+      start_date: '2026-05-01',
+    });
 
     expect(mockInsert).toHaveBeenCalledWith({
-      category: 'food',
+      user_id: 'user-123',
+      category_id: 'cat-1',
       limit_amount: 500000,
-      period_start: '2026-05-01',
+      start_date: '2026-05-01',
       period: 'monthly',
       notify_at_percent: 80,
-      spent_amount: 0,
       is_active: true,
     });
     expect(result.id).toBe('b-1');
@@ -33,18 +51,26 @@ describe('Budget Service', () => {
     const mockInsert = jest.fn().mockReturnValue({ select: mockSelect });
     (supabase.from as jest.Mock).mockReturnValue({ insert: mockInsert });
 
-    await createBudget({ category: 'travel', limit_amount: 2000000, period_start: '2026-01-01', period: 'yearly', notify_at_percent: 70 });
-
-    expect(mockInsert).toHaveBeenCalledWith(expect.objectContaining({
+    await createBudget({
+      category_id: 'cat-9',
+      limit_amount: 2000000,
+      start_date: '2026-01-01',
       period: 'yearly',
       notify_at_percent: 70,
-    }));
+    });
+
+    expect(mockInsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        period: 'yearly',
+        notify_at_percent: 70,
+      }),
+    );
   });
 
-  test('listBudgets should return array ordered by period_start desc', async () => {
+  test('listBudgets should return array ordered by start_date desc', async () => {
     const mockBudgets = [
-      { id: 'b-1', period_start: '2026-05-01' },
-      { id: 'b-2', period_start: '2026-04-01' },
+      { id: 'b-1', start_date: '2026-05-01' },
+      { id: 'b-2', start_date: '2026-04-01' },
     ];
     const mockOrder = jest.fn().mockResolvedValue({ data: mockBudgets, error: null });
     const mockSelect = jest.fn().mockReturnValue({ order: mockOrder });
@@ -53,8 +79,8 @@ describe('Budget Service', () => {
     const result = await listBudgets();
 
     expect(supabase.from).toHaveBeenCalledWith('budgets');
-    expect(mockSelect).toHaveBeenCalledWith('*');
-    expect(mockOrder).toHaveBeenCalledWith('period_start', { ascending: false });
+    expect(mockSelect).toHaveBeenCalledWith('*, category:categories(id, name, icon)');
+    expect(mockOrder).toHaveBeenCalledWith('start_date', { ascending: false });
     expect(result).toHaveLength(2);
   });
 
