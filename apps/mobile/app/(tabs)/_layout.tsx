@@ -1,6 +1,6 @@
-import { Redirect, Tabs } from 'expo-router'
+import { Redirect, Tabs, useRouter } from 'expo-router'
 import { useEffect, useState } from 'react'
-import { ActivityIndicator, StyleSheet, Text, View } from 'react-native'
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native'
 
 import { useSupabase } from '../../src/lib/supabase'
 import { useTheme } from '../../src/theme/theme-context'
@@ -8,6 +8,7 @@ import { useTheme } from '../../src/theme/theme-context'
 export default function TabsLayout() {
   const { supabase } = useSupabase()
   const { theme } = useTheme()
+  const router = useRouter()
   const [session, setSession] = useState<unknown>(null)
   const [loading, setLoading] = useState(true)
 
@@ -46,15 +47,19 @@ export default function TabsLayout() {
           backgroundColor: theme.colors.surface,
           borderTopColor: theme.colors.borderSoft,
           borderTopWidth: 1,
-          height: 64,
-          paddingBottom: 8,
-          paddingTop: 6,
+          height: 56,
+          paddingBottom: 5,
+          paddingTop: 4,
         },
         tabBarActiveTintColor: theme.colors.brandPrimary,
         tabBarInactiveTintColor: theme.colors.textMuted,
         tabBarLabelStyle: {
-          fontSize: 11,
+          fontSize: 10,
           fontWeight: '700',
+          marginTop: -1,
+        },
+        tabBarItemStyle: {
+          paddingVertical: 2,
         },
         headerStyle: {
           backgroundColor: theme.colors.surface,
@@ -99,11 +104,51 @@ export default function TabsLayout() {
         }}
       />
 
-      <Tabs.Screen name="wallets" options={{ href: null, title: 'Wallets', headerTitle: 'Wallets' }} />
-      <Tabs.Screen name="budgets" options={{ href: null, title: 'Budgets', headerTitle: 'Budgets' }} />
-      <Tabs.Screen name="bills" options={{ href: null, title: 'Bills', headerTitle: 'Bills' }} />
+      <Tabs.Screen
+        name="wallets"
+        options={{
+          href: null,
+          title: 'Wallets',
+          headerTitle: 'Dompet',
+          headerLeft: () => (
+            <Pressable onPress={() => router.back()} style={styles.headerBackButton}>
+              <Text style={[styles.headerBackText, { color: theme.colors.textPrimary }]}>← Kembali</Text>
+            </Pressable>
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="budgets"
+        options={{
+          href: null,
+          title: 'Budgets',
+          headerTitle: 'Anggaran',
+          headerLeft: () => (
+            <Pressable onPress={() => router.back()} style={styles.headerBackButton}>
+              <Text style={[styles.headerBackText, { color: theme.colors.textPrimary }]}>← Kembali</Text>
+            </Pressable>
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="bills"
+        options={{
+          href: null,
+          title: 'Bills',
+          headerTitle: 'Tagihan',
+          headerLeft: () => (
+            <Pressable onPress={() => router.back()} style={styles.headerBackButton}>
+              <Text style={[styles.headerBackText, { color: theme.colors.textPrimary }]}>← Kembali</Text>
+            </Pressable>
+          ),
+        }}
+      />
       <Tabs.Screen name="groups" options={{ href: null, title: 'Groups', headerTitle: 'Groups' }} />
       <Tabs.Screen name="imports" options={{ href: null, title: 'Imports', headerTitle: 'Imports' }} />
+      <Tabs.Screen
+        name="transaction-new"
+        options={{ href: null, title: 'Catat Manual', headerTitle: 'Catat Manual' }}
+      />
     </Tabs>
   )
 }
@@ -113,5 +158,13 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  headerBackButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+  },
+  headerBackText: {
+    fontSize: 14,
+    fontWeight: '700',
   },
 })
