@@ -4,12 +4,14 @@ import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, 
 import { useTransactionRealtime } from '../../src/hooks/useTransactionRealtime'
 import { useSupabase } from '../../src/lib/supabase'
 import { useTheme } from '../../src/theme/theme-context'
+import { IconBubble } from '../../src/components/ui'
+import type { KaswiseIconName } from '../../src/components/icons/kaswise-icons'
 
 const modes = [
-  { id: 'Teks', label: 'Teks', icon: '✏️', helper: 'Ketik transaksi dengan bahasa natural' },
-  { id: 'Foto', label: 'Foto', icon: '📷', helper: 'Scan struk belanja dengan OCR' },
-  { id: 'Rekam', label: 'Suara', icon: '🎙️', helper: 'Rekam suara transaksi (Whisper)' },
-  { id: 'Import', label: 'Import', icon: '📥', helper: 'Import mutasi bank & e-wallet' },
+  { id: 'Teks', label: 'Teks', icon: 'file' as KaswiseIconName, helper: 'Ketik transaksi dengan bahasa natural' },
+  { id: 'Foto', label: 'Foto', icon: 'upload' as KaswiseIconName, helper: 'Scan struk belanja dengan OCR' },
+  { id: 'Rekam', label: 'Suara', icon: 'notification' as KaswiseIconName, helper: 'Rekam suara transaksi (Whisper)' },
+  { id: 'Import', label: 'Import', icon: 'imports' as KaswiseIconName, helper: 'Import mutasi bank & e-wallet' },
 ] as const
 
 type ModeId = (typeof modes)[number]['id']
@@ -105,11 +107,12 @@ export default function CaptureScreen() {
                 },
               ]}
             >
-              <View style={[
-                styles.modeIconWrap,
-                selectedMode === mode.id && { backgroundColor: `${theme.colors.brandPrimary}1A` }
-              ]}>
-                <Text style={styles.modeIcon}>{mode.icon}</Text>
+              <View style={styles.modeIconWrap}>
+                <IconBubble
+                  name={mode.icon}
+                  tone={selectedMode === mode.id ? 'primary' : 'info'}
+                  size={44}
+                />
               </View>
               <Text style={[
                 styles.modeLabel,
@@ -155,7 +158,7 @@ export default function CaptureScreen() {
           ) : (
             <View style={styles.placeholderCard}>
               <View style={styles.placeholderIconWrap}>
-                <Text style={styles.placeholderIcon}>{activeModeData?.icon}</Text>
+                {activeModeData ? <IconBubble name={activeModeData.icon} tone="accent" size={60} /> : null}
               </View>
               <Text style={styles.placeholderTitle}>Mode {activeModeData?.label} Segera Hadir</Text>
               <Text style={styles.placeholderSub}>
