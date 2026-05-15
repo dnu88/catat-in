@@ -2,9 +2,6 @@ import { router } from 'expo-router'
 import { useMemo, useState } from 'react'
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 
-import type { KaswiseIconName } from '../../src/components/icons/kaswise-icons'
-import { KaswiseIcon } from '../../src/components/icons/kaswise-icons'
-import { IconBubble } from '../../src/components/ui'
 import { useSupabase } from '../../src/lib/supabase'
 import { useTheme } from '../../src/theme/theme-context'
 
@@ -83,21 +80,21 @@ export default function SettingsScreen() {
           <Text style={styles.sectionSub}>Kelola pengingat penting.</Text>
 
           <ToggleRow
-            icon="chart"
+            icon="📊"
             title="Ringkasan Harian"
             helper="Notifikasi kondisi keuangan setiap malam"
             value={dailyReminder}
             onToggle={() => setDailyReminder((v) => !v)}
           />
           <ToggleRow
-            icon="bills"
+            icon="📄"
             title="Pengingat Tagihan"
             helper="Notifikasi sebelum jatuh tempo"
             value={billReminder}
             onToggle={() => setBillReminder((v) => !v)}
           />
           <ToggleRow
-            icon="budgets"
+            icon="🎯"
             title="Alert Anggaran"
             helper="Notifikasi saat budget hampir habis"
             value={budgetAlert}
@@ -110,20 +107,20 @@ export default function SettingsScreen() {
           <Text style={styles.sectionTitle}>Akses Cepat</Text>
           <Text style={styles.sectionSub}>Navigasi ke halaman lain.</Text>
 
-          <NavRow icon="wallets" title="Dompet" helper="Kelola saldo akun" onPress={() => router.push('/(tabs)/wallets')} />
-          <NavRow icon="budgets" title="Anggaran" helper="Batas pengeluaran" onPress={() => router.push('/(tabs)/budgets')} />
-          <NavRow icon="bills" title="Tagihan" helper="Pengingat rutin" onPress={() => router.push('/(tabs)/bills')} />
-          <NavRow icon="groups" title="Grup" helper="Keuangan bersama" onPress={() => router.push('/(tabs)/groups')} />
-          <NavRow icon="imports" title="Import" helper="Mutasi & struk" onPress={() => router.push('/(tabs)/imports')} />
+          <NavRow icon="💳" title="Dompet" helper="Kelola saldo akun" onPress={() => router.push('/(tabs)/wallets')} />
+          <NavRow icon="🎯" title="Anggaran" helper="Batas pengeluaran" onPress={() => router.push('/(tabs)/budgets')} />
+          <NavRow icon="📄" title="Tagihan" helper="Pengingat rutin" onPress={() => router.push('/(tabs)/bills')} />
+          <NavRow icon="👥" title="Grup" helper="Keuangan bersama" onPress={() => router.push('/(tabs)/groups')} />
+          <NavRow icon="📥" title="Import" helper="Mutasi & struk" onPress={() => router.push('/(tabs)/imports')} />
         </View>
 
         {/* Account Section */}
         <View style={styles.sectionCard}>
           <Text style={styles.sectionTitle}>Akun & Keamanan</Text>
 
-          <NavRow icon="lock" title="Ubah Password" helper="Perbarui password akun" onPress={() => {}} />
-          <NavRow icon="notification" title="Bahasa" helper="Bahasa Indonesia" onPress={() => {}} />
-          <NavRow icon="file" title="Kebijakan Privasi" helper="Baca syarat & ketentuan" onPress={() => {}} />
+          <NavRow icon="🔐" title="Ubah Password" helper="Perbarui password akun" onPress={() => {}} />
+          <NavRow icon="🌐" title="Bahasa" helper="Bahasa Indonesia" onPress={() => {}} />
+          <NavRow icon="📋" title="Kebijakan Privasi" helper="Baca syarat & ketentuan" onPress={() => {}} />
         </View>
 
         {/* App Info */}
@@ -150,7 +147,7 @@ function ToggleRow({
   value,
   onToggle,
 }: {
-  icon: KaswiseIconName
+  icon: string
   title: string
   helper: string
   value: boolean
@@ -172,7 +169,7 @@ function ToggleRow({
       }}
     >
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 }}>
-        <IconBubble name={icon} tone="primary" size={36} />
+        <Text style={{ fontSize: 18 }}>{icon}</Text>
         <View style={{ flex: 1 }}>
           <Text style={{ color: theme.colors.textPrimary, fontSize: 13, fontWeight: '700' }}>{title}</Text>
           <Text style={{ color: theme.colors.textMuted, fontSize: 11, marginTop: 1 }}>{helper}</Text>
@@ -208,7 +205,7 @@ function NavRow({
   helper,
   onPress,
 }: {
-  icon: KaswiseIconName
+  icon: string
   title: string
   helper: string
   onPress: () => void
@@ -229,13 +226,13 @@ function NavRow({
       }}
     >
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 }}>
-        <IconBubble name={icon} tone="primary" size={36} />
+        <Text style={{ fontSize: 18 }}>{icon}</Text>
         <View>
           <Text style={{ color: theme.colors.textPrimary, fontSize: 13, fontWeight: '700' }}>{title}</Text>
           <Text style={{ color: theme.colors.textMuted, fontSize: 11, marginTop: 1 }}>{helper}</Text>
         </View>
       </View>
-      <KaswiseIcon name="back" color={theme.colors.textMuted} size={16} weight="bold" />
+      <Text style={{ color: theme.colors.textMuted, fontSize: 16 }}>›</Text>
     </Pressable>
   )
 }
@@ -245,11 +242,11 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
     screen: { flex: 1, backgroundColor: theme.colors.background },
     content: { padding: 20, gap: 14, paddingBottom: 26 },
     headerRow: { marginBottom: 4 },
-    title: { color: theme.colors.textPrimary, fontSize: 28, fontWeight: '800', letterSpacing: -0.4 },
-    subtitle: { color: theme.colors.textSecondary, fontSize: 13, marginTop: 2 },
+    title: { color: theme.colors.textPrimary, fontSize: theme.typography.fontSize['4xl'], fontWeight: theme.typography.fontWeight.extrabold, letterSpacing: theme.typography.letterSpacing.tight },
+    subtitle: { color: theme.colors.textSecondary, fontSize: theme.typography.fontSize.sm, marginTop: 2 },
     profileCard: {
       backgroundColor: theme.colors.surface,
-      borderRadius: 18,
+      borderRadius: theme.radius.lg,
       borderWidth: 1,
       borderColor: theme.colors.borderSoft,
       padding: 14,
@@ -265,13 +262,13 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
       alignItems: 'center',
       justifyContent: 'center',
     },
-    profileAvatarText: { color: '#FFFFFF', fontSize: 16, fontWeight: '800' },
+    profileAvatarText: { color: theme.colors.textInverse, fontSize: 16, fontWeight: '800' },
     profileInfo: { flex: 1 },
-    profileName: { color: theme.colors.textPrimary, fontSize: 15, fontWeight: '800' },
-    profileEmail: { color: theme.colors.textMuted, fontSize: 12, marginTop: 2 },
+    profileName: { color: theme.colors.textPrimary, fontSize: theme.typography.fontSize.lg, fontWeight: theme.typography.fontWeight.extrabold },
+    profileEmail: { color: theme.colors.textMuted, fontSize: theme.typography.fontSize.sm, marginTop: 2 },
     profileEdit: {
       backgroundColor: `${theme.colors.brandPrimary}15`,
-      borderRadius: 999,
+      borderRadius: theme.radius.pill,
       paddingHorizontal: 12,
       paddingVertical: 6,
     },

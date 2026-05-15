@@ -1,26 +1,30 @@
-import { useEffect, useMemo, useState } from 'react'
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
+import { useMemo, useState } from 'react'
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 
-import type { KaswiseIconName } from '../../src/components/icons/kaswise-icons'
-import { IconBubble } from '../../src/components/ui'
 import { useTheme } from '../../src/theme/theme-context'
-import { listWallets, type Wallet } from '../../src/services/wallets'
 
-type WalletType = 'bank' | 'cash'
+type WalletType = 'bank' | 'ewallet' | 'cash' | 'investment'
+
+const wallets = [
+  { id: '1', name: 'BCA Utama', type: 'bank' as WalletType, balance: 12450000, icon: '🏦', accountHint: '••• 4821' },
+  { id: '2', name: 'GoPay', type: 'ewallet' as WalletType, balance: 1350000, icon: '💳', accountHint: '081•••4512' },
+  { id: '3', name: 'OVO', type: 'ewallet' as WalletType, balance: 725000, icon: '💳', accountHint: '081•••4512' },
+  { id: '4', name: 'Dompet Tunai', type: 'cash' as WalletType, balance: 425000, icon: '💵', accountHint: '' },
+  { id: '5', name: 'Reksadana Bareksa', type: 'investment' as WalletType, balance: 9300000, icon: '📈', accountHint: '' },
+]
 
 const typeLabels: Record<WalletType, string> = {
   bank: 'Bank',
+  ewallet: 'E-Wallet',
   cash: 'Tunai',
+  investment: 'Investasi',
 }
 
 const typeColors: Record<WalletType, string> = {
   bank: '#2563EB',
+  ewallet: '#8B5CF6',
   cash: '#10B981',
-}
-
-const typeIcons: Record<WalletType, KaswiseIconName> = {
-  bank: 'card',
-  cash: 'wallets',
+  investment: '#F59E0B',
 }
 
 type FilterType = 'all' | WalletType
@@ -29,34 +33,9 @@ export default function WalletsScreen() {
   const { theme } = useTheme()
   const styles = useMemo(() => createStyles(theme), [theme])
   const [filter, setFilter] = useState<FilterType>('all')
-  const [wallets, setWallets] = useState<Wallet[]>([])
-  const [loading, setLoading] = useState(true)
-
-  useEffect(() => {
-    loadWallets()
-  }, [])
-
-  const loadWallets = async () => {
-    try {
-      const data = await listWallets()
-      setWallets(data.filter(w => w.is_active))
-    } catch (error) {
-      console.error('Error loading wallets:', error)
-    } finally {
-      setLoading(false)
-    }
-  }
 
   const filtered = filter === 'all' ? wallets : wallets.filter((w) => w.type === filter)
-  const totalBalance = wallets.reduce((a, b) => a + (b.balance || 0), 0)
-
-  if (loading) {
-    return (
-      <View style={[styles.screen, { justifyContent: 'center', alignItems: 'center' }]}>
-        <ActivityIndicator size="large" color={theme.colors.brandPrimary} />
-      </View>
-    )
-  }
+  const totalBalance = wallets.reduce((a, b) => a + b.balance, 0)
 
   return (
     <View style={styles.screen}>
@@ -85,7 +64,7 @@ export default function WalletsScreen() {
 
         {/* Filter Row */}
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterRow}>
-          {(['all', 'bank', 'cash'] as FilterType[]).map((f) => (
+          {(['all', 'bank', 'ewallet', 'cash', 'investment'] as FilterType[]).map((f) => (
             <Pressable
               key={f}
               onPress={() => setFilter(f)}
@@ -107,41 +86,29 @@ export default function WalletsScreen() {
         </ScrollView>
 
         {/* Wallet Cards */}
-        {filtered.length === 0 ? (
-          <View style={styles.emptyCard}>
-            <IconBubble name="wallets" tone="accent" size={56} />
-            <Text style={styles.emptyTitle}>Belum ada dompet</Text>
-            <Text style={styles.emptySub}>Tambahkan dompet baru untuk mulai mencatat transaksi.</Text>
-          </View>
-        ) : (
-          filtered.map((wallet) => (
-            <Pressable key={wallet.id} style={styles.walletCard}>
-              <View style={styles.walletTop}>
-                <View style={styles.walletIcon}>
-                  <IconBubble
-                    name={typeIcons[wallet.type as WalletType]}
-                    tone={wallet.type === 'bank' ? 'info' : 'success'}
-                    size={46}
-                  />
-                </View>
-                <View style={styles.walletInfo}>
-                  <Text style={styles.walletName}>{wallet.name}</Text>
-                  <View style={styles.walletMeta}>
-                    <View style={[styles.typeBadge, { backgroundColor: `${typeColors[wallet.type as WalletType]}15` }]}>
-                      <Text style={[styles.typeBadgeText, { color: typeColors[wallet.type as WalletType] }]}>
-                        {typeLabels[wallet.type as WalletType]}
-                      </Text>
-                    </View>
-                    {wallet.account_number ? <Text style={styles.walletHint}>••• {wallet.account_number.slice(-4)}</Text> : null}
+        {filtered.map((wallet) => (
+          <Pressable key={wallet.id} style={styles.walletCard}>
+            <View style={styles.walletTop}>
+              <View style={[styles.walletIcon, { backgroundColor: `${typeColors[wallet.type]}15` }]}>
+                <Text style={styles.walletIconText}>{wallet.icon}</Text>
+              </View>
+              <View style={styles.walletInfo}>
+                <Text style={styles.walletName}>{wallet.name}</Text>
+                <View style={styles.walletMeta}>
+                  <View style={[styles.typeBadge, { backgroundColor: `${typeColors[wallet.type]}15` }]}>
+                    <Text style={[styles.typeBadgeText, { color: typeColors[wallet.type] }]}>
+                      {typeLabels[wallet.type]}
+                    </Text>
                   </View>
+                  {wallet.accountHint ? <Text style={styles.walletHint}>{wallet.accountHint}</Text> : null}
                 </View>
               </View>
-              <View style={styles.walletBottom}>
-                <Text style={styles.walletBalance}>Rp {(wallet.balance || 0).toLocaleString('id-ID')}</Text>
-              </View>
-            </Pressable>
-          ))
-        )}
+            </View>
+            <View style={styles.walletBottom}>
+              <Text style={styles.walletBalance}>Rp {wallet.balance.toLocaleString('id-ID')}</Text>
+            </View>
+          </Pressable>
+        ))}
 
         <View style={{ height: 100 }} />
       </ScrollView>
@@ -158,32 +125,33 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
       justifyContent: 'space-between',
       alignItems: 'flex-start',
     },
-    title: { color: theme.colors.textPrimary, fontSize: 28, fontWeight: '800', letterSpacing: -0.4 },
-    subtitle: { color: theme.colors.textSecondary, fontSize: 13, marginTop: 2 },
+    title: { color: theme.colors.textPrimary, fontSize: theme.typography.fontSize['4xl'], fontWeight: theme.typography.fontWeight.extrabold, letterSpacing: theme.typography.letterSpacing.tight },
+    subtitle: { color: theme.colors.textSecondary, fontSize: theme.typography.fontSize.sm, marginTop: 2 },
     addButton: {
       backgroundColor: theme.colors.brandPrimary,
-      borderRadius: 999,
+      borderRadius: theme.radius.pill,
       paddingHorizontal: 14,
       paddingVertical: 8,
     },
-    addButtonText: { color: theme.colors.textInverse, fontSize: 12, fontWeight: '700' },
+    addButtonText: { color: theme.colors.textInverse, fontSize: theme.typography.fontSize.sm, fontWeight: theme.typography.fontWeight.bold },
     totalCard: {
       backgroundColor: theme.colors.brandPrimary,
-      borderRadius: 20,
+      borderRadius: theme.radius.lg,
       padding: 18,
       gap: 6,
     },
-    totalLabel: { color: 'rgba(255,255,255,0.72)', fontSize: 13, fontWeight: '600' },
-    totalValue: { color: '#FFFFFF', fontSize: 30, fontWeight: '800', letterSpacing: -0.5 },
+    totalLabel: { color: theme.colors.textInverse, opacity: theme.opacity[72], fontSize: theme.typography.fontSize.sm, fontWeight: theme.typography.fontWeight.semibold },
+    totalValue: { color: theme.colors.textInverse, fontSize: theme.typography.fontSize['4xl'], fontWeight: theme.typography.fontWeight.extrabold, letterSpacing: theme.typography.letterSpacing.tight },
     totalRow: { marginTop: 6 },
     totalChip: {
-      backgroundColor: 'rgba(255,255,255,0.18)',
+      backgroundColor: theme.colors.textInverse,
+      opacity: theme.opacity[18],
       borderRadius: 999,
       paddingHorizontal: 12,
       paddingVertical: 5,
       alignSelf: 'flex-start',
     },
-    totalChipText: { color: 'rgba(255,255,255,0.9)', fontSize: 12, fontWeight: '600' },
+    totalChipText: { color: theme.colors.textInverse, opacity: theme.opacity[90], fontSize: theme.typography.fontSize.sm, fontWeight: theme.typography.fontWeight.semibold },
     filterRow: { gap: 8, paddingVertical: 2 },
     filterChip: {
       paddingHorizontal: 14,
@@ -206,33 +174,22 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
     walletIcon: {
       width: 46,
       height: 46,
-      borderRadius: 14,
+      borderRadius: theme.radius.md,
       alignItems: 'center',
       justifyContent: 'center',
     },
+    walletIconText: { fontSize: 22 },
     walletInfo: { flex: 1, gap: 4 },
-    walletName: { color: theme.colors.textPrimary, fontSize: 15, fontWeight: '700' },
+    walletName: { color: theme.colors.textPrimary, fontSize: theme.typography.fontSize.lg, fontWeight: theme.typography.fontWeight.bold },
     walletMeta: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-    typeBadge: { borderRadius: 999, paddingHorizontal: 8, paddingVertical: 2 },
-    typeBadgeText: { fontSize: 11, fontWeight: '700' },
-    walletHint: { color: theme.colors.textMuted, fontSize: 11, fontWeight: '600' },
+    typeBadge: { borderRadius: theme.radius.pill, paddingHorizontal: 8, paddingVertical: 2 },
+    typeBadgeText: { fontSize: 11, fontWeight: theme.typography.fontWeight.bold },
+    walletHint: { color: theme.colors.textMuted, fontSize: 11, fontWeight: theme.typography.fontWeight.semibold },
     walletBottom: {
       borderTopWidth: 1,
       borderTopColor: theme.colors.borderSoft,
       paddingTop: 10,
     },
     walletBalance: { color: theme.colors.textPrimary, fontSize: 18, fontWeight: '800' },
-  emptyCard: {
-    backgroundColor: theme.colors.surface,
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: theme.colors.borderSoft,
-    borderStyle: 'dashed',
-    padding: 24,
-    alignItems: 'center',
-    gap: 8,
-  },
-  emptyTitle: { color: theme.colors.textPrimary, fontSize: 15, fontWeight: '800' },
-  emptySub: { color: theme.colors.textMuted, fontSize: 13, textAlign: 'center', lineHeight: 20 },
   })
 }

@@ -22,7 +22,7 @@ export function Card({ children, variant = 'default', style }: CardProps) {
     elevated: {
       backgroundColor: theme.colors.surfaceElevated,
       borderWidth: 0,
-      ...theme.shadows.card,
+      ...theme.shadow.md,
     },
     muted: {
       backgroundColor: theme.colors.mutedSurface,

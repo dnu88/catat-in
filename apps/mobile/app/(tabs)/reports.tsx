@@ -1,13 +1,21 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Pressable, ScrollView, StyleSheet, Text, View, Share, Modal } from 'react-native'
 
-import { KaswiseIcon } from '../../src/components/icons/kaswise-icons'
-import type { KaswiseIconName } from '../../src/components/icons/kaswise-icons'
-import { IconBubble } from '../../src/components/ui'
 import { useTheme } from '../../src/theme/theme-context'
 import { useSupabase } from '../../src/lib/supabase'
 
 const months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun']
+const incomeData = [4.2, 5.1, 6.8, 7.2, 8.5, 18.65]
+const expenseData = [3.1, 3.8, 4.2, 5.0, 4.8, 6.4]
+
+const categories = [
+  { label: 'Makanan & Minuman', percent: 32, amount: 'Rp 2.050.000', emoji: '🍽' },
+  { label: 'Transportasi', percent: 22, amount: 'Rp 1.408.000', emoji: '🚗' },
+  { label: 'Belanja', percent: 18, amount: 'Rp 1.152.000', emoji: '🛒' },
+  { label: 'Tagihan', percent: 15, amount: 'Rp 960.000', emoji: '📄' },
+  { label: 'Hiburan', percent: 8, amount: 'Rp 512.000', emoji: '🎮' },
+  { label: 'Lainnya', percent: 5, amount: 'Rp 320.000', emoji: '📦' },
+]
 
 type Tab = 'overview' | 'category' | 'compare'
 type PeriodFilter = 'month' | '3month' | '6month' | 'year' | 'custom'
@@ -18,20 +26,6 @@ const periodLabels: Record<PeriodFilter, string> = {
   '6month': '6 Bulan',
   year: '1 Tahun',
   custom: 'Kustom',
-}
-
-const categoryIcons: Record<string, KaswiseIconName> = {
-  'Makanan': 'chart',
-  'Makan': 'chart',
-  'Transport': 'transactions',
-  'Transportasi': 'transactions',
-  'Belanja': 'wallets',
-  'Hiburan': 'insight',
-  'Tagihan': 'bills',
-  'Kesehatan': 'budgets',
-  'Pendidikan': 'file',
-  'Pendapatan': 'card',
-  'Lainnya': 'card',
 }
 
 export default function ReportsScreen() {
@@ -57,37 +51,14 @@ export default function ReportsScreen() {
     current: { income: number; expense: number; net: number; count: number } | null
     previous: { income: number; expense: number; net: number; count: number } | null
   } | null>(null)
-  const [overviewData, setOverviewData] = useState<{
-    totalIncome: number
-    totalExpense: number
-    totalNet: number
-    totalCount: number
-    incomeGrowth: number
-    expenseGrowth: number
-  } | null>(null)
-  const [categoryData, setCategoryData] = useState<Array<{
-    category: string
-    amount: number
-    percent: number
-    icon: KaswiseIconName
-  }>>([])
-  const [chartData, setChartData] = useState<{
-    months: string[]
-    incomeData: number[]
-    expenseData: number[]
-  }>({ months: [], incomeData: [], expenseData: [] })
 
-  const maxVal = Math.max(...chartData.incomeData, ...chartData.expenseData, 1)
+  const maxVal = Math.max(...incomeData, ...expenseData)
 
-  const formatRupiah = (value: number) => `Rp ${value.toLocaleString('id-ID')}`
+  const formatRupiah = (valueInJuta: number) => `Rp ${(valueInJuta * 1_000_000).toLocaleString('id-ID')}`
 
-  const totalIncome = overviewData?.totalIncome ?? 0
-  const totalExpense = overviewData?.totalExpense ?? 0
-  const totalNet = overviewData?.totalNet ?? 0
-  const incomeGrowth = overviewData?.incomeGrowth ?? 0
-  const expenseGrowth = overviewData?.expenseGrowth ?? 0
-  const totalCount = overviewData?.totalCount ?? 0
-  const expenseTotalForCategory = categoryData.reduce((sum, item) => sum + item.amount, 0)
+  const totalIncomeJuta = incomeData[incomeData.length - 1] ?? 0
+  const totalExpenseJuta = expenseData[expenseData.length - 1] ?? 0
+  const netJuta = totalIncomeJuta - totalExpenseJuta
 
   const monthName = (month: number) => ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'][month - 1]
 
@@ -120,9 +91,9 @@ export default function ReportsScreen() {
     const periodText = periodFilter === 'custom' ? customRangeLabel : periodLabels[periodFilter]
     const shareText = [
       `Laporan Keuangan (${periodText})`,
-      `Pemasukan: ${formatRupiah(totalIncome)}`,
-      `Pengeluaran: ${formatRupiah(totalExpense)}`,
-      `Tabungan: ${formatRupiah(totalNet)}`,
+      `Pemasukan: ${formatRupiah(totalIncomeJuta)}`,
+      `Pengeluaran: ${formatRupiah(totalExpenseJuta)}`,
+      `Tabungan: ${formatRupiah(netJuta)}`,
       realTransactionCount !== null ? `Jumlah transaksi: ${realTransactionCount}` : null,
     ]
       .filter(Boolean)
@@ -162,119 +133,47 @@ export default function ReportsScreen() {
 
         const { data: transactions, error } = await supabase
           .from('transactions')
-          .select('amount, transaction_type, category, date')
+          .select('nominal, type, kategori, tanggal')
           .eq('user_id', user.id)
-          .gte('date', startDate.toISOString().split('T')[0])
-          .lte('date', endDate.toISOString().split('T')[0])
+          .gte('tanggal', startDate.toISOString().split('T')[0])
+          .lte('tanggal', endDate.toISOString().split('T')[0])
 
         if (error) throw error
 
         setRealTransactionCount(transactions?.length || 0)
 
-        // Calculate overview data
-        const currentIncome = transactions
-          ?.filter((t) => t.transaction_type === 'income')
-          .reduce((sum, t) => sum + Number(t.amount ?? 0), 0) || 0
-        const currentExpense = transactions
-          ?.filter((t) => t.transaction_type === 'expense')
-          .reduce((sum, t) => sum + Number(t.amount ?? 0), 0) || 0
-        const currentNet = currentIncome - currentExpense
-
-        // Calculate category breakdown
-        const expenseByCategory: Record<string, number> = {}
-        transactions
-          ?.filter((t) => t.transaction_type === 'expense' && t.category)
-          .forEach((t) => {
-            const key = t.category as string
-            expenseByCategory[key] = (expenseByCategory[key] || 0) + Number(t.amount ?? 0)
-          })
-
-        const totalExpenseForCategory = Object.values(expenseByCategory).reduce((sum, val) => sum + val, 0)
-        const categoryBreakdown = Object.entries(expenseByCategory)
-          .map(([category, amount]) => ({
-            category,
-            amount,
-            percent: totalExpenseForCategory > 0 ? Math.round((amount / totalExpenseForCategory) * 100) : 0,
-            icon: categoryIcons[category] || 'card',
-          }))
-          .sort((a, b) => b.amount - a.amount)
-
-        setOverviewData({
-          totalIncome: currentIncome,
-          totalExpense: currentExpense,
-          totalNet: currentNet,
-          totalCount: transactions?.length || 0,
-          incomeGrowth: 0,
-          expenseGrowth: 0,
-        })
-        setCategoryData(categoryBreakdown)
-
-        // Calculate chart data (monthly breakdown)
-        const monthlyData: Record<string, { income: number; expense: number }> = {}
-        transactions?.forEach((t) => {
-          if (!t.date) return
-          const date = new Date(t.date)
-          const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
-          if (!monthlyData[monthKey]) {
-            monthlyData[monthKey] = { income: 0, expense: 0 }
-          }
-          if (t.transaction_type === 'income') {
-            monthlyData[monthKey].income += Number(t.amount ?? 0)
-          } else if (t.transaction_type === 'expense') {
-            monthlyData[monthKey].expense += Number(t.amount ?? 0)
-          }
-        })
-
-        const sortedMonths = Object.keys(monthlyData).sort()
-        const chartMonths = sortedMonths.slice(-6).map((key) => {
-          const [year, month] = key.split('-')
-          return months[parseInt(month) - 1] || month
-        })
-        const chartIncome = sortedMonths.slice(-6).map((key) => monthlyData[key].income / 1_000_000)
-        const chartExpense = sortedMonths.slice(-6).map((key) => monthlyData[key].expense / 1_000_000)
-
-        setChartData({
-          months: chartMonths.length > 0 ? chartMonths : ['Mei'],
-          incomeData: chartIncome.length > 0 ? chartIncome : [0],
-          expenseData: chartExpense.length > 0 ? chartExpense : [0],
-        })
-
-        // Load previous period data for growth + comparison
-        const prevStartDate = new Date(startDate)
-        prevStartDate.setMonth(prevStartDate.getMonth() - 1)
-        const prevEndDate = new Date(endDate)
-        prevEndDate.setMonth(prevEndDate.getMonth() - 1)
-
-        const { data: prevTransactions, error: prevError } = await supabase
-          .from('transactions')
-          .select('amount, transaction_type')
-          .eq('user_id', user.id)
-          .gte('date', prevStartDate.toISOString().split('T')[0])
-          .lte('date', prevEndDate.toISOString().split('T')[0])
-
-        if (prevError) console.error('Failed to load previous period:', prevError)
-
-        const prevIncome = prevTransactions
-          ?.filter((t) => t.transaction_type === 'income')
-          .reduce((sum, t) => sum + Number(t.amount ?? 0), 0) || 0
-        const prevExpense = prevTransactions
-          ?.filter((t) => t.transaction_type === 'expense')
-          .reduce((sum, t) => sum + Number(t.amount ?? 0), 0) || 0
-        const prevNet = prevIncome - prevExpense
-
-        const prevIncomeGrowth = prevIncome > 0 ? ((currentIncome - prevIncome) / prevIncome) * 100 : 0
-        const prevExpenseGrowth = prevExpense > 0 ? ((currentExpense - prevExpense) / prevExpense) * 100 : 0
-
-        setOverviewData({
-          totalIncome: currentIncome,
-          totalExpense: currentExpense,
-          totalNet: currentNet,
-          totalCount: transactions?.length || 0,
-          incomeGrowth: prevIncomeGrowth,
-          expenseGrowth: prevExpenseGrowth,
-        })
-
+        // Load compare data if activeTab is 'compare'
         if (activeTab === 'compare') {
+          const prevStartDate = new Date(startDate)
+          prevStartDate.setMonth(prevStartDate.getMonth() - 1)
+          const prevEndDate = new Date(endDate)
+          prevEndDate.setMonth(prevEndDate.getMonth() - 1)
+
+          const { data: prevTransactions, error: prevError } = await supabase
+            .from('transactions')
+            .select('nominal, type')
+            .eq('user_id', user.id)
+            .gte('tanggal', prevStartDate.toISOString().split('T')[0])
+            .lte('tanggal', prevEndDate.toISOString().split('T')[0])
+
+          if (prevError) console.error('Failed to load previous period:', prevError)
+
+          const currentIncome = transactions
+            ?.filter((t) => t.type === 'income')
+            .reduce((sum, t) => sum + t.nominal, 0) || 0
+          const currentExpense = transactions
+            ?.filter((t) => t.type === 'expense')
+            .reduce((sum, t) => sum + t.nominal, 0) || 0
+          const currentNet = currentIncome - currentExpense
+
+          const prevIncome = prevTransactions
+            ?.filter((t) => t.type === 'income')
+            .reduce((sum, t) => sum + t.nominal, 0) || 0
+          const prevExpense = prevTransactions
+            ?.filter((t) => t.type === 'expense')
+            .reduce((sum, t) => sum + t.nominal, 0) || 0
+          const prevNet = prevIncome - prevExpense
+
           setCompareData({
             current: {
               income: currentIncome,
@@ -373,6 +272,12 @@ export default function ReportsScreen() {
           >
             <Text style={[styles.tabChipText, activeTab === 'compare' && styles.tabChipTextActive]}>Perbandingan</Text>
           </Pressable>
+          <Pressable
+            style={[styles.tabChip, activeTab === 'compare' && styles.tabChipActive]}
+            onPress={() => setActiveTab('compare')}
+          >
+            <Text style={[styles.tabChipText, activeTab === 'compare' && styles.tabChipTextActive]}>Perbandingan</Text>
+          </Pressable>
         </View>
 
         {/* Loading/Error State */}
@@ -392,113 +297,95 @@ export default function ReportsScreen() {
           </View>
         )}
 
-        {activeTab === 'overview' && overviewData && (
+        {activeTab === 'overview' && (
           <>
             {/* Key Metrics */}
             <View style={styles.metricRow}>
               <View style={[styles.metricCard, { borderBottomWidth: 3, borderBottomColor: theme.colors.success }]}>
                 <Text style={styles.metricLabel}>Pemasukan</Text>
-                <Text style={[styles.metricValue, { color: theme.colors.success }]}>
-                  Rp {(totalIncome / 1_000_000).toFixed(1)} Jt
-                </Text>
-                {incomeGrowth !== 0 && (
-                  <View style={styles.metricTrend}>
-                    <Text style={[styles.metricTrendText, { color: incomeGrowth >= 0 ? theme.colors.success : theme.colors.danger }]}>
-                      <KaswiseIcon name="back" size={10} color={incomeGrowth >= 0 ? theme.colors.success : theme.colors.danger} weight="bold" /> {Math.abs(incomeGrowth).toFixed(1)}%
-                    </Text>
-                  </View>
-                )}
+                <Text style={[styles.metricValue, { color: theme.colors.success }]}>Rp 18,65 Jt</Text>
+                <View style={styles.metricTrend}>
+                  <Text style={[styles.metricTrendText, { color: theme.colors.success }]}>▲ 12.5%</Text>
+                </View>
               </View>
               <View style={[styles.metricCard, { borderBottomWidth: 3, borderBottomColor: theme.colors.danger }]}>
                 <Text style={styles.metricLabel}>Pengeluaran</Text>
-                <Text style={[styles.metricValue, { color: theme.colors.danger }]}>
-                  Rp {(totalExpense / 1_000_000).toFixed(1)} Jt
-                </Text>
-                {expenseGrowth !== 0 && (
-                  <View style={styles.metricTrend}>
-                    <Text style={[styles.metricTrendText, { color: expenseGrowth >= 0 ? theme.colors.danger : theme.colors.success }]}>
-                      <KaswiseIcon name="back" size={10} color={expenseGrowth >= 0 ? theme.colors.danger : theme.colors.success} weight="bold" /> {Math.abs(expenseGrowth).toFixed(1)}%
-                    </Text>
-                  </View>
-                )}
+                <Text style={[styles.metricValue, { color: theme.colors.danger }]}>Rp 6,40 Jt</Text>
+                <View style={styles.metricTrend}>
+                  <Text style={[styles.metricTrendText, { color: theme.colors.danger }]}>▲ 5.2%</Text>
+                </View>
               </View>
             </View>
 
             <View style={styles.metricRow}>
               <View style={[styles.metricCard, { borderBottomWidth: 3, borderBottomColor: theme.colors.brandPrimary }]}>
                 <Text style={styles.metricLabel}>Tabungan</Text>
-                <Text style={[styles.metricValue, { color: theme.colors.brandPrimary }]}>
-                  Rp {(totalNet / 1_000_000).toFixed(1)} Jt
-                </Text>
-                <Text style={styles.metricSub}>
-                  {totalIncome > 0 ? Math.round((totalNet / totalIncome) * 100) : 0}% saving rate
-                </Text>
+                <Text style={[styles.metricValue, { color: theme.colors.brandPrimary }]}>Rp 12,25 Jt</Text>
+                <Text style={styles.metricSub}>65.7% saving rate</Text>
               </View>
               <View style={[styles.metricCard, { borderBottomWidth: 3, borderBottomColor: theme.colors.warning }]}>
                 <Text style={styles.metricLabel}>Transaksi</Text>
-                <Text style={[styles.metricValue, { color: theme.colors.warning }]}>{totalCount}</Text>
+                <Text style={[styles.metricValue, { color: theme.colors.warning }]}>142</Text>
                 <Text style={styles.metricSub}>bulan ini</Text>
               </View>
             </View>
 
             {/* Chart */}
-            {chartData.months.length > 0 && (
-              <View style={styles.chartCard}>
-                <Text style={styles.chartTitle}>Tren {chartData.months.length} Bulan</Text>
-                <Text style={styles.chartSub}>Pemasukan vs pengeluaran (dalam jutaan Rp)</Text>
+            <View style={styles.chartCard}>
+              <Text style={styles.chartTitle}>Tren 6 Bulan</Text>
+              <Text style={styles.chartSub}>Pemasukan vs pengeluaran (dalam jutaan Rp)</Text>
 
-                <View style={styles.chartArea}>
-                  {chartData.months.map((month, idx) => (
-                    <Pressable
-                      key={month}
-                      style={styles.chartColumn}
-                      onPress={() => setSelectedBar(selectedBar === idx ? null : idx)}
-                    >
-                      <View style={styles.chartBarsWrap}>
-                        <View
-                          style={[
-                            styles.chartBar,
-                            { height: `${(chartData.incomeData[idx] / maxVal) * 100}%`, backgroundColor: theme.colors.success },
-                            selectedBar === idx && styles.chartBarSelected,
-                          ]}
-                        />
-                        <View
-                          style={[
-                            styles.chartBar,
-                            { height: `${(chartData.expenseData[idx] / maxVal) * 100}%`, backgroundColor: `${theme.colors.danger}90` },
-                            selectedBar === idx && styles.chartBarSelected,
-                          ]}
-                        />
+              <View style={styles.chartArea}>
+                {months.map((month, idx) => (
+                  <Pressable
+                    key={month}
+                    style={styles.chartColumn}
+                    onPress={() => setSelectedBar(selectedBar === idx ? null : idx)}
+                  >
+                    <View style={styles.chartBarsWrap}>
+                      <View
+                        style={[
+                          styles.chartBar,
+                          { height: `${(incomeData[idx] / maxVal) * 100}%`, backgroundColor: theme.colors.success },
+                          selectedBar === idx && styles.chartBarSelected,
+                        ]}
+                      />
+                      <View
+                        style={[
+                          styles.chartBar,
+                          { height: `${(expenseData[idx] / maxVal) * 100}%`, backgroundColor: `${theme.colors.danger}90` },
+                          selectedBar === idx && styles.chartBarSelected,
+                        ]}
+                      />
+                    </View>
+                    <Text style={styles.chartLabel}>{month}</Text>
+
+                    {selectedBar === idx && (
+                      <View style={styles.chartTooltip}>
+                        <Text style={styles.tooltipTitle}>{month} 2026</Text>
+                        <Text style={[styles.tooltipValue, { color: theme.colors.success }]}>
+                          Pemasukan: Rp {incomeData[idx]} Jt
+                        </Text>
+                        <Text style={[styles.tooltipValue, { color: theme.colors.danger }]}>
+                          Pengeluaran: Rp {expenseData[idx]} Jt
+                        </Text>
                       </View>
-                      <Text style={styles.chartLabel}>{month}</Text>
+                    )}
+                  </Pressable>
+                ))}
+              </View>
 
-                      {selectedBar === idx && (
-                        <View style={styles.chartTooltip}>
-                          <Text style={styles.tooltipTitle}>{month}</Text>
-                          <Text style={[styles.tooltipValue, { color: theme.colors.success }]}>
-                            +Rp {chartData.incomeData[idx].toFixed(1)} Jt
-                          </Text>
-                          <Text style={[styles.tooltipValue, { color: theme.colors.danger }]}>
-                            -Rp {chartData.expenseData[idx].toFixed(1)} Jt
-                          </Text>
-                        </View>
-                      )}
-                    </Pressable>
-                  ))}
+              <View style={styles.chartLegend}>
+                <View style={styles.legendItem}>
+                  <View style={[styles.legendDot, { backgroundColor: theme.colors.success }]} />
+                  <Text style={styles.legendText}>Pemasukan</Text>
                 </View>
-
-                <View style={styles.chartLegend}>
-                  <View style={styles.legendItem}>
-                    <View style={[styles.legendDot, { backgroundColor: theme.colors.success }]} />
-                    <Text style={styles.legendText}>Pemasukan</Text>
-                  </View>
-                  <View style={styles.legendItem}>
-                    <View style={[styles.legendDot, { backgroundColor: theme.colors.danger }]} />
-                    <Text style={styles.legendText}>Pengeluaran</Text>
-                  </View>
+                <View style={styles.legendItem}>
+                  <View style={[styles.legendDot, { backgroundColor: theme.colors.danger }]} />
+                  <Text style={styles.legendText}>Pengeluaran</Text>
                 </View>
               </View>
-            )}
+            </View>
           </>
         )}
         {activeTab === 'category' && (
@@ -506,49 +393,41 @@ export default function ReportsScreen() {
             {/* Category Breakdown */}
             <View style={styles.categoryCard}>
               <Text style={styles.categoryCardTitle}>Breakdown Pengeluaran</Text>
-              <Text style={styles.categoryCardSub}>Per kategori</Text>
+              <Text style={styles.categoryCardSub}>Per kategori bulan Mei 2026</Text>
 
               {/* Visual Ring Placeholder */}
               <View style={styles.ringArea}>
                 <View style={styles.ringOuter}>
                   <View style={styles.ringInner}>
-                    <Text style={styles.ringValue}>Rp {(expenseTotalForCategory / 1_000_000).toFixed(1)} Jt</Text>
+                    <Text style={styles.ringValue}>Rp 6,4 Jt</Text>
                     <Text style={styles.ringLabel}>Total</Text>
                   </View>
                 </View>
               </View>
 
-              {categoryData.length === 0 ? (
-                <View style={styles.emptyCard}>
-                  <IconBubble name="reports" tone="primary" size={56} />
-                  <Text style={styles.emptyTitle}>Belum ada data</Text>
-                  <Text style={styles.emptySub}>Catat transaksi pengeluaran untuk melihat breakdown.</Text>
-                </View>
-              ) : (
-                categoryData.map((cat, idx) => (
-                  <View
-                    key={cat.category}
-                    style={[
-                      styles.catRow,
-                      idx === 0 && { borderTopWidth: 0 },
-                    ]}
-                  >
-                    <View style={styles.catLeft}>
-                      <IconBubble name={cat.icon} tone="primary" size={36} />
-                      <View>
-                        <Text style={styles.catName}>{cat.category}</Text>
-                        <Text style={styles.catAmount}>{formatRupiah(cat.amount)}</Text>
-                      </View>
-                    </View>
-                    <View style={styles.catRight}>
-                      <Text style={styles.catPct}>{cat.percent}%</Text>
-                      <View style={styles.catBar}>
-                        <View style={[styles.catBarFill, { width: `${cat.percent}%`, backgroundColor: theme.colors.brandPrimary }]} />
-                      </View>
+              {categories.map((cat, idx) => (
+                <View
+                  key={cat.label}
+                  style={[
+                    styles.catRow,
+                    idx === 0 && { borderTopWidth: 0 },
+                  ]}
+                >
+                  <View style={styles.catLeft}>
+                    <Text style={styles.catEmoji}>{cat.emoji}</Text>
+                    <View>
+                      <Text style={styles.catName}>{cat.label}</Text>
+                      <Text style={styles.catAmount}>{cat.amount}</Text>
                     </View>
                   </View>
-                ))
-              )}
+                  <View style={styles.catRight}>
+                    <Text style={styles.catPct}>{cat.percent}%</Text>
+                    <View style={styles.catBar}>
+                      <View style={[styles.catBarFill, { width: `${cat.percent}%`, backgroundColor: theme.colors.brandPrimary }]} />
+                    </View>
+                  </View>
+                </View>
+              ))}
             </View>
           </>
         )}
@@ -570,27 +449,27 @@ export default function ReportsScreen() {
                   <View style={styles.compareRow}>
                     <Text style={styles.compareLabel}>Pemasukan</Text>
                     <View style={styles.compareValues}>
-                      <Text style={styles.compareCurrent}>{formatRupiah(compareData.current.income)}</Text>
+                      <Text style={styles.compareCurrent}>{formatRupiah(compareData.current.income / 1_000_000)}</Text>
                       <Text style={[styles.compareDelta, compareData.current.income >= compareData.previous.income ? styles.compareDeltaPositive : styles.compareDeltaNegative]}>
-                        {compareData.current.income >= compareData.previous.income ? 'Naik' : 'Turun'} {formatRupiah(Math.abs(compareData.current.income - compareData.previous.income))}
+                        {compareData.current.income >= compareData.previous.income ? '▲' : '▼'} {formatRupiah(Math.abs(compareData.current.income - compareData.previous.income) / 1_000_000)}
                       </Text>
                     </View>
                   </View>
                   <View style={styles.compareRow}>
                     <Text style={styles.compareLabel}>Pengeluaran</Text>
                     <View style={styles.compareValues}>
-                      <Text style={styles.compareCurrent}>{formatRupiah(compareData.current.expense)}</Text>
+                      <Text style={styles.compareCurrent}>{formatRupiah(compareData.current.expense / 1_000_000)}</Text>
                       <Text style={[styles.compareDelta, compareData.current.expense <= compareData.previous.expense ? styles.compareDeltaPositive : styles.compareDeltaNegative]}>
-                        {compareData.current.expense <= compareData.previous.expense ? 'Turun' : 'Naik'} {formatRupiah(Math.abs(compareData.current.expense - compareData.previous.expense))}
+                        {compareData.current.expense <= compareData.previous.expense ? '▼' : '▲'} {formatRupiah(Math.abs(compareData.current.expense - compareData.previous.expense) / 1_000_000)}
                       </Text>
                     </View>
                   </View>
                   <View style={styles.compareRow}>
                     <Text style={styles.compareLabel}>Tabungan</Text>
                     <View style={styles.compareValues}>
-                      <Text style={styles.compareCurrent}>{formatRupiah(compareData.current.net)}</Text>
+                      <Text style={styles.compareCurrent}>{formatRupiah(compareData.current.net / 1_000_000)}</Text>
                       <Text style={[styles.compareDelta, compareData.current.net >= compareData.previous.net ? styles.compareDeltaPositive : styles.compareDeltaNegative]}>
-                        {compareData.current.net >= compareData.previous.net ? 'Naik' : 'Turun'} {formatRupiah(Math.abs(compareData.current.net - compareData.previous.net))}
+                        {compareData.current.net >= compareData.previous.net ? '▲' : '▼'} {formatRupiah(Math.abs(compareData.current.net - compareData.previous.net) / 1_000_000)}
                       </Text>
                     </View>
                   </View>
@@ -599,7 +478,7 @@ export default function ReportsScreen() {
                     <View style={styles.compareValues}>
                       <Text style={styles.compareCurrent}>{compareData.current.count}</Text>
                       <Text style={[styles.compareDelta, compareData.current.count >= compareData.previous.count ? styles.compareDeltaPositive : styles.compareDeltaNegative]}>
-                        {compareData.current.count >= compareData.previous.count ? 'Naik' : 'Turun'} {Math.abs(compareData.current.count - compareData.previous.count)}
+                        {compareData.current.count >= compareData.previous.count ? '▲' : '▼'} {Math.abs(compareData.current.count - compareData.previous.count)}
                       </Text>
                     </View>
                   </View>
@@ -724,25 +603,25 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
       alignItems: 'flex-start',
       gap: 12,
     },
-    title: { color: theme.colors.textPrimary, fontSize: 28, fontWeight: '800', letterSpacing: -0.4 },
-    subtitle: { color: theme.colors.textSecondary, fontSize: 13, marginTop: 2 },
+    title: { color: theme.colors.textPrimary, fontSize: theme.typography.fontSize['4xl'], fontWeight: theme.typography.fontWeight.extrabold, letterSpacing: theme.typography.letterSpacing.tight },
+    subtitle: { color: theme.colors.textSecondary, fontSize: theme.typography.fontSize.sm, marginTop: 2 },
     monthBadge: {
       backgroundColor: `${theme.colors.brandPrimary}1F`,
       borderWidth: 1,
       borderColor: `${theme.colors.brandPrimary}52`,
-      borderRadius: 999,
+      borderRadius: theme.radius.pill,
       paddingHorizontal: 12,
       paddingVertical: 6,
     },
-    monthBadgeText: { color: theme.colors.brandPrimary, fontSize: 12, fontWeight: '700' },
+    monthBadgeText: { color: theme.colors.brandPrimary, fontSize: theme.typography.fontSize.sm, fontWeight: theme.typography.fontWeight.bold },
     headerRight: { alignItems: 'flex-end', gap: 8 },
     shareButton: {
       backgroundColor: theme.colors.brandPrimary,
-      borderRadius: 999,
+      borderRadius: theme.radius.pill,
       paddingHorizontal: 12,
       paddingVertical: 6,
     },
-    shareButtonText: { color: theme.colors.textInverse, fontSize: 11, fontWeight: '700' },
+    shareButtonText: { color: theme.colors.textInverse, fontSize: 11, fontWeight: theme.typography.fontWeight.bold },
     periodRow: {
       flexDirection: 'row',
       gap: 8,
@@ -884,15 +763,11 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
       marginLeft: -62,
       width: 124,
       backgroundColor: theme.colors.surface,
-      borderRadius: 10,
+      borderRadius: theme.radius.md,
       padding: 8,
       borderWidth: 1,
       borderColor: theme.colors.borderSoft,
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.1,
-      shadowRadius: 4,
-      elevation: 3,
+      ...theme.shadow.md,
       zIndex: 12,
     },
     tooltipTitle: { fontSize: 11, fontWeight: '700', color: theme.colors.textPrimary, marginBottom: 4 },
@@ -934,24 +809,13 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
       borderTopColor: theme.colors.borderSoft,
     },
     catLeft: { flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 },
+    catEmoji: { fontSize: 18 },
     catName: { color: theme.colors.textPrimary, fontSize: 13, fontWeight: '700' },
     catAmount: { color: theme.colors.textMuted, fontSize: 11, marginTop: 1 },
     catRight: { alignItems: 'flex-end', gap: 4 },
     catPct: { color: theme.colors.brandPrimary, fontSize: 13, fontWeight: '800' },
     catBar: { width: 60, height: 4, borderRadius: 999, backgroundColor: theme.colors.mutedSurface },
     catBarFill: { height: '100%', borderRadius: 999 },
-    emptyCard: {
-      backgroundColor: theme.colors.surface,
-      borderRadius: 18,
-      borderWidth: 1,
-      borderColor: theme.colors.borderSoft,
-      borderStyle: 'dashed',
-      padding: 24,
-      alignItems: 'center',
-      gap: 8,
-    },
-    emptyTitle: { color: theme.colors.textPrimary, fontSize: 15, fontWeight: '800' },
-    emptySub: { color: theme.colors.textMuted, fontSize: 13, textAlign: 'center', lineHeight: 20 },
     customRangeBadge: {
       backgroundColor: `${theme.colors.brandPrimary}1A`,
       borderWidth: 1,
