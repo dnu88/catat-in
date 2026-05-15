@@ -9,7 +9,6 @@ const corsHeaders = {
 type ProcessVoiceRequest = {
   transaction_id: string
   audio_path: string
-  user_id: string
 }
 
 type ExtractedFields = {
@@ -27,6 +26,43 @@ type ProcessVoiceResponse = {
   review_required: boolean
   fields: ExtractedFields
   error_message?: string
+}
+
+async function assertProcessableTransaction(
+  supabase: ReturnType<typeof createClient>,
+  transactionId: string,
+  userId: string,
+): Promise<Response | null> {
+  const { data, error } = await supabase
+    .from('transactions')
+    .select('id, status')
+    .eq('id', transactionId)
+    .eq('user_id', userId)
+    .maybeSingle()
+
+  if (error) {
+    throw error
+  }
+
+  if (!data) {
+    return new Response(
+      JSON.stringify({ error: 'Transaction not found' }),
+      { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+    )
+  }
+
+  if (data.status !== 'processing') {
+    return new Response(
+      JSON.stringify({ error: 'Transaction is not processable' }),
+      { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+    )
+  }
+
+  return null
+}
+
+function isOwnVoicePath(audioPath: string, userId: string): boolean {
+  return audioPath.startsWith(`${userId}/`) && !audioPath.includes('..')
 }
 
 async function transcribeAudioWithWhisper(audioUrl: string): Promise<string> {
@@ -127,19 +163,53 @@ serve(async (req) => {
 
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!
+    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!
     const supabaseServiceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 
+    const authorization = req.headers.get('Authorization') ?? ''
+    const token = authorization.replace(/^Bearer\s+/i, '')
+
+    if (!token) {
+      return new Response(
+        JSON.stringify({ error: 'Authorization bearer token is required' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+      )
+    }
+
+    const authClient = createClient(supabaseUrl, supabaseAnonKey)
+    const { data: authData, error: authError } = await authClient.auth.getUser(token)
+
+    if (authError || !authData.user?.id) {
+      return new Response(
+        JSON.stringify({ error: 'Invalid authorization token' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+      )
+    }
+
+    const userId = authData.user.id
     const supabase = createClient(supabaseUrl, supabaseServiceRoleKey)
 
     const body: ProcessVoiceRequest = await req.json()
 
-    const { transaction_id, audio_path, user_id } = body
+    const { transaction_id, audio_path } = body
 
-    if (!transaction_id || !audio_path || !user_id) {
+    if (!transaction_id || !audio_path) {
       return new Response(
-        JSON.stringify({ error: 'transaction_id, audio_path, and user_id are required' }),
+        JSON.stringify({ error: 'transaction_id and audio_path are required' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
       )
+    }
+
+    if (!isOwnVoicePath(audio_path, userId)) {
+      return new Response(
+        JSON.stringify({ error: 'Invalid audio path' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+      )
+    }
+
+    const preflightResponse = await assertProcessableTransaction(supabase, transaction_id, userId)
+    if (preflightResponse) {
+      return preflightResponse
     }
 
     audioPathToDelete = audio_path
@@ -179,7 +249,9 @@ serve(async (req) => {
       .from('transactions')
       .update(updatePayload)
       .eq('id', transaction_id)
-      .eq('user_id', user_id)
+      .eq('user_id', userId)
+      .select('id')
+      .single()
 
     if (updateError) {
       throw updateError

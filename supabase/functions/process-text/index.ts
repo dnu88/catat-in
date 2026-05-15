@@ -9,7 +9,6 @@ const corsHeaders = {
 type ProcessTextRequest = {
   transaction_id: string
   raw_text: string
-  user_id: string
 }
 
 type ExtractedFields = {
@@ -29,6 +28,39 @@ type ProcessTextResponse = {
   error_message?: string
 }
 
+async function assertProcessableTransaction(
+  supabase: ReturnType<typeof createClient>,
+  transactionId: string,
+  userId: string,
+): Promise<Response | null> {
+  const { data, error } = await supabase
+    .from('transactions')
+    .select('id, status')
+    .eq('id', transactionId)
+    .eq('user_id', userId)
+    .maybeSingle()
+
+  if (error) {
+    throw error
+  }
+
+  if (!data) {
+    return new Response(
+      JSON.stringify({ error: 'Transaction not found' }),
+      { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+    )
+  }
+
+  if (data.status !== 'processing') {
+    return new Response(
+      JSON.stringify({ error: 'Transaction is not processable' }),
+      { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+    )
+  }
+
+  return null
+}
+
 async function extractFromTextWithAI(rawText: string): Promise<{ confidence: number; fields: ExtractedFields }> {
   const anthropicApiKey = Deno.env.get('ANTHROPIC_API_KEY')
 
@@ -46,7 +78,7 @@ async function extractFromTextWithAI(rawText: string): Promise<{ confidence: num
       'anthropic-version': '2023-06-01',
     },
     body: JSON.stringify({
-      model: 'claude-haiku-4-5',
+      model: 'claude-haiku-4-5-20251001',
       max_tokens: 512,
       messages: [
         {
@@ -68,7 +100,11 @@ async function extractFromTextWithAI(rawText: string): Promise<{ confidence: num
     throw new Error('No extraction result from AI')
   }
 
-  const parsed = JSON.parse(text)
+  const jsonMatch = text.match(/\{[\s\S]*\}/)
+  if (!jsonMatch) {
+    throw new Error('AI response did not contain JSON')
+  }
+  const parsed = JSON.parse(jsonMatch[0])
 
   return {
     confidence: Math.max(0, Math.min(1, Number(parsed.confidence) || 0)),
@@ -90,19 +126,46 @@ serve(async (req) => {
 
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!
+    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!
     const supabaseServiceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 
+    const authorization = req.headers.get('Authorization') ?? ''
+    const token = authorization.replace(/^Bearer\s+/i, '')
+
+    if (!token) {
+      return new Response(
+        JSON.stringify({ error: 'Authorization bearer token is required' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+      )
+    }
+
+    const authClient = createClient(supabaseUrl, supabaseAnonKey)
+    const { data: authData, error: authError } = await authClient.auth.getUser(token)
+
+    if (authError || !authData.user?.id) {
+      return new Response(
+        JSON.stringify({ error: 'Invalid authorization token' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+      )
+    }
+
+    const userId = authData.user.id
     const supabase = createClient(supabaseUrl, supabaseServiceRoleKey)
 
     const body: ProcessTextRequest = await req.json()
 
-    const { transaction_id, raw_text, user_id } = body
+    const { transaction_id, raw_text } = body
 
-    if (!transaction_id || !raw_text || !user_id) {
+    if (!transaction_id || !raw_text) {
       return new Response(
-        JSON.stringify({ error: 'transaction_id, raw_text, and user_id are required' }),
+        JSON.stringify({ error: 'transaction_id and raw_text are required' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
       )
+    }
+
+    const preflightResponse = await assertProcessableTransaction(supabase, transaction_id, userId)
+    if (preflightResponse) {
+      return preflightResponse
     }
 
     const { confidence, fields } = await extractFromTextWithAI(raw_text)
@@ -125,7 +188,9 @@ serve(async (req) => {
       .from('transactions')
       .update(updatePayload)
       .eq('id', transaction_id)
-      .eq('user_id', user_id)
+      .eq('user_id', userId)
+      .select('id')
+      .single()
 
     if (updateError) {
       throw updateError
