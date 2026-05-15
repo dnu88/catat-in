@@ -3,6 +3,7 @@ import { StatusBar } from 'expo-status-bar'
 import { Component, ReactNode } from 'react'
 import { Text, View } from 'react-native'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
+import { I18nProvider, useI18n } from '../src/i18n/i18n-context'
 import { SupabaseProvider } from '../src/lib/supabase'
 import { ThemeProvider, useTheme } from '../src/theme/theme-context'
 
@@ -18,19 +19,26 @@ class ErrorBoundary extends Component<{ children: ReactNode }, { hasError: boole
 
   render() {
     if (this.state.hasError) {
-      return (
-        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20, backgroundColor: '#FFF5F5' }}>
-          <Text style={{ fontSize: 18, fontWeight: 'bold', marginBottom: 10, color: '#C00' }}>
-            Error Loading App
-          </Text>
-          <Text style={{ fontSize: 13, color: '#600', textAlign: 'center' }}>
-            {this.state.error?.message}
-          </Text>
-        </View>
-      )
+      return <RootErrorFallback />
     }
     return this.props.children
   }
+}
+
+function RootErrorFallback() {
+  const { t } = useI18n()
+  const { theme } = useTheme()
+
+  return (
+    <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20, backgroundColor: theme.colors.background }}>
+      <Text style={{ fontSize: 18, fontWeight: 'bold', marginBottom: 10, color: theme.colors.danger, textAlign: 'center' }}>
+        {t('appCrashedTitle')}
+      </Text>
+      <Text style={{ fontSize: 13, color: theme.colors.textSecondary, textAlign: 'center' }}>
+        {t('appCrashedDescription')}
+      </Text>
+    </View>
+  )
 }
 
 function ThemedRootStack() {
@@ -54,14 +62,16 @@ function ThemedRootStack() {
 
 export default function RootLayout() {
   return (
-    <ErrorBoundary>
-      <SafeAreaProvider>
-        <SupabaseProvider>
-          <ThemeProvider>
-            <ThemedRootStack />
-          </ThemeProvider>
-        </SupabaseProvider>
-      </SafeAreaProvider>
-    </ErrorBoundary>
+    <SafeAreaProvider>
+      <SupabaseProvider>
+        <I18nProvider>
+          <ErrorBoundary>
+            <ThemeProvider>
+              <ThemedRootStack />
+            </ThemeProvider>
+          </ErrorBoundary>
+        </I18nProvider>
+      </SupabaseProvider>
+    </SafeAreaProvider>
   )
 }

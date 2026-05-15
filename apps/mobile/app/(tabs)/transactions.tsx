@@ -3,7 +3,7 @@ import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from
 import { useRouter } from 'expo-router'
 
 import { KaswiseIcon } from '../../src/components/icons/kaswise-icons'
-import { IconBubble } from '../../src/components/ui'
+import { EmptyState, FilterChip, IconBubble, ScreenHeader, StatCard } from '../../src/components/ui'
 import { useTheme } from '../../src/theme/theme-context'
 import { listTransactions, type Transaction } from '../../src/services/transactions'
 
@@ -58,17 +58,15 @@ export default function TransactionsScreen() {
   return (
     <View style={styles.screen}>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        {/* Header */}
-        <View style={styles.headerRow}>
-          <View>
-            <Text style={styles.title}>Transaksi</Text>
-            <Text style={styles.subtitle}>Pantau arus kas harianmu dengan detail.</Text>
-          </View>
-          <View style={styles.summaryBadge}>
-            <KaswiseIcon name="transactions" size={14} color={theme.colors.brandPrimary} weight="bold" />
-            <Text style={styles.summaryBadgeText}>{list.length} item</Text>
-          </View>
-        </View>
+        <ScreenHeader
+          title="Transaksi"
+          subtitle="Pantau arus kas harianmu dengan detail."
+          action={(
+            <View style={styles.summaryBadge}>
+              <Text style={styles.summaryBadgeText}>{list.length} item</Text>
+            </View>
+          )}
+        />
 
         {/* Period Chips */}
         <View style={styles.periodRow}>
@@ -98,18 +96,8 @@ export default function TransactionsScreen() {
 
         {/* Stats Row */}
         <View style={styles.statRow}>
-          <View style={[styles.statCard, { borderLeftWidth: 3, borderLeftColor: theme.colors.success }]}>
-            <Text style={styles.statLabel}>Pemasukan</Text>
-            <Text style={[styles.statValue, { color: theme.colors.success }]}>
-              Rp {(totalIncome / 1000000).toFixed(1)} Jt
-            </Text>
-          </View>
-          <View style={[styles.statCard, { borderLeftWidth: 3, borderLeftColor: theme.colors.danger }]}>
-            <Text style={styles.statLabel}>Pengeluaran</Text>
-            <Text style={[styles.statValue, { color: theme.colors.danger }]}>
-              Rp {(totalExpense / 1000000).toFixed(1)} Jt
-            </Text>
-          </View>
+          <StatCard label="Pemasukan" value={`Rp ${(totalIncome / 1000000).toFixed(1)} Jt`} icon="chart" tone="success" />
+          <StatCard label="Pengeluaran" value={`Rp ${(totalExpense / 1000000).toFixed(1)} Jt`} icon="transactions" tone="danger" />
         </View>
 
         {/* Filter Row */}
@@ -118,7 +106,7 @@ export default function TransactionsScreen() {
             <FilterChip
               key={filter}
               label={filter === 'all' ? 'Semua' : filter === 'income' ? 'Pemasukan' : 'Pengeluaran'}
-              active={activeFilter === filter}
+              selected={activeFilter === filter}
               onPress={() => setActiveFilter(filter)}
             />
           ))}
@@ -126,11 +114,12 @@ export default function TransactionsScreen() {
 
         {/* Transaction List */}
         {list.length === 0 ? (
-          <View style={styles.emptyCard}>
-            <IconBubble name="transactions" tone="accent" size={52} />
-            <Text style={styles.emptyTitle}>Belum ada transaksi</Text>
-            <Text style={styles.emptySub}>Coba ubah filter atau tambahkan transaksi baru dari tab Capture.</Text>
-          </View>
+          <EmptyState
+            icon="transactions"
+            tone="accent"
+            title="Belum ada transaksi"
+            description="Coba ubah filter atau tambahkan transaksi baru dari tab Capture."
+          />
         ) : (
           <View style={styles.listCard}>
             {list.map((item, index) => {
@@ -187,56 +176,20 @@ export default function TransactionsScreen() {
   )
 }
 
-function FilterChip({ label, active, onPress }: { label: string; active: boolean; onPress: () => void }) {
-  const { theme } = useTheme()
-
-  return (
-    <Pressable
-      onPress={onPress}
-      style={{
-        paddingHorizontal: 14,
-        paddingVertical: 8,
-        borderRadius: 999,
-        borderWidth: 1,
-        borderColor: active ? theme.colors.brandPrimary : theme.colors.borderSoft,
-        backgroundColor: active ? theme.colors.brandPrimary : theme.colors.surface,
-      }}
-    >
-      <Text
-        style={{
-          color: active ? theme.colors.textInverse : theme.colors.textSecondary,
-          fontSize: 12,
-          fontWeight: '700',
-        }}
-      >
-        {label}
-      </Text>
-    </Pressable>
-  )
-}
-
 function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
   return StyleSheet.create({
     screen: { flex: 1, backgroundColor: theme.colors.background },
     content: { padding: 20, gap: 14, paddingBottom: 26 },
-    headerRow: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'flex-start',
-      gap: 12,
-    },
-    title: { color: theme.colors.textPrimary, fontSize: 28, fontWeight: '800', letterSpacing: -0.4 },
-    subtitle: { color: theme.colors.textSecondary, fontSize: 13, marginTop: 2 },
     summaryBadge: {
-      backgroundColor: `${theme.colors.brandPrimary}1F`,
+      backgroundColor: theme.colors.mutedSurface,
       borderWidth: 1,
-      borderColor: `${theme.colors.brandPrimary}52`,
+      borderColor: theme.colors.borderSoft,
       borderRadius: 999,
       paddingHorizontal: 12,
       paddingVertical: 6,
     },
     summaryBadgeText: {
-      color: theme.colors.brandPrimary,
+      color: theme.colors.textSecondary,
       fontSize: 12,
       fontWeight: '700',
     },
@@ -252,17 +205,6 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
     },
     periodChipText: { color: theme.colors.textSecondary, fontSize: 13, fontWeight: '700' },
     statRow: { flexDirection: 'row', gap: 10 },
-    statCard: {
-      flex: 1,
-      backgroundColor: theme.colors.surface,
-      borderRadius: 16,
-      borderWidth: 1,
-      borderColor: theme.colors.borderSoft,
-      padding: 14,
-      gap: 4,
-    },
-    statLabel: { color: theme.colors.textSecondary, fontSize: 12, fontWeight: '600' },
-    statValue: { fontSize: 18, fontWeight: '800' },
     filterRow: { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
     listCard: {
       backgroundColor: theme.colors.surface,
@@ -271,19 +213,6 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
       borderColor: theme.colors.borderSoft,
       paddingHorizontal: 14,
     },
-    emptyCard: {
-      backgroundColor: theme.colors.surface,
-      borderRadius: 18,
-      borderWidth: 1,
-      borderColor: theme.colors.borderSoft,
-      borderStyle: 'dashed',
-      padding: 24,
-      alignItems: 'center',
-      gap: 8,
-    },
-    emptyIcon: { fontSize: 32, marginBottom: 4 },
-    emptyTitle: { color: theme.colors.textPrimary, fontSize: 15, fontWeight: '800' },
-    emptySub: { color: theme.colors.textMuted, fontSize: 13, textAlign: 'center', lineHeight: 20 },
     row: {
       flexDirection: 'row',
       alignItems: 'center',

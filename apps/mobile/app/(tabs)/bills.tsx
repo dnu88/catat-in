@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 
 import type { KaswiseIconName } from '../../src/components/icons/kaswise-icons'
-import { IconBubble } from '../../src/components/ui'
+import { EmptyState, FilterChip, IconBubble, ScreenHeader, StatusBadge } from '../../src/components/ui'
 import { useTheme } from '../../src/theme/theme-context'
 import { listBills, updateBill, type Bill } from '../../src/services/bills'
 
@@ -83,16 +83,15 @@ export default function BillsScreen() {
   return (
     <View style={styles.screen}>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        {/* Header */}
-        <View style={styles.headerRow}>
-          <View>
-            <Text style={styles.title}>Tagihan</Text>
-            <Text style={styles.subtitle}>Kelola pengingat tagihan rutin.</Text>
-          </View>
-          <Pressable style={styles.addButton}>
-            <Text style={styles.addButtonText}>+ Baru</Text>
-          </Pressable>
-        </View>
+        <ScreenHeader
+          title="Tagihan"
+          subtitle="Kelola pengingat tagihan rutin."
+          action={(
+            <Pressable style={styles.addButton}>
+              <Text style={styles.addButtonText}>+ Baru</Text>
+            </Pressable>
+          )}
+        />
 
         {/* Alert Card */}
         {overdueCount > 0 && (
@@ -118,28 +117,23 @@ export default function BillsScreen() {
         {/* Filter Row */}
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterRow}>
           {(['all', 'upcoming', 'overdue', 'paid'] as FilterStatus[]).map((f) => (
-            <Pressable
+            <FilterChip
               key={f}
+              label={f === 'all' ? 'Semua' : f === 'upcoming' ? 'Akan Datang' : f === 'overdue' ? 'Terlambat' : 'Lunas'}
+              selected={filter === f}
               onPress={() => setFilter(f)}
-              style={[
-                styles.filterChip,
-                filter === f && { backgroundColor: theme.colors.brandPrimary, borderColor: theme.colors.brandPrimary },
-              ]}
-            >
-              <Text style={[styles.filterChipText, filter === f && { color: theme.colors.textInverse }]}>
-                {f === 'all' ? 'Semua' : f === 'upcoming' ? 'Akan Datang' : f === 'overdue' ? 'Terlambat' : 'Lunas'}
-              </Text>
-            </Pressable>
+            />
           ))}
         </ScrollView>
 
         {/* Bill Cards */}
         {filtered.length === 0 ? (
-          <View style={styles.emptyCard}>
-            <IconBubble name="bills" tone="accent" size={56} />
-            <Text style={styles.emptyTitle}>Belum ada tagihan</Text>
-            <Text style={styles.emptySub}>Tambahkan tagihan berulang untuk diingatkan.</Text>
-          </View>
+          <EmptyState
+            icon="bills"
+            tone="accent"
+            title="Belum ada tagihan"
+            description="Tambahkan tagihan berulang untuk diingatkan."
+          />
         ) : (
           filtered.map((bill) => {
             const statusColor =
@@ -160,7 +154,7 @@ export default function BillsScreen() {
             const icon = billIcons[iconKey] || 'bills'
 
             return (
-              <Pressable key={bill.id} style={[styles.billCard, { borderLeftColor: statusColor, borderLeftWidth: 4 }]}>
+              <Pressable key={bill.id} style={styles.billCard}>
                 <View style={styles.billTop}>
                   <View style={styles.billLeft}>
                     <IconBubble
@@ -168,13 +162,13 @@ export default function BillsScreen() {
                       tone={bill.status === 'paid' ? 'success' : bill.status === 'overdue' ? 'danger' : 'warning'}
                       size={44}
                     />
-                    <View>
-                      <Text style={styles.billName}>{bill.name}</Text>
+                    <View style={{ flex: 1 }}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                        <Text style={styles.billName}>{bill.name}</Text>
+                        <StatusBadge label={statusLabel} color={statusColor} />
+                      </View>
                       <Text style={styles.billDue}>Jatuh tempo: {formattedDate}</Text>
                     </View>
-                  </View>
-                  <View style={[styles.statusBadge, { backgroundColor: `${statusColor}15`, borderColor: `${statusColor}40` }]}>
-                    <Text style={[styles.statusBadgeText, { color: statusColor }]}>{statusLabel}</Text>
                   </View>
                 </View>
 
@@ -257,8 +251,8 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
       padding: 14,
       gap: 12,
     },
-    billTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-    billLeft: { flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 },
+    billTop: { flexDirection: 'row', alignItems: 'flex-start' },
+    billLeft: { flexDirection: 'row', alignItems: 'flex-start', gap: 12, flex: 1 },
     billName: { color: theme.colors.textPrimary, fontSize: 14, fontWeight: '700' },
     billDue: { color: theme.colors.textMuted, fontSize: 12, marginTop: 2 },
     statusBadge: {

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 
 import type { KaswiseIconName } from '../../src/components/icons/kaswise-icons'
-import { IconBubble } from '../../src/components/ui'
+import { EmptyState, IconBubble, ScreenHeader } from '../../src/components/ui'
 import { useTheme } from '../../src/theme/theme-context'
 import { listBudgets, type Budget } from '../../src/services/budgets'
 import { listTransactions } from '../../src/services/transactions'
@@ -74,15 +74,15 @@ export default function BudgetsScreen() {
   return (
     <View style={styles.screen}>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <View style={styles.headerRow}>
-          <View>
-            <Text style={styles.title}>Anggaran</Text>
-            <Text style={styles.subtitle}>Kelola batas pengeluaranmu per kategori.</Text>
-          </View>
-          <Pressable style={styles.addButton}>
-            <Text style={styles.addButtonText}>+ Baru</Text>
-          </Pressable>
-        </View>
+        <ScreenHeader
+          title="Anggaran"
+          subtitle="Kelola batas pengeluaranmu per kategori."
+          action={(
+            <Pressable style={styles.addButton}>
+              <Text style={styles.addButtonText}>+ Baru</Text>
+            </Pressable>
+          )}
+        />
 
         <View style={styles.periodRow}>
           <Pressable
@@ -133,11 +133,12 @@ export default function BudgetsScreen() {
 
         {/* Budget Cards */}
         {budgets.length === 0 ? (
-          <View style={styles.emptyCard}>
-            <IconBubble name="budgets" tone="primary" size={56} />
-            <Text style={styles.emptyTitle}>Belum ada anggaran</Text>
-            <Text style={styles.emptySub}>Tambahkan anggaran baru untuk memantau pengeluaran.</Text>
-          </View>
+          <EmptyState
+            icon="budgets"
+            tone="primary"
+            title="Belum ada anggaran"
+            description="Tambahkan anggaran baru untuk memantau pengeluaran."
+          />
         ) : (
           budgets.map((budget) => {
             const spent = budget.spent_amount ?? 0
