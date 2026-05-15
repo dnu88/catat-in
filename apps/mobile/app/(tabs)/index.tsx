@@ -3,6 +3,8 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { useRouter } from 'expo-router'
 
 import { useTheme } from '../../src/theme/theme-context'
+import { IconBubble } from '../../src/components/ui/IconBubble'
+import type { KaswiseIconName } from '../../src/components/icons/kaswise-icons'
 
 const recentTransactions = [
   { id: '1', title: 'Gaji Bulanan', date: '9 Mei 2026', amount: '+ Rp 8.500.000', tone: 'positive', category: 'Pemasukan' },
@@ -11,17 +13,17 @@ const recentTransactions = [
   { id: '4', title: 'Makan Siang', date: '7 Mei 2026', amount: '- Rp 45.000', tone: 'negative', category: 'Makanan' },
 ]
 
-const budgetItems = [
-  { id: '1', name: 'Makan', spent: 620000, limit: 800000, icon: '🍽' },
-  { id: '2', name: 'Transport', spent: 180000, limit: 300000, icon: '🚗' },
-  { id: '3', name: 'Belanja', spent: 450000, limit: 500000, icon: '🛒' },
+const budgetItems: Array<{ id: string; name: string; spent: number; limit: number; icon: KaswiseIconName }> = [
+  { id: '1', name: 'Makan', spent: 620000, limit: 800000, icon: 'bills' },
+  { id: '2', name: 'Transport', spent: 180000, limit: 300000, icon: 'card' },
+  { id: '3', name: 'Belanja', spent: 450000, limit: 500000, icon: 'wallets' },
 ]
 
-const quickActions = [
-  { id: 'text', label: 'Teks', icon: '✏️', route: '/(tabs)/capture' },
-  { id: 'photo', label: 'Foto', icon: '📷', route: '/(tabs)/capture' },
-  { id: 'voice', label: 'Suara', icon: '🎙️', route: '/(tabs)/capture' },
-  { id: 'import', label: 'Import', icon: '📥', route: '/(tabs)/imports' },
+const quickActions: Array<{ id: string; label: string; icon: KaswiseIconName; route: string }> = [
+  { id: 'text', label: 'Teks', icon: 'transactions', route: '/(tabs)/capture' },
+  { id: 'photo', label: 'Foto', icon: 'capture', route: '/(tabs)/capture' },
+  { id: 'voice', label: 'Suara', icon: 'file', route: '/(tabs)/capture' },
+  { id: 'import', label: 'Import', icon: 'imports', route: '/(tabs)/imports' },
 ]
 
 export default function DashboardScreen() {
@@ -89,9 +91,7 @@ export default function DashboardScreen() {
               style={styles.quickActionCard}
               onPress={() => router.push(action.route as any)}
             >
-              <View style={styles.quickActionIconWrap}>
-                <Text style={styles.quickActionIcon}>{action.icon}</Text>
-              </View>
+              <IconBubble name={action.icon} tone="primary" size={36} />
               <Text style={styles.quickActionLabel}>{action.label}</Text>
             </Pressable>
           ))}
@@ -141,7 +141,7 @@ export default function DashboardScreen() {
               ]}
             >
               <View style={styles.budgetItemLeft}>
-                <Text style={styles.budgetItemIcon}>{item.icon}</Text>
+                <IconBubble name={item.icon} tone="primary" size={36} />
                 <View>
                   <Text style={styles.budgetItemName}>{item.name}</Text>
                   <Text style={styles.budgetItemMeta}>
