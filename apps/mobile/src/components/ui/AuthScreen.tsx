@@ -1,7 +1,9 @@
 import { ReactNode, useMemo } from 'react'
 import { ActivityIndicator, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native'
+import { Link } from 'expo-router'
 
 import type { IconBubbleTone } from './IconBubble'
+import type { KaswiseIconName } from '../icons/kaswise-icons'
 import { IconBubble } from './IconBubble'
 import { KaswiseIcon } from '../icons/kaswise-icons'
 import { useTheme } from '../../theme/theme-context'
@@ -27,15 +29,13 @@ export function AuthScreenLayout({ children }: AuthScreenLayoutProps) {
   )
 }
 
-import type { KaswiseIconName } from '../icons/kaswise-icons'
-
 type AuthHeroPanelProps = {
   icon: KaswiseIconName
   iconTone?: IconBubbleTone
   eyebrow?: string
   title: string
   description?: string
-  stats?: { icon: KaswiseIconName; label: string; color?: string }[]
+  stats?: { icon: KaswiseIconName; label: string; tone?: IconBubbleTone }[]
 }
 
 export function AuthHeroPanel({
@@ -68,7 +68,7 @@ export function AuthHeroPanel({
               <KaswiseIcon
                 name={stat.icon}
                 size={16}
-                color={stat.color || theme.colors.brandPrimary}
+                color={theme.iconBubbles[stat.tone || 'primary'].color}
                 weight="bold"
               />
               <Text style={styles.heroStatText}>{stat.label}</Text>
@@ -127,6 +127,29 @@ export function AuthButton({ label, onPress, loading, disabled }: AuthButtonProp
   )
 }
 
+type AuthLinkProps = {
+  href: string
+  label: string
+  variant?: 'primary' | 'secondary'
+  align?: 'left' | 'center' | 'right'
+}
+
+export function AuthLink({ href, label, variant = 'primary', align = 'left' }: AuthLinkProps) {
+  const { theme } = useTheme()
+  const styles = useMemo(() => createLinkStyles(theme), [theme])
+
+  const textStyle = variant === 'primary' ? styles.linkPrimary : styles.linkSecondary
+  const containerStyle = align === 'center' ? styles.linkContainerCenter : align === 'right' ? styles.linkContainerRight : styles.linkContainer
+
+  return (
+    <View style={containerStyle}>
+      <Link href={href} style={textStyle} accessibilityRole="link" accessibilityLabel={label}>
+        {label}
+      </Link>
+    </View>
+  )
+}
+
 type AuthFooterProps = {
   question: string
   linkLabel: string
@@ -140,9 +163,7 @@ export function AuthFooter({ question, linkLabel, linkHref }: AuthFooterProps) {
   return (
     <View style={styles.footerRow}>
       <Text style={styles.footerText}>{question}</Text>
-      <Pressable onPress={() => {}}>
-        <Text style={styles.linkPrimary}>{linkLabel}</Text>
-      </Pressable>
+      <AuthLink href={linkHref} label={linkLabel} variant="primary" />
     </View>
   )
 }
@@ -324,6 +345,30 @@ function createBackStyles(theme: ReturnType<typeof useTheme>['theme']) {
       paddingHorizontal: 4,
     },
     backLabel: {
+      color: theme.colors.textSecondary,
+      fontSize: 13,
+      fontWeight: '700',
+    },
+  })
+}
+
+function createLinkStyles(theme: ReturnType<typeof useTheme>['theme']) {
+  return StyleSheet.create({
+    linkContainer: {
+      alignSelf: 'flex-start',
+    },
+    linkContainerCenter: {
+      alignSelf: 'center',
+    },
+    linkContainerRight: {
+      alignSelf: 'flex-end',
+    },
+    linkPrimary: {
+      color: theme.colors.brandPrimary,
+      fontSize: 13,
+      fontWeight: '800',
+    },
+    linkSecondary: {
       color: theme.colors.textSecondary,
       fontSize: 13,
       fontWeight: '700',

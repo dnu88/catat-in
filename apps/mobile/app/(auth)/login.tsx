@@ -1,8 +1,7 @@
-import { Link, router } from 'expo-router'
+import { router } from 'expo-router'
 import { useState } from 'react'
-import { Text, View } from 'react-native'
 
-import { AuthButton, AuthFormCard, AuthHeroPanel, AuthScreenLayout } from '../../src/components/ui'
+import { AuthButton, AuthFooter, AuthFormCard, AuthHeroPanel, AuthLink, AuthScreenLayout } from '../../src/components/ui'
 import { InputField, StateMessage } from '../../src/components/ui'
 import { useI18n } from '../../src/i18n/i18n-context'
 import { useSupabase } from '../../src/lib/supabase'
@@ -40,24 +39,20 @@ export default function LoginScreen() {
       <AuthHeroPanel
         icon="lock"
         iconTone="primary"
-        eyebrow="Kaswise"
-        title="Catat keuangan, tetap tenang, tetap rapi."
-        description="Masuk ke ruang finansialmu dengan tampilan navy premium, ringkas, dan fokus ke hal penting tiap hari."
+        title={t('loginHeroTitle')}
+        description={t('loginHeroDescription')}
         stats={[
-          { icon: 'wallets', label: 'Wallet rapi', color: '#10B981' },
-          { icon: 'chart', label: 'Insight cepat', color: '#8B5CF6' },
+          { icon: 'wallets', label: t('statWalletNeat'), tone: 'success' },
+          { icon: 'chart', label: t('statInsightFast'), tone: 'accent' },
         ]}
       />
 
-      <AuthFormCard
-        title="Masuk ke akunmu"
-        subtitle="Lanjutkan ke dashboard Kaswise dengan akun Supabase yang sama."
-      >
+      <AuthFormCard title={t('loginTitle')} subtitle={t('loginSubtitle')}>
         <InputField
-          label="Email"
+          label={t('emailLabel')}
           value={email}
           onChangeText={setEmail}
-          placeholder="email@contoh.com"
+          placeholder={t('emailPlaceholder')}
           keyboardType="email-address"
           autoCapitalize="none"
           autoComplete="email"
@@ -66,10 +61,10 @@ export default function LoginScreen() {
         />
 
         <InputField
-          label="Password"
+          label={t('passwordLabel')}
           value={password}
           onChangeText={setPassword}
-          placeholder="••••••••"
+          placeholder={t('passwordPlaceholder')}
           secureTextEntry
           autoCapitalize="none"
           autoComplete="password"
@@ -79,19 +74,12 @@ export default function LoginScreen() {
 
         {error ? <StateMessage message={error} tone="error" /> : null}
 
-        <AuthButton label="Masuk" onPress={onLogin} loading={loading} disabled={loading} />
+        <AuthButton label={t('loginButton')} onPress={onLogin} loading={loading} disabled={loading} />
 
-        <Link href="/(auth)/forgot-password" style={{ color: '#6B7280', fontSize: 13, fontWeight: '700', textAlign: 'right' }}>
-          Lupa password?
-        </Link>
+        <AuthLink href="/(auth)/forgot-password" label={t('forgotPasswordPrompt')} variant="secondary" align="right" />
       </AuthFormCard>
 
-      <View style={{ flexDirection: 'row', justifyContent: 'center', flexWrap: 'wrap', gap: 6 }}>
-        <Text style={{ color: '#6B7280', fontSize: 13 }}>Belum punya akun?</Text>
-        <Link href="/(auth)/register" style={{ color: '#4F46E5', fontSize: 13, fontWeight: '800' }}>
-          Daftar sekarang
-        </Link>
-      </View>
+      <AuthFooter question={t('noAccount')} linkLabel={t('registerButton')} linkHref="/(auth)/register" />
     </AuthScreenLayout>
   )
 }

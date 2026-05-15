@@ -1,20 +1,20 @@
-import { Link, router } from 'expo-router'
+import { router } from 'expo-router'
 import { useState } from 'react'
 
-import { AuthBackButton, AuthButton, AuthFormCard, AuthHeroPanel, AuthScreenLayout } from '../../src/components/ui'
+import { AuthBackButton, AuthButton, AuthFormCard, AuthHeroPanel, AuthLink, AuthScreenLayout } from '../../src/components/ui'
 import { InputField, StateMessage } from '../../src/components/ui'
 import { useI18n } from '../../src/i18n/i18n-context'
 import { useSupabase } from '../../src/lib/supabase'
 
 export default function ForgotPasswordScreen() {
   const { supabase } = useSupabase()
-  const { t } = useI18n()
+  const { t, language } = useI18n()
 
   const [email, setEmail] = useState('')
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
 
-  const isError = message?.includes('Gagal') ?? false
+  const isError = message === t('resetFailed')
 
   const onReset = async () => {
     setLoading(true)
@@ -36,24 +36,16 @@ export default function ForgotPasswordScreen() {
 
   return (
     <AuthScreenLayout>
-      <AuthBackButton onPress={() => router.back()} label="Kembali" />
+      <AuthBackButton onPress={() => router.back()} label={t('back')} />
 
-      <AuthHeroPanel
-        icon="email"
-        iconTone="warning"
-        eyebrow="Reset password"
-        title="Kirim ulang akses ke akun Kaswise-mu."
-      />
+      <AuthHeroPanel icon="email" iconTone="warning" eyebrow={language === 'id' ? 'Reset password' : 'Reset password'} title={t('forgotPasswordHeroTitle')} />
 
-      <AuthFormCard
-        title="Lupa password?"
-        subtitle="Masukkan email akunmu, link reset akan dikirim ke inbox."
-      >
+      <AuthFormCard title={t('forgotPasswordTitle')} subtitle={t('forgotPasswordSubtitle')}>
         <InputField
-          label="Email"
+          label={t('emailLabel')}
           value={email}
           onChangeText={setEmail}
-          placeholder="email@contoh.com"
+          placeholder={t('emailPlaceholder')}
           keyboardType="email-address"
           autoCapitalize="none"
           autoComplete="email"
@@ -63,11 +55,9 @@ export default function ForgotPasswordScreen() {
 
         {message ? <StateMessage message={message} tone={isError ? 'error' : 'success'} /> : null}
 
-        <AuthButton label="Kirim email reset" onPress={onReset} loading={loading} disabled={loading} />
+        <AuthButton label={t('forgotPasswordButton')} onPress={onReset} loading={loading} disabled={loading} />
 
-        <Link href="/(auth)/login" style={{ marginTop: 4, color: '#4F46E5', fontSize: 13, fontWeight: '800', textAlign: 'center' }}>
-          Kembali ke login
-        </Link>
+        <AuthLink href="/(auth)/login" label={t('forgotPasswordLink')} align="center" />
       </AuthFormCard>
     </AuthScreenLayout>
   )

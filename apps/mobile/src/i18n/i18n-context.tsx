@@ -1,0 +1,133 @@
+import { createContext, useContext, useMemo, useState } from 'react'
+
+export type Language = 'id' | 'en'
+type TranslationKey = keyof typeof translations.id
+
+type I18nContextValue = {
+  language: Language
+  setLanguage: (language: Language) => void
+  t: (key: TranslationKey) => string
+}
+
+const translations = {
+  id: {
+    back: 'Kembali',
+    language: 'Bahasa',
+    languageHelper: 'Bahasa Indonesia',
+    languageSection: 'Bahasa aplikasi',
+    languageSectionHelper: 'Pilih bahasa untuk label, pesan, dan aksi utama.',
+    indonesian: 'Indonesia',
+    english: 'English',
+    settingsTitle: 'Pengaturan',
+    settingsSubtitle: 'Sesuaikan pengalaman aplikasi.',
+    loginFailed: 'Login gagal. Periksa email dan password kamu.',
+    registerFailed: 'Registrasi gagal. Coba lagi beberapa saat.',
+    passwordTooShort: 'Password minimal 8 karakter.',
+    resetFailed: 'Gagal mengirim email reset. Coba lagi.',
+    resetSuccess: 'Email reset password berhasil dikirim. Cek inbox kamu.',
+    appCrashedTitle: 'Aplikasi bermasalah',
+    appCrashedDescription: 'Tutup lalu buka ulang Kaswise. Jika masih gagal, hubungi dukungan.',
+    loginTitle: 'Masuk ke akunmu',
+    loginSubtitle: 'Lanjutkan ke dashboard Kaswise dengan akun Supabase yang sama.',
+    loginButton: 'Masuk',
+    loginHeroTitle: 'Catat keuangan, tetap tenang, tetap rapi.',
+    loginHeroDescription: 'Masuk ke ruang finansialmu dengan tampilan navy premium, ringkas, dan fokus ke hal penting tiap hari.',
+    registerTitle: 'Akun baru',
+    registerSubtitle: 'Data tersimpan aman di Supabase dengan kebijakan RLS aktif.',
+    registerButton: 'Daftar sekarang',
+    registerHeroTitle: 'Buat akun untuk mulai mencatat dalam hitungan menit.',
+    registerHeroDescription: 'Dompet, anggaran, dan tagihan tergabung dalam satu shell finansial yang sama di semua perangkat.',
+    forgotPasswordTitle: 'Lupa password?',
+    forgotPasswordSubtitle: 'Masukkan email akunmu, link reset akan dikirim ke inbox.',
+    forgotPasswordButton: 'Kirim email reset',
+    forgotPasswordHeroTitle: 'Kirim ulang akses ke akun Kaswise-mu.',
+    forgotPasswordLink: 'Kembali ke login',
+    alreadyHaveAccount: 'Sudah punya akun?',
+    noAccount: 'Belum punya akun?',
+    forgotPasswordPrompt: 'Lupa password?',
+    nameLabel: 'Nama lengkap',
+    emailLabel: 'Email',
+    passwordLabel: 'Password',
+    namePlaceholder: 'Andika Putra',
+    emailPlaceholder: 'email@contoh.com',
+    passwordPlaceholder: '••••••••',
+    passwordHint: 'Minimal 8 karakter',
+    statWalletNeat: 'Wallet rapi',
+    statInsightFast: 'Insight cepat',
+    statMultiWallet: 'Multi wallet',
+    statInsightAI: 'Insight AI',
+  },
+  en: {
+    back: 'Back',
+    language: 'Language',
+    languageHelper: 'English',
+    languageSection: 'App language',
+    languageSectionHelper: 'Choose language for labels, messages, and primary actions.',
+    indonesian: 'Indonesian',
+    english: 'English',
+    settingsTitle: 'Settings',
+    settingsSubtitle: 'Adjust your app experience.',
+    loginFailed: 'Login failed. Check your email and password.',
+    registerFailed: 'Registration failed. Try again later.',
+    passwordTooShort: 'Password must be at least 8 characters.',
+    resetFailed: 'Failed to send reset email. Try again.',
+    resetSuccess: 'Password reset email sent. Check your inbox.',
+    appCrashedTitle: 'App needs attention',
+    appCrashedDescription: 'Close and reopen Kaswise. If it still fails, contact support.',
+    loginTitle: 'Sign in to your account',
+    loginSubtitle: 'Continue to Kaswise dashboard with your Supabase account.',
+    loginButton: 'Sign in',
+    loginHeroTitle: 'Track finances, stay calm, stay organized.',
+    loginHeroDescription: 'Access your financial space with premium navy design, compact, and focused on what matters daily.',
+    registerTitle: 'New account',
+    registerSubtitle: 'Data stored securely in Supabase with active RLS policies.',
+    registerButton: 'Sign up now',
+    registerHeroTitle: 'Create account to start tracking in minutes.',
+    registerHeroDescription: 'Wallets, budgets, and bills unified in one financial shell across all devices.',
+    forgotPasswordTitle: 'Forgot password?',
+    forgotPasswordSubtitle: 'Enter your account email, reset link will be sent to inbox.',
+    forgotPasswordButton: 'Send reset email',
+    forgotPasswordHeroTitle: 'Regain access to your Kaswise account.',
+    forgotPasswordLink: 'Back to login',
+    alreadyHaveAccount: 'Already have an account?',
+    noAccount: "Don't have an account?",
+    forgotPasswordPrompt: 'Forgot password?',
+    nameLabel: 'Full name',
+    emailLabel: 'Email',
+    passwordLabel: 'Password',
+    namePlaceholder: 'John Doe',
+    emailPlaceholder: 'email@example.com',
+    passwordPlaceholder: '••••••••',
+    passwordHint: 'At least 8 characters',
+    statWalletNeat: 'Neat wallets',
+    statInsightFast: 'Fast insights',
+    statMultiWallet: 'Multi wallet',
+    statInsightAI: 'AI insights',
+  },
+} as const
+
+const I18nContext = createContext<I18nContextValue | null>(null)
+
+export function I18nProvider({ children }: { children: React.ReactNode }) {
+  const [language, setLanguage] = useState<Language>('id')
+
+  const value = useMemo<I18nContextValue>(
+    () => ({
+      language,
+      setLanguage,
+      t: (key) => translations[language][key],
+    }),
+    [language],
+  )
+
+  return <I18nContext.Provider value={value}>{children}</I18nContext.Provider>
+}
+
+export function useI18n() {
+  const context = useContext(I18nContext)
+  if (!context) {
+    throw new Error('useI18n must be used within I18nProvider')
+  }
+
+  return context
+}
