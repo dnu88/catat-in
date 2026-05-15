@@ -592,7 +592,7 @@ export default function ReportsScreen() {
 function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
   return StyleSheet.create({
     screen: { flex: 1, backgroundColor: theme.colors.background },
-    content: { padding: 20, gap: 14, paddingBottom: 26 },
+    content: { padding: 20, gap: 10, paddingBottom: 26 },
     headerRow: {
       flexDirection: 'row',
       justifyContent: 'space-between',

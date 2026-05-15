@@ -218,13 +218,13 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
     },
     content: {
       padding: 20,
-      gap: 16,
+      paddingBottom: 26,
     },
     headerRow: {
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
-      marginBottom: 4,
+      marginBottom: 20,
     },
     greeting: {
       color: theme.colors.textPrimary,
@@ -255,6 +255,7 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
       backgroundColor: theme.colors.brandPrimary,
       borderRadius: theme.radius.lg,
       padding: 20,
+      marginBottom: 24,
       gap: 12,
     },
     heroTop: {
@@ -345,7 +346,8 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
-      marginTop: 4,
+      marginTop: 20,
+      marginBottom: 10,
     },
     sectionTitle: {
       color: theme.colors.textPrimary,
@@ -363,6 +365,7 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
     quickActionRow: {
       flexDirection: 'row',
       gap: 10,
+      marginBottom: 8,
     },
     quickActionCard: {
       flex: 1,
@@ -397,6 +400,7 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
       borderWidth: 1,
       borderColor: theme.colors.borderSoft,
       padding: 16,
+      marginBottom: 6,
       gap: 12,
     },
     budgetSummaryTop: {
@@ -475,6 +479,7 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
       borderWidth: 1,
       borderColor: theme.colors.borderSoft,
       paddingHorizontal: 16,
+      marginTop: 2,
     },
     txRow: {
       flexDirection: 'row',

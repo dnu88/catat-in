@@ -61,26 +61,38 @@ export default function BillsScreen() {
     }
   }
 
-  // Determine status for each bill
-  const billsWithStatus = bills.map(bill => {
-    const dueDate = new Date(bill.next_due_date)
-    const today = new Date()
-    let status: BillStatus = 'upcoming'
+  const billsWithStatus = useMemo(
+    () =>
+      bills.map(bill => {
+        const dueDate = new Date(bill.next_due_date)
+        const today = new Date()
+        let status: BillStatus = 'upcoming'
 
-    if (bill.is_paid) {
-      status = 'paid'
-    } else if (dueDate < today) {
-      status = 'overdue'
-    } else {
-      status = 'upcoming'
-    }
+        if (bill.is_paid) {
+          status = 'paid'
+        } else if (dueDate < today) {
+          status = 'overdue'
+        }
 
-    return { ...bill, status }
-  })
+        return { ...bill, status }
+      }),
+    [bills],
+  )
 
-  const filtered = filter === 'all' ? billsWithStatus : billsWithStatus.filter((b) => b.status === filter)
-  const totalUpcoming = billsWithStatus.filter((b) => b.status === 'upcoming').reduce((a, b) => a + b.amount, 0)
-  const overdueCount = billsWithStatus.filter((b) => b.status === 'overdue').length
+  const filtered = useMemo(
+    () => (filter === 'all' ? billsWithStatus : billsWithStatus.filter((b) => b.status === filter)),
+    [filter, billsWithStatus],
+  )
+
+  const totalUpcoming = useMemo(
+    () => billsWithStatus.filter((b) => b.status === 'upcoming').reduce((a, b) => a + b.amount, 0),
+    [billsWithStatus],
+  )
+
+  const overdueCount = useMemo(
+    () => billsWithStatus.filter((b) => b.status === 'overdue').length,
+    [billsWithStatus],
+  )
 
   if (loading) {
     return (
@@ -210,7 +222,7 @@ export default function BillsScreen() {
 function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
   return StyleSheet.create({
     screen: { flex: 1, backgroundColor: theme.colors.background },
-    content: { padding: 20, gap: 14, paddingBottom: 26 },
+    content: { padding: 20, gap: 10, paddingBottom: 26 },
     headerRow: {
       flexDirection: 'row',
       justifyContent: 'space-between',

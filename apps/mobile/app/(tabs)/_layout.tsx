@@ -119,7 +119,7 @@ export default function TabsLayout() {
                 { backgroundColor: theme.colors.brandPrimary, borderColor: theme.colors.background },
               ]}
             >
-              <KaswiseIcon name="capture" color="#FFFFFF" size={24} weight={focused ? 'fill' : 'bold'} />
+              <KaswiseIcon name="capture" color={theme.colors.textInverse} size={24} weight={focused ? 'fill' : 'bold'} />
             </View>
           ),
         }}

@@ -62,9 +62,18 @@ export default function BudgetsScreen() {
     }
   }
 
-  const totalSpent = budgets.reduce((a, b) => a + (b.spent_amount ?? 0), 0)
-  const totalLimit = budgets.reduce((a, b) => a + b.limit_amount, 0)
-  const totalPct = totalLimit > 0 ? Math.round((totalSpent / totalLimit) * 100) : 0
+  const totalSpent = useMemo(
+    () => budgets.reduce((a, b) => a + (b.spent_amount ?? 0), 0),
+    [budgets],
+  )
+  const totalLimit = useMemo(
+    () => budgets.reduce((a, b) => a + b.limit_amount, 0),
+    [budgets],
+  )
+  const totalPct = useMemo(
+    () => (totalLimit > 0 ? Math.round((totalSpent / totalLimit) * 100) : 0),
+    [totalSpent, totalLimit],
+  )
 
   if (loading) {
     return (
@@ -199,7 +208,7 @@ export default function BudgetsScreen() {
 function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
   return StyleSheet.create({
     screen: { flex: 1, backgroundColor: theme.colors.background },
-    content: { padding: 20, gap: 14, paddingBottom: 26 },
+    content: { padding: 20, gap: 8, paddingBottom: 26 },
     headerRow: {
       flexDirection: 'row',
       justifyContent: 'space-between',

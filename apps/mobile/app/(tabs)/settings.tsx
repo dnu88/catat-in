@@ -249,7 +249,7 @@ function NavRow({
 function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
   return StyleSheet.create({
     screen: { flex: 1, backgroundColor: theme.colors.background },
-    content: { padding: 20, gap: 14, paddingBottom: 26 },
+    content: { padding: 20, gap: 10, paddingBottom: 26 },
     headerRow: { marginBottom: 4 },
     title: { color: theme.colors.textPrimary, fontSize: theme.typography.fontSize['4xl'], fontWeight: theme.typography.fontWeight.extrabold, letterSpacing: theme.typography.letterSpacing.tight },
     subtitle: { color: theme.colors.textSecondary, fontSize: theme.typography.fontSize.sm, marginTop: 2 },

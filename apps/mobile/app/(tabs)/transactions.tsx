@@ -37,18 +37,29 @@ export default function TransactionsScreen() {
     }
   }
 
-  const list =
-    activeFilter === 'all'
-      ? transactions
-      : transactions.filter((item) => item.transaction_type === activeFilter)
+  const list = useMemo(
+    () =>
+      activeFilter === 'all'
+        ? transactions
+        : transactions.filter((item) => item.transaction_type === activeFilter),
+    [activeFilter, transactions],
+  )
 
-  const totalIncome = transactions
-    .filter((t) => t.transaction_type === 'income')
-    .reduce((acc, t) => acc + Number(t.amount ?? 0), 0)
+  const totalIncome = useMemo(
+    () =>
+      transactions
+        .filter((t) => t.transaction_type === 'income')
+        .reduce((acc, t) => acc + Number(t.amount ?? 0), 0),
+    [transactions],
+  )
 
-  const totalExpense = transactions
-    .filter((t) => t.transaction_type === 'expense')
-    .reduce((acc, t) => acc + Number(t.amount ?? 0), 0)
+  const totalExpense = useMemo(
+    () =>
+      transactions
+        .filter((t) => t.transaction_type === 'expense')
+        .reduce((acc, t) => acc + Number(t.amount ?? 0), 0),
+    [transactions],
+  )
 
   if (loading) {
     return (
@@ -184,7 +195,7 @@ export default function TransactionsScreen() {
 function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
   return StyleSheet.create({
     screen: { flex: 1, backgroundColor: theme.colors.background },
-    content: { padding: 20, gap: 14, paddingBottom: 26 },
+    content: { padding: 20, gap: 10, paddingBottom: 26 },
     summaryBadge: {
       backgroundColor: theme.colors.mutedSurface,
       borderWidth: 1,

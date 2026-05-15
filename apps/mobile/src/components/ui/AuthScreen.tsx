@@ -132,9 +132,10 @@ type AuthLinkProps = {
   label: string
   variant?: 'primary' | 'secondary'
   align?: 'left' | 'center' | 'right'
+  compact?: boolean
 }
 
-export function AuthLink({ href, label, variant = 'primary', align = 'left' }: AuthLinkProps) {
+export function AuthLink({ href, label, variant = 'primary', align = 'left', compact = false }: AuthLinkProps) {
   const { theme } = useTheme()
   const styles = useMemo(() => createLinkStyles(theme), [theme])
 
@@ -142,7 +143,7 @@ export function AuthLink({ href, label, variant = 'primary', align = 'left' }: A
   const containerStyle = align === 'center' ? styles.linkContainerCenter : align === 'right' ? styles.linkContainerRight : styles.linkContainer
 
   return (
-    <View style={containerStyle}>
+    <View style={[containerStyle, compact && styles.linkContainerCompact]}>
       <Link href={href} style={textStyle} accessibilityRole="link" accessibilityLabel={label}>
         {label}
       </Link>
@@ -163,7 +164,7 @@ export function AuthFooter({ question, linkLabel, linkHref }: AuthFooterProps) {
   return (
     <View style={styles.footerRow}>
       <Text style={styles.footerText}>{question}</Text>
-      <AuthLink href={linkHref} label={linkLabel} variant="primary" />
+      <AuthLink href={linkHref} label={linkLabel} variant="primary" compact />
     </View>
   )
 }
@@ -194,10 +195,11 @@ function createLayoutStyles(theme: ReturnType<typeof useTheme>['theme']) {
     },
     content: {
       flexGrow: 1,
-      justifyContent: 'center',
+      justifyContent: 'flex-start',
       paddingHorizontal: theme.spacing.lg,
-      paddingVertical: theme.spacing['2xl'],
-      gap: theme.spacing.lg,
+      paddingTop: theme.spacing['3xl'],
+      paddingBottom: theme.spacing['2xl'],
+      gap: theme.spacing['2xl'],
     },
   })
 }
@@ -210,16 +212,17 @@ function createHeroStyles(theme: ReturnType<typeof useTheme>['theme']) {
       borderWidth: 1,
       borderColor: theme.colors.borderSoft,
       padding: theme.spacing.xl,
-      gap: theme.spacing.md,
+      paddingBottom: theme.spacing.lg,
+      gap: theme.spacing.lg,
     },
     heroBadgeRow: {
       flexDirection: 'row',
-      alignItems: 'center',
+      alignItems: 'flex-start',
       gap: theme.spacing.md,
     },
     brandCopy: {
       flex: 1,
-      gap: 4,
+      gap: theme.spacing.xs,
     },
     brandEyebrow: {
       color: theme.colors.brandPrimary,
@@ -238,11 +241,13 @@ function createHeroStyles(theme: ReturnType<typeof useTheme>['theme']) {
       color: theme.colors.textSecondary,
       fontSize: 14,
       lineHeight: 22,
+      marginTop: theme.spacing.xs,
     },
     heroStatsRow: {
       flexDirection: 'row',
       flexWrap: 'wrap',
       gap: theme.spacing.sm,
+      marginTop: theme.spacing.sm,
     },
     heroStat: {
       flexDirection: 'row',
@@ -271,10 +276,10 @@ function createCardStyles(theme: ReturnType<typeof useTheme>['theme']) {
       borderWidth: 1,
       borderColor: theme.colors.borderSoft,
       padding: theme.spacing.xl,
-      gap: theme.spacing.lg,
+      gap: theme.spacing.xl,
     },
     cardHeader: {
-      gap: theme.spacing.xs,
+      gap: theme.spacing.sm,
     },
     cardTitle: {
       color: theme.colors.textPrimary,
@@ -284,9 +289,10 @@ function createCardStyles(theme: ReturnType<typeof useTheme>['theme']) {
     cardSubtitle: {
       color: theme.colors.textSecondary,
       fontSize: 13,
+      lineHeight: 18,
     },
     formArea: {
-      gap: theme.spacing.md,
+      gap: theme.spacing.lg,
     },
   })
 }
@@ -296,20 +302,20 @@ function createButtonStyles(theme: ReturnType<typeof useTheme>['theme']) {
     primaryButton: {
       backgroundColor: theme.colors.brandPrimary,
       borderRadius: theme.radius.pill,
-      minHeight: 50,
+      minHeight: 52,
       alignItems: 'center',
       justifyContent: 'center',
-      paddingHorizontal: theme.spacing.lg,
+      paddingHorizontal: theme.spacing.xl,
       paddingVertical: theme.spacing.md,
-      marginTop: 4,
     },
     primaryButtonDisabled: {
-      opacity: 0.7,
+      opacity: 0.5,
     },
     primaryButtonText: {
       color: theme.colors.textInverse,
       fontSize: 15,
       fontWeight: '800',
+      letterSpacing: 0.2,
     },
   })
 }
@@ -319,16 +325,21 @@ function createFooterStyles(theme: ReturnType<typeof useTheme>['theme']) {
     footerRow: {
       flexDirection: 'row',
       justifyContent: 'center',
+      alignItems: 'center',
       flexWrap: 'wrap',
-      gap: 6,
+      gap: theme.spacing.xs,
+      rowGap: 2,
+      marginTop: theme.spacing.md,
     },
     footerText: {
       color: theme.colors.textMuted,
-      fontSize: 13,
+      fontSize: 14,
+      lineHeight: 20,
+      textAlign: 'center',
     },
     linkPrimary: {
       color: theme.colors.brandPrimary,
-      fontSize: 13,
+      fontSize: 14,
       fontWeight: '800',
     },
   })
@@ -356,22 +367,30 @@ function createLinkStyles(theme: ReturnType<typeof useTheme>['theme']) {
   return StyleSheet.create({
     linkContainer: {
       alignSelf: 'flex-start',
+      marginTop: theme.spacing.xs,
     },
     linkContainerCenter: {
       alignSelf: 'center',
+      marginTop: theme.spacing.sm,
     },
     linkContainerRight: {
       alignSelf: 'flex-end',
+      marginTop: theme.spacing.xs,
+    },
+    linkContainerCompact: {
+      marginTop: 0,
     },
     linkPrimary: {
       color: theme.colors.brandPrimary,
-      fontSize: 13,
+      fontSize: 14,
       fontWeight: '800',
+      lineHeight: 20,
     },
     linkSecondary: {
       color: theme.colors.textSecondary,
-      fontSize: 13,
+      fontSize: 14,
       fontWeight: '700',
+      lineHeight: 20,
     },
   })
 }

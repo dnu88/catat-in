@@ -78,7 +78,7 @@ export default function GroupsScreen() {
 function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
   return StyleSheet.create({
     screen: { flex: 1, backgroundColor: theme.colors.background },
-    content: { padding: 20, gap: 16, paddingBottom: 26 },
+    content: { padding: 20, gap: 12, paddingBottom: 26 },
     addButton: {
       backgroundColor: theme.colors.brandPrimary,
       borderRadius: theme.radius.pill,
