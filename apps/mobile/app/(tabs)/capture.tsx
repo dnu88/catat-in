@@ -1,15 +1,19 @@
 import { useMemo, useState } from 'react'
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native'
+import { useRouter } from 'expo-router'
 
+import { KaswiseIcon } from '../../src/components/icons/kaswise-icons'
+import { Card, IconBubble, SectionHeader } from '../../src/components/ui'
 import { useTransactionRealtime } from '../../src/hooks/useTransactionRealtime'
 import { useSupabase } from '../../src/lib/supabase'
 import { useTheme } from '../../src/theme/theme-context'
 
 const modes = [
-  { id: 'Teks', label: 'Teks', icon: '✏️', helper: 'Ketik transaksi dengan bahasa natural' },
-  { id: 'Foto', label: 'Foto', icon: '📷', helper: 'Scan struk belanja dengan OCR' },
-  { id: 'Rekam', label: 'Suara', icon: '🎙️', helper: 'Rekam suara transaksi (Whisper)' },
-  { id: 'Import', label: 'Import', icon: '📥', helper: 'Import mutasi bank & e-wallet' },
+  { id: 'Manual', label: 'Manual', icon: 'file', tone: 'primary', helper: 'Isi form manual tanpa AI' },
+  { id: 'Teks', label: 'Teks', icon: 'transactions', tone: 'success', helper: 'Ketik transaksi dengan bahasa natural' },
+  { id: 'Foto', label: 'Foto', icon: 'capture', tone: 'accent', helper: 'Scan struk belanja dengan OCR' },
+  { id: 'Rekam', label: 'Suara', icon: 'ai', tone: 'warning', helper: 'Rekam suara transaksi (Whisper)' },
+  { id: 'Import', label: 'Import', icon: 'imports', tone: 'info', helper: 'Import mutasi bank & e-wallet' },
 ] as const
 
 type ModeId = (typeof modes)[number]['id']
@@ -17,9 +21,10 @@ type ModeId = (typeof modes)[number]['id']
 export default function CaptureScreen() {
   const { supabase } = useSupabase()
   const { theme } = useTheme()
+  const router = useRouter()
   const styles = useMemo(() => createStyles(theme), [theme])
 
-  const [selectedMode, setSelectedMode] = useState<ModeId>('Teks')
+  const [selectedMode, setSelectedMode] = useState<ModeId>('Manual')
   const [textInput, setTextInput] = useState('')
   const [transactionId, setTransactionId] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
@@ -66,7 +71,6 @@ export default function CaptureScreen() {
       await supabase.functions.invoke('process-text', {
         body: {
           transaction_id: data.id,
-          user_id: user.id,
           raw_text: value,
         },
       })
@@ -105,11 +109,8 @@ export default function CaptureScreen() {
                 },
               ]}
             >
-              <View style={[
-                styles.modeIconWrap,
-                selectedMode === mode.id && { backgroundColor: `${theme.colors.brandPrimary}1A` }
-              ]}>
-                <Text style={styles.modeIcon}>{mode.icon}</Text>
+              <View style={styles.modeIconWrap}>
+                <IconBubble name={mode.icon} tone={mode.tone} size={44} />
               </View>
               <Text style={[
                 styles.modeLabel,
@@ -127,7 +128,23 @@ export default function CaptureScreen() {
             <Text style={styles.inputHelper}>{activeModeData?.helper}</Text>
           </View>
 
-          {selectedMode === 'Teks' ? (
+          {selectedMode === 'Manual' ? (
+            <View style={styles.textContainer}>
+              <View style={styles.placeholderCard}>
+                <IconBubble name="file" tone="primary" size={60} />
+                <Text style={styles.placeholderTitle}>Catat Manual</Text>
+                <Text style={styles.placeholderSub}>
+                  Isi form transaksi langsung. Cocok kalau AI sedang sibuk atau kamu mau input pasti.
+                </Text>
+              </View>
+              <Pressable
+                style={styles.submitButton}
+                onPress={() => router.push('/(tabs)/transaction-new')}
+              >
+                <Text style={styles.submitButtonText}>Buka Form Manual</Text>
+              </Pressable>
+            </View>
+          ) : selectedMode === 'Teks' ? (
             <View style={styles.textContainer}>
               <TextInput
                 style={styles.textArea}
@@ -154,9 +171,7 @@ export default function CaptureScreen() {
             </View>
           ) : (
             <View style={styles.placeholderCard}>
-              <View style={styles.placeholderIconWrap}>
-                <Text style={styles.placeholderIcon}>{activeModeData?.icon}</Text>
-              </View>
+              <IconBubble name={activeModeData?.icon ?? 'capture'} tone={activeModeData?.tone ?? 'accent'} size={60} />
               <Text style={styles.placeholderTitle}>Mode {activeModeData?.label} Segera Hadir</Text>
               <Text style={styles.placeholderSub}>
                 Kami sedang menyiapkan flow terbaik untuk mode ini agar catatan keuanganmu makin mudah.
@@ -205,6 +220,7 @@ export default function CaptureScreen() {
 
 function StatusRow({ label, value, isStatus, status }: { label: string; value: string; isStatus?: boolean; status?: string }) {
   const { theme } = useTheme()
+  const styles = useMemo(() => createStyles(theme), [theme])
   return (
     <View style={styles.statusRow}>
       <Text style={styles.statusLabel}>{label}</Text>
@@ -233,14 +249,14 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
       gap: 10,
     },
     modeCard: {
-      width: '48.3%',
+      width: '31.5%',
       backgroundColor: theme.colors.surface,
       borderRadius: 18,
       borderWidth: 1,
       borderColor: theme.colors.borderSoft,
-      padding: 14,
+      padding: 12,
       alignItems: 'center',
-      gap: 8,
+      gap: 6,
     },
     modeIconWrap: {
       width: 44,

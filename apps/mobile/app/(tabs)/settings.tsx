@@ -2,6 +2,9 @@ import { router } from 'expo-router'
 import { useMemo, useState } from 'react'
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 
+import type { KaswiseIconName } from '../../src/components/icons/kaswise-icons'
+import { KaswiseIcon } from '../../src/components/icons/kaswise-icons'
+import { IconBubble } from '../../src/components/ui'
 import { useSupabase } from '../../src/lib/supabase'
 import { useTheme } from '../../src/theme/theme-context'
 
@@ -80,21 +83,21 @@ export default function SettingsScreen() {
           <Text style={styles.sectionSub}>Kelola pengingat penting.</Text>
 
           <ToggleRow
-            icon="📊"
+            icon="chart"
             title="Ringkasan Harian"
             helper="Notifikasi kondisi keuangan setiap malam"
             value={dailyReminder}
             onToggle={() => setDailyReminder((v) => !v)}
           />
           <ToggleRow
-            icon="📄"
+            icon="bills"
             title="Pengingat Tagihan"
             helper="Notifikasi sebelum jatuh tempo"
             value={billReminder}
             onToggle={() => setBillReminder((v) => !v)}
           />
           <ToggleRow
-            icon="🎯"
+            icon="budgets"
             title="Alert Anggaran"
             helper="Notifikasi saat budget hampir habis"
             value={budgetAlert}
@@ -107,20 +110,20 @@ export default function SettingsScreen() {
           <Text style={styles.sectionTitle}>Akses Cepat</Text>
           <Text style={styles.sectionSub}>Navigasi ke halaman lain.</Text>
 
-          <NavRow icon="💳" title="Dompet" helper="Kelola saldo akun" onPress={() => router.push('/(tabs)/wallets')} />
-          <NavRow icon="🎯" title="Anggaran" helper="Batas pengeluaran" onPress={() => router.push('/(tabs)/budgets')} />
-          <NavRow icon="📄" title="Tagihan" helper="Pengingat rutin" onPress={() => router.push('/(tabs)/bills')} />
-          <NavRow icon="👥" title="Grup" helper="Keuangan bersama" onPress={() => router.push('/(tabs)/groups')} />
-          <NavRow icon="📥" title="Import" helper="Mutasi & struk" onPress={() => router.push('/(tabs)/imports')} />
+          <NavRow icon="wallets" title="Dompet" helper="Kelola saldo akun" onPress={() => router.push('/(tabs)/wallets')} />
+          <NavRow icon="budgets" title="Anggaran" helper="Batas pengeluaran" onPress={() => router.push('/(tabs)/budgets')} />
+          <NavRow icon="bills" title="Tagihan" helper="Pengingat rutin" onPress={() => router.push('/(tabs)/bills')} />
+          <NavRow icon="groups" title="Grup" helper="Keuangan bersama" onPress={() => router.push('/(tabs)/groups')} />
+          <NavRow icon="imports" title="Import" helper="Mutasi & struk" onPress={() => router.push('/(tabs)/imports')} />
         </View>
 
         {/* Account Section */}
         <View style={styles.sectionCard}>
           <Text style={styles.sectionTitle}>Akun & Keamanan</Text>
 
-          <NavRow icon="🔐" title="Ubah Password" helper="Perbarui password akun" onPress={() => {}} />
-          <NavRow icon="🌐" title="Bahasa" helper="Bahasa Indonesia" onPress={() => {}} />
-          <NavRow icon="📋" title="Kebijakan Privasi" helper="Baca syarat & ketentuan" onPress={() => {}} />
+          <NavRow icon="lock" title="Ubah Password" helper="Perbarui password akun" onPress={() => {}} />
+          <NavRow icon="notification" title="Bahasa" helper="Bahasa Indonesia" onPress={() => {}} />
+          <NavRow icon="file" title="Kebijakan Privasi" helper="Baca syarat & ketentuan" onPress={() => {}} />
         </View>
 
         {/* App Info */}
@@ -147,7 +150,7 @@ function ToggleRow({
   value,
   onToggle,
 }: {
-  icon: string
+  icon: KaswiseIconName
   title: string
   helper: string
   value: boolean
@@ -169,7 +172,7 @@ function ToggleRow({
       }}
     >
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 }}>
-        <Text style={{ fontSize: 18 }}>{icon}</Text>
+        <IconBubble name={icon} tone="primary" size={36} />
         <View style={{ flex: 1 }}>
           <Text style={{ color: theme.colors.textPrimary, fontSize: 13, fontWeight: '700' }}>{title}</Text>
           <Text style={{ color: theme.colors.textMuted, fontSize: 11, marginTop: 1 }}>{helper}</Text>
@@ -205,7 +208,7 @@ function NavRow({
   helper,
   onPress,
 }: {
-  icon: string
+  icon: KaswiseIconName
   title: string
   helper: string
   onPress: () => void
@@ -226,13 +229,13 @@ function NavRow({
       }}
     >
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 }}>
-        <Text style={{ fontSize: 18 }}>{icon}</Text>
+        <IconBubble name={icon} tone="primary" size={36} />
         <View>
           <Text style={{ color: theme.colors.textPrimary, fontSize: 13, fontWeight: '700' }}>{title}</Text>
           <Text style={{ color: theme.colors.textMuted, fontSize: 11, marginTop: 1 }}>{helper}</Text>
         </View>
       </View>
-      <Text style={{ color: theme.colors.textMuted, fontSize: 16 }}>›</Text>
+      <KaswiseIcon name="back" color={theme.colors.textMuted} size={16} weight="bold" />
     </Pressable>
   )
 }

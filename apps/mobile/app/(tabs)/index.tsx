@@ -1,205 +1,138 @@
-import { useMemo } from 'react'
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
+import { useEffect, useMemo, useState } from 'react'
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { useRouter } from 'expo-router'
 
+import type { KaswiseIconName } from '../../src/components/icons/kaswise-icons'
+import { IconBubble, SectionHeader } from '../../src/components/ui'
+import type { IconBubbleTone } from '../../src/components/ui/IconBubble'
 import { useTheme } from '../../src/theme/theme-context'
+import { listTransactions, type Transaction } from '../../src/services/transactions'
+import { listWallets, type Wallet } from '../../src/services/wallets'
 
-const recentTransactions = [
-  { id: '1', title: 'Gaji Bulanan', date: '9 Mei 2026', amount: '+ Rp 8.500.000', tone: 'positive', category: 'Pemasukan' },
-  { id: '2', title: 'Belanja Bulanan', date: '8 Mei 2026', amount: '- Rp 450.000', tone: 'negative', category: 'Belanja' },
-  { id: '3', title: 'Transportasi', date: '8 Mei 2026', amount: '- Rp 75.000', tone: 'negative', category: 'Transport' },
-  { id: '4', title: 'Makan Siang', date: '7 Mei 2026', amount: '- Rp 45.000', tone: 'negative', category: 'Makanan' },
+type BudgetItem = { id: string; name: string; spent: number; limit: number; icon: KaswiseIconName }
+type QuickAction = { id: string; label: string; icon: KaswiseIconName; route: string; tone: IconBubbleTone }
+
+const budgetItems: BudgetItem[] = [
+  { id: '1', name: 'Makan', spent: 620000, limit: 800000, icon: 'bills' },
+  { id: '2', name: 'Transport', spent: 180000, limit: 300000, icon: 'card' },
+  { id: '3', name: 'Belanja', spent: 450000, limit: 500000, icon: 'wallets' },
 ]
 
-const budgetItems = [
-  { id: '1', name: 'Makan', spent: 620000, limit: 800000, icon: '🍽' },
-  { id: '2', name: 'Transport', spent: 180000, limit: 300000, icon: '🚗' },
-  { id: '3', name: 'Belanja', spent: 450000, limit: 500000, icon: '🛒' },
-]
-
-const quickActions = [
-  { id: 'text', label: 'Teks', icon: '✏️', route: '/(tabs)/capture' },
-  { id: 'photo', label: 'Foto', icon: '📷', route: '/(tabs)/capture' },
-  { id: 'voice', label: 'Suara', icon: '🎙️', route: '/(tabs)/capture' },
-  { id: 'import', label: 'Import', icon: '📥', route: '/(tabs)/imports' },
+const quickActions: QuickAction[] = [
+  { id: 'manual', label: 'Manual', icon: 'file', route: '/(tabs)/transaction-new', tone: 'primary' },
+  { id: 'text', label: 'Teks', icon: 'transactions', route: '/(tabs)/capture', tone: 'success' },
+  { id: 'photo', label: 'Foto', icon: 'capture', route: '/(tabs)/capture', tone: 'accent' },
+  { id: 'import', label: 'Import', icon: 'imports', route: '/(tabs)/imports', tone: 'info' },
 ]
 
 export default function DashboardScreen() {
   const { theme } = useTheme()
   const router = useRouter()
   const styles = useMemo(() => createStyles(theme), [theme])
+  const [transactions, setTransactions] = useState<Transaction[]>([])
+  const [wallets, setWallets] = useState<Wallet[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    loadData()
+  }, [])
+
+  const loadData = async () => {
+    try {
+      const [txData, walletData] = await Promise.all([listTransactions(), listWallets()])
+      setTransactions(txData)
+      setWallets(walletData.filter((w) => w.is_active))
+    } catch (error) {
+      console.error('Error loading dashboard data:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
 
   const totalBudgetSpent = budgetItems.reduce((acc, item) => acc + item.spent, 0)
   const totalBudgetLimit = budgetItems.reduce((acc, item) => acc + item.limit, 0)
   const budgetPercentage = Math.round((totalBudgetSpent / totalBudgetLimit) * 100)
+  const totalBalance = wallets.reduce((acc, w) => acc + (w.balance || 0), 0)
+  const totalIncome = transactions.filter((t) => t.transaction_type === 'income').reduce((acc, t) => acc + Number(t.amount ?? 0), 0)
+  const totalExpense = transactions.filter((t) => t.transaction_type === 'expense').reduce((acc, t) => acc + Number(t.amount ?? 0), 0)
+  const recentTransactions = transactions.slice(0, 4).map((tx) => {
+    const amount = Number(tx.amount ?? 0)
+    return {
+      id: tx.id,
+      title: tx.description || tx.merchant || tx.category || 'Transaksi',
+      date: new Date(tx.date || tx.created_at || Date.now()).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }),
+      amount: tx.transaction_type === 'income' ? `+ Rp ${amount.toLocaleString('id-ID')}` : `- Rp ${amount.toLocaleString('id-ID')}`,
+      tone: tx.transaction_type === 'income' ? 'positive' : 'negative',
+      category: tx.category || '-',
+    }
+  })
+
+  if (loading) {
+    return <View style={[styles.screen, styles.center]}><ActivityIndicator size="large" color={theme.colors.brandPrimary} /></View>
+  }
 
   return (
     <View style={styles.screen}>
-      <ScrollView style={styles.scrollView} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        {/* Header */}
+      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.headerRow}>
-          <View>
+          <View style={styles.headerCopy}>
+            <Text style={styles.eyebrow}>Kaswise Dashboard</Text>
             <Text style={styles.greeting}>Selamat datang, Danu</Text>
-            <Text style={styles.dateText}>Mei 2026</Text>
+            <Text style={styles.dateText}>Mei 2026, arus kas siap ditinjau.</Text>
           </View>
-          <View style={styles.avatarWrap}>
-            <Text style={styles.avatarText}>DB</Text>
-          </View>
+          <View style={styles.avatarWrap}><Text style={styles.avatarText}>DB</Text></View>
         </View>
 
-        {/* Balance Hero */}
         <View style={styles.heroCard}>
           <View style={styles.heroTop}>
-            <Text style={styles.heroLabel}>Total Saldo</Text>
-            <View style={styles.heroBadge}>
-              <Text style={styles.heroBadgeText}>Premium</Text>
+            <View style={styles.heroTitleRow}>
+              <IconBubble name="wallets" tone="primary" size={46} />
+              <View>
+                <Text style={styles.heroLabel}>Total Saldo</Text>
+                <Text style={styles.heroSubtitle}>{wallets.length} dompet aktif</Text>
+              </View>
             </View>
+            <View style={styles.heroBadge}><Text style={styles.heroBadgeText}>Premium</Text></View>
           </View>
-          <Text style={styles.heroAmount}>Rp 24.250.000</Text>
-          <View style={styles.heroTrendRow}>
-            <View style={styles.trendDot}>
-              <Text style={styles.trendDotText}>▲</Text>
-            </View>
-            <Text style={styles.heroTrend}>+12.5% dari bulan lalu</Text>
-          </View>
-
-          <View style={styles.heroDivider} />
-
-          <View style={styles.heroStatsRow}>
-            <View style={styles.heroStat}>
-              <Text style={styles.heroStatLabel}>Pemasukan</Text>
-              <Text style={[styles.heroStatValue, { color: theme.colors.success }]}>+Rp 18.65 Jt</Text>
-            </View>
-            <View style={styles.heroStatDivider} />
-            <View style={styles.heroStat}>
-              <Text style={styles.heroStatLabel}>Pengeluaran</Text>
-              <Text style={[styles.heroStatValue, { color: theme.colors.danger }]}>-Rp 6.40 Jt</Text>
-            </View>
-          </View>
+          <Text style={styles.heroAmount}>Rp {totalBalance.toLocaleString('id-ID')}</Text>
+          <Text style={styles.heroTrend}>+{wallets.length * 2}% dari bulan lalu</Text>
         </View>
 
-        {/* Quick Actions */}
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Catat Cepat</Text>
+        <View style={styles.statGrid}>
+          <MiniStatCard label="Pemasukan" value={`Rp ${(totalIncome / 1000000).toFixed(1)} Jt`} helper="Bulan ini" icon="chart" tone="success" />
+          <MiniStatCard label="Pengeluaran" value={`Rp ${(totalExpense / 1000000).toFixed(1)} Jt`} helper="Bulan ini" icon="transactions" tone="danger" />
+          <MiniStatCard label="Anggaran" value={`${budgetPercentage}%`} helper="Terpakai" icon="budgets" tone="primary" />
         </View>
+
+        <SectionHeader title="Catat Cepat" subtitle="Pilih jalur input tersingkat." />
         <View style={styles.quickActionRow}>
           {quickActions.map((action) => (
-            <Pressable
-              key={action.id}
-              style={styles.quickActionCard}
-              onPress={() => router.push(action.route as any)}
-            >
-              <View style={styles.quickActionIconWrap}>
-                <Text style={styles.quickActionIcon}>{action.icon}</Text>
-              </View>
+            <Pressable key={action.id} style={styles.quickActionCard} onPress={() => router.push(action.route as any)}>
+              <IconBubble name={action.icon} tone={action.tone} size={42} />
               <Text style={styles.quickActionLabel}>{action.label}</Text>
             </Pressable>
           ))}
         </View>
 
-        {/* Budget Overview */}
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Anggaran Bulan Ini</Text>
-          <Pressable style={styles.sectionLinkWrap}>
-            <Text style={styles.sectionLink}>Lihat Semua</Text>
-          </Pressable>
-        </View>
+        <SectionHeader title="Anggaran Bulan Ini" subtitle="Kategori paling aktif" action={<Pressable onPress={() => router.push('/(tabs)/budgets' as any)}><Text style={styles.sectionLink}>Lihat Semua</Text></Pressable>} />
         <View style={styles.budgetSummaryCard}>
           <View style={styles.budgetSummaryTop}>
-            <View>
-              <Text style={styles.budgetSummaryLabel}>Terpakai</Text>
-              <Text style={styles.budgetSummaryValue}>{budgetPercentage}%</Text>
-            </View>
-            <View style={styles.budgetSummaryRight}>
-              <Text style={styles.budgetSummarySpent}>Rp {(totalBudgetSpent / 1000000).toFixed(2)} Jt</Text>
-              <Text style={styles.budgetSummaryLimit}>dari Rp {(totalBudgetLimit / 1000000).toFixed(1)} Jt</Text>
-            </View>
+            <View><Text style={styles.budgetSummaryLabel}>Terpakai</Text><Text style={styles.budgetSummaryValue}>{budgetPercentage}%</Text></View>
+            <View style={styles.budgetSummaryRight}><Text style={styles.budgetSummarySpent}>Rp {(totalBudgetSpent / 1000000).toFixed(2)} Jt</Text><Text style={styles.budgetSummaryLimit}>dari Rp {(totalBudgetLimit / 1000000).toFixed(1)} Jt</Text></View>
           </View>
-          <View style={styles.budgetProgressBar}>
-            <View
-              style={[
-                styles.budgetProgressFill,
-                {
-                  width: `${budgetPercentage}%`,
-                  backgroundColor: budgetPercentage > 80 ? theme.colors.warning : theme.colors.brandPrimary,
-                },
-              ]}
-            />
-          </View>
+          <View style={styles.budgetProgressBar}><View style={[styles.budgetProgressFill, { width: `${budgetPercentage}%`, backgroundColor: budgetPercentage > 80 ? theme.colors.warning : theme.colors.brandPrimary }]} /></View>
         </View>
 
-        {budgetItems.map((item, index) => {
-          const percentage = Math.round((item.spent / item.limit) * 100)
-          const isOver = percentage > 100
-          const isWarning = percentage > 80 && !isOver
-          return (
-            <View
-              key={item.id}
-              style={[
-                styles.budgetItemCard,
-                index === budgetItems.length - 1 && { borderBottomWidth: 0 },
-              ]}
-            >
-              <View style={styles.budgetItemLeft}>
-                <Text style={styles.budgetItemIcon}>{item.icon}</Text>
-                <View>
-                  <Text style={styles.budgetItemName}>{item.name}</Text>
-                  <Text style={styles.budgetItemMeta}>
-                    Rp {(item.spent / 1000).toFixed(0)}rb / Rp {(item.limit / 1000).toFixed(0)}rb
-                  </Text>
-                </View>
-              </View>
-              <View style={styles.budgetItemRight}>
-                <Text
-                  style={[
-                    styles.budgetItemPct,
-                    isOver && { color: theme.colors.danger },
-                    isWarning && { color: theme.colors.warning },
-                  ]}
-                >
-                  {percentage}%
-                </Text>
-              </View>
-            </View>
-          )
-        })}
+        <View style={styles.budgetListCard}>
+          {budgetItems.map((item, index) => {
+            const percentage = Math.round((item.spent / item.limit) * 100)
+            const isWarning = percentage > 80
+            return <View key={item.id} style={[styles.budgetItemCard, index === budgetItems.length - 1 && { borderBottomWidth: 0 }]}><View style={styles.budgetItemLeft}><IconBubble name={item.icon} tone={isWarning ? 'warning' : 'primary'} size={38} /><View><Text style={styles.budgetItemName}>{item.name}</Text><Text style={styles.budgetItemMeta}>Rp {(item.spent / 1000).toFixed(0)}rb / Rp {(item.limit / 1000).toFixed(0)}rb</Text></View></View><Text style={[styles.budgetItemPct, isWarning && { color: theme.colors.warning }]}>{percentage}%</Text></View>
+          })}
+        </View>
 
-        {/* Recent Transactions */}
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Transaksi Terbaru</Text>
-          <Pressable style={styles.sectionLinkWrap} onPress={() => router.push('/(tabs)/transactions')}>
-            <Text style={styles.sectionLink}>Lihat Semua</Text>
-          </Pressable>
-        </View>
-        <View style={styles.transactionCard}>
-          {recentTransactions.map((tx, index) => (
-            <Pressable
-              key={tx.id}
-              style={[
-                styles.txRow,
-                index === 0 && { borderTopWidth: 0 },
-              ]}
-            >
-              <View style={[styles.txIcon, tx.tone === 'positive' && { backgroundColor: `${theme.colors.success}15` }]}>
-                <Text style={[styles.txIconText, tx.tone === 'positive' && { color: theme.colors.success }]}>
-                  {tx.tone === 'positive' ? '↑' : '↓'}
-                </Text>
-              </View>
-              <View style={styles.txInfo}>
-                <Text style={styles.txTitle}>{tx.title}</Text>
-                <Text style={styles.txSub}>{tx.category} • {tx.date}</Text>
-              </View>
-              <Text
-                style={[
-                  styles.txAmount,
-                  tx.tone === 'positive' ? { color: theme.colors.success } : { color: theme.colors.textPrimary },
-                ]}
-              >
-                {tx.amount}
-              </Text>
-            </Pressable>
-          ))}
-        </View>
+        <SectionHeader title="Transaksi Terbaru" subtitle="Aktivitas terakhir" action={<Pressable onPress={() => router.push('/(tabs)/transactions')}><Text style={styles.sectionLink}>Lihat Semua</Text></Pressable>} />
+        {recentTransactions.length === 0 ? <View style={styles.emptyCard}><IconBubble name="transactions" tone="accent" size={52} /><Text style={styles.emptyTitle}>Belum ada transaksi</Text><Text style={styles.emptySub}>Mulai catat transaksi pertamamu dari tab Capture.</Text></View> : <View style={styles.transactionCard}>{recentTransactions.map((tx, index) => <Pressable key={tx.id} style={[styles.txRow, index === 0 && { borderTopWidth: 0 }]}><IconBubble name={tx.tone === 'positive' ? 'chart' : 'transactions'} tone={tx.tone === 'positive' ? 'success' : 'danger'} size={38} /><View style={styles.txInfo}><Text style={styles.txTitle}>{tx.title}</Text><Text style={styles.txSub}>{tx.category} • {tx.date}</Text></View><Text style={[styles.txAmount, tx.tone === 'positive' ? { color: theme.colors.success } : { color: theme.colors.textPrimary }]}>{tx.amount}</Text></Pressable>)}</View>}
 
         <View style={{ height: 100 }} />
       </ScrollView>
@@ -207,306 +140,66 @@ export default function DashboardScreen() {
   )
 }
 
+function MiniStatCard({ label, value, helper, icon, tone }: { label: string; value: string; helper: string; icon: KaswiseIconName; tone: IconBubbleTone }) {
+  const { theme } = useTheme()
+  const styles = useMemo(() => createStyles(theme), [theme])
+  return <View style={styles.statCard}><View style={styles.statTopRow}><IconBubble name={icon} tone={tone} size={34} /><Text style={[styles.statHelper, { color: theme.iconBubbles[tone].color }]}>{helper}</Text></View><Text style={styles.statValue}>{value}</Text><Text style={styles.statLabel}>{label}</Text></View>
+}
+
 function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
   return StyleSheet.create({
-    screen: {
-      flex: 1,
-      backgroundColor: theme.colors.background,
-    },
-    scrollView: {
-      flex: 1,
-    },
-    content: {
-      padding: 20,
-      gap: 16,
-    },
-    headerRow: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      marginBottom: 4,
-    },
-    greeting: {
-      color: theme.colors.textPrimary,
-      fontSize: 24,
-      fontWeight: '800',
-      letterSpacing: -0.3,
-    },
-    dateText: {
-      color: theme.colors.textSecondary,
-      fontSize: 14,
-      marginTop: 2,
-      fontWeight: '500',
-    },
-    avatarWrap: {
-      width: 44,
-      height: 44,
-      borderRadius: 22,
-      backgroundColor: theme.colors.brandPrimary,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    avatarText: {
-      color: '#FFFFFF',
-      fontSize: 14,
-      fontWeight: '700',
-    },
-    heroCard: {
-      backgroundColor: theme.colors.brandPrimary,
-      borderRadius: 20,
-      padding: 20,
-      gap: 12,
-    },
-    heroTop: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-    },
-    heroLabel: {
-      color: 'rgba(255,255,255,0.75)',
-      fontSize: 13,
-      fontWeight: '600',
-    },
-    heroBadge: {
-      backgroundColor: 'rgba(255,255,255,0.2)',
-      borderRadius: 999,
-      paddingHorizontal: 10,
-      paddingVertical: 4,
-    },
-    heroBadgeText: {
-      color: '#FFFFFF',
-      fontSize: 11,
-      fontWeight: '700',
-    },
-    heroAmount: {
-      color: '#FFFFFF',
-      fontSize: 32,
-      fontWeight: '800',
-      letterSpacing: -0.5,
-    },
-    heroTrendRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 6,
-    },
-    trendDot: {
-      width: 18,
-      height: 18,
-      borderRadius: 9,
-      backgroundColor: 'rgba(255,255,255,0.2)',
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    trendDotText: {
-      color: theme.colors.success,
-      fontSize: 8,
-      fontWeight: '700',
-    },
-    heroTrend: {
-      color: theme.colors.success,
-      fontSize: 13,
-      fontWeight: '600',
-    },
-    heroDivider: {
-      height: 1,
-      backgroundColor: 'rgba(255,255,255,0.15)',
-    },
-    heroStatsRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-    },
-    heroStat: {
-      flex: 1,
-      gap: 2,
-    },
-    heroStatDivider: {
-      width: 1,
-      height: 32,
-      backgroundColor: 'rgba(255,255,255,0.15)',
-      marginHorizontal: 16,
-    },
-    heroStatLabel: {
-      color: 'rgba(255,255,255,0.65)',
-      fontSize: 12,
-      fontWeight: '500',
-    },
-    heroStatValue: {
-      fontSize: 16,
-      fontWeight: '700',
-      marginTop: 2,
-    },
-    sectionHeader: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      marginTop: 4,
-    },
-    sectionTitle: {
-      color: theme.colors.textPrimary,
-      fontSize: 17,
-      fontWeight: '700',
-    },
-    sectionLinkWrap: {
-      paddingVertical: 4,
-    },
-    sectionLink: {
-      color: theme.colors.brandPrimary,
-      fontSize: 13,
-      fontWeight: '600',
-    },
-    quickActionRow: {
-      flexDirection: 'row',
-      gap: 10,
-    },
-    quickActionCard: {
-      flex: 1,
-      backgroundColor: theme.colors.surface,
-      borderRadius: 16,
-      borderWidth: 1,
-      borderColor: theme.colors.borderSoft,
-      paddingVertical: 14,
-      paddingHorizontal: 8,
-      alignItems: 'center',
-      gap: 8,
-    },
-    quickActionIconWrap: {
-      width: 36,
-      height: 36,
-      borderRadius: 12,
-      backgroundColor: `${theme.colors.brandPrimary}10`,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    quickActionIcon: {
-      fontSize: 18,
-    },
-    quickActionLabel: {
-      color: theme.colors.textSecondary,
-      fontSize: 12,
-      fontWeight: '600',
-    },
-    budgetSummaryCard: {
-      backgroundColor: theme.colors.surface,
-      borderRadius: 16,
-      borderWidth: 1,
-      borderColor: theme.colors.borderSoft,
-      padding: 16,
-      gap: 12,
-    },
-    budgetSummaryTop: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-    },
-    budgetSummaryLabel: {
-      color: theme.colors.textSecondary,
-      fontSize: 12,
-      fontWeight: '500',
-    },
-    budgetSummaryValue: {
-      color: theme.colors.textPrimary,
-      fontSize: 28,
-      fontWeight: '800',
-      marginTop: 2,
-    },
-    budgetSummaryRight: {
-      alignItems: 'flex-end',
-    },
-    budgetSummarySpent: {
-      color: theme.colors.textPrimary,
-      fontSize: 15,
-      fontWeight: '700',
-    },
-    budgetSummaryLimit: {
-      color: theme.colors.textMuted,
-      fontSize: 12,
-      marginTop: 2,
-    },
-    budgetProgressBar: {
-      height: 6,
-      backgroundColor: `${theme.colors.brandPrimary}15`,
-      borderRadius: 999,
-      overflow: 'hidden',
-    },
-    budgetProgressFill: {
-      height: '100%',
-      borderRadius: 999,
-    },
-    budgetItemCard: {
-      backgroundColor: theme.colors.surface,
-      paddingHorizontal: 16,
-      paddingVertical: 14,
-      borderBottomWidth: 1,
-      borderBottomColor: theme.colors.borderSoft,
-    },
-    budgetItemLeft: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 12,
-    },
-    budgetItemIcon: {
-      fontSize: 20,
-    },
-    budgetItemName: {
-      color: theme.colors.textPrimary,
-      fontSize: 14,
-      fontWeight: '600',
-    },
-    budgetItemMeta: {
-      color: theme.colors.textMuted,
-      fontSize: 12,
-      marginTop: 2,
-    },
-    budgetItemRight: {},
-    budgetItemPct: {
-      color: theme.colors.brandPrimary,
-      fontSize: 14,
-      fontWeight: '700',
-    },
-    transactionCard: {
-      backgroundColor: theme.colors.surface,
-      borderRadius: 16,
-      borderWidth: 1,
-      borderColor: theme.colors.borderSoft,
-      paddingHorizontal: 16,
-    },
-    txRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 12,
-      paddingVertical: 14,
-      borderTopWidth: 1,
-      borderTopColor: theme.colors.borderSoft,
-    },
-    txIcon: {
-      width: 36,
-      height: 36,
-      borderRadius: 12,
-      backgroundColor: `${theme.colors.danger}10`,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    txIconText: {
-      color: theme.colors.danger,
-      fontSize: 14,
-      fontWeight: '700',
-    },
-    txInfo: {
-      flex: 1,
-    },
-    txTitle: {
-      color: theme.colors.textPrimary,
-      fontSize: 14,
-      fontWeight: '600',
-    },
-    txSub: {
-      color: theme.colors.textMuted,
-      fontSize: 12,
-      marginTop: 2,
-    },
-    txAmount: {
-      fontSize: 14,
-      fontWeight: '700',
-    },
+    screen: { flex: 1, backgroundColor: theme.colors.background },
+    center: { justifyContent: 'center', alignItems: 'center' },
+    content: { padding: 20, gap: 16, paddingBottom: 28 },
+    headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: 14 },
+    headerCopy: { flex: 1 },
+    eyebrow: { color: theme.colors.brandPrimary, fontSize: 12, fontWeight: '800', letterSpacing: 0.4, textTransform: 'uppercase', marginBottom: 4 },
+    greeting: { color: theme.colors.textPrimary, fontSize: theme.typography.screenTitle.fontSize, fontWeight: theme.typography.screenTitle.fontWeight, letterSpacing: -0.6 },
+    dateText: { color: theme.colors.textSecondary, fontSize: 13, marginTop: 4, lineHeight: 18, fontWeight: '600' },
+    avatarWrap: { width: 46, height: 46, borderRadius: 23, backgroundColor: theme.colors.brandPrimary, alignItems: 'center', justifyContent: 'center' },
+    avatarText: { color: theme.colors.textInverse, fontSize: 14, fontWeight: '800' },
+    heroCard: { backgroundColor: theme.colors.surface, borderRadius: theme.radius.xl, borderWidth: 1, borderColor: theme.colors.borderSoft, padding: 20, gap: 14 },
+    heroTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 },
+    heroTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+    heroLabel: { color: theme.colors.textPrimary, fontSize: theme.typography.cardTitle.fontSize, fontWeight: theme.typography.cardTitle.fontWeight },
+    heroSubtitle: { color: theme.colors.textMuted, fontSize: 12, fontWeight: '600', marginTop: 2 },
+    heroBadge: { backgroundColor: theme.iconBubbles.primary.background, borderColor: theme.colors.brandPrimary, borderWidth: 1, borderRadius: theme.radius.pill, paddingHorizontal: 10, paddingVertical: 5 },
+    heroBadgeText: { color: theme.colors.brandPrimary, fontSize: theme.typography.chip.fontSize, fontWeight: theme.typography.chip.fontWeight },
+    heroAmount: { color: theme.colors.textPrimary, fontSize: 34, fontWeight: '900', letterSpacing: -0.8 },
+    heroTrend: { color: theme.colors.success, fontSize: 13, fontWeight: '700' },
+    statGrid: { flexDirection: 'row', gap: 10 },
+    statCard: { flex: 1, backgroundColor: theme.colors.surface, borderRadius: theme.radius.lg, borderWidth: 1, borderColor: theme.colors.borderSoft, padding: 12, gap: 8 },
+    statTopRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 6 },
+    statHelper: { fontSize: 10, fontWeight: '800' },
+    statValue: { color: theme.colors.textPrimary, fontSize: 16, fontWeight: '900', letterSpacing: -0.2 },
+    statLabel: { color: theme.colors.textMuted, fontSize: 11, fontWeight: '700' },
+    sectionLink: { color: theme.colors.brandPrimary, fontSize: 13, fontWeight: '800' },
+    quickActionRow: { flexDirection: 'row', gap: 10 },
+    quickActionCard: { flex: 1, backgroundColor: theme.colors.surface, borderRadius: theme.radius.lg, borderWidth: 1, borderColor: theme.colors.borderSoft, paddingVertical: 14, paddingHorizontal: 8, alignItems: 'center', gap: 9 },
+    quickActionLabel: { color: theme.colors.textSecondary, fontSize: 12, fontWeight: '800' },
+    budgetSummaryCard: { backgroundColor: theme.colors.surface, borderRadius: theme.radius.lg, borderWidth: 1, borderColor: theme.colors.borderSoft, padding: 16, gap: 12 },
+    budgetSummaryTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+    budgetSummaryLabel: { color: theme.colors.textSecondary, fontSize: 12, fontWeight: '700' },
+    budgetSummaryValue: { color: theme.colors.textPrimary, fontSize: 30, fontWeight: '900', marginTop: 2 },
+    budgetSummaryRight: { alignItems: 'flex-end' },
+    budgetSummarySpent: { color: theme.colors.textPrimary, fontSize: 15, fontWeight: '800' },
+    budgetSummaryLimit: { color: theme.colors.textMuted, fontSize: 12, fontWeight: '600', marginTop: 2 },
+    budgetProgressBar: { height: 8, backgroundColor: theme.iconBubbles.primary.background, borderRadius: theme.radius.pill, overflow: 'hidden' },
+    budgetProgressFill: { height: '100%', borderRadius: theme.radius.pill },
+    budgetListCard: { backgroundColor: theme.colors.surface, borderRadius: theme.radius.lg, borderWidth: 1, borderColor: theme.colors.borderSoft, paddingHorizontal: 14 },
+    budgetItemCard: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: theme.colors.borderSoft, gap: 12 },
+    budgetItemLeft: { flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 },
+    budgetItemName: { color: theme.colors.textPrimary, fontSize: 14, fontWeight: '800' },
+    budgetItemMeta: { color: theme.colors.textMuted, fontSize: 12, fontWeight: '600', marginTop: 2 },
+    budgetItemPct: { color: theme.colors.brandPrimary, fontSize: 14, fontWeight: '900' },
+    transactionCard: { backgroundColor: theme.colors.surface, borderRadius: theme.radius.lg, borderWidth: 1, borderColor: theme.colors.borderSoft, paddingHorizontal: 14 },
+    txRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 14, borderTopWidth: 1, borderTopColor: theme.colors.borderSoft },
+    txInfo: { flex: 1 },
+    txTitle: { color: theme.colors.textPrimary, fontSize: 14, fontWeight: '800' },
+    txSub: { color: theme.colors.textMuted, fontSize: 12, fontWeight: '600', marginTop: 2 },
+    txAmount: { fontSize: 14, fontWeight: '900' },
+    emptyCard: { backgroundColor: theme.colors.surface, borderRadius: 18, borderWidth: 1, borderColor: theme.colors.borderSoft, borderStyle: 'dashed', padding: 24, alignItems: 'center', gap: 8 },
+    emptyTitle: { color: theme.colors.textPrimary, fontSize: 15, fontWeight: '800' },
+    emptySub: { color: theme.colors.textMuted, fontSize: 13, textAlign: 'center', lineHeight: 20 },
   })
 }
