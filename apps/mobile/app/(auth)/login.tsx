@@ -1,8 +1,9 @@
 import { Link, router } from 'expo-router'
 import { useMemo, useState } from 'react'
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native'
+import { ActivityIndicator, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native'
 
-import { InputField } from '../../src/components/ui/InputField'
+import { KaswiseIcon } from '../../src/components/icons/kaswise-icons'
+import { Card, IconBubble, InputField, SectionHeader } from '../../src/components/ui'
 import { useSupabase } from '../../src/lib/supabase'
 import { useTheme } from '../../src/theme/theme-context'
 
@@ -36,51 +37,83 @@ export default function LoginScreen() {
   }
 
   return (
-    <View style={styles.screen}>
-      <View style={styles.hero}>
-        <Text style={styles.logoMark}>K</Text>
-        <Text style={styles.heroTitle}>kaswise</Text>
-        <Text style={styles.heroSubtitle}>Catat Keuangan, Bijak Setiap Hari</Text>
-      </View>
+    <SafeAreaView style={styles.screen}>
+      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+        <View style={styles.heroPanel}>
+          <View style={styles.heroBadgeRow}>
+            <IconBubble name="lock" tone="primary" size={52} />
+            <View style={styles.brandCopy}>
+              <Text style={styles.brandEyebrow}>Kaswise</Text>
+              <Text style={styles.brandTitle}>Catat keuangan, tetap tenang, tetap rapi.</Text>
+            </View>
+          </View>
 
-      <View style={styles.card}>
-        <Text style={styles.title}>Masuk ke akunmu</Text>
-        <Text style={styles.subtitle}>Kelola keuanganmu dengan tampilan modern dan cerdas.</Text>
+          <Text style={styles.heroBody}>
+            Masuk ke ruang finansialmu dengan tampilan navy premium, ringkas, dan fokus ke hal penting tiap hari.
+          </Text>
 
-        <View style={styles.formArea}>
-          <InputField
-            label="Email"
-            value={email}
-            onChangeText={setEmail}
-            placeholder="email@contoh.com"
-          />
-
-          <InputField
-            label="Password"
-            value={password}
-            onChangeText={setPassword}
-            placeholder="••••••••"
-          />
-
-          {error ? <Text style={styles.error}>{error}</Text> : null}
-
-          <Pressable style={styles.primaryButton} onPress={onLogin} disabled={loading}>
-            {loading ? <ActivityIndicator color={theme.colors.textInverse} /> : <Text style={styles.primaryButtonText}>Masuk</Text>}
-          </Pressable>
-
-          <Link href="/(auth)/forgot-password" style={styles.linkSecondary}>
-            Lupa password?
-          </Link>
+          <View style={styles.heroStatsRow}>
+            <View style={styles.heroStat}>
+              <KaswiseIcon name="wallets" size={16} color={theme.colors.success} weight="bold" />
+              <Text style={styles.heroStatText}>Wallet rapi</Text>
+            </View>
+            <View style={styles.heroStat}>
+              <KaswiseIcon name="chart" size={16} color={theme.colors.brandAccent} weight="bold" />
+              <Text style={styles.heroStatText}>Insight cepat</Text>
+            </View>
+          </View>
         </View>
 
-        <View style={styles.footerRow}>
-          <Text style={styles.footerText}>Belum punya akun?</Text>
-          <Link href="/(auth)/register" style={styles.linkPrimary}>
-            Daftar sekarang
-          </Link>
-        </View>
-      </View>
-    </View>
+        <Card variant="elevated" style={styles.card}>
+          <View style={styles.cardHeader}>
+            <SectionHeader title="Masuk ke akunmu" subtitle="Lanjutkan ke dashboard Kaswise dengan akun Supabase yang sama." />
+          </View>
+
+          <View style={styles.formArea}>
+            <InputField
+              label="Email"
+              value={email}
+              onChangeText={setEmail}
+              placeholder="email@contoh.com"
+              keyboardType="email-address"
+              autoCapitalize="none"
+              autoComplete="email"
+              autoCorrect={false}
+              textContentType="emailAddress"
+            />
+
+            <InputField
+              label="Password"
+              value={password}
+              onChangeText={setPassword}
+              placeholder="••••••••"
+              secureTextEntry
+              autoCapitalize="none"
+              autoComplete="password"
+              autoCorrect={false}
+              textContentType="password"
+            />
+
+            {error ? <Text style={styles.error}>{error}</Text> : null}
+
+            <Pressable style={[styles.primaryButton, loading && styles.primaryButtonDisabled]} onPress={onLogin} disabled={loading}>
+              {loading ? <ActivityIndicator color={theme.colors.textInverse} /> : <Text style={styles.primaryButtonText}>Masuk</Text>}
+            </Pressable>
+
+            <Link href="/(auth)/forgot-password" style={styles.linkSecondary}>
+              Lupa password?
+            </Link>
+          </View>
+
+          <View style={styles.footerRow}>
+            <Text style={styles.footerText}>Belum punya akun?</Text>
+            <Link href="/(auth)/register" style={styles.linkPrimary}>
+              Daftar sekarang
+            </Link>
+          </View>
+        </Card>
+      </ScrollView>
+    </SafeAreaView>
   )
 }
 
@@ -89,93 +122,118 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
     screen: {
       flex: 1,
       backgroundColor: theme.colors.background,
-      padding: 20,
+    },
+    content: {
+      flexGrow: 1,
       justifyContent: 'center',
-      gap: 18,
+      paddingHorizontal: theme.spacing.lg,
+      paddingVertical: theme.spacing['2xl'],
+      gap: theme.spacing.lg,
     },
-    hero: {
-      alignItems: 'center',
-      gap: 6,
-    },
-    logoMark: {
-      width: 58,
-      height: 58,
-      borderRadius: 16,
-      textAlign: 'center',
-      lineHeight: 58,
-      fontSize: 28,
-      fontWeight: '800',
-      color: theme.colors.textInverse,
-      backgroundColor: theme.colors.brandPrimary,
-      overflow: 'hidden',
-    },
-    heroTitle: {
-      color: theme.colors.textPrimary,
-      fontSize: 34,
-      fontWeight: '800',
-      letterSpacing: -0.4,
-    },
-    heroSubtitle: {
-      color: theme.colors.textMuted,
-      fontSize: 13,
-      fontWeight: '600',
-    },
-    card: {
-      backgroundColor: theme.colors.surface,
-      borderRadius: 20,
+    heroPanel: {
+      backgroundColor: theme.colors.mutedSurface,
+      borderRadius: theme.radius.xl,
       borderWidth: 1,
       borderColor: theme.colors.borderSoft,
-      padding: 18,
-      gap: 12,
+      padding: theme.spacing.xl,
+      gap: theme.spacing.md,
     },
-    title: {
-      color: theme.colors.textPrimary,
-      fontSize: 22,
+    heroBadgeRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: theme.spacing.md,
+    },
+    brandCopy: {
+      flex: 1,
+      gap: 4,
+    },
+    brandEyebrow: {
+      color: theme.colors.brandPrimary,
+      fontSize: theme.typography.support.fontSize,
       fontWeight: '800',
+      textTransform: 'uppercase',
+      letterSpacing: 0.6,
     },
-    subtitle: {
+    brandTitle: {
+      color: theme.colors.textPrimary,
+      fontSize: theme.typography.screenTitle.fontSize,
+      fontWeight: theme.typography.screenTitle.fontWeight,
+      lineHeight: 34,
+    },
+    heroBody: {
       color: theme.colors.textSecondary,
-      fontSize: 13,
-      lineHeight: 20,
+      fontSize: 14,
+      lineHeight: 22,
+    },
+    heroStatsRow: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: theme.spacing.sm,
+    },
+    heroStat: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      paddingHorizontal: theme.spacing.md,
+      paddingVertical: theme.spacing.sm,
+      borderRadius: theme.radius.pill,
+      backgroundColor: theme.colors.surfaceElevated,
+      borderWidth: 1,
+      borderColor: theme.colors.borderSoft,
+    },
+    heroStatText: {
+      color: theme.colors.textSecondary,
+      fontSize: theme.typography.support.fontSize,
+      fontWeight: '700',
+    },
+    card: {
+      gap: theme.spacing.lg,
+    },
+    cardHeader: {
+      gap: theme.spacing.xs,
     },
     formArea: {
-      gap: 12,
-      marginTop: 4,
+      gap: theme.spacing.md,
     },
     error: {
       color: theme.colors.danger,
-      fontSize: 12,
-      fontWeight: '600',
-      backgroundColor: `${theme.colors.danger}1A`,
+      fontSize: theme.typography.support.fontSize,
+      fontWeight: '700',
+      backgroundColor: theme.iconBubbles.danger.background,
       borderWidth: 1,
-      borderColor: `${theme.colors.danger}4D`,
-      borderRadius: 10,
-      paddingHorizontal: 10,
-      paddingVertical: 8,
+      borderColor: theme.colors.danger,
+      borderRadius: theme.radius.md,
+      paddingHorizontal: theme.spacing.md,
+      paddingVertical: theme.spacing.sm + 2,
     },
     primaryButton: {
       backgroundColor: theme.colors.brandPrimary,
-      borderRadius: 999,
-      paddingVertical: 13,
+      borderRadius: theme.radius.pill,
+      minHeight: 50,
       alignItems: 'center',
       justifyContent: 'center',
-      minHeight: 46,
+      paddingHorizontal: theme.spacing.lg,
+      paddingVertical: theme.spacing.md,
+      marginTop: 4,
+    },
+    primaryButtonDisabled: {
+      opacity: 0.7,
     },
     primaryButtonText: {
       color: theme.colors.textInverse,
       fontSize: 15,
-      fontWeight: '700',
+      fontWeight: '800',
     },
     linkSecondary: {
       color: theme.colors.textSecondary,
       fontSize: 13,
-      fontWeight: '600',
+      fontWeight: '700',
       textAlign: 'right',
     },
     footerRow: {
-      marginTop: 4,
       flexDirection: 'row',
       justifyContent: 'center',
+      flexWrap: 'wrap',
       gap: 6,
     },
     footerText: {
@@ -185,7 +243,7 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
     linkPrimary: {
       color: theme.colors.brandPrimary,
       fontSize: 13,
-      fontWeight: '700',
+      fontWeight: '800',
     },
   })
 }

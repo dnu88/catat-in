@@ -1,8 +1,9 @@
-import { Link } from 'expo-router'
+import { Link, router } from 'expo-router'
 import { useMemo, useState } from 'react'
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native'
+import { ActivityIndicator, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native'
 
-import { InputField } from '../../src/components/ui/InputField'
+import { KaswiseIcon } from '../../src/components/icons/kaswise-icons'
+import { Card, IconBubble, InputField, SectionHeader } from '../../src/components/ui'
 import { useSupabase } from '../../src/lib/supabase'
 import { useTheme } from '../../src/theme/theme-context'
 
@@ -14,6 +15,8 @@ export default function ForgotPasswordScreen() {
   const [email, setEmail] = useState('')
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
+
+  const isError = message?.includes('Gagal') ?? false
 
   const onReset = async () => {
     setLoading(true)
@@ -34,26 +37,54 @@ export default function ForgotPasswordScreen() {
   }
 
   return (
-    <View style={styles.screen}>
-      <View style={styles.card}>
-        <Text style={styles.title}>Lupa password?</Text>
-        <Text style={styles.subtitle}>Masukkan email akunmu untuk menerima link reset password.</Text>
-
-        <InputField label="Email" value={email} onChangeText={setEmail} placeholder="email@contoh.com" />
-
-        {message ? (
-          <Text style={[styles.message, message.includes('Gagal') ? styles.messageError : styles.messageSuccess]}>{message}</Text>
-        ) : null}
-
-        <Pressable style={styles.primaryButton} onPress={onReset} disabled={loading}>
-          {loading ? <ActivityIndicator color={theme.colors.textInverse} /> : <Text style={styles.primaryButtonText}>Kirim email reset</Text>}
+    <SafeAreaView style={styles.screen}>
+      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+        <Pressable style={styles.backRow} onPress={() => router.back()} accessibilityRole="button" accessibilityLabel="Kembali">
+          <KaswiseIcon name="back" size={18} color={theme.colors.textSecondary} weight="bold" />
+          <Text style={styles.backLabel}>Kembali</Text>
         </Pressable>
 
-        <Link href="/(auth)/login" style={styles.linkPrimary}>
-          Kembali ke login
-        </Link>
-      </View>
-    </View>
+        <View style={styles.heroPanel}>
+          <IconBubble name="email" tone="warning" size={52} />
+          <View style={styles.brandCopy}>
+            <Text style={styles.brandEyebrow}>Reset password</Text>
+            <Text style={styles.brandTitle}>Kirim ulang akses ke akun Kaswise-mu.</Text>
+          </View>
+        </View>
+
+        <Card variant="elevated" style={styles.card}>
+          <View style={styles.cardHeader}>
+            <SectionHeader title="Lupa password?" subtitle="Masukkan email akunmu, link reset akan dikirim ke inbox." />
+          </View>
+
+          <View style={styles.formArea}>
+            <InputField
+              label="Email"
+              value={email}
+              onChangeText={setEmail}
+              placeholder="email@contoh.com"
+              keyboardType="email-address"
+              autoCapitalize="none"
+              autoComplete="email"
+              autoCorrect={false}
+              textContentType="emailAddress"
+            />
+
+            {message ? (
+              <Text style={[styles.message, isError ? styles.messageError : styles.messageSuccess]}>{message}</Text>
+            ) : null}
+
+            <Pressable style={[styles.primaryButton, loading && styles.primaryButtonDisabled]} onPress={onReset} disabled={loading}>
+              {loading ? <ActivityIndicator color={theme.colors.textInverse} /> : <Text style={styles.primaryButtonText}>Kirim email reset</Text>}
+            </Pressable>
+
+            <Link href="/(auth)/login" style={styles.linkPrimary}>
+              Kembali ke login
+            </Link>
+          </View>
+        </Card>
+      </ScrollView>
+    </SafeAreaView>
   )
 }
 
@@ -62,66 +93,104 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
     screen: {
       flex: 1,
       backgroundColor: theme.colors.background,
-      padding: 20,
+    },
+    content: {
+      flexGrow: 1,
       justifyContent: 'center',
+      paddingHorizontal: theme.spacing.lg,
+      paddingVertical: theme.spacing['2xl'],
+      gap: theme.spacing.lg,
     },
-    card: {
-      backgroundColor: theme.colors.surface,
-      borderRadius: 20,
-      borderWidth: 1,
-      borderColor: theme.colors.borderSoft,
-      padding: 18,
-      gap: 12,
+    backRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+      alignSelf: 'flex-start',
+      paddingVertical: 6,
+      paddingHorizontal: 4,
     },
-    title: {
-      color: theme.colors.textPrimary,
-      fontSize: 24,
-      fontWeight: '800',
-    },
-    subtitle: {
+    backLabel: {
       color: theme.colors.textSecondary,
       fontSize: 13,
-      lineHeight: 20,
-      marginBottom: 4,
+      fontWeight: '700',
+    },
+    heroPanel: {
+      backgroundColor: theme.colors.mutedSurface,
+      borderRadius: theme.radius.xl,
+      borderWidth: 1,
+      borderColor: theme.colors.borderSoft,
+      padding: theme.spacing.xl,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: theme.spacing.md,
+    },
+    brandCopy: {
+      flex: 1,
+      gap: 4,
+    },
+    brandEyebrow: {
+      color: theme.colors.brandPrimary,
+      fontSize: theme.typography.support.fontSize,
+      fontWeight: '800',
+      textTransform: 'uppercase',
+      letterSpacing: 0.6,
+    },
+    brandTitle: {
+      color: theme.colors.textPrimary,
+      fontSize: 22,
+      fontWeight: '800',
+      lineHeight: 28,
+    },
+    card: {
+      gap: theme.spacing.lg,
+    },
+    cardHeader: {
+      gap: theme.spacing.xs,
+    },
+    formArea: {
+      gap: theme.spacing.md,
     },
     message: {
-      fontSize: 12,
-      fontWeight: '600',
-      borderRadius: 10,
-      paddingHorizontal: 10,
-      paddingVertical: 8,
+      fontSize: theme.typography.support.fontSize,
+      fontWeight: '700',
+      borderRadius: theme.radius.md,
+      paddingHorizontal: theme.spacing.md,
+      paddingVertical: theme.spacing.sm + 2,
+      borderWidth: 1,
     },
     messageError: {
       color: theme.colors.danger,
-      backgroundColor: `${theme.colors.danger}1A`,
-      borderWidth: 1,
-      borderColor: `${theme.colors.danger}4D`,
+      backgroundColor: theme.iconBubbles.danger.background,
+      borderColor: theme.colors.danger,
     },
     messageSuccess: {
       color: theme.colors.success,
-      backgroundColor: `${theme.colors.success}1A`,
-      borderWidth: 1,
-      borderColor: `${theme.colors.success}4D`,
+      backgroundColor: theme.iconBubbles.success.background,
+      borderColor: theme.colors.success,
     },
     primaryButton: {
       backgroundColor: theme.colors.brandPrimary,
-      borderRadius: 999,
-      paddingVertical: 13,
+      borderRadius: theme.radius.pill,
+      minHeight: 50,
       alignItems: 'center',
       justifyContent: 'center',
-      minHeight: 46,
+      paddingHorizontal: theme.spacing.lg,
+      paddingVertical: theme.spacing.md,
       marginTop: 4,
+    },
+    primaryButtonDisabled: {
+      opacity: 0.7,
     },
     primaryButtonText: {
       color: theme.colors.textInverse,
       fontSize: 15,
-      fontWeight: '700',
+      fontWeight: '800',
     },
     linkPrimary: {
-      marginTop: 8,
+      marginTop: theme.spacing.xs,
       color: theme.colors.brandPrimary,
       fontSize: 13,
-      fontWeight: '700',
+      fontWeight: '800',
       textAlign: 'center',
     },
   })

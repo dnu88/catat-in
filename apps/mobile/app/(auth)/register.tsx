@@ -1,8 +1,9 @@
 import { Link, router } from 'expo-router'
 import { useMemo, useState } from 'react'
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native'
+import { ActivityIndicator, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native'
 
-import { InputField } from '../../src/components/ui/InputField'
+import { KaswiseIcon } from '../../src/components/icons/kaswise-icons'
+import { Card, IconBubble, InputField, SectionHeader } from '../../src/components/ui'
 import { useSupabase } from '../../src/lib/supabase'
 import { useTheme } from '../../src/theme/theme-context'
 
@@ -47,34 +48,87 @@ export default function RegisterScreen() {
   }
 
   return (
-    <View style={styles.screen}>
-      <View style={styles.hero}>
-        <Text style={styles.logoMark}>K</Text>
-        <Text style={styles.heroTitle}>Buat akun kaswise</Text>
-        <Text style={styles.heroSubtitle}>Mulai pencatatan keuanganmu dalam hitungan menit.</Text>
-      </View>
+    <SafeAreaView style={styles.screen}>
+      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+        <View style={styles.heroPanel}>
+          <View style={styles.heroBadgeRow}>
+            <IconBubble name="ai" tone="accent" size={52} />
+            <View style={styles.brandCopy}>
+              <Text style={styles.brandEyebrow}>Kaswise</Text>
+              <Text style={styles.brandTitle}>Buat akun untuk mulai mencatat dalam hitungan menit.</Text>
+            </View>
+          </View>
 
-      <View style={styles.card}>
-        <View style={styles.formArea}>
-          <InputField label="Nama lengkap" value={name} onChangeText={setName} placeholder="Andika Putra" />
-          <InputField label="Email" value={email} onChangeText={setEmail} placeholder="email@contoh.com" />
-          <InputField label="Password" value={password} onChangeText={setPassword} placeholder="Minimal 8 karakter" />
+          <Text style={styles.heroBody}>
+            Dompet, anggaran, dan tagihan tergabung dalam satu shell finansial yang sama di semua perangkat.
+          </Text>
 
-          {error ? <Text style={styles.error}>{error}</Text> : null}
-
-          <Pressable style={styles.primaryButton} onPress={onRegister} disabled={loading}>
-            {loading ? <ActivityIndicator color={theme.colors.textInverse} /> : <Text style={styles.primaryButtonText}>Daftar sekarang</Text>}
-          </Pressable>
+          <View style={styles.heroStatsRow}>
+            <View style={styles.heroStat}>
+              <KaswiseIcon name="wallets" size={16} color={theme.colors.success} weight="bold" />
+              <Text style={styles.heroStatText}>Multi wallet</Text>
+            </View>
+            <View style={styles.heroStat}>
+              <KaswiseIcon name="insight" size={16} color={theme.colors.warning} weight="bold" />
+              <Text style={styles.heroStatText}>Insight AI</Text>
+            </View>
+          </View>
         </View>
 
-        <View style={styles.footerRow}>
-          <Text style={styles.footerText}>Sudah punya akun?</Text>
-          <Link href="/(auth)/login" style={styles.linkPrimary}>
-            Masuk
-          </Link>
-        </View>
-      </View>
-    </View>
+        <Card variant="elevated" style={styles.card}>
+          <View style={styles.cardHeader}>
+            <SectionHeader title="Akun baru" subtitle="Data tersimpan aman di Supabase dengan kebijakan RLS aktif." />
+          </View>
+
+          <View style={styles.formArea}>
+            <InputField
+              label="Nama lengkap"
+              value={name}
+              onChangeText={setName}
+              placeholder="Andika Putra"
+              autoCapitalize="words"
+              autoComplete="name"
+              textContentType="name"
+            />
+            <InputField
+              label="Email"
+              value={email}
+              onChangeText={setEmail}
+              placeholder="email@contoh.com"
+              keyboardType="email-address"
+              autoCapitalize="none"
+              autoComplete="email"
+              autoCorrect={false}
+              textContentType="emailAddress"
+            />
+            <InputField
+              label="Password"
+              value={password}
+              onChangeText={setPassword}
+              placeholder="Minimal 8 karakter"
+              secureTextEntry
+              autoCapitalize="none"
+              autoComplete="password-new"
+              autoCorrect={false}
+              textContentType="newPassword"
+            />
+
+            {error ? <Text style={styles.error}>{error}</Text> : null}
+
+            <Pressable style={[styles.primaryButton, loading && styles.primaryButtonDisabled]} onPress={onRegister} disabled={loading}>
+              {loading ? <ActivityIndicator color={theme.colors.textInverse} /> : <Text style={styles.primaryButtonText}>Daftar sekarang</Text>}
+            </Pressable>
+          </View>
+
+          <View style={styles.footerRow}>
+            <Text style={styles.footerText}>Sudah punya akun?</Text>
+            <Link href="/(auth)/login" style={styles.linkPrimary}>
+              Masuk
+            </Link>
+          </View>
+        </Card>
+      </ScrollView>
+    </SafeAreaView>
   )
 }
 
@@ -83,79 +137,112 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
     screen: {
       flex: 1,
       backgroundColor: theme.colors.background,
-      padding: 20,
+    },
+    content: {
+      flexGrow: 1,
       justifyContent: 'center',
-      gap: 18,
+      paddingHorizontal: theme.spacing.lg,
+      paddingVertical: theme.spacing['2xl'],
+      gap: theme.spacing.lg,
     },
-    hero: {
-      alignItems: 'center',
-      gap: 6,
-    },
-    logoMark: {
-      width: 58,
-      height: 58,
-      borderRadius: 16,
-      textAlign: 'center',
-      lineHeight: 58,
-      fontSize: 28,
-      fontWeight: '800',
-      color: theme.colors.textInverse,
-      backgroundColor: theme.colors.brandPrimary,
-      overflow: 'hidden',
-    },
-    heroTitle: {
-      color: theme.colors.textPrimary,
-      fontSize: 26,
-      fontWeight: '800',
-      letterSpacing: -0.3,
-      textAlign: 'center',
-    },
-    heroSubtitle: {
-      color: theme.colors.textMuted,
-      fontSize: 13,
-      fontWeight: '600',
-      textAlign: 'center',
-    },
-    card: {
-      backgroundColor: theme.colors.surface,
-      borderRadius: 20,
+    heroPanel: {
+      backgroundColor: theme.colors.mutedSurface,
+      borderRadius: theme.radius.xl,
       borderWidth: 1,
       borderColor: theme.colors.borderSoft,
-      padding: 18,
-      gap: 12,
+      padding: theme.spacing.xl,
+      gap: theme.spacing.md,
+    },
+    heroBadgeRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: theme.spacing.md,
+    },
+    brandCopy: {
+      flex: 1,
+      gap: 4,
+    },
+    brandEyebrow: {
+      color: theme.colors.brandPrimary,
+      fontSize: theme.typography.support.fontSize,
+      fontWeight: '800',
+      textTransform: 'uppercase',
+      letterSpacing: 0.6,
+    },
+    brandTitle: {
+      color: theme.colors.textPrimary,
+      fontSize: 24,
+      fontWeight: '800',
+      lineHeight: 30,
+    },
+    heroBody: {
+      color: theme.colors.textSecondary,
+      fontSize: 14,
+      lineHeight: 22,
+    },
+    heroStatsRow: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: theme.spacing.sm,
+    },
+    heroStat: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      paddingHorizontal: theme.spacing.md,
+      paddingVertical: theme.spacing.sm,
+      borderRadius: theme.radius.pill,
+      backgroundColor: theme.colors.surfaceElevated,
+      borderWidth: 1,
+      borderColor: theme.colors.borderSoft,
+    },
+    heroStatText: {
+      color: theme.colors.textSecondary,
+      fontSize: theme.typography.support.fontSize,
+      fontWeight: '700',
+    },
+    card: {
+      gap: theme.spacing.lg,
+    },
+    cardHeader: {
+      gap: theme.spacing.xs,
     },
     formArea: {
-      gap: 12,
+      gap: theme.spacing.md,
     },
     error: {
       color: theme.colors.danger,
-      fontSize: 12,
-      fontWeight: '600',
-      backgroundColor: `${theme.colors.danger}1A`,
+      fontSize: theme.typography.support.fontSize,
+      fontWeight: '700',
+      backgroundColor: theme.iconBubbles.danger.background,
       borderWidth: 1,
-      borderColor: `${theme.colors.danger}4D`,
-      borderRadius: 10,
-      paddingHorizontal: 10,
-      paddingVertical: 8,
+      borderColor: theme.colors.danger,
+      borderRadius: theme.radius.md,
+      paddingHorizontal: theme.spacing.md,
+      paddingVertical: theme.spacing.sm + 2,
     },
     primaryButton: {
       backgroundColor: theme.colors.brandPrimary,
-      borderRadius: 999,
-      paddingVertical: 13,
+      borderRadius: theme.radius.pill,
+      minHeight: 50,
       alignItems: 'center',
       justifyContent: 'center',
-      minHeight: 46,
+      paddingHorizontal: theme.spacing.lg,
+      paddingVertical: theme.spacing.md,
       marginTop: 4,
+    },
+    primaryButtonDisabled: {
+      opacity: 0.7,
     },
     primaryButtonText: {
       color: theme.colors.textInverse,
       fontSize: 15,
-      fontWeight: '700',
+      fontWeight: '800',
     },
     footerRow: {
-      marginTop: 4,
       flexDirection: 'row',
       justifyContent: 'center',
+      flexWrap: 'wrap',
       gap: 6,
     },
     footerText: {
@@ -165,7 +252,7 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
     linkPrimary: {
       color: theme.colors.brandPrimary,
       fontSize: 13,
-      fontWeight: '700',
+      fontWeight: '800',
     },
   })
 }
