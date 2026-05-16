@@ -19,7 +19,7 @@ export function StatCard({ label, value, helper, icon, tone = 'primary' }: StatC
     <Card variant="default">
       <View style={{ gap: theme.spacing.md }}>
         <IconBubble name={icon} tone={tone} size={36} />
-        <View style={{ gap: 2 }}>
+        <View style={{ gap: theme.spacing.xs / 2 }}>
           <Text
             style={{
               color: theme.colors.textSecondary,

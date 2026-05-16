@@ -11,6 +11,9 @@ export function StatusBadge({ label, color }: StatusBadgeProps) {
 
   return (
     <View
+      accessible
+      accessibilityRole="text"
+      accessibilityLabel={label}
       style={{
         borderWidth: 1,
         borderRadius: theme.radius.pill,
@@ -20,7 +23,7 @@ export function StatusBadge({ label, color }: StatusBadgeProps) {
         borderColor: `${color}40`,
       }}
     >
-      <Text style={{ color, fontSize: 11, fontWeight: '700' }}>{label}</Text>
+      <Text style={{ color, fontSize: theme.typography.support.fontSize, fontWeight: theme.typography.support.fontWeight }}>{label}</Text>
     </View>
   )
 }

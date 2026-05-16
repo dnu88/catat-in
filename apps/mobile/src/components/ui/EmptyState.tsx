@@ -27,13 +27,20 @@ export function EmptyState({ icon, title, description, tone = 'accent' }: EmptyS
       }}
     >
       <IconBubble name={icon} tone={tone} size={56} />
-      <Text style={{ color: theme.colors.textPrimary, fontSize: 15, fontWeight: '800' }}>
+      <Text
+        accessibilityRole="header"
+        style={{
+          color: theme.colors.textPrimary,
+          fontSize: theme.typography.fontSize.lg,
+          fontWeight: theme.typography.fontWeight.extrabold,
+        }}
+      >
         {title}
       </Text>
       <Text
         style={{
           color: theme.colors.textMuted,
-          fontSize: 13,
+          fontSize: theme.typography.fontSize.sm,
           textAlign: 'center',
           lineHeight: 20,
         }}

@@ -22,17 +22,24 @@ export function ScreenHeader({ title, subtitle, action }: ScreenHeaderProps) {
     >
       <View style={{ flex: 1 }}>
         <Text
+          accessibilityRole="header"
           style={{
             color: theme.colors.textPrimary,
             fontSize: theme.typography.screenTitle.fontSize,
             fontWeight: theme.typography.screenTitle.fontWeight,
-            letterSpacing: -0.4,
+            letterSpacing: theme.typography.letterSpacing.tight,
           }}
         >
           {title}
         </Text>
         {subtitle ? (
-          <Text style={{ color: theme.colors.textSecondary, fontSize: 13, marginTop: 2 }}>
+          <Text
+            style={{
+              color: theme.colors.textSecondary,
+              fontSize: theme.typography.fontSize.sm,
+              marginTop: theme.spacing.xs / 2,
+            }}
+          >
             {subtitle}
           </Text>
         ) : null}

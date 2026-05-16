@@ -46,13 +46,14 @@ export function Button({ label, onPress, variant = 'primary', disabled = false }
       disabled={disabled}
       accessibilityRole="button"
       accessibilityLabel={label}
+      accessibilityState={{ disabled }}
       style={[
         {
           backgroundColor: variantStyles.backgroundColor,
           borderColor: variantStyles.borderColor,
           borderWidth: 1,
           borderRadius: theme.radius.pill,
-          opacity: disabled ? 0.55 : 1,
+          opacity: disabled ? theme.opacity[60] : theme.opacity[100],
           paddingVertical: theme.spacing.md,
           paddingHorizontal: theme.spacing.lg,
         },
@@ -62,7 +63,8 @@ export function Button({ label, onPress, variant = 'primary', disabled = false }
       <Text
         style={{
           color: variantStyles.color,
-          fontWeight: '700',
+          fontWeight: theme.typography.fontWeight.bold,
+          fontSize: theme.typography.fontSize.md,
           textAlign: 'center',
         }}
       >

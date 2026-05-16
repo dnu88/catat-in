@@ -22,6 +22,7 @@ export function SectionHeader({ title, subtitle, action }: SectionHeaderProps) {
     >
       <View style={{ flexShrink: 1, gap: 2 }}>
         <Text
+          accessibilityRole="header"
           style={{
             color: theme.colors.textPrimary,
             fontSize: theme.typography.sectionTitle.fontSize,
