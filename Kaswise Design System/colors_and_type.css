@@ -1,0 +1,302 @@
+/* =============================================================
+   Kaswise — Design Tokens (Dark Luxury system, dark + light)
+
+   Single source of truth for the entire design system.
+   Dark luxury is the canonical brand direction:
+     - Matte Black ground, Surface Grey cards
+     - Neon Emerald primary, Soft Navy secondary
+     - White-to-grey text ladder
+
+   The light theme is a "light luxury" parallel — warm bone ground,
+   white cards, the same neon + navy accents (with stronger contrast
+   guards). Switch via `data-theme="light"` on <html> or <body>.
+
+   Source of truth in product code: mobile/src/theme/tokens.ts
+   ============================================================= */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
+:root {
+  /* ---------- BRAND ACCENTS (same hexes both themes) ---------- */
+  --ks-brand-primary:        #A3FF12;  /* Neon Emerald — CTAs, growth, active states */
+  --ks-brand-primary-deep:   #65A30D;  /* Darker neon — text accents on light surfaces */
+  --ks-brand-secondary:      #4A80F0;  /* Soft Navy — secondary accent, data viz */
+  --ks-brand-secondary-deep: #2A5DD0;
+
+  /* ---------- STATUS (brand-tuned) ---------- */
+  --ks-success: #A3FF12;     /* Doubles as primary brand colour */
+  --ks-danger:  #FF7B7B;     /* Coral — softer than red on matte black */
+  --ks-warning: #FFC06D;     /* Warm amber */
+  --ks-info:    #38BDF8;     /* Sky */
+
+  /* ---------- DARK LUXURY (default) ---------- */
+  --ks-bg-base:     #141414;  /* Matte Black — app background */
+  --ks-bg-surface:  #1E1E1A;  /* Surface Grey — cards, UI elements */
+  --ks-bg-card:     #18181A;  /* Component card surface */
+  --ks-bg-elevated: #242427;  /* Pills, modals, nested cards */
+  --ks-bg-deep:     #0A0A0A;  /* Hero, footer, nav, splash ground */
+
+  --ks-text-primary:   #FFFFFF;
+  --ks-text-secondary: #E5E7EB;
+  --ks-text-muted:     #9CA3AF;
+  --ks-text-dim:       #6B7280;
+  --ks-text-inverse:   #0A0A0A;
+
+  --ks-border-soft:   rgba(255, 255, 255, 0.06);
+  --ks-border:        rgba(255, 255, 255, 0.10);
+  --ks-border-strong: rgba(255, 255, 255, 0.18);
+
+  /* Glass surfaces (chips, floating pills, tab bars) */
+  --ks-glass-bg:     rgba(255, 255, 255, 0.06);
+  --ks-glass-border: rgba(255, 255, 255, 0.12);
+  --ks-glass-blur:   blur(12px) saturate(140%);
+
+  /* Icon-bubble pairs (dark recipe: color@14% bg + color@25-30% border + full fg) */
+  --ks-bubble-primary-bg:   rgba(163, 255, 18, 0.14);
+  --ks-bubble-primary-bd:   rgba(163, 255, 18, 0.25);
+  --ks-bubble-primary-fg:   #A3FF12;
+  --ks-bubble-navy-bg:      rgba(74, 128, 240, 0.14);
+  --ks-bubble-navy-bd:      rgba(74, 128, 240, 0.30);
+  --ks-bubble-navy-fg:      #4A80F0;
+  --ks-bubble-warning-bg:   rgba(255, 192, 109, 0.14);
+  --ks-bubble-warning-bd:   rgba(255, 192, 109, 0.30);
+  --ks-bubble-warning-fg:   #FFC06D;
+  --ks-bubble-danger-bg:    rgba(255, 123, 123, 0.14);
+  --ks-bubble-danger-bd:    rgba(255, 123, 123, 0.30);
+  --ks-bubble-danger-fg:    #FF7B7B;
+  --ks-bubble-info-bg:      rgba(56, 189, 248, 0.14);
+  --ks-bubble-info-bd:      rgba(56, 189, 248, 0.30);
+  --ks-bubble-info-fg:      #38BDF8;
+
+  /* ---------- RADIUS ---------- */
+  --ks-radius-sm:   10px;
+  --ks-radius-md:   14px;
+  --ks-radius-lg:   18px;
+  --ks-radius-xl:   20px;
+  --ks-radius-2xl:  24px;
+  --ks-radius-pill: 999px;
+
+  /* ---------- SPACING (4 px base) ---------- */
+  --ks-space-xs:  4px;
+  --ks-space-sm:  8px;
+  --ks-space-md:  12px;
+  --ks-space-lg:  16px;
+  --ks-space-xl:  20px;
+  --ks-space-2xl: 24px;
+  --ks-space-3xl: 32px;
+
+  /* ---------- ELEVATION ---------- */
+  --ks-shadow-card:        0 1px 2px rgba(0, 0, 0, 0.30);
+  --ks-shadow-elevated:    0 10px 30px rgba(0, 0, 0, 0.45);
+
+  /* Neon glow recipes — primary brand glow */
+  --ks-glow-neon-soft:     0 0 22px rgba(163, 255, 18, 0.30);
+  --ks-glow-neon-strong:   0 0 26px rgba(163, 255, 18, 0.45), 0 14px 36px rgba(163, 255, 18, 0.22);
+  --ks-glow-bloom-corner:  radial-gradient(circle, rgba(163, 255, 18, 0.14), transparent 70%);
+
+  /* Focus ring (3 px @ 25% neon) */
+  --ks-focus-ring: 0 0 0 3px rgba(163, 255, 18, 0.25);
+  --ks-focus-ring-danger: 0 0 0 3px rgba(255, 123, 123, 0.20);
+
+  /* ---------- TYPOGRAPHY ---------- */
+  --ks-font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --ks-font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  /* Size scale (matches mobile token scale) */
+  --ks-fs-xs:  10px;
+  --ks-fs-sm:  12px;
+  --ks-fs-md:  14px;
+  --ks-fs-lg:  16px;
+  --ks-fs-xl:  18px;
+  --ks-fs-2xl: 20px;
+  --ks-fs-3xl: 24px;
+  --ks-fs-4xl: 28px;
+  --ks-fs-5xl: 32px;
+
+  --ks-lh-tight:   1.2;
+  --ks-lh-normal:  1.4;
+  --ks-lh-relaxed: 1.6;
+
+  --ks-tracking-tight:  -0.5px;
+  --ks-tracking-normal: 0;
+  --ks-tracking-wide:   0.04em;
+
+  --ks-weight-regular:  400;
+  --ks-weight-medium:   500;
+  --ks-weight-semibold: 600;
+  --ks-weight-bold:     700;
+  --ks-weight-black:    800;
+}
+
+/* =============================================================
+   LIGHT LUXURY — opt-in via [data-theme="light"]
+
+   Same brand accents, warm-bone ground, off-white cards.
+   Neon still owns CTAs (with near-black text on top); for
+   in-text accents use --ks-brand-primary-deep (#65A30D).
+   ============================================================= */
+[data-theme="light"] {
+  --ks-bg-base:     #F5F5F0;  /* Warm bone */
+  --ks-bg-surface:  #FFFFFF;
+  --ks-bg-card:     #FFFFFF;
+  --ks-bg-elevated: #FAFAF5;
+  --ks-bg-deep:     #ECECE5;
+
+  --ks-text-primary:   #0A0A0A;
+  --ks-text-secondary: #4B5563;
+  --ks-text-muted:     #6B7280;
+  --ks-text-dim:       #9CA3AF;
+  --ks-text-inverse:   #FFFFFF;
+
+  --ks-border-soft:   rgba(10, 10, 10, 0.06);
+  --ks-border:        rgba(10, 10, 10, 0.10);
+  --ks-border-strong: rgba(10, 10, 10, 0.16);
+
+  --ks-glass-bg:     rgba(255, 255, 255, 0.60);
+  --ks-glass-border: rgba(10, 10, 10, 0.08);
+
+  --ks-bubble-primary-bg:   rgba(163, 255, 18, 0.18);
+  --ks-bubble-primary-bd:   rgba(101, 163, 13, 0.28);
+  --ks-bubble-primary-fg:   #65A30D;   /* swap to deep neon for text */
+  --ks-bubble-navy-bg:      rgba(74, 128, 240, 0.12);
+  --ks-bubble-navy-bd:      rgba(42, 93, 208, 0.25);
+  --ks-bubble-navy-fg:      #2A5DD0;
+  --ks-bubble-warning-bg:   rgba(245, 158, 11, 0.14);
+  --ks-bubble-warning-bd:   rgba(245, 158, 11, 0.30);
+  --ks-bubble-warning-fg:   #B45309;
+  --ks-bubble-danger-bg:    rgba(239, 68, 68, 0.10);
+  --ks-bubble-danger-bd:    rgba(239, 68, 68, 0.25);
+  --ks-bubble-danger-fg:    #DC2626;
+  --ks-bubble-info-bg:      rgba(14, 165, 233, 0.10);
+  --ks-bubble-info-bd:      rgba(14, 165, 233, 0.25);
+  --ks-bubble-info-fg:      #0284C7;
+
+  --ks-shadow-card:        0 1px 2px rgba(10, 10, 10, 0.04), 0 4px 12px rgba(10, 10, 10, 0.06);
+  --ks-shadow-elevated:    0 8px 24px rgba(10, 10, 10, 0.08), 0 16px 36px rgba(10, 10, 10, 0.06);
+
+  --ks-glow-neon-soft:     0 0 0 3px rgba(163, 255, 18, 0.30);
+  --ks-glow-neon-strong:   0 12px 28px rgba(163, 255, 18, 0.35);
+  --ks-glow-bloom-corner:  radial-gradient(circle, rgba(163, 255, 18, 0.22), transparent 70%);
+
+  --ks-focus-ring: 0 0 0 3px rgba(101, 163, 13, 0.30);
+}
+
+/* =============================================================
+   SEMANTIC TYPE STYLES
+   ============================================================= */
+
+.ks-display {
+  font-family: var(--ks-font-sans);
+  font-size: var(--ks-fs-5xl);
+  font-weight: var(--ks-weight-black);
+  line-height: var(--ks-lh-tight);
+  letter-spacing: var(--ks-tracking-tight);
+  color: var(--ks-text-primary);
+}
+
+.ks-headline, h1 {
+  font-family: var(--ks-font-sans);
+  font-size: var(--ks-fs-3xl);
+  font-weight: var(--ks-weight-black);
+  line-height: var(--ks-lh-tight);
+  letter-spacing: -0.3px;
+  color: var(--ks-text-primary);
+}
+
+.ks-title, h2 {
+  font-family: var(--ks-font-sans);
+  font-size: var(--ks-fs-xl);
+  font-weight: var(--ks-weight-bold);
+  line-height: var(--ks-lh-normal);
+  letter-spacing: -0.2px;
+  color: var(--ks-text-primary);
+}
+
+.ks-screen-title {
+  font-family: var(--ks-font-sans);
+  font-size: 22px;
+  font-weight: var(--ks-weight-black);
+  line-height: var(--ks-lh-tight);
+  letter-spacing: -0.3px;
+  color: var(--ks-text-primary);
+}
+
+.ks-card-title, h3 {
+  font-family: var(--ks-font-sans);
+  font-size: var(--ks-fs-lg);
+  font-weight: var(--ks-weight-bold);
+  line-height: var(--ks-lh-normal);
+  color: var(--ks-text-primary);
+}
+
+.ks-section-title {
+  font-family: var(--ks-font-sans);
+  font-size: 15px;
+  font-weight: var(--ks-weight-bold);
+  line-height: var(--ks-lh-normal);
+  color: var(--ks-text-primary);
+}
+
+.ks-body, p {
+  font-family: var(--ks-font-sans);
+  font-size: var(--ks-fs-md);
+  font-weight: var(--ks-weight-regular);
+  line-height: var(--ks-lh-relaxed);
+  color: var(--ks-text-primary);
+}
+
+.ks-label {
+  font-family: var(--ks-font-sans);
+  font-size: 13px;
+  font-weight: var(--ks-weight-semibold);
+  line-height: var(--ks-lh-normal);
+  letter-spacing: 0.02em;
+  color: var(--ks-text-secondary);
+}
+
+.ks-small {
+  font-family: var(--ks-font-sans);
+  font-size: var(--ks-fs-xs);
+  font-weight: var(--ks-weight-regular);
+  line-height: var(--ks-lh-normal);
+  letter-spacing: 0.03em;
+  color: var(--ks-text-muted);
+}
+
+.ks-metric {
+  font-family: var(--ks-font-sans);
+  font-size: var(--ks-fs-2xl);
+  font-weight: var(--ks-weight-black);
+  line-height: var(--ks-lh-tight);
+  letter-spacing: -0.4px;
+  color: var(--ks-text-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+.ks-amount-large {
+  font-family: var(--ks-font-sans);
+  font-size: 30px;
+  font-weight: var(--ks-weight-black);
+  line-height: var(--ks-lh-tight);
+  letter-spacing: -0.5px;
+  font-variant-numeric: tabular-nums;
+  color: var(--ks-text-primary);
+}
+
+.ks-eyebrow {
+  font-family: var(--ks-font-mono);
+  font-size: 11px;
+  font-weight: var(--ks-weight-bold);
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--ks-brand-primary);
+}
+
+/* Reset baseline */
+html, body {
+  font-family: var(--ks-font-sans);
+  color: var(--ks-text-primary);
+  background: var(--ks-bg-base);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}

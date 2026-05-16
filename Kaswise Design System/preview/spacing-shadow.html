@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Spacing · Shadow / Elevation</title>
+<link rel="stylesheet" href="_card.css">
+<link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/bold/style.css">
+</head>
+<body>
+<div class="card" style="background:#0A0A0A; color:#FFF; padding: 22px 24px; gap: 20px;">
+  <div>
+    <div style="font-size:11px; font-weight:700; letter-spacing:0.18em; color:#A3FF12; font-family: ui-monospace, SFMono-Regular, Menlo, monospace;">ELEVATION</div>
+    <div style="font-size:30px; font-weight:800; letter-spacing:-0.7px; color:#FFF; margin-top: 6px;">Glassmorphism &amp; Neon Accents.</div>
+  </div>
+
+  <div class="row" style="gap: 14px; align-items: stretch;">
+
+    <!-- 1. Card rest -->
+    <div style="flex:1; display:flex; flex-direction:column; gap:10px;">
+      <div style="height:96px; border-radius:16px; background:#18181A; border:1px solid rgba(255,255,255,0.05); display:flex; align-items:center; justify-content:center;">
+        <i class="ph-bold ph-wallet" style="font-size:22px; color:#9CA3AF;"></i>
+      </div>
+      <div style="font-size:12px; font-weight:800; color:#FFF;">Card · rest</div>
+      <div style="font-size:10px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; color:#6B7280; line-height:1.5;">#18181A<br>1px @5% white border</div>
+    </div>
+
+    <!-- 2. Card hover glow -->
+    <div style="flex:1; display:flex; flex-direction:column; gap:10px;">
+      <div style="height:96px; border-radius:16px; background:#18181A; border:1px solid rgba(163,255,18,0.30); box-shadow: 0 0 0 1px rgba(163,255,18,0.10), 0 20px 40px rgba(163,255,18,0.10); display:flex; align-items:center; justify-content:center;">
+        <i class="ph-bold ph-arrow-up-right" style="font-size:22px; color:#A3FF12;"></i>
+      </div>
+      <div style="font-size:12px; font-weight:800; color:#FFF;">Card · hover</div>
+      <div style="font-size:10px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; color:#6B7280; line-height:1.5;">border · 30% neon<br>+ 20px / 10% glow</div>
+    </div>
+
+    <!-- 3. Neon glow CTA -->
+    <div style="flex:1; display:flex; flex-direction:column; gap:10px;">
+      <div style="height:96px; border-radius:16px; background:#A3FF12; box-shadow: 0 0 30px rgba(163,255,18,0.45), 0 16px 40px rgba(163,255,18,0.20); display:flex; align-items:center; justify-content:center;">
+        <i class="ph-bold ph-trend-up" style="font-size:24px; color:#0A0A0A;"></i>
+      </div>
+      <div style="font-size:12px; font-weight:800; color:#FFF;">Neon glow</div>
+      <div style="font-size:10px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; color:#6B7280; line-height:1.5;">CTA · 30px @45%<br>+ 40px @20%</div>
+    </div>
+
+    <!-- 4. Glass pill -->
+    <div style="flex:1; display:flex; flex-direction:column; gap:10px;">
+      <div style="height:96px; border-radius:16px; background:
+        radial-gradient(at 30% 20%, rgba(163,255,18,0.10), transparent 60%),
+        radial-gradient(at 80% 80%, rgba(74,128,240,0.08), transparent 60%),
+        #141414; border:1px solid rgba(255,255,255,0.06); position:relative; overflow:hidden;">
+        <div style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); padding:8px 14px; border-radius:999px; background: rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.12); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); font-size:11px; font-weight:700; color:#E5E7EB; display:flex; align-items:center; gap:6px;">
+          <span style="width:6px; height:6px; border-radius:50%; background:#A3FF12; box-shadow: 0 0 6px #A3FF12;"></span>
+          Main Wallet
+        </div>
+      </div>
+      <div style="font-size:12px; font-weight:800; color:#FFF;">Glass pill</div>
+      <div style="font-size:10px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; color:#6B7280; line-height:1.5;">6% fill · 12% border<br>blur 12px</div>
+    </div>
+  </div>
+
+  <div style="font-size:11px; color:#6B7280; line-height:1.6;">
+    Three layers, in this order: <b style="color:#9CA3AF;">flat dark surfaces</b> at rest · <b style="color:#9CA3AF;">backdrop-blur glass</b> for pills + floating chrome · <b style="color:#A3FF12;">neon bloom</b> only on actionable / growth elements. Never stack all three on one surface.
+  </div>
+</div>
+</body>
+</html>

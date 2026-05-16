@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 120" width="200" height="120" role="img" aria-label="Kaswise wordmark (light)">
+  <defs>
+    <linearGradient id="kl-g1" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#4B5563"></stop>
+      <stop offset="100%" stop-color="#1F2937"></stop>
+    </linearGradient>
+    <linearGradient id="kl-g2" x1="0" y1="1" x2="1" y2="0">
+      <stop offset="0%" stop-color="#9CA3AF"></stop>
+      <stop offset="100%" stop-color="#4B5563"></stop>
+    </linearGradient>
+    <linearGradient id="kl-g3" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#166534"></stop>
+      <stop offset="100%" stop-color="#022C22"></stop>
+    </linearGradient>
+    <linearGradient id="kl-g4" x1="0" y1="1" x2="1" y2="0">
+      <stop offset="0%" stop-color="#A3FF12"></stop>
+      <stop offset="100%" stop-color="#65A30D"></stop>
+    </linearGradient>
+  </defs>
+  <rect x="0" y="0" width="200" height="120" rx="22" fill="#F8FAFC"></rect>
+  <g transform="translate(14, 10)">
+    <polygon points="15,35 35,85 50,85 30,35" fill="url(#kl-g1)"></polygon>
+    <polygon points="35,85 60,35 75,35 50,85" fill="url(#kl-g2)"></polygon>
+    <polygon points="60,35 75,85 90,85 75,35" fill="url(#kl-g3)"></polygon>
+    <polygon points="75,85 90,85 106,45 118,50 112,10 80,30 91,45" fill="url(#kl-g4)"></polygon>
+  </g>
+</svg>

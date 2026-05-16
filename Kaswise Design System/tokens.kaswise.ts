@@ -59,24 +59,8 @@ const typography = {
 } as const
 
 const opacity = {
-  0: 0,
-  10: 0.1,
-  14: 0.14,
-  15: 0.15,
-  18: 0.18,
-  20: 0.2,
-  25: 0.25,
-  30: 0.3,
-  40: 0.4,
-  50: 0.5,
-  60: 0.6,
-  65: 0.65,
-  70: 0.7,
-  72: 0.72,
-  75: 0.75,
-  80: 0.8,
-  90: 0.9,
-  100: 1,
+  0: 0, 10: 0.1, 14: 0.14, 18: 0.18, 25: 0.25, 30: 0.3,
+  40: 0.4, 50: 0.5, 60: 0.6, 70: 0.7, 80: 0.8, 90: 0.9, 100: 1,
 } as const
 
 export const kaswiseTokens = {
@@ -121,7 +105,6 @@ export const kaswiseTokens = {
       iconBubbles: {
         primary: { background: 'rgba(163, 255, 18, 0.14)', border: 'rgba(163, 255, 18, 0.25)', color: '#A3FF12' },
         navy:    { background: 'rgba(74, 128, 240, 0.14)', border: 'rgba(74, 128, 240, 0.30)', color: '#4A80F0' },
-        accent:  { background: 'rgba(74, 128, 240, 0.14)', border: 'rgba(74, 128, 240, 0.30)', color: '#4A80F0' },
         success: { background: 'rgba(163, 255, 18, 0.10)', border: 'rgba(163, 255, 18, 0.20)', color: '#A3FF12' },
         warning: { background: 'rgba(255, 192, 109, 0.14)', border: 'rgba(255, 192, 109, 0.30)', color: '#FFC06D' },
         danger:  { background: 'rgba(255, 123, 123, 0.14)', border: 'rgba(255, 123, 123, 0.30)', color: '#FF7B7B' },
@@ -189,7 +172,6 @@ export const kaswiseTokens = {
       iconBubbles: {
         primary: { background: 'rgba(163, 255, 18, 0.18)', border: 'rgba(101, 163, 13, 0.28)', color: '#65A30D' },
         navy:    { background: 'rgba(74, 128, 240, 0.12)', border: 'rgba(42, 93, 208, 0.25)',  color: '#2A5DD0' },
-        accent:  { background: 'rgba(74, 128, 240, 0.12)', border: 'rgba(42, 93, 208, 0.25)',  color: '#2A5DD0' },
         success: { background: 'rgba(163, 255, 18, 0.18)', border: 'rgba(101, 163, 13, 0.28)', color: '#65A30D' },
         warning: { background: 'rgba(245, 158, 11, 0.14)', border: 'rgba(245, 158, 11, 0.30)', color: '#B45309' },
         danger:  { background: 'rgba(239, 68, 68, 0.10)',  border: 'rgba(239, 68, 68, 0.25)',  color: '#DC2626' },
@@ -216,3 +198,29 @@ export const kaswiseTokens = {
     },
   },
 } as const
+
+// -------------------------------------------------------
+// Notes for `toMobileTheme` consumers:
+//
+//   theme.colors.brandPrimary       → kaswiseTokens[mode].color.brand.primary
+//   theme.colors.brandAccent        → kaswiseTokens[mode].color.brand.secondary
+//   theme.iconBubbles[tone]         → kaswiseTokens[mode].color.iconBubbles[tone]
+//
+// New keys not in the old tokens:
+//   - color.brand.primaryDeep, secondaryDeep — for text-on-light contrast
+//   - color.text.dim — fifth grey step
+//   - color.glass — pill/floating-bar surface recipe
+//   - color.iconBubbles.primary now uses 'navy' as a separate tone
+//   - color.iconBubbles[tone].border — added for the dark recipe
+//   - shadow.neon — the brand's signature glow
+//
+// Migration step in mobile/src/theme/mobile-theme.ts (if needed):
+//
+//   colors: {
+//     ...,
+//     brandPrimary: token.color.brand.primary,
+//     brandSecondary: token.color.brand.secondary,
+//     glass: token.color.glass,
+//     textDim: token.color.text.dim,
+//   },
+// -------------------------------------------------------

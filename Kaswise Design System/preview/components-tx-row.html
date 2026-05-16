@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Components · Transaction Row</title>
+<link rel="stylesheet" href="_card.css">
+<link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/bold/style.css">
+</head>
+<body>
+<div class="card" style="background:#0A0A0A; color:#FFF; padding: 22px 24px; gap: 16px;">
+  <div>
+    <div style="font-size:11px; font-weight:700; letter-spacing:0.18em; color:#A3FF12; font-family: ui-monospace, SFMono-Regular, Menlo, monospace;">TRANSACTION ROW</div>
+    <div style="font-size:30px; font-weight:800; letter-spacing:-0.7px; color:#FFF; margin-top: 6px;">Bubble. Merchant. Amount.</div>
+  </div>
+
+  <div style="background:#18181A; border:1px solid rgba(255,255,255,0.06); border-radius:18px; padding:14px; display:flex; flex-direction:column;">
+
+    <!-- expense -->
+    <div style="display:flex; align-items:center; gap:12px; padding:8px 0; border-bottom: 1px solid rgba(255,255,255,0.04);">
+      <div style="width:36px; height:36px; border-radius:18px; background: rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.08); display:flex; align-items:center; justify-content:center;">
+        <i class="ph-bold ph-storefront" style="font-size:16px; color:#9CA3AF;"></i>
+      </div>
+      <div style="flex:1; min-width:0;">
+        <div style="font-size:13px; font-weight:700; color:#FFF; font-family: var(--ks-font-sans);">Indomaret</div>
+        <div style="font-size:11px; color:#6B7280; margin-top:2px; font-family: var(--ks-font-sans);">Hari ini · GoPay</div>
+      </div>
+      <div style="font-size:13px; font-weight:800; color:#FF7B7B; font-family: var(--ks-font-sans); font-variant-numeric: tabular-nums;">-45rb</div>
+    </div>
+
+    <!-- income (neon) -->
+    <div style="display:flex; align-items:center; gap:12px; padding:8px 0; border-bottom: 1px solid rgba(255,255,255,0.04);">
+      <div style="width:36px; height:36px; border-radius:18px; background: rgba(163,255,18,0.14); border:1px solid rgba(163,255,18,0.30); display:flex; align-items:center; justify-content:center;">
+        <i class="ph-bold ph-arrow-down-left" style="font-size:16px; color:#A3FF12;"></i>
+      </div>
+      <div style="flex:1; min-width:0;">
+        <div style="font-size:13px; font-weight:700; color:#FFF; font-family: var(--ks-font-sans);">Gaji April</div>
+        <div style="font-size:11px; color:#6B7280; margin-top:2px; font-family: var(--ks-font-sans);">1 Apr · BCA</div>
+      </div>
+      <div style="font-size:13px; font-weight:800; color:#A3FF12; font-family: var(--ks-font-sans); font-variant-numeric: tabular-nums;">+ Rp 8 Jt</div>
+    </div>
+
+    <!-- expense -->
+    <div style="display:flex; align-items:center; gap:12px; padding:8px 0; border-bottom: 1px solid rgba(255,255,255,0.04);">
+      <div style="width:36px; height:36px; border-radius:18px; background: rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.08); display:flex; align-items:center; justify-content:center;">
+        <i class="ph-bold ph-car" style="font-size:16px; color:#9CA3AF;"></i>
+      </div>
+      <div style="flex:1; min-width:0;">
+        <div style="font-size:13px; font-weight:700; color:#FFF; font-family: var(--ks-font-sans);">Grab Car</div>
+        <div style="font-size:11px; color:#6B7280; margin-top:2px; font-family: var(--ks-font-sans);">Kemarin · GoPay</div>
+      </div>
+      <div style="font-size:13px; font-weight:800; color:#FF7B7B; font-family: var(--ks-font-sans); font-variant-numeric: tabular-nums;">-22rb</div>
+    </div>
+
+    <!-- warning -->
+    <div style="display:flex; align-items:center; gap:12px; padding:8px 0;">
+      <div style="width:36px; height:36px; border-radius:18px; background: rgba(255,192,109,0.12); border:1px solid rgba(255,192,109,0.30); display:flex; align-items:center; justify-content:center;">
+        <i class="ph-bold ph-lightning" style="font-size:16px; color:#FFC06D;"></i>
+      </div>
+      <div style="flex:1; min-width:0;">
+        <div style="font-size:13px; font-weight:700; color:#FFF; font-family: var(--ks-font-sans);">PLN Token</div>
+        <div style="font-size:11px; color:#6B7280; margin-top:2px; font-family: var(--ks-font-sans);">2 Apr · BCA · pending</div>
+      </div>
+      <div style="font-size:13px; font-weight:800; color:#FFC06D; font-family: var(--ks-font-sans); font-variant-numeric: tabular-nums;">-150rb</div>
+    </div>
+
+  </div>
+
+  <div style="font-size:11px; color:#6B7280; line-height:1.6;">
+    Bubble is the only colored element on expense rows — neutral grey (<b style="color:#9CA3AF;">5% white fill + 8% border</b>). Income flips it to <b style="color:#A3FF12;">neon</b> (icon and amount). Pending or scheduled = <b style="color:#FFC06D;">amber</b>. Amounts always tabular-nums, 800 weight, sign visible.
+  </div>
+</div>
+</body>
+</html>

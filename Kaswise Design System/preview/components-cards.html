@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Components · Cards</title>
+<link rel="stylesheet" href="_card.css">
+<link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/bold/style.css">
+</head>
+<body>
+<div class="card" style="background:#0A0A0A; color:#FFF; padding: 22px 24px; gap: 18px;">
+  <div>
+    <div style="font-size:11px; font-weight:700; letter-spacing:0.18em; color:#A3FF12; font-family: ui-monospace, SFMono-Regular, Menlo, monospace;">CARDS</div>
+    <div style="font-size:30px; font-weight:800; letter-spacing:-0.7px; color:#FFF; margin-top: 6px;">Wallets, actions, plastic.</div>
+  </div>
+
+  <div class="row" style="gap: 14px; align-items: stretch;">
+
+    <!-- Wallet card (mirrors Main Wallet section) -->
+    <div style="flex: 1.4; background:#18181A; border:1px solid rgba(255,255,255,0.06); border-radius:24px; padding:18px; display:flex; flex-direction:column; gap:18px; position:relative; overflow:hidden;">
+      <div style="position:absolute; top:-50px; right:-50px; width:140px; height:140px; border-radius:50%; background: radial-gradient(circle, rgba(163,255,18,0.10), transparent 70%); filter: blur(20px); pointer-events:none;"></div>
+
+      <div style="display:flex; justify-content:space-between; align-items:center; position:relative;">
+        <span style="display:inline-flex; align-items:center; gap:8px; background: rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.10); border-radius:999px; padding:7px 12px; font-size:12px; font-weight:700; color:#E5E7EB; font-family: var(--ks-font-sans); backdrop-filter: blur(10px);">
+          <i class="ph-bold ph-wallet" style="font-size:13px; color:#9CA3AF;"></i>
+          Main Wallet
+          <i class="ph-bold ph-caret-down" style="font-size:10px; color:#6B7280;"></i>
+        </span>
+        <span style="font-size:12px; font-weight:600; color:#9CA3AF; font-family: var(--ks-font-sans); cursor:pointer;">Manage</span>
+      </div>
+
+      <div style="position:relative;">
+        <div style="font-size:11px; color:#9CA3AF; font-family: var(--ks-font-sans); margin-bottom: 4px;">Total Balance</div>
+        <div style="display:flex; align-items:baseline; gap:10px;">
+          <div style="font-size:32px; font-weight:800; letter-spacing:-0.6px; color:#FFF; font-variant-numeric: tabular-nums; font-family: var(--ks-font-sans);">32,126.00</div>
+          <span style="display:inline-flex; align-items:center; gap:4px; background: rgba(163,255,18,0.14); border-radius:6px; padding:3px 8px; font-size:10px; font-weight:700; color:#A3FF12; font-family: var(--ks-font-sans);">
+            <i class="ph-bold ph-trend-up" style="font-size:11px;"></i>
+            15% from previous
+          </span>
+        </div>
+      </div>
+
+      <div style="font-size:11px; color:#6B7280; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; margin-top: auto;">Hero wallet · 24 r · ambient glow</div>
+    </div>
+
+    <!-- Right column: actions + plastic -->
+    <div style="flex: 1; display:flex; flex-direction:column; gap:12px;">
+
+      <!-- Action cards row -->
+      <div style="display:flex; gap:10px;">
+        <div style="flex:1; background:#18181A; border:1px solid rgba(255,255,255,0.06); border-radius:18px; padding:12px;">
+          <div style="width:30px; height:30px; border-radius:50%; background:#242427; display:flex; align-items:center; justify-content:center; margin-bottom:14px;">
+            <i class="ph-bold ph-arrow-up-right" style="font-size:14px; color:#E5E7EB;"></i>
+          </div>
+          <div style="font-size:12px; font-weight:700; color:#FFF; font-family: var(--ks-font-sans);">Transfer</div>
+          <div style="font-size:10px; color:#6B7280; margin-top:2px; font-family: var(--ks-font-sans);">Send money easily</div>
+        </div>
+        <div style="flex:1; background:#18181A; border:1px solid rgba(255,255,255,0.06); border-radius:18px; padding:12px;">
+          <div style="width:30px; height:30px; border-radius:50%; background:#242427; display:flex; align-items:center; justify-content:center; margin-bottom:14px;">
+            <i class="ph-bold ph-activity" style="font-size:14px; color:#E5E7EB;"></i>
+          </div>
+          <div style="font-size:12px; font-weight:700; color:#FFF; font-family: var(--ks-font-sans);">Analytics</div>
+          <div style="font-size:10px; color:#6B7280; margin-top:2px; font-family: var(--ks-font-sans);">Track your spending</div>
+        </div>
+      </div>
+
+      <!-- Physical card mockup -->
+      <div style="background: linear-gradient(135deg, #2A2A2D, #141414); border:1px solid rgba(255,255,255,0.08); border-radius:20px; padding:14px; position:relative; overflow:hidden;">
+        <div style="position:absolute; top:-20px; right:-20px; width:110px; height:110px; border-radius:50%; background: radial-gradient(circle, rgba(163,255,18,0.12), transparent 70%); filter: blur(14px); pointer-events:none;"></div>
+
+        <div style="display:flex; justify-content:space-between; align-items:flex-start; position:relative;">
+          <i class="ph-bold ph-credit-card" style="font-size:22px; color:#E5E7EB;"></i>
+          <span style="font-size:13px; font-weight:800; color:#FFF; letter-spacing:0.12em; font-family: var(--ks-font-sans);">VISA</span>
+        </div>
+        <div style="position:relative; margin-top: 18px;">
+          <div style="font-size:9px; color:#9CA3AF; font-family: var(--ks-font-sans); margin-bottom: 2px;">Card Holder Name</div>
+          <div style="font-size:12px; font-weight:600; color:#FFF; letter-spacing:0.04em; font-family: var(--ks-font-sans); margin-bottom: 10px;">ALDEEN NASRUN M</div>
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <span style="font-size:11px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; color:#E5E7EB; letter-spacing:0.18em;">**** **** **** 6541</span>
+            <span style="font-size:11px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; color:#9CA3AF;">12/26</span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <div style="font-size:11px; color:#6B7280; line-height:1.6;">
+    Three card patterns: <b style="color:#9CA3AF;">Wallet hero</b> (24 r · neon delta · ambient bloom), <b style="color:#9CA3AF;">Action tiles</b> (18 r · icon-in-circle · helper text), <b style="color:#9CA3AF;">Plastic mockup</b> (gradient surface · neon corner bloom). All sit on <code style="background: rgba(255,255,255,0.04); padding:1px 4px; border-radius:4px;">#18181A</code> with a 1 px @6% white hairline.
+  </div>
+</div>
+</body>
+</html>

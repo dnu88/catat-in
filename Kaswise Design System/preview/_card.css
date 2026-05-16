@@ -1,0 +1,86 @@
+/* Shared frame for design system cards — keeps each card sized to 700px wide */
+@import url('../colors_and_type.css');
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: transparent;
+  font-family: var(--ks-font-sans);
+}
+
+.card {
+  width: 700px;
+  background: var(--ks-bg-base);
+  padding: 20px 24px;
+  color: var(--ks-text-primary);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+/* Generic atoms used across cards */
+.row { display: flex; gap: 12px; align-items: center; }
+.col { display: flex; flex-direction: column; gap: 4px; }
+.between { display: flex; justify-content: space-between; align-items: center; }
+.muted { color: var(--ks-text-muted); }
+.secondary { color: var(--ks-text-secondary); }
+.mono { font-variant-numeric: tabular-nums; font-feature-settings: 'tnum'; }
+
+.swatch {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.swatch .chip {
+  height: 64px;
+  border-radius: 12px;
+  border: 1px solid var(--ks-border-soft);
+  box-shadow: var(--ks-shadow-sm);
+}
+.swatch .name {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--ks-text-primary);
+  letter-spacing: 0.02em;
+}
+.swatch .hex {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--ks-text-muted);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.05em;
+}
+.swatch .role {
+  font-size: 10px;
+  color: var(--ks-text-muted);
+  line-height: 1.4;
+}
+
+.token-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 10px 0;
+  border-bottom: 1px dashed var(--ks-border-soft);
+}
+.token-row:last-child { border-bottom: none; }
+.token-row .key {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--ks-text-secondary);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  min-width: 110px;
+}
+.token-row .val {
+  font-size: 12px;
+  color: var(--ks-text-muted);
+  font-variant-numeric: tabular-nums;
+  min-width: 90px;
+}
+
+/* Phosphor icon (CDN) baseline */
+i[class^="ph"], i[class*=" ph"] { font-style: normal; }

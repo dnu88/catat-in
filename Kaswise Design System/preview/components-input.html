@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Components · Input Field</title>
+<link rel="stylesheet" href="_card.css">
+<link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/bold/style.css">
+</head>
+<body>
+<div class="card" style="background:#0A0A0A; color:#FFF; padding: 22px 24px; gap: 18px;">
+  <div>
+    <div style="font-size:11px; font-weight:700; letter-spacing:0.18em; color:#A3FF12; font-family: ui-monospace, SFMono-Regular, Menlo, monospace;">INPUT FIELDS</div>
+    <div style="font-size:30px; font-weight:800; letter-spacing:-0.7px; color:#FFF; margin-top: 6px;">Quiet rest. Neon focus.</div>
+  </div>
+
+  <div class="row" style="gap: 14px; align-items: stretch;">
+    <!-- Rest -->
+    <div style="flex:1; display:flex; flex-direction:column; gap:8px;">
+      <div style="font-size:10px; font-weight:700; letter-spacing:0.08em; text-transform:uppercase; color:#6B7280;">Email · rest</div>
+      <div style="background:#18181A; border:1px solid rgba(255,255,255,0.10); border-radius:12px; padding:12px 14px; font-size:13px; color:#6B7280; font-family: var(--ks-font-sans);">email@kaswise.app</div>
+      <div style="font-size:10px; color:#6B7280; font-family: ui-monospace, SFMono-Regular, Menlo, monospace;">#18181A · 10% white border</div>
+    </div>
+
+    <!-- Focus -->
+    <div style="flex:1; display:flex; flex-direction:column; gap:8px;">
+      <div style="font-size:10px; font-weight:700; letter-spacing:0.08em; text-transform:uppercase; color:#A3FF12;">Password · focus</div>
+      <div style="background:#18181A; border:1px solid #A3FF12; border-radius:12px; padding:12px 14px; font-size:13px; color:#FFF; box-shadow: 0 0 0 3px rgba(163,255,18,0.25); font-family: var(--ks-font-sans);">
+        ••••••••<span style="opacity:0.4;">|</span>
+      </div>
+      <div style="font-size:10px; color:#6B7280; font-family: ui-monospace, SFMono-Regular, Menlo, monospace;">+ 3 px @ 25% neon ring</div>
+    </div>
+  </div>
+
+  <div class="row" style="gap: 14px; align-items: flex-end;">
+    <!-- Amount input (lifted from wallet UI) -->
+    <div style="flex:1; display:flex; flex-direction:column; gap:8px;">
+      <div style="font-size:10px; font-weight:700; letter-spacing:0.08em; text-transform:uppercase; color:#6B7280;">Nominal</div>
+      <div style="background:#18181A; border:1px solid rgba(255,255,255,0.10); border-radius:14px; padding:14px 16px; display:flex; align-items:center; gap:10px; font-family: var(--ks-font-sans);">
+        <span style="font-size:14px; font-weight:700; color:#9CA3AF;">Rp</span>
+        <span style="font-size:24px; font-weight:800; color:#FFF; font-variant-numeric: tabular-nums; letter-spacing:-0.4px; flex:1;">32,126</span>
+        <span style="display:inline-flex; align-items:center; gap:4px; background: rgba(163,255,18,0.14); border-radius:6px; padding:3px 7px; font-size:10px; font-weight:700; color:#A3FF12;">
+          <i class="ph-bold ph-trend-up" style="font-size:11px;"></i> 15%
+        </span>
+      </div>
+      <div style="font-size:10px; color:#6B7280; font-family: ui-monospace, SFMono-Regular, Menlo, monospace;">Rp prefix · 24 / 800 / tnum · neon delta</div>
+    </div>
+
+    <!-- Error -->
+    <div style="flex:1; display:flex; flex-direction:column; gap:8px;">
+      <div style="font-size:10px; font-weight:700; letter-spacing:0.08em; text-transform:uppercase; color:#FF7B7B;">Email · error</div>
+      <div style="background: rgba(255,123,123,0.06); border:1px solid #FF7B7B; border-radius:12px; padding:12px 14px; font-size:13px; color:#FFF; box-shadow: 0 0 0 3px rgba(255,123,123,0.20); font-family: var(--ks-font-sans);">email</div>
+      <div style="font-size:10px; color:#FF7B7B; font-family: ui-monospace, SFMono-Regular, Menlo, monospace;">6% coral fill · coral ring</div>
+    </div>
+  </div>
+
+  <div style="font-size:11px; color:#6B7280; line-height:1.6;">
+    Every input lives on <code style="background: rgba(255,255,255,0.04); padding:1px 4px; border-radius:4px;">#18181A</code>. Border at <b style="color:#9CA3AF;">10% white</b> at rest, switches to <b style="color:#A3FF12;">neon</b> + 3 px @25% ring on focus, <b style="color:#FF7B7B;">coral</b> on error. Currency inputs always show the <code style="background: rgba(255,255,255,0.04); padding:1px 4px; border-radius:4px;">Rp</code> prefix and the optional neon delta pill, matching the wallet hero.
+  </div>
+</div>
+</body>
+</html>

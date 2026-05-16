@@ -1,7 +1,80 @@
-import { StyleSheet } from 'react-native'
+import { Dimensions, StyleSheet } from 'react-native'
 import type { MobileTheme } from '../theme/mobile-theme'
 
-export function createMobileStyles(theme: MobileTheme) {
+export function createMobileStyles(theme: MobileTheme, viewportWidth?: number) {
+  const width = viewportWidth ?? Dimensions.get('window').width
+  const isTablet = width >= 768
+  const isDesktop = width >= 1024
+
+  const type = {
+    display: {
+      fontSize: theme.typography.fontSize['5xl'],
+      fontWeight: theme.typography.fontWeight.extrabold,
+      lineHeight: 38,
+      letterSpacing: theme.typography.letterSpacing.tight,
+    },
+    headline: {
+      fontSize: theme.typography.fontSize['3xl'],
+      fontWeight: theme.typography.fontWeight.extrabold,
+      lineHeight: 31,
+      letterSpacing: -0.35,
+    },
+    title: {
+      fontSize: theme.typography.fontSize.xl,
+      fontWeight: theme.typography.fontWeight.bold,
+      lineHeight: 25,
+      letterSpacing: -0.2,
+    },
+    subtitle: {
+      fontSize: theme.typography.fontSize.md,
+      fontWeight: theme.typography.fontWeight.medium,
+      lineHeight: 20,
+      letterSpacing: theme.typography.letterSpacing.normal,
+    },
+    body: {
+      fontSize: theme.typography.fontSize.lg,
+      fontWeight: theme.typography.fontWeight.normal,
+      lineHeight: 25,
+      letterSpacing: theme.typography.letterSpacing.normal,
+    },
+    bodyStrong: {
+      fontSize: theme.typography.fontSize.md,
+      fontWeight: theme.typography.fontWeight.bold,
+      lineHeight: 20,
+      letterSpacing: -0.1,
+    },
+    label: {
+      fontSize: theme.typography.fontSize.sm,
+      fontWeight: theme.typography.fontWeight.semibold,
+      lineHeight: 17,
+      letterSpacing: theme.typography.letterSpacing.wide,
+    },
+    labelStrong: {
+      fontSize: theme.typography.fontSize.sm,
+      fontWeight: theme.typography.fontWeight.bold,
+      lineHeight: 17,
+      letterSpacing: 0.2,
+    },
+    caption: {
+      fontSize: 11,
+      fontWeight: theme.typography.fontWeight.medium,
+      lineHeight: 15,
+      letterSpacing: 0.25,
+    },
+    captionStrong: {
+      fontSize: 11,
+      fontWeight: theme.typography.fontWeight.extrabold,
+      lineHeight: 15,
+      letterSpacing: 0.25,
+    },
+    metric: {
+      fontSize: theme.typography.fontSize['2xl'],
+      fontWeight: theme.typography.fontWeight.extrabold,
+      lineHeight: 26,
+      letterSpacing: -0.35,
+    },
+  } as const
+
   return StyleSheet.create({
     safeArea: {
       flex: 1,
@@ -17,11 +90,19 @@ export function createMobileStyles(theme: MobileTheme) {
       backgroundColor: theme.colors.background,
     },
     appContent: {
-      padding: theme.spacing.md,
+      paddingHorizontal: isDesktop ? theme.spacing['3xl'] : isTablet ? theme.spacing['2xl'] : theme.spacing.md,
+      paddingVertical: theme.spacing.md,
       paddingBottom: 120,
     },
     screenWrap: {
       gap: theme.spacing.md,
+      ...(isTablet
+        ? {
+            maxWidth: isDesktop ? 920 : 760,
+            width: '100%',
+            alignSelf: 'center',
+          }
+        : null),
     },
     mobileTopbar: {
       flexDirection: 'row',
@@ -30,12 +111,11 @@ export function createMobileStyles(theme: MobileTheme) {
     },
     mobileTopbarTitle: {
       color: theme.colors.textPrimary,
-      fontSize: 22,
-      fontWeight: '800',
+      ...type.headline,
     },
     mobileTopbarSub: {
       color: theme.colors.textSecondary,
-      fontSize: 13,
+      ...type.caption,
       marginTop: 2,
     },
     avatarBadge: {
@@ -59,17 +139,17 @@ export function createMobileStyles(theme: MobileTheme) {
     },
     mobileHeroLabel: {
       color: theme.colors.textInverse,
-      fontSize: 12,
-      fontWeight: '600',
+      ...type.captionStrong,
     },
     mobileHeroAmount: {
       color: theme.colors.card,
+      ...type.display,
       fontSize: 30,
-      fontWeight: '800',
     },
     mobileHeroStats: {
       flexDirection: 'row',
       gap: theme.spacing.sm,
+      flexWrap: isTablet ? 'wrap' : 'nowrap',
     },
     heroMiniStat: {
       flex: 1,
@@ -81,18 +161,23 @@ export function createMobileStyles(theme: MobileTheme) {
     heroMiniStatLabel: {
       color: theme.colors.textInverse,
       fontSize: 10,
+      fontWeight: theme.typography.fontWeight.medium,
+      lineHeight: 14,
+      letterSpacing: 0.25,
     },
     heroMiniStatValue: {
       color: theme.colors.card,
+      ...type.labelStrong,
       fontSize: 13,
-      fontWeight: '700',
     },
     quickActionRow: {
       flexDirection: 'row',
       gap: theme.spacing.sm,
+      flexWrap: isTablet ? 'wrap' : 'nowrap',
     },
     quickActionCard: {
-      flex: 1,
+      flex: isTablet ? 0 : 1,
+      minWidth: isTablet ? 148 : undefined,
       backgroundColor: theme.colors.card,
       borderRadius: theme.radius.lg,
       borderWidth: 1,
@@ -118,8 +203,8 @@ export function createMobileStyles(theme: MobileTheme) {
     },
     quickActionLabel: {
       color: theme.colors.textSecondary,
-      fontSize: 11,
-      fontWeight: '600',
+      ...type.caption,
+      fontWeight: theme.typography.fontWeight.semibold,
     },
     sectionCard: {
       backgroundColor: theme.colors.card,
@@ -136,13 +221,11 @@ export function createMobileStyles(theme: MobileTheme) {
     },
     sectionCardTitle: {
       color: theme.colors.textPrimary,
-      fontSize: 15,
-      fontWeight: '700',
+      ...type.bodyStrong,
     },
     sectionCardAction: {
       color: theme.colors.brandPrimary,
-      fontSize: 12,
-      fontWeight: '600',
+      ...type.labelStrong,
     },
     inlineBudgetCard: { gap: 6 },
     inlineBudgetHeader: {
@@ -150,9 +233,9 @@ export function createMobileStyles(theme: MobileTheme) {
       justifyContent: 'space-between',
       alignItems: 'center',
     },
-    inlineBudgetTitle: { color: theme.colors.textPrimary, fontSize: 13, fontWeight: '700' },
-    inlineBudgetPct: { color: theme.colors.warning, fontSize: 12, fontWeight: '700' },
-    inlineBudgetMeta: { color: theme.colors.textSecondary, fontSize: 12 },
+    inlineBudgetTitle: { color: theme.colors.textPrimary, ...type.bodyStrong, fontSize: 13 },
+    inlineBudgetPct: { color: theme.colors.warning, ...type.labelStrong },
+    inlineBudgetMeta: { color: theme.colors.textSecondary, ...type.caption, fontSize: 12 },
     progressTrack: {
       height: 7,
       backgroundColor: theme.colors.surface,
@@ -171,11 +254,11 @@ export function createMobileStyles(theme: MobileTheme) {
       alignItems: 'center',
       justifyContent: 'center',
     },
-    transactionIconText: { color: theme.iconBubbles.primary.color, fontSize: 12, fontWeight: '800' },
+    transactionIconText: { color: theme.iconBubbles.primary.color, ...type.labelStrong },
     transactionContent: { flex: 1 },
-    transactionMerchant: { color: theme.colors.textPrimary, fontSize: 13, fontWeight: '700' },
-    transactionSub: { color: theme.colors.textSecondary, fontSize: 11, marginTop: 2 },
-    transactionAmount: { color: theme.colors.danger, fontSize: 13, fontWeight: '700' },
+    transactionMerchant: { color: theme.colors.textPrimary, ...type.bodyStrong, fontSize: 13 },
+    transactionSub: { color: theme.colors.textSecondary, ...type.caption, marginTop: 2 },
+    transactionAmount: { color: theme.colors.danger, ...type.bodyStrong, fontSize: 13 },
     transactionAmountPositive: { color: theme.colors.success },
     floatingActionWrap: {
       position: 'absolute', left: 0, right: 0, bottom: theme.spacing['3xl'] + 30, alignItems: 'center', pointerEvents: 'box-none',
@@ -204,22 +287,22 @@ export function createMobileStyles(theme: MobileTheme) {
       justifyContent: 'center',
     },
     bottomNavIconActive: { backgroundColor: theme.colors.brandPrimary },
-    bottomNavIconText: { color: theme.colors.textPrimary, fontSize: 11, fontWeight: '800' },
+    bottomNavIconText: { color: theme.colors.textPrimary, ...type.captionStrong },
     bottomNavIconTextActive: { color: theme.colors.card },
-    bottomNavLabel: { color: theme.colors.textMuted, fontSize: 11, fontWeight: '600' },
+    bottomNavLabel: { color: theme.colors.textMuted, ...type.caption, fontWeight: theme.typography.fontWeight.semibold },
     bottomNavLabelActive: { color: theme.colors.brandPrimary },
     screenHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-    screenHeaderTitle: { color: theme.colors.textPrimary, fontSize: 22, fontWeight: '800' },
-    screenHeaderSubtitle: { color: theme.colors.textSecondary, fontSize: 13, marginTop: 2 },
+    screenHeaderTitle: { color: theme.colors.textPrimary, ...type.headline },
+    screenHeaderSubtitle: { color: theme.colors.textSecondary, ...type.caption, marginTop: 2 },
     headerAction: {
       backgroundColor: theme.colors.brandPrimary,
       paddingHorizontal: theme.spacing.md,
       paddingVertical: theme.spacing.sm,
       borderRadius: theme.radius.pill,
     },
-    headerActionText: { color: theme.colors.card, fontSize: 12, fontWeight: '700' },
+    headerActionText: { color: theme.colors.card, ...type.labelStrong },
     pillRow: { flexDirection: 'row', gap: theme.spacing.sm, flexWrap: 'wrap' },
-    monthChipRow: { flexDirection: 'row', gap: theme.spacing.sm },
+    monthChipRow: { flexDirection: 'row', gap: theme.spacing.sm, flexWrap: isTablet ? 'wrap' : 'nowrap' },
     monthChip: {
       flex: 1,
       backgroundColor: theme.colors.card,
@@ -230,7 +313,7 @@ export function createMobileStyles(theme: MobileTheme) {
       alignItems: 'center',
     },
     monthChipActive: { backgroundColor: theme.colors.surface, borderColor: theme.colors.brandPrimary },
-    monthChipText: { color: theme.colors.textMuted, fontSize: 12, fontWeight: '700' },
+    monthChipText: { color: theme.colors.textMuted, ...type.labelStrong },
     monthChipTextActive: { color: theme.colors.brandPrimary },
     budgetCard: { backgroundColor: theme.colors.card, borderWidth: 1, borderColor: theme.colors.borderSoft, borderRadius: theme.radius.lg, padding: theme.spacing.md, gap: theme.spacing.sm },
     budgetCardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
@@ -249,20 +332,20 @@ export function createMobileStyles(theme: MobileTheme) {
       lineHeight: 28,
       overflow: 'hidden',
     },
-    budgetCardTitle: { color: theme.colors.textPrimary, fontSize: 14, fontWeight: '700' },
-    budgetCardMeta: { color: theme.colors.textSecondary, fontSize: 12, marginTop: 2 },
-    budgetCardPct: { color: theme.colors.textPrimary, fontSize: 13, fontWeight: '700' },
-    budgetCardFooter: { color: theme.colors.textSecondary, fontSize: 12 },
-    reportMetricRow: { flexDirection: 'row', gap: theme.spacing.sm + 2 },
+    budgetCardTitle: { color: theme.colors.textPrimary, ...type.bodyStrong },
+    budgetCardMeta: { color: theme.colors.textSecondary, ...type.caption, marginTop: 2 },
+    budgetCardPct: { color: theme.colors.textPrimary, ...type.bodyStrong, fontSize: 13 },
+    budgetCardFooter: { color: theme.colors.textSecondary, ...type.caption, fontSize: 12 },
+    reportMetricRow: { flexDirection: 'row', gap: theme.spacing.sm + 2, flexWrap: isTablet ? 'wrap' : 'nowrap' },
     metricCard: { flex: 1, backgroundColor: theme.colors.card, borderWidth: 1, borderColor: theme.colors.borderSoft, borderRadius: theme.radius.lg, padding: theme.spacing.md, gap: 4 },
-    metricCardLabel: { color: theme.colors.textSecondary, fontSize: 12, fontWeight: '600' },
-    metricCardValue: { color: theme.colors.textPrimary, fontSize: 16, fontWeight: '800' },
+    metricCardLabel: { color: theme.colors.textSecondary, ...type.label },
+    metricCardValue: { color: theme.colors.textPrimary, ...type.title },
     chartMock: { height: 160, flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', gap: theme.spacing.sm, paddingTop: theme.spacing.lg },
     chartBar: { flex: 1, borderTopLeftRadius: theme.radius.sm, borderTopRightRadius: theme.radius.sm },
     chartCaption: { color: theme.colors.textSecondary, fontSize: 12, marginTop: theme.spacing.sm },
     categoryRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: theme.spacing.xs + 2 },
-    categoryLabel: { color: theme.colors.textPrimary, fontSize: 13, fontWeight: '700' },
-    categoryValue: { color: theme.colors.brandPrimary, fontSize: 12, fontWeight: '700' },
+    categoryLabel: { color: theme.colors.textPrimary, ...type.bodyStrong, fontSize: 13 },
+    categoryValue: { color: theme.colors.brandPrimary, ...type.labelStrong },
     moreRow: { flexDirection: 'row', gap: theme.spacing.sm + 2, alignItems: 'center', paddingVertical: theme.spacing.xs + 2 },
     moreIconWrap: {
       width: 34,
@@ -276,8 +359,8 @@ export function createMobileStyles(theme: MobileTheme) {
     },
     moreIcon: { color: theme.iconBubbles.primary.color, fontSize: 12, fontWeight: '800' },
     moreContent: { flex: 1 },
-    moreLabel: { color: theme.colors.textPrimary, fontSize: 13, fontWeight: '700' },
-    moreHelper: { color: theme.colors.textSecondary, fontSize: 11, marginTop: 2 },
+    moreLabel: { color: theme.colors.textPrimary, ...type.bodyStrong, fontSize: 13 },
+    moreHelper: { color: theme.colors.textSecondary, ...type.caption, marginTop: 2 },
     splashScreen: { flex: 1, padding: theme.spacing['2xl'], backgroundColor: theme.colors.brandAccent, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
     splashOrbTop: { position: 'absolute', top: -40, right: -40, width: 140, height: 140, borderRadius: 70, backgroundColor: theme.colors.glass.background },
     splashOrbBottom: { position: 'absolute', bottom: -30, left: -30, width: 120, height: 120, borderRadius: 60, backgroundColor: theme.colors.glass.background },
@@ -292,12 +375,12 @@ export function createMobileStyles(theme: MobileTheme) {
       justifyContent: 'center',
       marginBottom: 18,
     },
-    splashLogoText: { color: theme.colors.card, fontSize: 20, fontWeight: '800' },
-    splashTitle: { color: theme.colors.card, fontSize: 34, fontWeight: '800', marginBottom: theme.spacing.sm },
-    splashSubtitle: { color: theme.colors.textInverse, fontSize: 15, lineHeight: 24, textAlign: 'center', marginBottom: 26 },
+    splashLogoText: { color: theme.colors.card, ...type.title, fontSize: 20 },
+    splashTitle: { color: theme.colors.card, ...type.display, fontSize: 34, marginBottom: theme.spacing.sm },
+    splashSubtitle: { color: theme.colors.textInverse, ...type.body, fontSize: 15, lineHeight: 24, textAlign: 'center', marginBottom: 26 },
     splashActions: { width: '100%', gap: theme.spacing.sm + 2 },
     whiteButton: { backgroundColor: theme.colors.card, borderRadius: theme.radius.pill, paddingVertical: theme.spacing.md, paddingHorizontal: 18, alignItems: 'center' },
-    whiteButtonText: { color: theme.colors.brandAccent, fontSize: 15, fontWeight: '700' },
+    whiteButtonText: { color: theme.colors.brandAccent, ...type.bodyStrong, fontSize: 15 },
     ghostButton: {
       backgroundColor: theme.colors.glass.background,
       borderRadius: theme.radius.pill,
@@ -307,9 +390,9 @@ export function createMobileStyles(theme: MobileTheme) {
       paddingHorizontal: 18,
       alignItems: 'center',
     },
-    ghostButtonText: { color: theme.colors.card, fontSize: 14, fontWeight: '600' },
+    ghostButtonText: { color: theme.colors.card, ...type.labelStrong, fontSize: 14 },
     stepCard: { backgroundColor: theme.colors.background, paddingHorizontal: theme.spacing.sm, paddingVertical: theme.spacing.md },
-    skipText: { alignSelf: 'flex-end', color: theme.colors.textMuted, fontSize: 12, fontWeight: '500', marginBottom: theme.spacing.md },
+    skipText: { alignSelf: 'flex-end', color: theme.colors.textMuted, ...type.caption, fontSize: 12, fontWeight: theme.typography.fontWeight.medium, marginBottom: theme.spacing.md },
     progressRow: { flexDirection: 'row', gap: theme.spacing.xs, marginBottom: theme.spacing.lg },
     progressSegment: { flex: 1, height: 4, borderRadius: theme.radius.pill },
     progressDone: { backgroundColor: theme.colors.brandPrimary },
@@ -325,14 +408,14 @@ export function createMobileStyles(theme: MobileTheme) {
       paddingVertical: 4,
       borderRadius: theme.radius.pill,
     },
-    featureBadgeText: { color: theme.colors.card, fontSize: 11, fontWeight: '700' },
-    featureHeroEmoji: { color: theme.colors.brandPrimary, fontSize: 40, fontWeight: '800' },
-    stepTitle: { color: theme.colors.textPrimary, fontSize: 28, fontWeight: '800', lineHeight: 34, marginBottom: 10 },
-    stepDescription: { color: theme.colors.textSecondary, fontSize: 15, lineHeight: 24, marginBottom: theme.spacing['2xl'] },
-    setupTitle: { color: theme.colors.textPrimary, fontSize: 22, fontWeight: '800', marginBottom: 4 },
-    setupSubtitle: { color: theme.colors.textMuted, fontSize: 13, marginBottom: theme.spacing.lg },
+    featureBadgeText: { color: theme.colors.card, ...type.captionStrong },
+    featureHeroEmoji: { color: theme.colors.brandPrimary, fontSize: 40, fontWeight: theme.typography.fontWeight.extrabold },
+    stepTitle: { color: theme.colors.textPrimary, ...type.display, fontSize: 28, lineHeight: 34, marginBottom: 10 },
+    stepDescription: { color: theme.colors.textSecondary, ...type.body, fontSize: 15, lineHeight: 24, marginBottom: theme.spacing['2xl'] },
+    setupTitle: { color: theme.colors.textPrimary, ...type.headline, marginBottom: 4 },
+    setupSubtitle: { color: theme.colors.textMuted, ...type.caption, marginBottom: theme.spacing.lg },
     fieldGroup: { marginBottom: theme.spacing.lg },
-    fieldLabel: { color: theme.colors.textSecondary, fontSize: 13, fontWeight: '600', marginBottom: theme.spacing.sm },
+    fieldLabel: { color: theme.colors.textSecondary, ...type.label, marginBottom: theme.spacing.sm },
     fieldBox: {
       backgroundColor: theme.colors.card,
       borderWidth: 1,
@@ -342,7 +425,7 @@ export function createMobileStyles(theme: MobileTheme) {
       paddingHorizontal: theme.spacing.md,
     },
     fieldBoxActive: { backgroundColor: theme.colors.surface, borderColor: theme.colors.brandPrimary },
-    fieldValue: { color: theme.colors.textPrimary, fontSize: 15, fontWeight: '600' },
+    fieldValue: { color: theme.colors.textPrimary, ...type.bodyStrong, fontSize: 15 },
     walletGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
     walletChip: {
       width: '47%',
@@ -370,7 +453,7 @@ export function createMobileStyles(theme: MobileTheme) {
       lineHeight: 24,
       overflow: 'hidden',
     },
-    walletChipText: { fontSize: 14, fontWeight: '600' },
+    walletChipText: { ...type.bodyStrong, fontWeight: theme.typography.fontWeight.semibold },
     walletChipTextActive: { color: theme.colors.brandPrimary },
     walletChipTextIdle: { color: theme.colors.textSecondary },
     navigationRow: { flexDirection: 'row', alignItems: 'center', gap: theme.spacing.sm + 2, marginTop: theme.spacing.sm },
@@ -384,7 +467,7 @@ export function createMobileStyles(theme: MobileTheme) {
       alignItems: 'center',
       justifyContent: 'center',
     },
-    backButtonText: { color: theme.colors.textSecondary, fontSize: 18, fontWeight: '700' },
+    backButtonText: { color: theme.colors.textSecondary, ...type.title },
     nextButton: {
       flex: 1,
       backgroundColor: theme.colors.brandPrimary,
@@ -394,7 +477,7 @@ export function createMobileStyles(theme: MobileTheme) {
       alignItems: 'center',
       ...theme.shadow.neon,
     },
-    nextButtonText: { color: theme.colors.card, fontSize: 14, fontWeight: '700' },
+    nextButtonText: { color: theme.colors.card, ...type.labelStrong, fontSize: 14 },
     welcomeWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 28 },
     successIcon: {
       width: 72,
@@ -406,12 +489,12 @@ export function createMobileStyles(theme: MobileTheme) {
       marginBottom: 18,
       ...theme.shadow.md,
     },
-    successIconText: { color: theme.colors.card, fontSize: 28, fontWeight: '800' },
-    welcomeTitle: { color: theme.colors.textPrimary, fontSize: 28, fontWeight: '800', marginBottom: theme.spacing.sm },
-    welcomeDescription: { color: theme.colors.textSecondary, fontSize: 15, lineHeight: 24, textAlign: 'center', marginBottom: theme.spacing.xl, maxWidth: 320 },
+    successIconText: { color: theme.colors.card, ...type.display, fontSize: 28 },
+    welcomeTitle: { color: theme.colors.textPrimary, ...type.display, fontSize: 28, marginBottom: theme.spacing.sm },
+    welcomeDescription: { color: theme.colors.textSecondary, ...type.body, fontSize: 15, lineHeight: 24, textAlign: 'center', marginBottom: theme.spacing.xl, maxWidth: 320 },
     welcomeTags: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: theme.spacing.sm, marginBottom: theme.spacing.xl },
     tag: { backgroundColor: theme.colors.card, borderWidth: 1, borderColor: theme.colors.borderSoft, borderRadius: theme.radius.pill, paddingVertical: theme.spacing.sm, paddingHorizontal: theme.spacing.md },
-    tagText: { color: theme.colors.textSecondary, fontSize: 13, fontWeight: '600' },
+    tagText: { color: theme.colors.textSecondary, ...type.label },
     primaryButton: {
       width: '100%',
       backgroundColor: theme.colors.brandPrimary,
@@ -422,12 +505,12 @@ export function createMobileStyles(theme: MobileTheme) {
       marginBottom: 10,
       ...theme.shadow.neon,
     },
-    primaryButtonText: { color: theme.colors.card, fontSize: 15, fontWeight: '700' },
+    primaryButtonText: { color: theme.colors.card, ...type.bodyStrong, fontSize: 15 },
     secondaryLinkButton: { paddingVertical: theme.spacing.sm, paddingHorizontal: theme.spacing.md },
-    secondaryLinkText: { color: theme.colors.textSecondary, fontSize: 13, fontWeight: '600' },
+    secondaryLinkText: { color: theme.colors.textSecondary, ...type.label },
     pill: { backgroundColor: theme.colors.card, borderWidth: 1, borderColor: theme.colors.borderSoft, borderRadius: theme.radius.pill, paddingVertical: theme.spacing.sm, paddingHorizontal: theme.spacing.md },
     pillActive: { backgroundColor: theme.colors.surface, borderColor: theme.colors.brandPrimary },
-    pillText: { color: theme.colors.textSecondary, fontSize: 12, fontWeight: '600' },
+    pillText: { color: theme.colors.textSecondary, ...type.label },
     pillTextActive: { color: theme.colors.brandPrimary },
     iconBadge: {
       width: 28,
@@ -448,9 +531,9 @@ export function createMobileStyles(theme: MobileTheme) {
       padding: theme.spacing.lg,
       gap: 10,
     },
-    summaryCardLabel: { color: theme.colors.textSecondary, fontSize: 12, fontWeight: '600' },
-    summaryCardAmount: { color: theme.colors.textPrimary, fontSize: 24, fontWeight: '800' },
-    summaryCardStats: { flexDirection: 'row', gap: theme.spacing.sm },
+    summaryCardLabel: { color: theme.colors.textSecondary, ...type.label },
+    summaryCardAmount: { color: theme.colors.textPrimary, ...type.metric, fontSize: 24 },
+    summaryCardStats: { flexDirection: 'row', gap: theme.spacing.sm, flexWrap: isTablet ? 'wrap' : 'nowrap' },
   })
 }
 

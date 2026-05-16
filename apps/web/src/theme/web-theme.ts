@@ -3,8 +3,8 @@ import { kaswiseTokens, type ThemeMode } from '@kaswise/shared/theme'
 export type ThemePreference = ThemeMode | 'system'
 
 export function resolveSystemTheme(): ThemeMode {
-  if (typeof window === 'undefined') return 'light'
-  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+  if (typeof window === 'undefined') return 'dark'
+  return window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark'
 }
 
 export function resolveThemeMode(preference: ThemePreference): ThemeMode {

@@ -16,8 +16,8 @@ type ThemeState = {
 export const useThemeStore = create<ThemeState>()(
   persist(
     (set, get) => ({
-      preference: 'system',
-      currentMode: 'light',
+      preference: 'dark',
+      currentMode: 'dark',
       setPreference: (preference) => {
         const mode = resolveThemeMode(preference)
         applyWebTheme(mode)

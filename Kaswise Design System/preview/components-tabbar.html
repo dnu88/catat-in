@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Components · Bottom Tab + FAB</title>
+<link rel="stylesheet" href="_card.css">
+<link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/regular/style.css">
+<link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/fill/style.css">
+<link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/bold/style.css">
+</head>
+<body>
+<div class="card" style="background:#0A0A0A; color:#FFF; padding: 22px 24px 36px; gap: 18px;">
+  <div>
+    <div style="font-size:11px; font-weight:700; letter-spacing:0.18em; color:#A3FF12; font-family: ui-monospace, SFMono-Regular, Menlo, monospace;">BOTTOM TAB + FAB</div>
+    <div style="font-size:30px; font-weight:800; letter-spacing:-0.7px; color:#FFF; margin-top: 6px;">Anchor for everything.</div>
+  </div>
+
+  <!-- Tab bar mockup -->
+  <div style="position: relative; padding: 32px 0 0;">
+    <div style="background:#18181A; border:1px solid rgba(255,255,255,0.06); border-radius:22px; padding: 16px 12px 12px; position: relative; backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);">
+
+      <!-- FAB -->
+      <div style="position:absolute; left:50%; top:-24px; transform: translateX(-50%); width:56px; height:56px; border-radius:28px; background:#A3FF12; display:flex; align-items:center; justify-content:center; box-shadow: 0 0 26px rgba(163,255,18,0.45), 0 14px 36px rgba(163,255,18,0.22);">
+        <i class="ph-bold ph-plus" style="font-size:24px; color:#0A0A0A;"></i>
+      </div>
+
+      <!-- Tabs -->
+      <div style="display:flex; align-items:center;">
+        <!-- active home -->
+        <div style="flex:1; display:flex; flex-direction:column; align-items:center; gap:4px;">
+          <i class="ph-fill ph-house" style="font-size:22px; color:#A3FF12;"></i>
+          <div style="font-size:10px; font-weight:800; color:#A3FF12; font-family: var(--ks-font-sans);">Beranda</div>
+        </div>
+        <div style="flex:1; display:flex; flex-direction:column; align-items:center; gap:4px;">
+          <i class="ph ph-list-dashes" style="font-size:22px; color:#9CA3AF;"></i>
+          <div style="font-size:10px; font-weight:600; color:#9CA3AF; font-family: var(--ks-font-sans);">Transaksi</div>
+        </div>
+        <div style="flex:1;"></div>
+        <div style="flex:1; display:flex; flex-direction:column; align-items:center; gap:4px;">
+          <i class="ph ph-chart-line-up" style="font-size:22px; color:#9CA3AF;"></i>
+          <div style="font-size:10px; font-weight:600; color:#9CA3AF; font-family: var(--ks-font-sans);">Laporan</div>
+        </div>
+        <div style="flex:1; display:flex; flex-direction:column; align-items:center; gap:4px;">
+          <i class="ph ph-gear" style="font-size:22px; color:#9CA3AF;"></i>
+          <div style="font-size:10px; font-weight:600; color:#9CA3AF; font-family: var(--ks-font-sans);">Setelan</div>
+        </div>
+      </div>
+
+      <!-- iOS home indicator -->
+      <div style="display:flex; justify-content:center; margin-top: 10px;">
+        <div style="width:96px; height:4px; border-radius:2px; background: rgba(255,255,255,0.30);"></div>
+      </div>
+    </div>
+  </div>
+
+  <div style="font-size:11px; color:#6B7280; line-height:1.6;">
+    Bar is a glass surface (<code style="background: rgba(255,255,255,0.04); padding:1px 4px; border-radius:4px;">#18181A</code> + 6% white border + 12 px blur) at 22 r. <b style="color:#A3FF12;">Active tab</b> swaps the icon to <i>fill</i> weight + neon; idle stays at <i>regular</i> in <b style="color:#9CA3AF;">#9CA3AF</b>. FAB is a 56 px neon disc with a double-glow shadow (26 px @45% + 36 px @22%) — the only persistent neon surface in the app shell.
+  </div>
+</div>
+</body>
+</html>
