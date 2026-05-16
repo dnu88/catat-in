@@ -148,10 +148,20 @@ export function StepNavigation({
 
   return (
     <View style={styles.navigationRow}>
-      <Pressable style={styles.backButton} onPress={onBack}>
+      <Pressable
+        style={styles.backButton}
+        onPress={onBack}
+        accessibilityRole="button"
+        accessibilityLabel="Kembali"
+      >
         <Text style={styles.backButtonText}>{'<'}</Text>
       </Pressable>
-      <Pressable style={styles.nextButton} onPress={onNext}>
+      <Pressable
+        style={styles.nextButton}
+        onPress={onNext}
+        accessibilityRole="button"
+        accessibilityLabel={nextLabel}
+      >
         <Text style={styles.nextButtonText}>{nextLabel}</Text>
       </Pressable>
     </View>

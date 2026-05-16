@@ -13,7 +13,11 @@ export function FilterChip({ label, selected, onPress }: FilterChipProps) {
   return (
     <Pressable
       onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      accessibilityState={{ selected }}
       style={{
+        minHeight: 44,
         paddingHorizontal: theme.spacing.lg - 2,
         paddingVertical: theme.spacing.sm,
         borderRadius: theme.radius.pill,

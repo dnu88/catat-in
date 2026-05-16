@@ -44,6 +44,8 @@ export function Button({ label, onPress, variant = 'primary', disabled = false }
     <Pressable
       onPress={onPress}
       disabled={disabled}
+      accessibilityRole="button"
+      accessibilityLabel={label}
       style={[
         {
           backgroundColor: variantStyles.backgroundColor,
