@@ -1,7 +1,9 @@
+import { useMemo } from 'react'
 import { Text, View } from 'react-native'
 
 import { ProgressBar, StepNavigation } from '../../components/MobileUI'
-import { styles } from '../../styles/mobileStyles'
+import { createMobileStyles } from '../../styles/mobileStyles'
+import { useTheme } from '../../theme/theme-context'
 
 export function AiIntroScreen({
   onNext,
@@ -12,6 +14,9 @@ export function AiIntroScreen({
   onBack: () => void
   onSkip: () => void
 }) {
+  const { theme } = useTheme()
+  const styles = useMemo(() => createMobileStyles(theme), [theme])
+
   return (
     <View style={styles.stepCard}>
       <Text style={styles.skipText} onPress={onSkip}>

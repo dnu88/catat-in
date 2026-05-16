@@ -1,7 +1,9 @@
+import { useMemo } from 'react'
 import { Pressable, ScrollView, Text, View } from 'react-native'
 
 import { BOTTOM_TABS } from '../data/mock'
-import { styles } from '../styles/mobileStyles'
+import { createMobileStyles } from '../styles/mobileStyles'
+import { useTheme } from '../theme/theme-context'
 import type { TabKey } from '../types/navigation'
 import { BudgetsScreen } from '../screens/tabs/BudgetsScreen'
 import { HomeScreen } from '../screens/tabs/HomeScreen'
@@ -16,6 +18,9 @@ export function BottomTabShell({
   activeTab: TabKey
   onChangeTab: (tab: TabKey) => void
 }) {
+  const { theme } = useTheme()
+  const styles = useMemo(() => createMobileStyles(theme), [theme])
+
   return (
     <View style={styles.appShell}>
       <ScrollView contentContainerStyle={styles.appContent}>

@@ -1,11 +1,13 @@
+import { useMemo } from 'react'
 import { Text, View } from 'react-native'
 
 import { CategoryRow, MetricCard, ScreenHeader, SectionCard } from '../../components/MobileUI'
+import { createMobileStyles } from '../../styles/mobileStyles'
 import { useTheme } from '../../theme/theme-context'
-import { styles } from '../../styles/mobileStyles'
 
 export function ReportsScreen() {
   const { theme } = useTheme()
+  const styles = useMemo(() => createMobileStyles(theme), [theme])
 
   return (
     <View style={styles.screenWrap}>

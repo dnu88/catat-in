@@ -24,7 +24,7 @@ export function FilterChip({ label, selected, onPress }: FilterChipProps) {
     >
       <Text
         style={{
-          color: selected ? '#0A0A0A' : theme.colors.textSecondary,
+          color: selected ? theme.colors.textInverse : theme.colors.textSecondary,
           fontSize: 12,
           fontWeight: '700',
         }}

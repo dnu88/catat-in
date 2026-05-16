@@ -17,7 +17,7 @@ export function Button({ label, onPress, variant = 'primary', disabled = false }
     primary: {
       backgroundColor: theme.colors.brandPrimary,
       borderColor: theme.colors.brandPrimary,
-      color: '#0A0A0A',
+      color: theme.colors.textInverse,
       shadow: theme.shadow.neon,
     },
     secondary: {
@@ -33,8 +33,8 @@ export function Button({ label, onPress, variant = 'primary', disabled = false }
       shadow: undefined,
     },
     danger: {
-      backgroundColor: 'rgba(255,123,123,0.12)',
-      borderColor: 'rgba(255,123,123,0.35)',
+      backgroundColor: `rgba(239,68,68,${theme.opacity[10]})`,
+      borderColor: `rgba(239,68,68,${theme.opacity[30]})`,
       color: theme.colors.danger,
       shadow: undefined,
     },

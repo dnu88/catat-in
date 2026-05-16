@@ -1,6 +1,5 @@
 import { StyleSheet } from 'react-native'
 import type { MobileTheme } from '../theme/mobile-theme'
-import { toMobileTheme } from '../theme/mobile-theme'
 
 export function createMobileStyles(theme: MobileTheme) {
   return StyleSheet.create({
@@ -455,24 +454,3 @@ export function createMobileStyles(theme: MobileTheme) {
   })
 }
 
-// Legacy exports for backward compatibility (Batch 2 will update callers)
-const legacyTheme = toMobileTheme('light')
-const legacyStyles = createMobileStyles(legacyTheme)
-
-export const colors = {
-  background: legacyTheme.colors.background,
-  card: legacyTheme.colors.card,
-  primary: legacyTheme.colors.brandPrimary,
-  primaryDark: legacyTheme.colors.brandAccent,
-  primarySoft: legacyTheme.colors.surface,
-  border: legacyTheme.colors.borderSoft,
-  text: legacyTheme.colors.textPrimary,
-  muted: legacyTheme.colors.textSecondary,
-  mutedSoft: legacyTheme.colors.textMuted,
-  success: legacyTheme.colors.success,
-  warning: legacyTheme.colors.warning,
-  danger: legacyTheme.colors.danger,
-  iconBg: legacyTheme.iconBubbles.primary.background,
-} as const
-
-export const styles = legacyStyles

@@ -1,3 +1,4 @@
+import { useMemo } from 'react'
 import { Text, View } from 'react-native'
 
 import {
@@ -7,9 +8,13 @@ import {
   SectionCard,
   TransactionRow,
 } from '../../components/MobileUI'
-import { styles } from '../../styles/mobileStyles'
+import { createMobileStyles } from '../../styles/mobileStyles'
+import { useTheme } from '../../theme/theme-context'
 
 export function HomeScreen() {
+  const { theme } = useTheme()
+  const styles = useMemo(() => createMobileStyles(theme), [theme])
+
   return (
     <View style={styles.screenWrap}>
       <View style={styles.mobileTopbar}>

@@ -156,9 +156,9 @@ function FullscreenMessage({
 							position: "absolute",
 							inset: "-6px",
 							borderRadius: "32px",
-							border: "2px solid rgba(37, 99, 235, 0.08)",
-							borderTopColor: "rgba(37, 99, 235, 0.7)",
-							borderRightColor: "rgba(59, 130, 246, 0.38)",
+							border: "2px solid rgba(163, 255, 18, 0.12)",
+							borderTopColor: "rgba(163, 255, 18, 0.85)",
+							borderRightColor: "rgba(163, 255, 18, 0.4)",
 							animation: loading
 								? "loaderOrbit 1.2s linear infinite"
 								: undefined,
@@ -170,8 +170,8 @@ function FullscreenMessage({
 							inset: 0,
 							borderRadius: "24px",
 							background:
-								"linear-gradient(135deg, #1E40AF, #2563EB 50%, #3B82F6)",
-							boxShadow: "0 20px 40px rgba(37, 99, 235, 0.25)",
+								"linear-gradient(135deg, #65A30D, #A3FF12 60%, #A3FF12)",
+							boxShadow: "0 0 26px rgba(163, 255, 18, 0.45), 0 14px 36px rgba(163, 255, 18, 0.22)",
 							animation: loading
 								? "loaderFloat 1.8s ease-in-out infinite"
 								: undefined,
@@ -209,6 +209,8 @@ function FullscreenMessage({
 							alignItems: "center",
 							justifyContent: "center",
 							fontSize: "30px",
+							fontWeight: 800,
+							color: "#0A0A0A",
 							animation: loading
 								? "loaderPulse 1.2s ease-in-out infinite"
 								: undefined,

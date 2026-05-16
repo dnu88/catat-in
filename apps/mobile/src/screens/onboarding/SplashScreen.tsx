@@ -1,6 +1,8 @@
+import { useMemo } from 'react'
 import { Pressable, Text, View } from 'react-native'
 
-import { styles } from '../../styles/mobileStyles'
+import { createMobileStyles } from '../../styles/mobileStyles'
+import { useTheme } from '../../theme/theme-context'
 
 export function SplashScreen({
   onPrimary,
@@ -9,6 +11,9 @@ export function SplashScreen({
   onPrimary: () => void
   onSecondary: () => void
 }) {
+  const { theme } = useTheme()
+  const styles = useMemo(() => createMobileStyles(theme), [theme])
+
   return (
     <View style={styles.splashScreen}>
       <View style={styles.splashOrbTop} />

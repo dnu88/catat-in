@@ -1,7 +1,9 @@
 import type { ReactNode } from 'react'
+import { useMemo } from 'react'
 import { Pressable, Text, View } from 'react-native'
 
-import { colors, styles } from '../styles/mobileStyles'
+import { createMobileStyles } from '../styles/mobileStyles'
+import { useTheme } from '../theme/theme-context'
 
 export function ScreenHeader({
   title,
@@ -12,6 +14,9 @@ export function ScreenHeader({
   subtitle: string
   action?: string
 }) {
+  const { theme } = useTheme()
+  const styles = useMemo(() => createMobileStyles(theme), [theme])
+
   return (
     <View style={styles.screenHeader}>
       <View>
@@ -36,6 +41,9 @@ export function SectionCard({
   action?: string
   children: ReactNode
 }) {
+  const { theme } = useTheme()
+  const styles = useMemo(() => createMobileStyles(theme), [theme])
+
   return (
     <View style={styles.sectionCard}>
       <View style={styles.sectionCardHeader}>
@@ -60,6 +68,9 @@ export function TransactionRow({
   sublabel?: string
   positive?: boolean
 }) {
+  const { theme } = useTheme()
+  const styles = useMemo(() => createMobileStyles(theme), [theme])
+
   return (
     <View style={styles.transactionRow}>
       <View style={styles.transactionIcon}>
@@ -77,6 +88,9 @@ export function TransactionRow({
 }
 
 export function QuickActionCard({ icon, label }: { icon: string; label: string }) {
+  const { theme } = useTheme()
+  const styles = useMemo(() => createMobileStyles(theme), [theme])
+
   return (
     <View style={styles.quickActionCard}>
       <Text style={styles.quickActionIcon}>{icon}</Text>
@@ -86,6 +100,9 @@ export function QuickActionCard({ icon, label }: { icon: string; label: string }
 }
 
 export function HeroMiniStat({ label, value }: { label: string; value: string }) {
+  const { theme } = useTheme()
+  const styles = useMemo(() => createMobileStyles(theme), [theme])
+
   return (
     <View style={styles.heroMiniStat}>
       <Text style={styles.heroMiniStatLabel}>{label}</Text>
@@ -95,6 +112,9 @@ export function HeroMiniStat({ label, value }: { label: string; value: string })
 }
 
 export function ProgressBar({ activeIndex }: { activeIndex: number }) {
+  const { theme } = useTheme()
+  const styles = useMemo(() => createMobileStyles(theme), [theme])
+
   return (
     <View style={styles.progressRow}>
       {[0, 1, 2].map((index) => (
@@ -123,6 +143,9 @@ export function StepNavigation({
   onNext: () => void
   nextLabel: string
 }) {
+  const { theme } = useTheme()
+  const styles = useMemo(() => createMobileStyles(theme), [theme])
+
   return (
     <View style={styles.navigationRow}>
       <Pressable style={styles.backButton} onPress={onBack}>
@@ -136,6 +159,9 @@ export function StepNavigation({
 }
 
 export function Tag({ text }: { text: string }) {
+  const { theme } = useTheme()
+  const styles = useMemo(() => createMobileStyles(theme), [theme])
+
   return (
     <View style={styles.tag}>
       <Text style={styles.tagText}>{text}</Text>
@@ -150,8 +176,10 @@ export function ProgressBarSimple({
   value: number
   tone: 'ok' | 'warn' | 'over'
 }) {
+  const { theme } = useTheme()
+  const styles = useMemo(() => createMobileStyles(theme), [theme])
   const barColor =
-    tone === 'ok' ? colors.success : tone === 'warn' ? colors.warning : colors.danger
+    tone === 'ok' ? theme.colors.success : tone === 'warn' ? theme.colors.warning : theme.colors.danger
 
   return (
     <View style={styles.progressTrack}>
@@ -161,6 +189,9 @@ export function ProgressBarSimple({
 }
 
 export function MonthChip({ label, active = false }: { label: string; active?: boolean }) {
+  const { theme } = useTheme()
+  const styles = useMemo(() => createMobileStyles(theme), [theme])
+
   return (
     <View style={[styles.monthChip, active ? styles.monthChipActive : null]}>
       <Text style={[styles.monthChipText, active ? styles.monthChipTextActive : null]}>{label}</Text>
@@ -185,6 +216,9 @@ export function BudgetCard({
   tone: 'ok' | 'warn' | 'over'
   footer: string
 }) {
+  const { theme } = useTheme()
+  const styles = useMemo(() => createMobileStyles(theme), [theme])
+
   return (
     <View style={styles.budgetCard}>
       <View style={styles.budgetCardTop}>
@@ -204,6 +238,9 @@ export function BudgetCard({
 }
 
 export function MetricCard({ label, value }: { label: string; value: string }) {
+  const { theme } = useTheme()
+  const styles = useMemo(() => createMobileStyles(theme), [theme])
+
   return (
     <View style={styles.metricCard}>
       <Text style={styles.metricCardLabel}>{label}</Text>
@@ -213,6 +250,9 @@ export function MetricCard({ label, value }: { label: string; value: string }) {
 }
 
 export function CategoryRow({ label, value }: { label: string; value: string }) {
+  const { theme } = useTheme()
+  const styles = useMemo(() => createMobileStyles(theme), [theme])
+
   return (
     <View style={styles.categoryRow}>
       <Text style={styles.categoryLabel}>{label}</Text>
@@ -230,6 +270,9 @@ export function MoreRow({
   label: string
   helper: string
 }) {
+  const { theme } = useTheme()
+  const styles = useMemo(() => createMobileStyles(theme), [theme])
+
   return (
     <View style={styles.moreRow}>
       <View style={styles.moreIconWrap}>
@@ -244,6 +287,9 @@ export function MoreRow({
 }
 
 export function Pill({ text, active = false }: { text: string; active?: boolean }) {
+  const { theme } = useTheme()
+  const styles = useMemo(() => createMobileStyles(theme), [theme])
+
   return (
     <View style={[styles.pill, active ? styles.pillActive : null]}>
       <Text style={[styles.pillText, active ? styles.pillTextActive : null]}>{text}</Text>

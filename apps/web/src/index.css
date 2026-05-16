@@ -2,6 +2,132 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ── KASWISE TOKENS — static defaults (Dark Luxury) ────────────
+   web-theme.ts re-injects these at runtime for the light/dark
+   toggle, but baking them here means the app is correct with
+   zero JS (no white flash, no "looks unchanged" if JS races). */
+
+:root {
+  --ks-brand-primary: #A3FF12;
+  --ks-brand-primary-deep: #65A30D;
+  --ks-brand-secondary: #4A80F0;
+  --ks-brand-secondary-deep: #2A5DD0;
+
+  --ks-success: #A3FF12;
+  --ks-danger: #FF7B7B;
+  --ks-warning: #FFC06D;
+  --ks-info: #38BDF8;
+
+  --ks-bg-base: #141414;
+  --ks-bg-surface: #1E1E1A;
+  --ks-bg-card: #18181A;
+  --ks-bg-elevated: #242427;
+  --ks-bg-deep: #0A0A0A;
+
+  --ks-text-primary: #FFFFFF;
+  --ks-text-secondary: #E5E7EB;
+  --ks-text-muted: #9CA3AF;
+  --ks-text-dim: #6B7280;
+  --ks-text-inverse: #0A0A0A;
+
+  --ks-border-soft: rgba(255, 255, 255, 0.06);
+  --ks-border: rgba(255, 255, 255, 0.10);
+  --ks-border-strong: rgba(255, 255, 255, 0.18);
+
+  --ks-glass-bg: rgba(255, 255, 255, 0.06);
+  --ks-glass-border: rgba(255, 255, 255, 0.12);
+
+  --ks-bubble-primary-bg: rgba(163, 255, 18, 0.14);
+  --ks-bubble-primary-bd: rgba(163, 255, 18, 0.25);
+  --ks-bubble-primary-fg: #A3FF12;
+  --ks-bubble-navy-bg: rgba(74, 128, 240, 0.14);
+  --ks-bubble-navy-bd: rgba(74, 128, 240, 0.30);
+  --ks-bubble-navy-fg: #4A80F0;
+  --ks-bubble-warning-bg: rgba(255, 192, 109, 0.14);
+  --ks-bubble-warning-bd: rgba(255, 192, 109, 0.30);
+  --ks-bubble-warning-fg: #FFC06D;
+  --ks-bubble-danger-bg: rgba(255, 123, 123, 0.14);
+  --ks-bubble-danger-bd: rgba(255, 123, 123, 0.30);
+  --ks-bubble-danger-fg: #FF7B7B;
+  --ks-bubble-info-bg: rgba(56, 189, 248, 0.14);
+  --ks-bubble-info-bd: rgba(56, 189, 248, 0.30);
+  --ks-bubble-info-fg: #38BDF8;
+
+  --ks-radius-sm: 10px;
+  --ks-radius-md: 14px;
+  --ks-radius-lg: 18px;
+  --ks-radius-xl: 20px;
+  --ks-radius-2xl: 24px;
+  --ks-radius-pill: 999px;
+
+  --ks-space-xs: 4px;
+  --ks-space-sm: 8px;
+  --ks-space-md: 12px;
+  --ks-space-lg: 16px;
+  --ks-space-xl: 20px;
+  --ks-space-2xl: 24px;
+  --ks-space-3xl: 32px;
+
+  --ks-shadow-card: 0 1px 2px rgba(0, 0, 0, 0.30);
+  --ks-shadow-elevated: 0 10px 30px rgba(0, 0, 0, 0.45);
+  --ks-glow-neon-soft: 0 0 22px rgba(163, 255, 18, 0.30);
+  --ks-glow-neon-strong: 0 0 26px rgba(163, 255, 18, 0.45), 0 14px 36px rgba(163, 255, 18, 0.22);
+  --ks-focus-ring: 0 0 0 3px rgba(163, 255, 18, 0.25);
+  --ks-focus-ring-danger: 0 0 0 3px rgba(255, 123, 123, 0.20);
+
+  --ks-font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --ks-font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+[data-theme="light"] {
+  --ks-bg-base: #F5F5F0;
+  --ks-bg-surface: #FFFFFF;
+  --ks-bg-card: #FFFFFF;
+  --ks-bg-elevated: #FAFAF5;
+  --ks-bg-deep: #ECECE5;
+
+  --ks-text-primary: #0A0A0A;
+  --ks-text-secondary: #4B5563;
+  --ks-text-muted: #6B7280;
+  --ks-text-dim: #9CA3AF;
+  --ks-text-inverse: #FFFFFF;
+
+  --ks-border-soft: rgba(10, 10, 10, 0.06);
+  --ks-border: rgba(10, 10, 10, 0.10);
+  --ks-border-strong: rgba(10, 10, 10, 0.16);
+
+  --ks-glass-bg: rgba(255, 255, 255, 0.60);
+  --ks-glass-border: rgba(10, 10, 10, 0.08);
+
+  --ks-success: #65A30D;
+  --ks-danger: #DC2626;
+  --ks-warning: #B45309;
+  --ks-info: #0284C7;
+
+  --ks-bubble-primary-bg: rgba(163, 255, 18, 0.18);
+  --ks-bubble-primary-bd: rgba(101, 163, 13, 0.28);
+  --ks-bubble-primary-fg: #65A30D;
+  --ks-bubble-navy-bg: rgba(74, 128, 240, 0.12);
+  --ks-bubble-navy-bd: rgba(42, 93, 208, 0.25);
+  --ks-bubble-navy-fg: #2A5DD0;
+  --ks-bubble-warning-bg: rgba(245, 158, 11, 0.14);
+  --ks-bubble-warning-bd: rgba(245, 158, 11, 0.30);
+  --ks-bubble-warning-fg: #B45309;
+  --ks-bubble-danger-bg: rgba(239, 68, 68, 0.10);
+  --ks-bubble-danger-bd: rgba(239, 68, 68, 0.25);
+  --ks-bubble-danger-fg: #DC2626;
+  --ks-bubble-info-bg: rgba(14, 165, 233, 0.10);
+  --ks-bubble-info-bd: rgba(14, 165, 233, 0.25);
+  --ks-bubble-info-fg: #0284C7;
+
+  --ks-shadow-card: 0 1px 2px rgba(10, 10, 10, 0.04), 0 4px 12px rgba(10, 10, 10, 0.06);
+  --ks-shadow-elevated: 0 8px 24px rgba(10, 10, 10, 0.08), 0 16px 36px rgba(10, 10, 10, 0.06);
+  --ks-glow-neon-soft: 0 0 0 3px rgba(163, 255, 18, 0.30);
+  --ks-glow-neon-strong: 0 12px 28px rgba(163, 255, 18, 0.35);
+  --ks-focus-ring: 0 0 0 3px rgba(101, 163, 13, 0.30);
+  --ks-focus-ring-danger: 0 0 0 3px rgba(220, 38, 38, 0.20);
+}
+
 /* ── DESIGN SYSTEM — kaswise ───────────────────────────────── */
 
 :root {

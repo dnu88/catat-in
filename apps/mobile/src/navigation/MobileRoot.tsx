@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { SafeAreaView, ScrollView } from 'react-native'
 
 import { BottomTabShell } from './BottomTabShell'
@@ -6,10 +6,13 @@ import { SplashScreen } from '../screens/onboarding/SplashScreen'
 import { AiIntroScreen } from '../screens/onboarding/AiIntroScreen'
 import { SetupAccountScreen } from '../screens/onboarding/SetupAccountScreen'
 import { WelcomeScreen } from '../screens/onboarding/WelcomeScreen'
-import { styles } from '../styles/mobileStyles'
+import { createMobileStyles } from '../styles/mobileStyles'
+import { useTheme } from '../theme/theme-context'
 import type { OnboardingStep, TabKey } from '../types/navigation'
 
 export function MobileRoot() {
+  const { theme } = useTheme()
+  const styles = useMemo(() => createMobileStyles(theme), [theme])
   const [step, setStep] = useState<OnboardingStep>(0)
   const [onboardingDone, setOnboardingDone] = useState(false)
   const [activeTab, setActiveTab] = useState<TabKey>('home')

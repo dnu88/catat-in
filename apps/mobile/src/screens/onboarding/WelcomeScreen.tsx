@@ -1,7 +1,9 @@
+import { useMemo } from 'react'
 import { Pressable, Text, View } from 'react-native'
 
 import { Tag } from '../../components/MobileUI'
-import { styles } from '../../styles/mobileStyles'
+import { createMobileStyles } from '../../styles/mobileStyles'
+import { useTheme } from '../../theme/theme-context'
 
 export function WelcomeScreen({
   onRestart,
@@ -10,6 +12,9 @@ export function WelcomeScreen({
   onRestart: () => void
   onEnterApp: () => void
 }) {
+  const { theme } = useTheme()
+  const styles = useMemo(() => createMobileStyles(theme), [theme])
+
   return (
     <View style={styles.welcomeWrap}>
       <View style={styles.successIcon}>

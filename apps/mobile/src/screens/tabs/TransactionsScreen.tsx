@@ -1,9 +1,14 @@
+import { useMemo } from 'react'
 import { View } from 'react-native'
 
 import { Pill, ScreenHeader, SectionCard, TransactionRow } from '../../components/MobileUI'
-import { styles } from '../../styles/mobileStyles'
+import { createMobileStyles } from '../../styles/mobileStyles'
+import { useTheme } from '../../theme/theme-context'
 
 export function TransactionsScreen() {
+  const { theme } = useTheme()
+  const styles = useMemo(() => createMobileStyles(theme), [theme])
+
   return (
     <View style={styles.screenWrap}>
       <ScreenHeader title="Transaksi" subtitle="Semua catatan terbaru" />
