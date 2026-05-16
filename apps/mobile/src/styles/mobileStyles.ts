@@ -238,8 +238,8 @@ export function createMobileStyles(theme: MobileTheme, viewportWidth?: number) {
     inlineBudgetPct: { color: theme.colors.warning, ...type.labelStrong },
     inlineBudgetMeta: { color: theme.colors.textSecondary, ...type.caption, fontSize: 12 },
     progressTrack: {
-      height: 7,
-      backgroundColor: theme.colors.surface,
+      height: 6,
+      backgroundColor: theme.mode === 'light' ? 'rgba(10,10,10,0.06)' : 'rgba(255,255,255,0.05)',
       borderRadius: theme.radius.pill,
       overflow: 'hidden',
     },
@@ -265,8 +265,8 @@ export function createMobileStyles(theme: MobileTheme, viewportWidth?: number) {
       position: 'absolute', left: 0, right: 0, bottom: theme.spacing['3xl'] + 30, alignItems: 'center', pointerEvents: 'box-none',
     },
     floatingActionButton: {
-      width: 58,
-      height: 58,
+      width: 54,
+      height: 54,
       borderRadius: theme.radius.pill,
       backgroundColor: theme.colors.brandPrimary,
       alignItems: 'center',
@@ -276,7 +276,7 @@ export function createMobileStyles(theme: MobileTheme, viewportWidth?: number) {
     floatingActionText: { color: theme.colors.card, fontSize: 28, fontWeight: '700', marginTop: -2 },
     bottomNav: {
       position: 'absolute', left: 0, right: 0, bottom: 0, flexDirection: 'row', backgroundColor: theme.colors.card,
-      borderTopWidth: 1, borderTopColor: theme.colors.borderSoft, paddingTop: theme.spacing.sm, paddingBottom: theme.spacing.sm + 2,
+      borderTopWidth: 1, borderTopColor: theme.colors.borderSoft, paddingTop: theme.spacing.md, paddingBottom: theme.spacing.md,
     },
     bottomNavItem: { flex: 1, alignItems: 'center', gap: theme.spacing.xs },
     bottomNavIcon: {
@@ -510,7 +510,7 @@ export function createMobileStyles(theme: MobileTheme, viewportWidth?: number) {
     secondaryLinkButton: { paddingVertical: theme.spacing.sm, paddingHorizontal: theme.spacing.md },
     secondaryLinkText: { color: theme.colors.textSecondary, ...type.label },
     pill: { backgroundColor: theme.colors.card, borderWidth: 1, borderColor: theme.colors.borderSoft, borderRadius: theme.radius.pill, paddingVertical: theme.spacing.sm, paddingHorizontal: theme.spacing.md },
-    pillActive: { backgroundColor: theme.colors.surface, borderColor: theme.colors.brandPrimary },
+    pillActive: { backgroundColor: theme.colors.glass.background, borderColor: theme.colors.brandPrimary },
     pillText: { color: theme.colors.textSecondary, ...type.label },
     pillTextActive: { color: theme.colors.brandPrimary },
     iconBadge: {
