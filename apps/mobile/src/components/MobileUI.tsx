@@ -104,13 +104,32 @@ export function QuickActionCard({
   )
 }
 
-export function HeroMiniStat({ label, value }: { label: string; value: string }) {
+export function HeroMiniStat({
+  label,
+  value,
+  tone = 'default',
+}: {
+  label: string
+  value: string
+  tone?: 'default' | 'success' | 'danger'
+}) {
   const styles = useMobileStyles()
 
   return (
     <View style={styles.heroMiniStat}>
       <Text style={styles.heroMiniStatLabel}>{label}</Text>
-      <Text style={styles.heroMiniStatValue}>{value}</Text>
+      <Text
+        style={[
+          styles.heroMiniStatValue,
+          tone === 'success'
+            ? styles.heroMiniStatValueSuccess
+            : tone === 'danger'
+              ? styles.heroMiniStatValueDanger
+              : null,
+        ]}
+      >
+        {value}
+      </Text>
     </View>
   )
 }
@@ -124,12 +143,13 @@ export function HeroBalance({
   amount: string
   walletLabel: string
   delta: string
-  stats: { label: string; value: string }[]
+  stats: { label: string; value: string; tone?: 'default' | 'success' | 'danger' }[]
 }) {
   const styles = useMobileStyles()
 
   return (
     <View style={styles.mobileHero}>
+      <View style={styles.heroGlowOrb} />
       <View style={styles.heroWalletRow}>
         <View style={styles.walletPill}>
           <Text style={styles.walletPillIcon}>W</Text>
@@ -142,13 +162,14 @@ export function HeroBalance({
       <View style={styles.heroAmountRow}>
         <Text style={styles.mobileHeroAmount}>{amount}</Text>
         <View style={styles.deltaPill}>
+          <Text style={styles.deltaPillTrend}>↗</Text>
           <Text style={styles.deltaPillText}>{delta}</Text>
         </View>
       </View>
 
       <View style={styles.mobileHeroStats}>
         {stats.map((item) => (
-          <HeroMiniStat key={item.label} label={item.label} value={item.value} />
+          <HeroMiniStat key={item.label} label={item.label} value={item.value} tone={item.tone} />
         ))}
       </View>
     </View>

@@ -33,8 +33,8 @@ export function HomeScreen() {
         walletLabel="Main Wallet"
         delta="15%"
         stats={[
-          { label: 'Pemasukan', value: '8,00Jt' },
-          { label: 'Pengeluaran', value: '3,75Jt' },
+          { label: 'Pemasukan', value: '8,00 Jt', tone: 'success' },
+          { label: 'Pengeluaran', value: '3,75 Jt', tone: 'danger' },
           { label: 'Tabungan', value: '53%' },
         ]}
       />
