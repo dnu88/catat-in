@@ -2,7 +2,7 @@ import { useMemo } from 'react'
 import { Text, useWindowDimensions, View } from 'react-native'
 
 import {
-  HeroMiniStat,
+  HeroBalance,
   ProgressBarSimple,
   QuickActionCard,
   SectionCard,
@@ -28,21 +28,22 @@ export function HomeScreen() {
         </View>
       </View>
 
-      <View style={styles.mobileHero}>
-        <Text style={styles.mobileHeroLabel}>Total saldo</Text>
-        <Text style={styles.mobileHeroAmount}>Rp 4.250.000</Text>
-        <View style={styles.mobileHeroStats}>
-          <HeroMiniStat label="Pemasukan" value="8,00Jt" />
-          <HeroMiniStat label="Pengeluaran" value="3,75Jt" />
-          <HeroMiniStat label="Tabungan" value="53%" />
-        </View>
-      </View>
+      <HeroBalance
+        amount="Rp 4.250.000"
+        walletLabel="Main Wallet"
+        delta="15%"
+        stats={[
+          { label: 'Pemasukan', value: '8,00Jt' },
+          { label: 'Pengeluaran', value: '3,75Jt' },
+          { label: 'Tabungan', value: '53%' },
+        ]}
+      />
 
       <View style={styles.quickActionRow}>
-        <QuickActionCard icon="M" label="Manual" />
-        <QuickActionCard icon="AI" label="AI Chat" />
-        <QuickActionCard icon="S" label="Struk" />
-        <QuickActionCard icon="I" label="Import" />
+        <QuickActionCard icon="transactions" label="Manual" tone="primary" />
+        <QuickActionCard icon="ai" label="AI Chat" tone="accent" />
+        <QuickActionCard icon="bills" label="Struk" tone="success" />
+        <QuickActionCard icon="imports" label="Import" tone="info" />
       </View>
 
       <SectionCard title="Anggaran" action="Lihat ->">

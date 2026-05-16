@@ -1,6 +1,8 @@
 import type { ReactNode } from 'react'
 import { Pressable, Text, View } from 'react-native'
 
+import { IconBubble, type IconBubbleTone } from './ui/IconBubble'
+import type { KaswiseIconName } from './icons/kaswise-icons'
 import { useMobileStyles } from '../styles/useMobileStyles'
 import { useTheme } from '../theme/theme-context'
 
@@ -83,12 +85,20 @@ export function TransactionRow({
   )
 }
 
-export function QuickActionCard({ icon, label }: { icon: string; label: string }) {
+export function QuickActionCard({
+  icon,
+  label,
+  tone = 'primary',
+}: {
+  icon: KaswiseIconName
+  label: string
+  tone?: IconBubbleTone
+}) {
   const styles = useMobileStyles()
 
   return (
     <View style={styles.quickActionCard}>
-      <Text style={styles.quickActionIcon}>{icon}</Text>
+      <IconBubble name={icon} tone={tone} size={32} />
       <Text style={styles.quickActionLabel}>{label}</Text>
     </View>
   )
@@ -101,6 +111,46 @@ export function HeroMiniStat({ label, value }: { label: string; value: string })
     <View style={styles.heroMiniStat}>
       <Text style={styles.heroMiniStatLabel}>{label}</Text>
       <Text style={styles.heroMiniStatValue}>{value}</Text>
+    </View>
+  )
+}
+
+export function HeroBalance({
+  amount,
+  walletLabel,
+  delta,
+  stats,
+}: {
+  amount: string
+  walletLabel: string
+  delta: string
+  stats: { label: string; value: string }[]
+}) {
+  const styles = useMobileStyles()
+
+  return (
+    <View style={styles.mobileHero}>
+      <View style={styles.heroWalletRow}>
+        <View style={styles.walletPill}>
+          <Text style={styles.walletPillIcon}>W</Text>
+          <Text style={styles.walletPillText}>{walletLabel}</Text>
+        </View>
+        <Text style={styles.heroManageText}>Manage</Text>
+      </View>
+
+      <Text style={styles.mobileHeroLabel}>Total saldo</Text>
+      <View style={styles.heroAmountRow}>
+        <Text style={styles.mobileHeroAmount}>{amount}</Text>
+        <View style={styles.deltaPill}>
+          <Text style={styles.deltaPillText}>{delta}</Text>
+        </View>
+      </View>
+
+      <View style={styles.mobileHeroStats}>
+        {stats.map((item) => (
+          <HeroMiniStat key={item.label} label={item.label} value={item.value} />
+        ))}
+      </View>
     </View>
   )
 }

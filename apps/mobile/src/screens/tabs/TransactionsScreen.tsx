@@ -17,7 +17,8 @@ export function TransactionsScreen() {
         <View style={styles.pillRow}>
           <Pill text="Bulan ini" active />
           <Pill text="Semua wallet" />
-          <Pill text="Expense" />
+          <Pill text="Expense" active />
+          <Pill text="Income" />
         </View>
       </SectionCard>
 
