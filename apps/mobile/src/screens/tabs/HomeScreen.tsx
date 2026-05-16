@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import { Text, View } from 'react-native'
+import { Text, useWindowDimensions, View } from 'react-native'
 
 import {
   HeroMiniStat,
@@ -13,7 +13,8 @@ import { useTheme } from '../../theme/theme-context'
 
 export function HomeScreen() {
   const { theme } = useTheme()
-  const styles = useMemo(() => createMobileStyles(theme), [theme])
+  const { width } = useWindowDimensions()
+  const styles = useMemo(() => createMobileStyles(theme, width), [theme, width])
 
   return (
     <View style={styles.screenWrap}>

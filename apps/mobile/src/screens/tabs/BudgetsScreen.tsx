@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import { Text, View } from 'react-native'
+import { Text, useWindowDimensions, View } from 'react-native'
 
 import { BudgetCard, HeroMiniStat, MonthChip, ScreenHeader } from '../../components/MobileUI'
 import { createMobileStyles } from '../../styles/mobileStyles'
@@ -7,7 +7,8 @@ import { useTheme } from '../../theme/theme-context'
 
 export function BudgetsScreen() {
   const { theme } = useTheme()
-  const styles = useMemo(() => createMobileStyles(theme), [theme])
+  const { width } = useWindowDimensions()
+  const styles = useMemo(() => createMobileStyles(theme, width), [theme, width])
 
   return (
     <View style={styles.screenWrap}>

@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import { View } from 'react-native'
+import { useWindowDimensions, View } from 'react-native'
 
 import { MoreRow, ScreenHeader, SectionCard } from '../../components/MobileUI'
 import { createMobileStyles } from '../../styles/mobileStyles'
@@ -7,7 +7,8 @@ import { useTheme } from '../../theme/theme-context'
 
 export function MoreScreen() {
   const { theme } = useTheme()
-  const styles = useMemo(() => createMobileStyles(theme), [theme])
+  const { width } = useWindowDimensions()
+  const styles = useMemo(() => createMobileStyles(theme, width), [theme, width])
 
   return (
     <View style={styles.screenWrap}>

@@ -9,7 +9,7 @@ describe('mobile responsive styles', () => {
 
     expect(styles.appContent.paddingHorizontal).toBe(theme.spacing.md)
     expect(styles.screenWrap.maxWidth).toBeUndefined()
-    expect(styles.quickActionRow.flexWrap).toBeUndefined()
+    expect(styles.quickActionRow.flexWrap).toBe('nowrap')
     expect(styles.quickActionCard.minWidth).toBeUndefined()
   })
 

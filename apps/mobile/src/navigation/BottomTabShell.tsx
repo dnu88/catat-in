@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import { Pressable, ScrollView, Text, View } from 'react-native'
+import { Pressable, ScrollView, Text, useWindowDimensions, View } from 'react-native'
 
 import { BOTTOM_TABS } from '../data/mock'
 import { createMobileStyles } from '../styles/mobileStyles'
@@ -19,7 +19,8 @@ export function BottomTabShell({
   onChangeTab: (tab: TabKey) => void
 }) {
   const { theme } = useTheme()
-  const styles = useMemo(() => createMobileStyles(theme), [theme])
+  const { width } = useWindowDimensions()
+  const styles = useMemo(() => createMobileStyles(theme, width), [theme, width])
 
   return (
     <View style={styles.appShell}>
