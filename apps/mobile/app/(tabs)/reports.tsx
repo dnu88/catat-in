@@ -827,7 +827,7 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
     },
     modalOverlay: {
       flex: 1,
-      backgroundColor: 'rgba(0,0,0,0.5)',
+      backgroundColor: `${theme.colors.background}${theme.opacity[50] * 100}`,
       justifyContent: 'flex-end',
     },
     modalContent: {

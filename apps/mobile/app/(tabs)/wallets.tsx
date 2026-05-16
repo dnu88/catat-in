@@ -20,11 +20,15 @@ const typeLabels: Record<WalletType, string> = {
   investment: 'Investasi',
 }
 
-const typeColors: Record<WalletType, string> = {
-  bank: '#2563EB',
-  ewallet: '#8B5CF6',
-  cash: '#10B981',
-  investment: '#F59E0B',
+// Wallet type colors mapped to theme colors
+function getTypeColor(type: WalletType, theme: ReturnType<typeof useTheme>['theme']): string {
+  const colorMap: Record<WalletType, string> = {
+    bank: theme.colors.info,
+    ewallet: theme.colors.brandPrimary,
+    cash: theme.colors.success,
+    investment: theme.colors.warning,
+  }
+  return colorMap[type]
 }
 
 type FilterType = 'all' | WalletType
@@ -89,14 +93,14 @@ export default function WalletsScreen() {
         {filtered.map((wallet) => (
           <Pressable key={wallet.id} style={styles.walletCard}>
             <View style={styles.walletTop}>
-              <View style={[styles.walletIcon, { backgroundColor: `${typeColors[wallet.type]}15` }]}>
+              <View style={[styles.walletIcon, { backgroundColor: `${getTypeColor(wallet.type, theme)}${theme.opacity[15] * 100}` }]}>
                 <Text style={styles.walletIconText}>{wallet.icon}</Text>
               </View>
               <View style={styles.walletInfo}>
                 <Text style={styles.walletName}>{wallet.name}</Text>
                 <View style={styles.walletMeta}>
-                  <View style={[styles.typeBadge, { backgroundColor: `${typeColors[wallet.type]}15` }]}>
-                    <Text style={[styles.typeBadgeText, { color: typeColors[wallet.type] }]}>
+                  <View style={[styles.typeBadge, { backgroundColor: `${getTypeColor(wallet.type, theme)}${theme.opacity[15] * 100}` }]}>
+                    <Text style={[styles.typeBadgeText, { color: getTypeColor(wallet.type, theme) }]}>
                       {typeLabels[wallet.type]}
                     </Text>
                   </View>

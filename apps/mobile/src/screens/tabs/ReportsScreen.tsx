@@ -1,9 +1,12 @@
 import { Text, View } from 'react-native'
 
 import { CategoryRow, MetricCard, ScreenHeader, SectionCard } from '../../components/MobileUI'
+import { useTheme } from '../../theme/theme-context'
 import { styles } from '../../styles/mobileStyles'
 
 export function ReportsScreen() {
+  const { theme } = useTheme()
+
   return (
     <View style={styles.screenWrap}>
       <ScreenHeader title="Laporan" subtitle="Ringkasan bulan ini" />
@@ -15,12 +18,12 @@ export function ReportsScreen() {
 
       <SectionCard title="Tren 6 bulan" action="Detail">
         <View style={styles.chartMock}>
-          <View style={[styles.chartBar, { height: 72, backgroundColor: '#93C5FD' }]} />
-          <View style={[styles.chartBar, { height: 96, backgroundColor: '#60A5FA' }]} />
-          <View style={[styles.chartBar, { height: 68, backgroundColor: '#3B82F6' }]} />
-          <View style={[styles.chartBar, { height: 110, backgroundColor: '#2563EB' }]} />
-          <View style={[styles.chartBar, { height: 88, backgroundColor: '#1D4ED8' }]} />
-          <View style={[styles.chartBar, { height: 102, backgroundColor: '#1E40AF' }]} />
+          <View style={[styles.chartBar, { height: 72, backgroundColor: theme.colors.info }]} />
+          <View style={[styles.chartBar, { height: 96, backgroundColor: theme.colors.brandAccent }]} />
+          <View style={[styles.chartBar, { height: 68, backgroundColor: theme.colors.success }]} />
+          <View style={[styles.chartBar, { height: 110, backgroundColor: theme.colors.brandPrimary }]} />
+          <View style={[styles.chartBar, { height: 88, backgroundColor: theme.colors.warning }]} />
+          <View style={[styles.chartBar, { height: 102, backgroundColor: theme.colors.danger }]} />
         </View>
         <Text style={styles.chartCaption}>Perbandingan pengeluaran 6 bulan terakhir</Text>
       </SectionCard>
