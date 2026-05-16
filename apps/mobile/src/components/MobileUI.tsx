@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import { Pressable, Text, View } from 'react-native'
 
 import { useMobileStyles } from '../styles/useMobileStyles'
+import { useTheme } from '../theme/theme-context'
 
 export function ScreenHeader({
   title,
@@ -177,6 +178,7 @@ export function ProgressBarSimple({
   tone: 'ok' | 'warn' | 'over'
 }) {
   const styles = useMobileStyles()
+  const { theme } = useTheme()
   const barColor =
     tone === 'ok' ? theme.colors.success : tone === 'warn' ? theme.colors.warning : theme.colors.danger
 
