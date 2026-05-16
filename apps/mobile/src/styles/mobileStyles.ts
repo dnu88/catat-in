@@ -58,7 +58,7 @@ export function createMobileStyles(theme: MobileTheme) {
       gap: 10,
     },
     mobileHeroLabel: {
-      color: `rgba(255,255,255,${theme.opacity[70]})`,
+      color: theme.colors.textInverse,
       fontSize: 12,
       fontWeight: '600',
     },
@@ -73,13 +73,13 @@ export function createMobileStyles(theme: MobileTheme) {
     },
     heroMiniStat: {
       flex: 1,
-      backgroundColor: `rgba(255,255,255,${theme.opacity[15]})`,
+      backgroundColor: theme.colors.glass.background,
       borderRadius: theme.radius.md,
       padding: 10,
       gap: 2,
     },
     heroMiniStatLabel: {
-      color: `rgba(255,255,255,${theme.opacity[70]})`,
+      color: theme.colors.textInverse,
       fontSize: 10,
     },
     heroMiniStatValue: {
@@ -279,8 +279,8 @@ export function createMobileStyles(theme: MobileTheme) {
     moreLabel: { color: theme.colors.textPrimary, fontSize: 13, fontWeight: '700' },
     moreHelper: { color: theme.colors.textSecondary, fontSize: 11, marginTop: 2 },
     splashScreen: { flex: 1, padding: theme.spacing['2xl'], backgroundColor: theme.colors.brandAccent, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
-    splashOrbTop: { position: 'absolute', top: -40, right: -40, width: 140, height: 140, borderRadius: 70, backgroundColor: `rgba(255,255,255,${theme.opacity[10]})` },
-    splashOrbBottom: { position: 'absolute', bottom: -30, left: -30, width: 120, height: 120, borderRadius: 60, backgroundColor: `rgba(255,255,255,${theme.opacity[10]})` },
+    splashOrbTop: { position: 'absolute', top: -40, right: -40, width: 140, height: 140, borderRadius: 70, backgroundColor: theme.colors.glass.background },
+    splashOrbBottom: { position: 'absolute', bottom: -30, left: -30, width: 120, height: 120, borderRadius: 60, backgroundColor: theme.colors.glass.background },
     splashLogo: {
       width: 64,
       height: 64,
@@ -294,12 +294,12 @@ export function createMobileStyles(theme: MobileTheme) {
     },
     splashLogoText: { color: theme.colors.card, fontSize: 20, fontWeight: '800' },
     splashTitle: { color: theme.colors.card, fontSize: 34, fontWeight: '800', marginBottom: theme.spacing.sm },
-    splashSubtitle: { color: `rgba(255,255,255,${theme.opacity[80]})`, fontSize: 15, lineHeight: 24, textAlign: 'center', marginBottom: 26 },
+    splashSubtitle: { color: theme.colors.textInverse, fontSize: 15, lineHeight: 24, textAlign: 'center', marginBottom: 26 },
     splashActions: { width: '100%', gap: 10 },
     whiteButton: { backgroundColor: theme.colors.card, borderRadius: theme.radius.pill, paddingVertical: theme.spacing.md, paddingHorizontal: 18, alignItems: 'center' },
     whiteButtonText: { color: theme.colors.brandAccent, fontSize: 15, fontWeight: '700' },
     ghostButton: {
-      backgroundColor: `rgba(255,255,255,${theme.opacity[15]})`,
+      backgroundColor: theme.colors.glass.background,
       borderRadius: theme.radius.pill,
       borderWidth: 1,
       borderColor: theme.colors.glass.border,

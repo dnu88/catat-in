@@ -34,15 +34,15 @@ export function InputField({
 
   const fieldStyle = error
     ? {
-        backgroundColor: `rgba(239,68,68,${theme.opacity[10]})`,
+        backgroundColor: theme.iconBubbles.danger.background,
         borderColor: theme.colors.danger,
-        boxShadow: `0 0 0 3px rgba(239,68,68,${theme.opacity[20]})`,
+        boxShadow: `0 0 0 3px ${theme.iconBubbles.danger.border}`,
       }
     : focused
       ? {
           backgroundColor: theme.colors.card,
           borderColor: theme.colors.brandPrimary,
-          boxShadow: `0 0 0 3px rgba(79,70,229,${theme.opacity[25]})`,
+          boxShadow: `0 0 0 3px ${theme.iconBubbles.primary.border}`,
         }
       : {
           backgroundColor: theme.colors.card,

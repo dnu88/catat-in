@@ -33,8 +33,8 @@ export function Button({ label, onPress, variant = 'primary', disabled = false }
       shadow: undefined,
     },
     danger: {
-      backgroundColor: `rgba(239,68,68,${theme.opacity[10]})`,
-      borderColor: `rgba(239,68,68,${theme.opacity[30]})`,
+      backgroundColor: theme.iconBubbles.danger.background,
+      borderColor: theme.iconBubbles.danger.border,
       color: theme.colors.danger,
       shadow: undefined,
     },
