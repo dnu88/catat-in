@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import { Pressable, Text, View } from 'react-native'
+import { Image, Pressable, Text, View } from 'react-native'
 
 import { createMobileStyles } from '../../styles/mobileStyles'
 import { useTheme } from '../../theme/theme-context'
@@ -20,7 +20,11 @@ export function SplashScreen({
       <View style={styles.splashOrbBottom} />
 
       <View style={styles.splashLogo}>
-        <Text style={styles.splashLogoText}>CI</Text>
+        <Image
+          source={require('../../../../../Kaswise Design System/assets/logo-kaswise.png')}
+          style={styles.splashLogoImage}
+          accessibilityIgnoresInvertColors
+        />
       </View>
 
       <Text style={styles.splashTitle}>Catat.in</Text>

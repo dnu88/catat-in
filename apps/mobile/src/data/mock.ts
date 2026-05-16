@@ -7,10 +7,10 @@ export const WALLET_OPTIONS = [
   { id: 'ovo', label: 'OVO', selected: false },
 ] as const
 
-export const BOTTOM_TABS: Array<{ key: TabKey; icon: string; label: string }> = [
-  { key: 'home', icon: 'H', label: 'Home' },
-  { key: 'transactions', icon: 'T', label: 'Transaksi' },
-  { key: 'budgets', icon: 'A', label: 'Anggaran' },
-  { key: 'reports', icon: 'L', label: 'Laporan' },
-  { key: 'more', icon: 'M', label: 'Lainnya' },
+export const BOTTOM_TABS: Array<{ key: TabKey; icon: 'home' | 'transactions' | 'budgets' | 'reports' | 'settings'; label: string }> = [
+  { key: 'home', icon: 'home', label: 'Beranda' },
+  { key: 'transactions', icon: 'transactions', label: 'Transaksi' },
+  { key: 'budgets', icon: 'budgets', label: 'Anggaran' },
+  { key: 'reports', icon: 'reports', label: 'Laporan' },
+  { key: 'more', icon: 'settings', label: 'Setelan' },
 ]
