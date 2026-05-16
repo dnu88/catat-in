@@ -18,13 +18,13 @@ export function FilterChip({ label, selected, onPress }: FilterChipProps) {
         paddingVertical: theme.spacing.sm,
         borderRadius: theme.radius.pill,
         borderWidth: 1,
-        borderColor: selected ? theme.colors.brandPrimary : theme.colors.borderSoft,
-        backgroundColor: selected ? theme.colors.brandPrimary : theme.colors.surface,
+        borderColor: selected ? theme.colors.brandPrimary : theme.colors.glass.border,
+        backgroundColor: selected ? theme.colors.brandPrimary : theme.colors.glass.background,
       }}
     >
       <Text
         style={{
-          color: selected ? theme.colors.textInverse : theme.colors.textSecondary,
+          color: selected ? '#0A0A0A' : theme.colors.textSecondary,
           fontSize: 12,
           fontWeight: '700',
         }}

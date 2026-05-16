@@ -27,6 +27,8 @@ export function IconBubble({ name, tone = 'primary', size = 42 }: IconBubbleProp
         width: size,
         height: size,
         borderRadius: size / 2,
+        borderWidth: 1,
+        borderColor: bubble.border,
         backgroundColor: bubble.background,
         alignItems: 'center',
         justifyContent: 'center',

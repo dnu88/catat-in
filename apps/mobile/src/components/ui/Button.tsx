@@ -17,22 +17,26 @@ export function Button({ label, onPress, variant = 'primary', disabled = false }
     primary: {
       backgroundColor: theme.colors.brandPrimary,
       borderColor: theme.colors.brandPrimary,
-      color: theme.colors.textInverse,
+      color: '#0A0A0A',
+      shadow: theme.shadow.neon,
     },
     secondary: {
-      backgroundColor: theme.colors.surface,
-      borderColor: theme.colors.borderSoft,
+      backgroundColor: theme.colors.glass.background,
+      borderColor: theme.colors.glass.border,
       color: theme.colors.textPrimary,
+      shadow: undefined,
     },
     ghost: {
       backgroundColor: 'transparent',
       borderColor: 'transparent',
       color: theme.colors.textPrimary,
+      shadow: undefined,
     },
     danger: {
-      backgroundColor: theme.colors.danger,
-      borderColor: theme.colors.danger,
-      color: theme.colors.textInverse,
+      backgroundColor: 'rgba(255,123,123,0.12)',
+      borderColor: 'rgba(255,123,123,0.35)',
+      color: theme.colors.danger,
+      shadow: undefined,
     },
   }[variant]
 
@@ -40,15 +44,18 @@ export function Button({ label, onPress, variant = 'primary', disabled = false }
     <Pressable
       onPress={onPress}
       disabled={disabled}
-      style={{
-        backgroundColor: variantStyles.backgroundColor,
-        borderColor: variantStyles.borderColor,
-        borderWidth: 1,
-        borderRadius: theme.radius.pill,
-        opacity: disabled ? 0.55 : 1,
-        paddingVertical: theme.spacing.md,
-        paddingHorizontal: theme.spacing.lg,
-      }}
+      style={[
+        {
+          backgroundColor: variantStyles.backgroundColor,
+          borderColor: variantStyles.borderColor,
+          borderWidth: 1,
+          borderRadius: theme.radius.pill,
+          opacity: disabled ? 0.55 : 1,
+          paddingVertical: theme.spacing.md,
+          paddingHorizontal: theme.spacing.lg,
+        },
+        variantStyles.shadow,
+      ]}
     >
       <Text
         style={{

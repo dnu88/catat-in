@@ -1,4 +1,4 @@
-import type { ComponentProps } from 'react'
+import { useState, type ComponentProps } from 'react'
 import { Text, TextInput, View } from 'react-native'
 import { useTheme } from '../../theme/theme-context'
 
@@ -7,6 +7,7 @@ type InputFieldProps = {
   value: string
   onChangeText: (nextValue: string) => void
   placeholder?: string
+  error?: string
   secureTextEntry?: boolean
   keyboardType?: ComponentProps<typeof TextInput>['keyboardType']
   autoCapitalize?: ComponentProps<typeof TextInput>['autoCapitalize']
@@ -20,6 +21,7 @@ export function InputField({
   value,
   onChangeText,
   placeholder,
+  error,
   secureTextEntry,
   keyboardType,
   autoCapitalize,
@@ -28,6 +30,25 @@ export function InputField({
   textContentType,
 }: InputFieldProps) {
   const { theme } = useTheme()
+  const [focused, setFocused] = useState(false)
+
+  const fieldStyle = error
+    ? {
+        backgroundColor: 'rgba(255,123,123,0.06)',
+        borderColor: theme.colors.danger,
+        boxShadow: '0 0 0 3px rgba(255,123,123,0.20)',
+      }
+    : focused
+      ? {
+          backgroundColor: theme.colors.card,
+          borderColor: theme.colors.brandPrimary,
+          boxShadow: '0 0 0 3px rgba(163,255,18,0.25)',
+        }
+      : {
+          backgroundColor: theme.colors.card,
+          borderColor: theme.colors.borderBase,
+          boxShadow: undefined,
+        }
 
   return (
     <View style={{ gap: theme.spacing.xs + 2 }}>
@@ -51,16 +72,28 @@ export function InputField({
         autoComplete={autoComplete}
         autoCorrect={autoCorrect}
         textContentType={textContentType}
+        onFocus={() => setFocused(true)}
+        onBlur={() => setFocused(false)}
         style={{
-          backgroundColor: theme.colors.surface,
           borderWidth: 1,
-          borderColor: theme.colors.borderSoft,
           borderRadius: theme.radius.md,
           color: theme.colors.textPrimary,
           paddingHorizontal: theme.spacing.md,
           paddingVertical: theme.spacing.sm + 2,
+          ...fieldStyle,
         }}
       />
+      {error ? (
+        <Text
+          style={{
+            color: theme.colors.danger,
+            fontSize: theme.typography.support.fontSize,
+            fontWeight: theme.typography.support.fontWeight,
+          }}
+        >
+          {error}
+        </Text>
+      ) : null}
     </View>
   )
 }

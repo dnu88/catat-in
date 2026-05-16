@@ -15,19 +15,24 @@ export function Card({ children, variant = 'default', style }: CardProps) {
 
   const variantStyles: Record<CardVariant, ViewStyle> = {
     default: {
-      backgroundColor: theme.colors.surface,
+      backgroundColor: theme.colors.card,
       borderColor: theme.colors.borderSoft,
       borderWidth: 1,
+      borderRadius: theme.radius['2xl'],
+      ...theme.shadow.sm,
     },
     elevated: {
       backgroundColor: theme.colors.surfaceElevated,
       borderWidth: 0,
+      borderRadius: theme.radius['2xl'],
       ...theme.shadow.md,
     },
     muted: {
       backgroundColor: theme.colors.mutedSurface,
       borderColor: theme.colors.borderSoft,
       borderWidth: 1,
+      borderRadius: theme.radius['2xl'],
+      ...theme.shadow.sm,
     },
   }
 
@@ -35,7 +40,6 @@ export function Card({ children, variant = 'default', style }: CardProps) {
     <View
       style={[
         {
-          borderRadius: theme.radius.lg,
           padding: theme.spacing.lg,
         },
         variantStyles[variant],
