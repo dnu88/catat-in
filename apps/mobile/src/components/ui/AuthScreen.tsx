@@ -63,17 +63,17 @@ export function AuthHeroPanel({
 
       {stats && stats.length > 0 ? (
         <View style={styles.heroStatsRow}>
-          {stats.map((stat, index) => (
-            <View key={index} style={styles.heroStat}>
-              <KaswiseIcon
-                name={stat.icon}
-                size={16}
-                color={theme.iconBubbles[stat.tone || 'primary'].color}
-                weight="bold"
-              />
-              <Text style={styles.heroStatText}>{stat.label}</Text>
-            </View>
-          ))}
+          {stats.map((stat, index) => {
+            const bubbleTone = stat.tone === 'neutral' ? null : stat.tone === 'accent' ? 'navy' : stat.tone || 'primary'
+            const iconColor = bubbleTone ? theme.iconBubbles[bubbleTone].color : theme.colors.textMuted
+
+            return (
+              <View key={index} style={styles.heroStat}>
+                <KaswiseIcon name={stat.icon} size={16} color={iconColor} weight="bold" />
+                <Text style={styles.heroStatText}>{stat.label}</Text>
+              </View>
+            )
+          })}
         </View>
       ) : null}
     </View>

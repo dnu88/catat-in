@@ -4,11 +4,13 @@ import { KaswiseIcon, type KaswiseIconName } from '../icons/kaswise-icons'
 
 export type IconBubbleTone =
   | 'primary'
+  | 'navy'
+  | 'accent'
   | 'success'
   | 'danger'
   | 'warning'
-  | 'accent'
   | 'info'
+  | 'neutral'
 
 type IconBubbleProps = {
   name: KaswiseIconName
@@ -18,7 +20,20 @@ type IconBubbleProps = {
 
 export function IconBubble({ name, tone = 'primary', size = 42 }: IconBubbleProps) {
   const { theme } = useTheme()
-  const bubble = theme.iconBubbles[tone]
+
+  let bubble
+  if (tone === 'neutral') {
+    bubble = {
+      background: theme.colors.glass.background,
+      border: theme.colors.glass.border,
+      color: theme.colors.textMuted,
+    }
+  } else if (tone === 'accent') {
+    bubble = theme.iconBubbles.navy
+  } else {
+    bubble = theme.iconBubbles[tone]
+  }
+
   const iconSize = Math.round(size * 0.5)
 
   return (

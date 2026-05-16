@@ -42,7 +42,7 @@ export function InputField({
       ? {
           backgroundColor: theme.colors.card,
           borderColor: theme.colors.brandPrimary,
-          boxShadow: `0 0 0 3px ${theme.iconBubbles.primary.border}`,
+          boxShadow: theme.mode === 'light' ? `0 0 0 3px rgba(101, 163, 13, 0.30)` : `0 0 0 3px rgba(163, 255, 18, 0.25)`,
         }
       : {
           backgroundColor: theme.colors.card,
@@ -54,9 +54,17 @@ export function InputField({
     <View style={{ gap: theme.spacing.xs + 2 }}>
       <Text
         style={{
-          color: theme.colors.textSecondary,
-          fontSize: theme.typography.support.fontSize,
-          fontWeight: theme.typography.support.fontWeight,
+          color: error
+            ? theme.colors.danger
+            : focused
+              ? theme.mode === 'light'
+                ? theme.colors.brandPrimaryDeep
+                : theme.colors.brandPrimary
+              : theme.colors.textMuted,
+          fontSize: 10,
+          fontWeight: theme.typography.fontWeight.extrabold,
+          letterSpacing: 0.6,
+          textTransform: 'uppercase',
         }}
       >
         {label}
@@ -78,8 +86,10 @@ export function InputField({
           borderWidth: 1,
           borderRadius: theme.radius.md,
           color: theme.colors.textPrimary,
+          fontSize: theme.typography.fontSize.md,
+          fontFamily: theme.typography.fontFamily,
           paddingHorizontal: theme.spacing.md,
-          paddingVertical: theme.spacing.sm + 2,
+          paddingVertical: theme.spacing.md,
           ...fieldStyle,
         }}
       />

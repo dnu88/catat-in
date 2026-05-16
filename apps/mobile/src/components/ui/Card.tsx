@@ -18,20 +18,19 @@ export function Card({ children, variant = 'default', style }: CardProps) {
       backgroundColor: theme.colors.card,
       borderColor: theme.colors.borderSoft,
       borderWidth: 1,
-      borderRadius: theme.radius['2xl'],
+      borderRadius: theme.radius.lg,
       ...theme.shadow.sm,
     },
     elevated: {
       backgroundColor: theme.colors.surfaceElevated,
-      borderWidth: 0,
-      borderRadius: theme.radius['2xl'],
+      borderRadius: theme.radius.lg,
       ...theme.shadow.md,
     },
     muted: {
       backgroundColor: theme.colors.mutedSurface,
       borderColor: theme.colors.borderSoft,
       borderWidth: 1,
-      borderRadius: theme.radius['2xl'],
+      borderRadius: theme.radius.lg,
       ...theme.shadow.sm,
     },
   }
