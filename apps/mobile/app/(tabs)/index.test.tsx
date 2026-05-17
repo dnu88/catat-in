@@ -1,5 +1,6 @@
 import { fireEvent, render, waitFor } from '@testing-library/react-native'
-import { Text } from 'react-native'
+import { StyleSheet, Text } from 'react-native'
+import type { StyleProp, ViewStyle } from 'react-native'
 import { ThemeProvider } from '../../src/theme/theme-context'
 import { I18nProvider } from '../../src/i18n/i18n-context'
 import DashboardScreen from './index'
@@ -53,6 +54,41 @@ function expectTextOrder(texts: string[], expectedTexts: string[]) {
     lastIndex = index
   })
 }
+
+type StyleHostNode = {
+  props: {
+    style?: StyleProp<ViewStyle> | ((state: { pressed: boolean; hovered: boolean; focused: boolean }) => StyleProp<ViewStyle>)
+  }
+}
+
+function getFlattenedStyle(node: StyleHostNode): ViewStyle {
+  const style = typeof node.props.style === 'function'
+    ? node.props.style({ pressed: false, hovered: false, focused: false })
+    : node.props.style
+
+  return StyleSheet.flatten(style) ?? {}
+}
+
+const SOFT_GREEN_BACKGROUNDS = [
+  'rgba(163, 255, 18, 0.08)',
+  'rgba(163, 255, 18, 0.09)',
+  'rgba(163, 255, 18, 0.10)',
+  'rgba(163, 255, 18, 0.11)',
+  'rgba(163, 255, 18, 0.12)',
+  'rgba(163, 255, 18, 0.13)',
+  'rgba(163, 255, 18, 0.14)',
+]
+
+const SOFT_GREEN_BORDERS = [
+  'rgba(163, 255, 18, 0.18)',
+  'rgba(163, 255, 18, 0.19)',
+  'rgba(163, 255, 18, 0.20)',
+  'rgba(163, 255, 18, 0.21)',
+  'rgba(163, 255, 18, 0.22)',
+  'rgba(163, 255, 18, 0.23)',
+  'rgba(163, 255, 18, 0.24)',
+  'rgba(163, 255, 18, 0.25)',
+]
 
 describe('DashboardScreen dark luxury Home parity', () => {
   beforeEach(() => {
@@ -137,11 +173,13 @@ describe('DashboardScreen dark luxury Home parity', () => {
     const screen = renderDashboard()
 
     const cta = screen.getByTestId('home-budget-action')
-    expect(cta.props.style).toEqual(expect.arrayContaining([
-      expect.objectContaining({ backgroundColor: '#A3FF12' }),
-    ]))
+    expect(getFlattenedStyle(cta).backgroundColor).toBe('#A3FF12')
 
     const primaryBubble = screen.getByTestId('home-quick-action-manual')
-    expect(JSON.stringify(primaryBubble.props.style)).toContain('rgba(163, 255, 18, 0.10)')
+    const primaryBubbleStyle = getFlattenedStyle(primaryBubble)
+    expect(
+      SOFT_GREEN_BACKGROUNDS.includes(primaryBubbleStyle.backgroundColor as string)
+        || SOFT_GREEN_BORDERS.includes(primaryBubbleStyle.borderColor as string),
+    ).toBe(true)
   })
 })

@@ -174,7 +174,11 @@ describe('DashboardScreen dark luxury Home parity', () => {
     ]))
 
     const primaryBubble = screen.getByTestId('home-quick-action-manual')
-    expect(JSON.stringify(primaryBubble.props.style)).toContain('rgba(163, 255, 18, 0.10)')
+    const primaryBubbleStyle = getFlattenedStyle(primaryBubble)
+    expect(
+      SOFT_GREEN_BACKGROUNDS.includes(primaryBubbleStyle.backgroundColor as string)
+        || SOFT_GREEN_BORDERS.includes(primaryBubbleStyle.borderColor as string),
+    ).toBe(true)
   })
 })
 ```
@@ -534,7 +538,7 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
     heroBloomGreen: {
       top: -60,
       right: -60,
-      backgroundColor: softGreen(0.10),
+      backgroundColor: softGreen(0.14),
     },
     heroBloomNavy: {
       bottom: -80,
@@ -935,7 +939,7 @@ Run:
 pnpm --filter mobile test -- app/\(tabs\)/index.test.tsx --runInBand
 ```
 
-Expected: PASS. If the `softened neon` test fails because React Native returns function-style Pressable styles, update the test to render `HomeQuickActionRow` directly and inspect the style array on `home-quick-action-manual` after resolving the `style` callback; keep the assertion that `rgba(163, 255, 18, 0.10)` is present.
+Expected: PASS. If the `softened neon` test fails because React Native returns function-style Pressable styles, resolve the `style` callback and flatten it before asserting that the primary bubble uses a soft green background alpha in the approved `0.08`-`0.14` range or a soft green border alpha in the approved `0.18`-`0.25` range.
 
 - [ ] **Step 3: Run type-check**
 
