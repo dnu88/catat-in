@@ -89,6 +89,8 @@ Create `apps/mobile/app/(tabs)/index.test.tsx` with this content:
 
 ```tsx
 import { fireEvent, render, waitFor } from '@testing-library/react-native'
+import { StyleSheet } from 'react-native'
+import type { StyleProp, ViewStyle } from 'react-native'
 import { ThemeProvider } from '../../src/theme/theme-context'
 import { I18nProvider } from '../../src/i18n/i18n-context'
 import DashboardScreen from './index'
@@ -108,6 +110,41 @@ function renderDashboard() {
     </ThemeProvider>,
   )
 }
+
+type StyleHostNode = {
+  props: {
+    style?: StyleProp<ViewStyle> | ((state: { pressed: boolean; hovered: boolean; focused: boolean }) => StyleProp<ViewStyle>)
+  }
+}
+
+function getFlattenedStyle(node: StyleHostNode): ViewStyle {
+  const style = typeof node.props.style === 'function'
+    ? node.props.style({ pressed: false, hovered: false, focused: false })
+    : node.props.style
+
+  return StyleSheet.flatten(style) ?? {}
+}
+
+const SOFT_GREEN_BACKGROUNDS = [
+  'rgba(163, 255, 18, 0.08)',
+  'rgba(163, 255, 18, 0.09)',
+  'rgba(163, 255, 18, 0.10)',
+  'rgba(163, 255, 18, 0.11)',
+  'rgba(163, 255, 18, 0.12)',
+  'rgba(163, 255, 18, 0.13)',
+  'rgba(163, 255, 18, 0.14)',
+]
+
+const SOFT_GREEN_BORDERS = [
+  'rgba(163, 255, 18, 0.18)',
+  'rgba(163, 255, 18, 0.19)',
+  'rgba(163, 255, 18, 0.20)',
+  'rgba(163, 255, 18, 0.21)',
+  'rgba(163, 255, 18, 0.22)',
+  'rgba(163, 255, 18, 0.23)',
+  'rgba(163, 255, 18, 0.24)',
+  'rgba(163, 255, 18, 0.25)',
+]
 
 describe('DashboardScreen dark luxury Home parity', () => {
   beforeEach(() => {
@@ -169,9 +206,7 @@ describe('DashboardScreen dark luxury Home parity', () => {
     const screen = renderDashboard()
 
     const cta = screen.getByTestId('home-budget-action')
-    expect(cta.props.style).toEqual(expect.arrayContaining([
-      expect.objectContaining({ backgroundColor: '#A3FF12' }),
-    ]))
+    expect(getFlattenedStyle(cta).backgroundColor).toBe('#A3FF12')
 
     const primaryBubble = screen.getByTestId('home-quick-action-manual')
     const primaryBubbleStyle = getFlattenedStyle(primaryBubble)
@@ -188,7 +223,7 @@ describe('DashboardScreen dark luxury Home parity', () => {
 Run:
 
 ```bash
-pnpm --filter mobile test -- app/\(tabs\)/index.test.tsx --runInBand
+pnpm --filter mobile exec jest --runTestsByPath "app/(tabs)/index.test.tsx" --runInBand
 ```
 
 Expected: FAIL because the current screen still uses the old labels (`Selamat datang, Danu`, `Teks`, `Foto`, `Suara`, `Transaksi Terbaru`) and does not expose the requested test IDs.
@@ -793,7 +828,7 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
 Run:
 
 ```bash
-pnpm --filter mobile test -- app/\(tabs\)/index.test.tsx --runInBand
+pnpm --filter mobile exec jest --runTestsByPath "app/(tabs)/index.test.tsx" --runInBand
 pnpm --filter mobile type-check
 ```
 
@@ -936,10 +971,10 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
 Run:
 
 ```bash
-pnpm --filter mobile test -- app/\(tabs\)/index.test.tsx --runInBand
+pnpm --filter mobile exec jest --runTestsByPath "app/(tabs)/index.test.tsx" --runInBand
 ```
 
-Expected: PASS. If the `softened neon` test fails because React Native returns function-style Pressable styles, resolve the `style` callback and flatten it before asserting that the primary bubble uses a soft green background alpha in the approved `0.08`-`0.14` range or a soft green border alpha in the approved `0.18`-`0.25` range.
+Expected: PASS. The `softened neon` test resolves function-style Pressable styles and flattens them with `StyleSheet.flatten` before asserting that the primary bubble uses a soft green background alpha in the approved `0.08`-`0.14` range or a soft green border alpha in the approved `0.18`-`0.25` range.
 
 - [ ] **Step 3: Run type-check**
 
@@ -975,7 +1010,7 @@ Expected: commit succeeds.
 Run:
 
 ```bash
-pnpm --filter mobile test -- app/\(tabs\)/index.test.tsx --runInBand
+pnpm --filter mobile exec jest --runTestsByPath "app/(tabs)/index.test.tsx" --runInBand
 pnpm --filter mobile type-check
 ```
 
@@ -1012,7 +1047,7 @@ Record results in `docs/plan/HOME-DARK-LUXURY-PARITY-QA.md` with this content:
 
 ## Commands
 
-- `pnpm --filter mobile test -- app/\(tabs\)/index.test.tsx --runInBand`: PASS
+- `pnpm --filter mobile exec jest --runTestsByPath "app/(tabs)/index.test.tsx" --runInBand`: PASS
 - `pnpm --filter mobile type-check`: PASS
 - `pnpm --filter mobile test -- --runInBand`: PASS or documented below
 
@@ -1057,7 +1092,7 @@ Run before reporting completion:
 
 ```bash
 git status --short
-pnpm --filter mobile test -- app/\(tabs\)/index.test.tsx --runInBand
+pnpm --filter mobile exec jest --runTestsByPath "app/(tabs)/index.test.tsx" --runInBand
 pnpm --filter mobile type-check
 ```
 
