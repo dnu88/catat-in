@@ -4,6 +4,7 @@
 .env.*.local
 .tmp/
 .claude/
+.superpowers/
 
 # ── NODE / PNPM ──────────────────────────────────────────────
 node_modules/
