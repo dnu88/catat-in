@@ -1,4 +1,5 @@
 import { fireEvent, render, waitFor } from '@testing-library/react-native'
+import { Text } from 'react-native'
 import { ThemeProvider } from '../../src/theme/theme-context'
 import { I18nProvider } from '../../src/i18n/i18n-context'
 import DashboardScreen from './index'
@@ -19,6 +20,40 @@ function renderDashboard() {
   )
 }
 
+function getTextContent(value: unknown): string {
+  if (typeof value === 'string' || typeof value === 'number') {
+    return String(value)
+  }
+
+  if (Array.isArray(value)) {
+    return value.map(getTextContent).join('')
+  }
+
+  if (value && typeof value === 'object' && 'props' in value) {
+    return getTextContent((value as { props?: { children?: unknown } }).props?.children)
+  }
+
+  return ''
+}
+
+function getRenderedTextNodes(screen: ReturnType<typeof renderDashboard>) {
+  return screen.UNSAFE_getAllByType(Text)
+    .map((node) => getTextContent(node.props.children).trim())
+    .filter(Boolean)
+}
+
+function expectTextOrder(texts: string[], expectedTexts: string[]) {
+  let lastIndex = -1
+
+  expectedTexts.forEach((label) => {
+    const index = texts.findIndex((text, textIndex) => textIndex > lastIndex && text === label)
+
+    expect(index).not.toBe(-1)
+    expect(index).toBeGreaterThan(lastIndex)
+    lastIndex = index
+  })
+}
+
 describe('DashboardScreen dark luxury Home parity', () => {
   beforeEach(() => {
     mockPush.mockClear()
@@ -31,11 +66,20 @@ describe('DashboardScreen dark luxury Home parity', () => {
       expect(screen.getByText('Halo, Danu')).toBeTruthy()
     })
 
+    expect(screen.getByText('April 2026')).toBeTruthy()
+    expect(screen.getByText('DB')).toBeTruthy()
+
     expect(screen.getByText('Total saldo')).toBeTruthy()
     expect(screen.getByText('Rp 4.250.000')).toBeTruthy()
+    expect(screen.getByText('Main Wallet')).toBeTruthy()
+    expect(screen.getByText('Manage')).toBeTruthy()
+    expect(screen.getByText('↗ 15%')).toBeTruthy()
     expect(screen.getByText('Pemasukan')).toBeTruthy()
+    expect(screen.getByText('8,00 Jt')).toBeTruthy()
     expect(screen.getByText('Pengeluaran')).toBeTruthy()
+    expect(screen.getByText('3,75 Jt')).toBeTruthy()
     expect(screen.getByText('Tabungan')).toBeTruthy()
+    expect(screen.getByText('53%')).toBeTruthy()
 
     expect(screen.getByText('Manual')).toBeTruthy()
     expect(screen.getByText('AI Chat')).toBeTruthy()
@@ -57,6 +101,20 @@ describe('DashboardScreen dark luxury Home parity', () => {
 
     expect(screen.getByText('Insight harian')).toBeTruthy()
     expect(screen.getByText(/Pengeluaran kategori/)).toBeTruthy()
+
+    expectTextOrder(getRenderedTextNodes(screen), [
+      'Halo, Danu',
+      'April 2026',
+      'Total saldo',
+      'Rp 4.250.000',
+      'Manual',
+      'AI Chat',
+      'Struk',
+      'Import',
+      'Anggaran',
+      'Terakhir',
+      'Insight harian',
+    ])
   })
 
   it('routes primary Home actions to the expected tabs', async () => {
