@@ -22,7 +22,15 @@
     "app/**/*.ts",
     "app/**/*.tsx",
     "src/**/*.ts",
-    "src/**/*.tsx"
+    "src/**/*.tsx",
+    "__tests__/**/*.ts",
+    "__tests__/**/*.tsx"
+  ],
+  "exclude": [
+    "app/**/*.test.ts",
+    "app/**/*.test.tsx",
+    "src/**/*.test.ts",
+    "src/**/*.test.tsx"
   ],
   "extends": "expo/tsconfig.base"
 }

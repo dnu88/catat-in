@@ -1,9 +1,9 @@
 import { fireEvent, render, waitFor } from '@testing-library/react-native'
 import { StyleSheet, Text } from 'react-native'
 import type { StyleProp, ViewStyle } from 'react-native'
-import { ThemeProvider } from '../../src/theme/theme-context'
-import { I18nProvider } from '../../src/i18n/i18n-context'
-import DashboardScreen from './index'
+import { ThemeProvider } from '../src/theme/theme-context'
+import { I18nProvider } from '../src/i18n/i18n-context'
+import DashboardScreen from '../app/(tabs)/index'
 
 const mockPush = jest.fn()
 
