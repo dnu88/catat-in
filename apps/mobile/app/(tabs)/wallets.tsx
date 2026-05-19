@@ -56,7 +56,9 @@ export default function WalletsScreen() {
         </View>
 
         {/* Total Balance Card */}
-        <View style={styles.totalCard}>
+        <View testID="wallets-total-hero" style={styles.totalCard}>
+          <View style={styles.heroBloomOne} />
+          <View style={styles.heroBloomTwo} />
           <Text style={styles.totalLabel}>Total Saldo Semua Akun</Text>
           <Text style={styles.totalValue}>Rp {totalBalance.toLocaleString('id-ID')}</Text>
           <View style={styles.totalRow}>
@@ -139,23 +141,48 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
     },
     addButtonText: { color: theme.colors.textInverse, fontSize: theme.typography.fontSize.sm, fontWeight: theme.typography.fontWeight.bold },
     totalCard: {
-      backgroundColor: theme.colors.brandPrimary,
-      borderRadius: theme.radius.lg,
+      backgroundColor: theme.colors.card,
+      borderRadius: 24,
+      borderWidth: 1,
+      borderColor: theme.colors.borderSoft,
       padding: 18,
       gap: 6,
+      overflow: 'hidden',
+      ...(theme.mode === 'light' ? theme.shadow.lg : {}),
     },
-    totalLabel: { color: theme.colors.textInverse, opacity: theme.opacity[72], fontSize: theme.typography.fontSize.sm, fontWeight: theme.typography.fontWeight.semibold },
-    totalValue: { color: theme.colors.textInverse, fontSize: theme.typography.fontSize['4xl'], fontWeight: theme.typography.fontWeight.extrabold, letterSpacing: theme.typography.letterSpacing.tight },
+    heroBloomOne: {
+      position: 'absolute',
+      top: -60,
+      right: -60,
+      width: 180,
+      height: 180,
+      borderRadius: 90,
+      backgroundColor: theme.mode === 'light' ? 'rgba(163, 255, 18, 0.22)' : 'rgba(163, 255, 18, 0.14)',
+      opacity: 0.55,
+    },
+    heroBloomTwo: {
+      position: 'absolute',
+      bottom: -80,
+      left: -60,
+      width: 180,
+      height: 180,
+      borderRadius: 90,
+      backgroundColor: theme.mode === 'light' ? 'rgba(74, 128, 240, 0.08)' : 'rgba(74, 128, 240, 0.10)',
+      opacity: 0.6,
+    },
+    totalLabel: { color: theme.colors.textMuted, fontSize: theme.typography.fontSize.sm, fontWeight: theme.typography.fontWeight.semibold },
+    totalValue: { color: theme.colors.textPrimary, fontSize: theme.typography.fontSize['4xl'], fontWeight: theme.typography.fontWeight.extrabold, letterSpacing: theme.typography.letterSpacing.tight },
     totalRow: { marginTop: 6 },
     totalChip: {
-      backgroundColor: theme.colors.textInverse,
-      opacity: theme.opacity[18],
+      backgroundColor: theme.colors.glass.background,
+      borderWidth: 1,
+      borderColor: theme.colors.glass.border,
       borderRadius: 999,
       paddingHorizontal: 12,
       paddingVertical: 5,
       alignSelf: 'flex-start',
     },
-    totalChipText: { color: theme.colors.textInverse, opacity: theme.opacity[90], fontSize: theme.typography.fontSize.sm, fontWeight: theme.typography.fontWeight.semibold },
+    totalChipText: { color: theme.colors.textSecondary, fontSize: theme.typography.fontSize.sm, fontWeight: theme.typography.fontWeight.semibold },
     filterRow: { gap: 8, paddingVertical: 2 },
     filterChip: {
       paddingHorizontal: 14,
