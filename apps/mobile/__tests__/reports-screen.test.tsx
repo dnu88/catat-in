@@ -57,17 +57,31 @@ describe('ReportsScreen visual parity', () => {
     expect((getFlattenedStyle(activePeriodText) as { color?: string }).color).not.toBe('#A3FF12')
   })
 
-  it('gives each expense category its own visual color', () => {
+  it('gives each expense category its own visual color and matches donut segments', () => {
     const screen = renderReports()
 
     fireEvent.press(screen.getByText('Kategori'))
 
-    const fillColors = ['food', 'transport', 'shopping', 'bills', 'entertainment', 'other'].map((id) => {
+    const categoryIds = ['food', 'transport', 'shopping', 'bills', 'entertainment', 'other']
+    const fillColors = categoryIds.map((id) => {
       const fill = screen.getByTestId(`reports-category-fill-${id}`)
       return getFlattenedStyle(fill).backgroundColor
+    })
+    const donutColors = categoryIds.map((id) => {
+      const segment = screen.getByTestId(`reports-donut-segment-${id}`)
+      return getFlattenedStyle(segment).backgroundColor
     })
 
     expect(new Set(fillColors).size).toBeGreaterThan(3)
     expect(fillColors.every((color) => color !== '#A3FF12')).toBe(true)
+    expect(donutColors).toEqual(fillColors)
+  })
+
+  it('renders the six month trend as line graph dots instead of bars', () => {
+    const screen = renderReports()
+
+    expect(screen.getAllByTestId(/reports-line-dot-income-/)).toHaveLength(6)
+    expect(screen.getAllByTestId(/reports-line-dot-expense-/)).toHaveLength(6)
+    expect(screen.queryByTestId('reports-bar-chart')).toBeNull()
   })
 })

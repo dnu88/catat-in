@@ -65,7 +65,7 @@ export default function TabsLayout() {
           paddingTop: 2,
           elevation: theme.mode === 'dark' ? 0 : 4,
         },
-        tabBarActiveTintColor: theme.colors.brandPrimary,
+        tabBarActiveTintColor: theme.mode === 'light' ? theme.colors.brandPrimaryDeep : theme.colors.brandPrimary,
         tabBarInactiveTintColor: theme.colors.textMuted,
         tabBarLabelStyle: {
           fontSize: 9,
@@ -121,7 +121,7 @@ export default function TabsLayout() {
             <View
               style={[
                 styles.captureTabIcon,
-                { backgroundColor: theme.colors.brandPrimary, borderColor: theme.colors.background },
+                { backgroundColor: theme.mode === 'light' ? theme.colors.brandPrimaryDeep : theme.colors.brandPrimary, borderColor: theme.colors.background },
               ]}
             >
               <KaswiseIcon name="capture" color={theme.colors.textInverse} size={22} weight={focused ? 'fill' : 'bold'} />

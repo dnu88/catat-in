@@ -331,44 +331,47 @@ export default function ReportsScreen() {
               <Text style={styles.chartTitle}>Tren 6 Bulan</Text>
               <Text style={styles.chartSub}>Pemasukan vs pengeluaran (dalam jutaan Rp)</Text>
 
-              <View style={styles.chartArea}>
-                {months.map((month, idx) => (
-                  <Pressable
-                    key={month}
-                    style={styles.chartColumn}
-                    onPress={() => setSelectedBar(selectedBar === idx ? null : idx)}
-                  >
-                    <View style={styles.chartBarsWrap}>
-                      <View
-                        style={[
-                          styles.chartBar,
-                          { height: `${(incomeData[idx] / maxVal) * 100}%`, backgroundColor: theme.colors.success },
-                          selectedBar === idx && styles.chartBarSelected,
-                        ]}
-                      />
-                      <View
-                        style={[
-                          styles.chartBar,
-                          { height: `${(expenseData[idx] / maxVal) * 100}%`, backgroundColor: `${theme.colors.danger}90` },
-                          selectedBar === idx && styles.chartBarSelected,
-                        ]}
-                      />
-                    </View>
-                    <Text style={styles.chartLabel}>{month}</Text>
+              <View style={styles.lineChartArea}>
+                <View style={styles.lineGrid}>
+                  <View style={styles.gridLine} />
+                  <View style={styles.gridLine} />
+                  <View style={styles.gridLine} />
+                </View>
+                <View style={styles.lineGraphLayer}>
+                  {months.map((month, idx) => {
+                    const incomeTop = 10 + (1 - incomeData[idx] / maxVal) * 118
+                    const expenseTop = 10 + (1 - expenseData[idx] / maxVal) * 118
+                    return (
+                      <Pressable
+                        key={month}
+                        style={styles.lineColumn}
+                        onPress={() => setSelectedBar(selectedBar === idx ? null : idx)}
+                      >
+                        <View testID={`reports-line-dot-income-${idx}`} style={[styles.lineDot, styles.incomeDot, { top: incomeTop }]} />
+                        <View testID={`reports-line-dot-expense-${idx}`} style={[styles.lineDot, styles.expenseDot, { top: expenseTop }]} />
+                        {idx < months.length - 1 ? (
+                          <>
+                            <View style={[styles.lineSegment, styles.incomeSegment, { top: incomeTop }]} />
+                            <View style={[styles.lineSegment, styles.expenseSegment, { top: expenseTop }]} />
+                          </>
+                        ) : null}
+                        <Text style={styles.chartLabel}>{month}</Text>
 
-                    {selectedBar === idx && (
-                      <View style={styles.chartTooltip}>
-                        <Text style={styles.tooltipTitle}>{month} 2026</Text>
-                        <Text style={[styles.tooltipValue, { color: theme.colors.success }]}>
-                          Pemasukan: Rp {incomeData[idx]} Jt
-                        </Text>
-                        <Text style={[styles.tooltipValue, { color: theme.colors.danger }]}>
-                          Pengeluaran: Rp {expenseData[idx]} Jt
-                        </Text>
-                      </View>
-                    )}
-                  </Pressable>
-                ))}
+                        {selectedBar === idx && (
+                          <View style={styles.chartTooltip}>
+                            <Text style={styles.tooltipTitle}>{month} 2026</Text>
+                            <Text style={[styles.tooltipValue, { color: theme.colors.success }]}>
+                              Pemasukan: Rp {incomeData[idx]} Jt
+                            </Text>
+                            <Text style={[styles.tooltipValue, { color: theme.colors.danger }]}>
+                              Pengeluaran: Rp {expenseData[idx]} Jt
+                            </Text>
+                          </View>
+                        )}
+                      </Pressable>
+                    )
+                  })}
+                </View>
               </View>
 
               <View style={styles.chartLegend}>
@@ -391,9 +394,21 @@ export default function ReportsScreen() {
               <Text style={styles.categoryCardTitle}>Breakdown Pengeluaran</Text>
               <Text style={styles.categoryCardSub}>Per kategori bulan Mei 2026</Text>
 
-              {/* Visual Ring Placeholder */}
               <View style={styles.ringArea}>
-                <View style={styles.ringOuter}>
+                <View style={styles.donutChart}>
+                  {categories.map((cat, index) => (
+                    <View
+                      key={cat.id}
+                      testID={`reports-donut-segment-${cat.id}`}
+                      style={[
+                        styles.donutSegment,
+                        {
+                          backgroundColor: cat.color,
+                          transform: [{ rotate: `${index * 60}deg` }],
+                        },
+                      ]}
+                    />
+                  ))}
                   <View style={styles.ringInner}>
                     <Text style={styles.ringValue}>Rp 6,4 Jt</Text>
                     <Text style={styles.ringLabel}>Total</Text>
@@ -727,34 +742,65 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
     },
     chartTitle: { color: theme.colors.textPrimary, fontSize: 16, fontWeight: '800' },
     chartSub: { color: theme.colors.textSecondary, fontSize: 12 },
-    chartArea: {
-      height: 160,
-      flexDirection: 'row',
-      alignItems: 'flex-end',
-      justifyContent: 'space-between',
-      gap: 6,
+    lineChartArea: {
+      height: 170,
       marginTop: 8,
+      position: 'relative',
     },
-    chartColumn: {
+    lineGrid: {
+      position: 'absolute',
+      left: 0,
+      right: 0,
+      top: 10,
+      bottom: 24,
+      justifyContent: 'space-between',
+    },
+    gridLine: {
+      height: 1,
+      backgroundColor: theme.colors.borderSoft,
+    },
+    lineGraphLayer: {
+      flex: 1,
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      paddingTop: 10,
+      paddingBottom: 22,
+    },
+    lineColumn: {
       flex: 1,
       alignItems: 'center',
       height: '100%',
+      position: 'relative',
     },
-    chartBarsWrap: {
-      flex: 1,
-      flexDirection: 'row',
-      alignItems: 'flex-end',
-      gap: 3,
+    lineDot: {
+      position: 'absolute',
+      width: 10,
+      height: 10,
+      borderRadius: 5,
+      borderWidth: 2,
+      borderColor: theme.colors.surface,
+      zIndex: 3,
+    },
+    incomeDot: {
+      backgroundColor: theme.colors.success,
+    },
+    expenseDot: {
+      backgroundColor: theme.colors.danger,
+    },
+    lineSegment: {
+      position: 'absolute',
+      left: '50%',
       width: '100%',
+      height: 3,
+      borderRadius: 999,
+      opacity: 0.72,
+      zIndex: 1,
     },
-    chartBar: {
-      flex: 1,
-      borderTopLeftRadius: 6,
-      borderTopRightRadius: 6,
+    incomeSegment: {
+      backgroundColor: theme.colors.success,
     },
-    chartBarSelected: {
-      opacity: 0.85,
-      transform: [{ scale: 1.03 }],
+    expenseSegment: {
+      backgroundColor: theme.colors.danger,
     },
     chartTooltip: {
       position: 'absolute',
@@ -788,16 +834,35 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
     categoryCardTitle: { color: theme.colors.textPrimary, fontSize: 16, fontWeight: '800' },
     categoryCardSub: { color: theme.colors.textSecondary, fontSize: 12 },
     ringArea: { alignItems: 'center', paddingVertical: 14 },
-    ringOuter: {
-      width: 140,
-      height: 140,
-      borderRadius: 70,
-      borderWidth: 10,
-      borderColor: theme.colors.brandPrimary,
+    donutChart: {
+      width: 150,
+      height: 150,
+      borderRadius: 75,
       alignItems: 'center',
       justifyContent: 'center',
+      overflow: 'hidden',
+      position: 'relative',
+      backgroundColor: theme.colors.mutedSurface,
     },
-    ringInner: { alignItems: 'center' },
+    donutSegment: {
+      position: 'absolute',
+      width: 75,
+      height: 75,
+      top: 0,
+      left: 75,
+      transformOrigin: '0px 75px',
+      opacity: 0.9,
+    },
+    ringInner: {
+      width: 92,
+      height: 92,
+      borderRadius: 46,
+      backgroundColor: theme.colors.surface,
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderWidth: 1,
+      borderColor: theme.colors.borderSoft,
+    },
     ringValue: { color: theme.colors.textPrimary, fontSize: 18, fontWeight: '800' },
     ringLabel: { color: theme.colors.textMuted, fontSize: 11, marginTop: 2 },
     catRow: {

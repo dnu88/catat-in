@@ -114,6 +114,7 @@ export function AuthButton({ label, onPress, loading, disabled }: AuthButtonProp
 
   return (
     <Pressable
+      testID="auth-primary-button"
       style={[styles.primaryButton, (loading || disabled) && styles.primaryButtonDisabled]}
       onPress={onPress}
       disabled={loading || disabled}
@@ -205,6 +206,8 @@ function createLayoutStyles(theme: ReturnType<typeof useTheme>['theme']) {
 }
 
 function createHeroStyles(theme: ReturnType<typeof useTheme>['theme']) {
+  const brandText = theme.mode === 'light' ? theme.colors.brandPrimaryDeep : theme.colors.brandPrimary
+
   return StyleSheet.create({
     heroPanel: {
       backgroundColor: theme.colors.mutedSurface,
@@ -225,7 +228,7 @@ function createHeroStyles(theme: ReturnType<typeof useTheme>['theme']) {
       gap: theme.spacing.xs,
     },
     brandEyebrow: {
-      color: theme.colors.brandPrimary,
+      color: brandText,
       fontSize: theme.typography.support.fontSize,
       fontWeight: '800',
       textTransform: 'uppercase',
@@ -298,9 +301,11 @@ function createCardStyles(theme: ReturnType<typeof useTheme>['theme']) {
 }
 
 function createButtonStyles(theme: ReturnType<typeof useTheme>['theme']) {
+  const primaryButtonBg = theme.mode === 'light' ? theme.colors.brandPrimaryDeep : theme.colors.brandPrimary
+
   return StyleSheet.create({
     primaryButton: {
-      backgroundColor: theme.colors.brandPrimary,
+      backgroundColor: primaryButtonBg,
       borderRadius: theme.radius.pill,
       minHeight: 52,
       alignItems: 'center',
@@ -321,6 +326,8 @@ function createButtonStyles(theme: ReturnType<typeof useTheme>['theme']) {
 }
 
 function createFooterStyles(theme: ReturnType<typeof useTheme>['theme']) {
+  const brandText = theme.mode === 'light' ? theme.colors.brandPrimaryDeep : theme.colors.brandPrimary
+
   return StyleSheet.create({
     footerRow: {
       flexDirection: 'row',
@@ -338,7 +345,7 @@ function createFooterStyles(theme: ReturnType<typeof useTheme>['theme']) {
       textAlign: 'center',
     },
     linkPrimary: {
-      color: theme.colors.brandPrimary,
+      color: brandText,
       fontSize: 14,
       fontWeight: '800',
     },
@@ -364,6 +371,8 @@ function createBackStyles(theme: ReturnType<typeof useTheme>['theme']) {
 }
 
 function createLinkStyles(theme: ReturnType<typeof useTheme>['theme']) {
+  const brandText = theme.mode === 'light' ? theme.colors.brandPrimaryDeep : theme.colors.brandPrimary
+
   return StyleSheet.create({
     linkContainer: {
       alignSelf: 'flex-start',
@@ -381,7 +390,7 @@ function createLinkStyles(theme: ReturnType<typeof useTheme>['theme']) {
       marginTop: 0,
     },
     linkPrimary: {
-      color: theme.colors.brandPrimary,
+      color: brandText,
       fontSize: 14,
       fontWeight: '800',
       lineHeight: 20,
