@@ -62,12 +62,13 @@ export default function SettingsScreen() {
             {(['system', 'light', 'dark'] as const).map((mode) => (
               <Pressable
                 key={mode}
+                testID={`settings-theme-${mode}`}
                 onPress={() => setPreference(mode)}
                 style={[
                   styles.themeChip,
                   preference === mode && {
-                    backgroundColor: theme.colors.brandPrimary,
-                    borderColor: theme.colors.brandPrimary,
+                    backgroundColor: theme.mode === 'light' ? theme.colors.brandPrimaryDeep : theme.colors.brandPrimary,
+                    borderColor: theme.mode === 'light' ? theme.colors.brandPrimaryDeep : theme.colors.brandPrimary,
                   },
                 ]}
               >
@@ -93,12 +94,13 @@ export default function SettingsScreen() {
             {(['id', 'en'] as const).map((lang) => (
               <Pressable
                 key={lang}
+                testID={`settings-language-${lang}`}
                 onPress={() => setLanguage(lang)}
                 style={[
                   styles.themeChip,
                   language === lang && {
-                    backgroundColor: theme.colors.brandPrimary,
-                    borderColor: theme.colors.brandPrimary,
+                    backgroundColor: theme.mode === 'light' ? theme.colors.brandPrimaryDeep : theme.colors.brandPrimary,
+                    borderColor: theme.mode === 'light' ? theme.colors.brandPrimaryDeep : theme.colors.brandPrimary,
                   },
                 ]}
               >
@@ -229,7 +231,7 @@ function ToggleRow({
           width: 44,
           height: 24,
           borderRadius: 999,
-          backgroundColor: value ? theme.colors.brandPrimary : theme.colors.borderStrong,
+          backgroundColor: value ? (theme.mode === 'light' ? theme.colors.brandPrimaryDeep : theme.colors.brandPrimary) : theme.colors.borderStrong,
           padding: 2,
           justifyContent: 'center',
         }}
@@ -289,6 +291,9 @@ function NavRow({
 }
 
 function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
+  const lightBrand = theme.mode === 'light' ? theme.colors.brandPrimaryDeep : theme.colors.brandPrimary
+  const lightBrandSoft = theme.mode === 'light' ? `${theme.colors.brandPrimaryDeep}15` : `${theme.colors.brandPrimary}15`
+
   return StyleSheet.create({
     screen: { flex: 1, backgroundColor: theme.colors.background },
     content: { padding: 20, gap: 10, paddingBottom: 26 },
@@ -309,7 +314,7 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
       width: 50,
       height: 50,
       borderRadius: 25,
-      backgroundColor: theme.colors.brandPrimary,
+      backgroundColor: lightBrand,
       alignItems: 'center',
       justifyContent: 'center',
     },
@@ -318,12 +323,12 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
     profileName: { color: theme.colors.textPrimary, fontSize: theme.typography.fontSize.lg, fontWeight: theme.typography.fontWeight.extrabold },
     profileEmail: { color: theme.colors.textMuted, fontSize: theme.typography.fontSize.sm, marginTop: 2 },
     profileEdit: {
-      backgroundColor: `${theme.colors.brandPrimary}15`,
+      backgroundColor: lightBrandSoft,
       borderRadius: theme.radius.pill,
       paddingHorizontal: 12,
       paddingVertical: 6,
     },
-    profileEditText: { color: theme.colors.brandPrimary, fontSize: 12, fontWeight: '700' },
+    profileEditText: { color: lightBrand, fontSize: 12, fontWeight: '700' },
     sectionCard: {
       backgroundColor: theme.colors.surface,
       borderRadius: 18,

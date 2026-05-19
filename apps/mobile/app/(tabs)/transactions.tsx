@@ -5,6 +5,7 @@ import { useRouter } from 'expo-router'
 import { KaswiseIcon } from '../../src/components/icons/kaswise-icons'
 import { EmptyState, FilterChip, IconBubble, ScreenHeader, StatCard, StateMessage } from '../../src/components/ui'
 import { useTheme } from '../../src/theme/theme-context'
+import { useI18n } from '../../src/i18n/i18n-context'
 import { listTransactions, type Transaction } from '../../src/services/transactions'
 
 type Filter = 'all' | 'income' | 'expense'
@@ -14,16 +15,17 @@ type TransactionListItem = {
   item: Transaction
   index: number
   total: number
+  isEn: boolean
   theme: ReturnType<typeof useTheme>['theme']
   styles: ReturnType<typeof createStyles>
 }
 
-function TransactionRow({ item, index, total, theme, styles }: TransactionListItem) {
+function TransactionRow({ item, index, total, isEn, theme, styles }: TransactionListItem) {
   const formattedDate = new Date(
     item.date || item.created_at || Date.now(),
-  ).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })
+  ).toLocaleDateString(isEn ? 'en-US' : 'id-ID', { day: 'numeric', month: 'short', year: 'numeric' })
   const amount = Number(item.amount ?? 0)
-  const title = item.description || item.merchant || item.category || 'Transaksi'
+  const title = item.description || item.merchant || item.category || (isEn ? 'Transaction' : 'Transaksi')
 
   return (
     <Pressable
@@ -62,8 +64,11 @@ function TransactionRow({ item, index, total, theme, styles }: TransactionListIt
 
 export default function TransactionsScreen() {
   const { theme } = useTheme()
+  const { language } = useI18n()
   const router = useRouter()
   const styles = useMemo(() => createStyles(theme), [theme])
+
+  const isEn = language === 'en'
   const [activeFilter, setActiveFilter] = useState<Filter>('all')
   const [activePeriod, setActivePeriod] = useState<Period>('month')
   const [transactions, setTransactions] = useState<Transaction[]>([])
@@ -81,7 +86,7 @@ export default function TransactionsScreen() {
       setTransactions(data)
     } catch (error) {
       console.error('Error loading transactions:', error)
-      setLoadError('Gagal memuat transaksi. Coba lagi sebentar.')
+      setLoadError(isEn ? 'Failed to load transactions. Please try again.' : 'Gagal memuat transaksi. Coba lagi sebentar.')
     } finally {
       setLoading(false)
     }
@@ -114,7 +119,7 @@ export default function TransactionsScreen() {
   if (loading) {
     return (
       <View style={[styles.screen, { justifyContent: 'center', alignItems: 'center' }]}>
-        <ActivityIndicator size="large" color={theme.colors.brandPrimary} />
+        <ActivityIndicator size="large" color={theme.mode === 'light' ? theme.colors.brandPrimaryDeep : theme.colors.brandPrimary} />
       </View>
     )
   }
@@ -124,6 +129,7 @@ export default function TransactionsScreen() {
       item={item}
       index={index}
       total={list.length}
+      isEn={isEn}
       theme={theme}
       styles={styles}
     />
@@ -134,8 +140,8 @@ export default function TransactionsScreen() {
   const ListHeader = () => (
     <>
       <ScreenHeader
-        title="Transaksi"
-        subtitle="Pantau arus kas harianmu dengan detail."
+        title={isEn ? 'Transactions' : 'Transaksi'}
+        subtitle={isEn ? 'Track your daily cash flow in detail.' : 'Pantau arus kas harianmu dengan detail.'}
         action={(
           <View style={styles.summaryBadge}>
             <Text style={styles.summaryBadgeText}>{list.length} item</Text>
@@ -149,12 +155,13 @@ export default function TransactionsScreen() {
         {(['week', 'month', 'year'] as Period[]).map((period) => (
           <Pressable
             key={period}
+            testID={`transactions-period-${period}`}
             onPress={() => setActivePeriod(period)}
             style={[
               styles.periodChip,
               activePeriod === period && {
-                backgroundColor: theme.colors.brandPrimary,
-                borderColor: theme.colors.brandPrimary,
+                backgroundColor: theme.mode === 'light' ? theme.colors.brandPrimaryDeep : theme.colors.brandPrimary,
+                borderColor: theme.mode === 'light' ? theme.colors.brandPrimaryDeep : theme.colors.brandPrimary,
               },
             ]}
           >
@@ -164,22 +171,26 @@ export default function TransactionsScreen() {
                 activePeriod === period && { color: theme.colors.textInverse },
               ]}
             >
-              {period === 'week' ? 'Minggu' : period === 'month' ? 'Bulan' : 'Tahun'}
+              {isEn
+                ? period === 'week' ? 'Week' : period === 'month' ? 'Month' : 'Year'
+                : period === 'week' ? 'Minggu' : period === 'month' ? 'Bulan' : 'Tahun'}
             </Text>
           </Pressable>
         ))}
       </View>
 
       <View style={styles.statRow}>
-        <StatCard label="Pemasukan" value={`Rp ${(totalIncome / 1000000).toFixed(1)} Jt`} icon="chart" tone="success" />
-        <StatCard label="Pengeluaran" value={`Rp ${(totalExpense / 1000000).toFixed(1)} Jt`} icon="transactions" tone="danger" />
+        <StatCard label={isEn ? 'Income' : 'Pemasukan'} value={`Rp ${(totalIncome / 1000000).toFixed(1)} Jt`} icon="chart" tone="success" />
+        <StatCard label={isEn ? 'Expense' : 'Pengeluaran'} value={`Rp ${(totalExpense / 1000000).toFixed(1)} Jt`} icon="transactions" tone="danger" />
       </View>
 
       <View style={styles.filterRow}>
         {(['all', 'income', 'expense'] as Filter[]).map((filter) => (
           <FilterChip
             key={filter}
-            label={filter === 'all' ? 'Semua' : filter === 'income' ? 'Pemasukan' : 'Pengeluaran'}
+            label={isEn
+              ? filter === 'all' ? 'All' : filter === 'income' ? 'Income' : 'Expense'
+              : filter === 'all' ? 'Semua' : filter === 'income' ? 'Pemasukan' : 'Pengeluaran'}
             selected={activeFilter === filter}
             onPress={() => setActiveFilter(filter)}
           />
@@ -192,8 +203,8 @@ export default function TransactionsScreen() {
     <EmptyState
       icon="transactions"
       tone="accent"
-      title="Belum ada transaksi"
-      description="Coba ubah filter atau tambahkan transaksi baru dari tab Capture."
+      title={isEn ? 'No transactions yet' : 'Belum ada transaksi'}
+      description={isEn ? 'Try changing the filter or add a new transaction from the Capture tab.' : 'Coba ubah filter atau tambahkan transaksi baru dari tab Capture.'}
     />
   )
 
@@ -214,7 +225,7 @@ export default function TransactionsScreen() {
         removeClippedSubviews
       />
 
-      <Pressable style={styles.fab} onPress={() => router.push('/(tabs)/transaction-new')}>
+      <Pressable testID="transactions-fab" style={styles.fab} onPress={() => router.push('/(tabs)/transaction-new')}>
         <KaswiseIcon name="capture" color={theme.colors.textInverse} size={26} weight="bold" />
       </Pressable>
     </View>
@@ -222,6 +233,8 @@ export default function TransactionsScreen() {
 }
 
 function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
+  const lightBrand = theme.mode === 'light' ? theme.colors.brandPrimaryDeep : theme.colors.brandPrimary
+
   return StyleSheet.create({
     screen: { flex: 1, backgroundColor: theme.colors.background },
     content: { padding: theme.spacing.xl, gap: theme.spacing.sm + theme.spacing.xs - 2, paddingBottom: 26 },
@@ -276,7 +289,7 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
       width: 56,
       height: 56,
       borderRadius: 28,
-      backgroundColor: theme.colors.brandPrimary,
+      backgroundColor: lightBrand,
       alignItems: 'center',
       justifyContent: 'center',
       ...theme.shadow.lg,

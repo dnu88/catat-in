@@ -5,6 +5,39 @@ import type { StyleProp, ViewStyle } from 'react-native'
 import ReportsScreen from '../app/(tabs)/reports'
 import { ThemeProvider } from '../src/theme/theme-context'
 import { SupabaseProvider } from '../src/lib/supabase'
+import { I18nProvider } from '../src/i18n/i18n-context'
+
+const mockTransactions = [
+  { amount: 500000, transaction_type: 'expense', category: 'Makan', date: '2026-05-01' },
+  { amount: 350000, transaction_type: 'expense', category: 'Belanja', date: '2026-05-02' },
+  { amount: 200000, transaction_type: 'expense', category: 'Transport', date: '2026-05-03' },
+]
+
+jest.mock('../src/lib/supabase', () => {
+  const actual = jest.requireActual('../src/lib/supabase')
+  const chain: {
+    select: jest.Mock
+    eq: jest.Mock
+    gte: jest.Mock
+    lte: jest.Mock
+  } = {
+    select: jest.fn(() => chain),
+    eq: jest.fn(() => chain),
+    gte: jest.fn(() => chain),
+    lte: jest.fn(async () => ({ data: mockTransactions, error: null })),
+  }
+
+  return {
+    ...actual,
+    useSupabase: () => ({
+      supabase: {
+        auth: { getUser: jest.fn(async () => ({ data: { user: { id: 'user-1' } } })) },
+        from: jest.fn(() => chain),
+      },
+    }),
+    SupabaseProvider: ({ children }: { children: React.ReactNode }) => children,
+  }
+})
 
 jest.mock('../src/components/ui', () => ({
   IconBubble: ({ name, tone, size }: { name: string; tone: string; size: number }) => {
@@ -37,9 +70,11 @@ function getFlattenedStyle(node: StyleHostNode): ViewStyle {
 function renderReports() {
   return render(
     <SupabaseProvider>
-      <ThemeProvider>
-        <ReportsScreen />
-      </ThemeProvider>
+      <I18nProvider>
+        <ThemeProvider>
+          <ReportsScreen />
+        </ThemeProvider>
+      </I18nProvider>
     </SupabaseProvider>,
   )
 }
@@ -57,24 +92,21 @@ describe('ReportsScreen visual parity', () => {
     expect((getFlattenedStyle(activePeriodText) as { color?: string }).color).not.toBe('#A3FF12')
   })
 
-  it('gives each expense category its own visual color and matches donut segments', () => {
+  it('maps recorded category names to donut colors instead of falling back to a static neon palette', async () => {
     const screen = renderReports()
 
     fireEvent.press(screen.getByText('Kategori'))
 
-    const categoryIds = ['food', 'transport', 'shopping', 'bills', 'entertainment', 'other']
-    const fillColors = categoryIds.map((id) => {
-      const fill = screen.getByTestId(`reports-category-fill-${id}`)
-      return getFlattenedStyle(fill).backgroundColor
-    })
-    const donutColors = categoryIds.map((id) => {
-      const segment = screen.getByTestId(`reports-donut-segment-${id}`)
-      return getFlattenedStyle(segment).backgroundColor
-    })
+    const foodFill = await screen.findByTestId('reports-category-fill-makan')
+    const shoppingFill = await screen.findByTestId('reports-category-fill-belanja')
+    const transportFill = await screen.findByTestId('reports-category-fill-transport')
+    const foodSegment = await screen.findByTestId('reports-donut-segment-makan')
 
-    expect(new Set(fillColors).size).toBeGreaterThan(3)
-    expect(fillColors.every((color) => color !== '#A3FF12')).toBe(true)
-    expect(donutColors).toEqual(fillColors)
+    expect(getFlattenedStyle(foodFill).backgroundColor).toBe('#65A30D')
+    expect(getFlattenedStyle(shoppingFill).backgroundColor).toBe('#B45309')
+    expect(getFlattenedStyle(transportFill).backgroundColor).toBe('#4A80F0')
+    expect(getFlattenedStyle(foodSegment).backgroundColor).toBe(getFlattenedStyle(foodFill).backgroundColor)
+    expect(getFlattenedStyle(foodFill).backgroundColor).not.toBe('#A3FF12')
   })
 
   it('renders the six month trend as line graph dots instead of bars', () => {

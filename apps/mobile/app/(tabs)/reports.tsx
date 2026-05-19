@@ -5,8 +5,9 @@ import { useTheme } from '../../src/theme/theme-context'
 import { useSupabase } from '../../src/lib/supabase'
 import { IconBubble } from '../../src/components/ui'
 import type { KaswiseIconName } from '../../src/components/icons/kaswise-icons'
+import { useI18n } from '../../src/i18n/i18n-context'
 
-const months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun']
+const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun']
 const incomeData = [4.2, 5.1, 6.8, 7.2, 8.5, 18.65]
 const expenseData = [3.1, 3.8, 4.2, 5.0, 4.8, 6.4]
 
@@ -22,17 +23,25 @@ const categories = [
 type Tab = 'overview' | 'category' | 'compare'
 type PeriodFilter = 'month' | '3month' | '6month' | 'year' | 'custom'
 
-const periodLabels: Record<PeriodFilter, string> = {
+const periodLabelsId: Record<PeriodFilter, string> = {
   month: '1 Bulan',
   '3month': '3 Bulan',
   '6month': '6 Bulan',
   year: '1 Tahun',
   custom: 'Kustom',
 }
+const periodLabelsEn: Record<PeriodFilter, string> = {
+  month: '1 Month',
+  '3month': '3 Months',
+  '6month': '6 Months',
+  year: '1 Year',
+  custom: 'Custom',
+}
 
 export default function ReportsScreen() {
   const { theme } = useTheme()
   const { supabase } = useSupabase()
+  const { language } = useI18n()
   const styles = useMemo(() => createStyles(theme), [theme])
   const [activeTab, setActiveTab] = useState<Tab>('overview')
   const [periodFilter, setPeriodFilter] = useState<PeriodFilter>('month')
@@ -53,6 +62,75 @@ export default function ReportsScreen() {
     current: { income: number; expense: number; net: number; count: number } | null
     previous: { income: number; expense: number; net: number; count: number } | null
   } | null>(null)
+  const [dynamicCategories, setDynamicCategories] = useState(categories)
+
+  const neutralCategoryColor = theme.colors.textMuted
+  const categoryColorByName: Record<string, { color: string; icon: KaswiseIconName; tone: 'success' | 'warning' | 'danger' | 'info' | 'navy' | 'neutral' }> = {
+    food: { color: theme.colors.success, icon: 'bills', tone: 'success' },
+    makan: { color: theme.colors.success, icon: 'bills', tone: 'success' },
+    'makan & minum': { color: theme.colors.success, icon: 'bills', tone: 'success' },
+    transport: { color: theme.colors.brandAccent, icon: 'card', tone: 'navy' },
+    transportasi: { color: theme.colors.brandAccent, icon: 'card', tone: 'navy' },
+    shopping: { color: theme.colors.warning, icon: 'wallets', tone: 'warning' },
+    belanja: { color: theme.colors.warning, icon: 'wallets', tone: 'warning' },
+    bills: { color: theme.colors.danger, icon: 'file', tone: 'danger' },
+    tagihan: { color: theme.colors.danger, icon: 'file', tone: 'danger' },
+    entertainment: { color: theme.colors.info, icon: 'insight', tone: 'info' },
+    hiburan: { color: theme.colors.info, icon: 'insight', tone: 'info' },
+    other: { color: neutralCategoryColor, icon: 'chart', tone: 'neutral' },
+    lainnya: { color: neutralCategoryColor, icon: 'chart', tone: 'neutral' },
+  }
+
+  const isEn = language === 'en'
+  const periodLabels = isEn ? periodLabelsEn : periodLabelsId
+
+  const tx = isEn
+    ? {
+        title: 'Reports', subtitle: 'Monthly financial performance summary.', share: 'Share',
+        overview: 'Overview', category: 'Category', compare: 'Comparison',
+        monthBadge: `${new Date().toLocaleString('en-US', { month: 'short' })} ${new Date().getFullYear()}`,
+        loading: 'Loading transaction data...', loadingCompare: 'Loading comparison data...',
+        errorLogin: 'Not logged in', errorLoad: 'Failed to load transaction data',
+        txFound: (n: number) => `${n} transaction${n !== 1 ? 's' : ''} found`,
+        trendTitle: '6-Month Trend', trendSub: 'Income vs expense (in millions Rp)',
+        income: 'Income', expense: 'Expense', savings: 'Savings', transactions: 'Transactions',
+        thisMonth: 'this month', savingRate: '65.7% saving rate',
+        tooltipIncome: 'Income', tooltipExpense: 'Expense',
+        breakdownTitle: 'Expense Breakdown',
+        breakdownSub: `By category ${new Date().toLocaleString('en-US', { month: 'long' })} ${new Date().getFullYear()}`,
+        ringLabel: 'Total',
+        compareTitle: 'Last Month Comparison', compareSub: 'Compare with previous period',
+        compareIncome: 'Income', compareExpense: 'Expense', compareSavings: 'Savings', compareTxCount: 'Transactions',
+        noCompareData: 'No data from the previous period to compare.',
+        errorDateRange: 'Invalid date range',
+        modalTitle: 'Select Date Range', modalStart: 'Start', modalEnd: 'End',
+        modalCancel: 'Cancel', modalApply: 'Apply',
+        shareTitle: 'Financial Report', shareIncome: 'Income', shareExpense: 'Expense',
+        shareSavings: 'Savings', shareTxCount: 'Transactions',
+      }
+    : {
+        title: 'Laporan', subtitle: 'Ringkasan performa finansial bulanan.', share: 'Bagikan',
+        overview: 'Ringkasan', category: 'Kategori', compare: 'Perbandingan',
+        monthBadge: `${new Date().toLocaleString('id-ID', { month: 'short' })} ${new Date().getFullYear()}`,
+        loading: 'Memuat data transaksi...', loadingCompare: 'Memuat data perbandingan...',
+        errorLogin: 'Belum login', errorLoad: 'Gagal memuat data transaksi',
+        txFound: (n: number) => `${n} transaksi ditemukan`,
+        trendTitle: 'Tren 6 Bulan', trendSub: 'Pemasukan vs pengeluaran (dalam jutaan Rp)',
+        income: 'Pemasukan', expense: 'Pengeluaran', savings: 'Tabungan', transactions: 'Transaksi',
+        thisMonth: 'bulan ini', savingRate: '65.7% saving rate',
+        tooltipIncome: 'Pemasukan', tooltipExpense: 'Pengeluaran',
+        breakdownTitle: 'Breakdown Pengeluaran',
+        breakdownSub: `Per kategori bulan ${new Date().toLocaleString('id-ID', { month: 'long' })} ${new Date().getFullYear()}`,
+        ringLabel: 'Total',
+        compareTitle: 'Perbandingan Bulan Lalu', compareSub: 'Bandingkan dengan periode sebelumnya',
+        compareIncome: 'Pemasukan', compareExpense: 'Pengeluaran', compareSavings: 'Tabungan', compareTxCount: 'Jumlah Transaksi',
+        noCompareData: 'Tidak ada data periode sebelumnya untuk dibandingkan.',
+        errorDateRange: 'Rentang tanggal tidak valid',
+        modalTitle: 'Pilih Rentang Tanggal', modalStart: 'Mulai', modalEnd: 'Selesai',
+        modalCancel: 'Batal', modalApply: 'Terapkan',
+        shareTitle: 'Laporan Keuangan', shareIncome: 'Pemasukan', shareExpense: 'Pengeluaran',
+        shareSavings: 'Tabungan', shareTxCount: 'Jumlah transaksi',
+      }
 
   const maxVal = Math.max(...incomeData, ...expenseData)
 
@@ -62,7 +140,9 @@ export default function ReportsScreen() {
   const totalExpenseJuta = expenseData[expenseData.length - 1] ?? 0
   const netJuta = totalIncomeJuta - totalExpenseJuta
 
-  const monthName = (month: number) => ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'][month - 1]
+  const monthName = (month: number) => (language === 'en'
+    ? ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+    : ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'])[month - 1]
 
   const customRangeLabel = `${monthName(customStartMonth)} ${customStartYear} - ${monthName(customEndMonth)} ${customEndYear}`
 
@@ -78,7 +158,7 @@ export default function ReportsScreen() {
     const tempStart = new Date(tempStartYear, tempStartMonth - 1, 1)
     const tempEnd = new Date(tempEndYear, tempEndMonth - 1, 1)
     if (tempStart > tempEnd) {
-      setDataError('Rentang tanggal tidak valid')
+      setDataError(tx.errorDateRange)
       return
     }
 
@@ -92,17 +172,17 @@ export default function ReportsScreen() {
   const handleShare = async () => {
     const periodText = periodFilter === 'custom' ? customRangeLabel : periodLabels[periodFilter]
     const shareText = [
-      `Laporan Keuangan (${periodText})`,
-      `Pemasukan: ${formatRupiah(totalIncomeJuta)}`,
-      `Pengeluaran: ${formatRupiah(totalExpenseJuta)}`,
-      `Tabungan: ${formatRupiah(netJuta)}`,
-      realTransactionCount !== null ? `Jumlah transaksi: ${realTransactionCount}` : null,
+      `${tx.shareTitle} (${periodText})`,
+      `${tx.shareIncome}: ${formatRupiah(totalIncomeJuta)}`,
+      `${tx.shareExpense}: ${formatRupiah(totalExpenseJuta)}`,
+      `${tx.shareSavings}: ${formatRupiah(netJuta)}`,
+      realTransactionCount !== null ? `${tx.shareTxCount}: ${realTransactionCount}` : null,
     ]
       .filter(Boolean)
       .join('\n')
 
     await Share.share({
-      title: 'Laporan Keuangan',
+      title: tx.shareTitle,
       message: shareText,
     })
   }
@@ -114,7 +194,7 @@ export default function ReportsScreen() {
       try {
         const { data: { user } } = await supabase.auth.getUser()
         if (!user) {
-          setDataError('Belum login')
+          setDataError(tx.errorLogin)
           return
         }
 
@@ -135,14 +215,42 @@ export default function ReportsScreen() {
 
         const { data: transactions, error } = await supabase
           .from('transactions')
-          .select('nominal, type, kategori, tanggal')
+          .select('amount, transaction_type, category, date')
           .eq('user_id', user.id)
-          .gte('tanggal', startDate.toISOString().split('T')[0])
-          .lte('tanggal', endDate.toISOString().split('T')[0])
+          .gte('date', startDate.toISOString().split('T')[0])
+          .lte('date', endDate.toISOString().split('T')[0])
 
         if (error) throw error
 
         setRealTransactionCount(transactions?.length || 0)
+
+        const expenseTx = (transactions || []).filter((t) => t.transaction_type === 'expense')
+        const totalExpense = expenseTx.reduce((sum, t) => sum + (t.amount || 0), 0)
+        if (expenseTx.length > 0 && totalExpense > 0) {
+          const grouped = new Map<string, number>()
+          for (const t of expenseTx) {
+            const key = (t.category || 'other').toString().trim().toLowerCase() || 'other'
+            grouped.set(key, (grouped.get(key) || 0) + (t.amount || 0))
+          }
+          const generated = Array.from(grouped.entries())
+            .map(([key, amount]) => {
+              const percent = Math.max(1, Math.round((amount / totalExpense) * 100))
+              const categoryMeta = categoryColorByName[key] || categoryColorByName.other
+              return {
+                id: key,
+                label: key.charAt(0).toUpperCase() + key.slice(1),
+                percent,
+                amount: `Rp ${amount.toLocaleString('id-ID')}`,
+                icon: categoryMeta.icon,
+                color: categoryMeta.color,
+                tone: categoryMeta.tone,
+              }
+            })
+            .sort((a, b) => b.percent - a.percent)
+          setDynamicCategories(generated)
+        } else {
+          setDynamicCategories(categories.map((c) => ({ ...c, color: c.color || neutralCategoryColor })))
+        }
 
         // Load compare data if activeTab is 'compare'
         if (activeTab === 'compare') {
@@ -153,27 +261,27 @@ export default function ReportsScreen() {
 
           const { data: prevTransactions, error: prevError } = await supabase
             .from('transactions')
-            .select('nominal, type')
+            .select('amount, transaction_type')
             .eq('user_id', user.id)
-            .gte('tanggal', prevStartDate.toISOString().split('T')[0])
-            .lte('tanggal', prevEndDate.toISOString().split('T')[0])
+            .gte('date', prevStartDate.toISOString().split('T')[0])
+            .lte('date', prevEndDate.toISOString().split('T')[0])
 
           if (prevError) console.error('Failed to load previous period:', prevError)
 
           const currentIncome = transactions
-            ?.filter((t) => t.type === 'income')
-            .reduce((sum, t) => sum + t.nominal, 0) || 0
+            ?.filter((t) => t.transaction_type === 'income')
+            .reduce((sum, t) => sum + t.amount, 0) || 0
           const currentExpense = transactions
-            ?.filter((t) => t.type === 'expense')
-            .reduce((sum, t) => sum + t.nominal, 0) || 0
+            ?.filter((t) => t.transaction_type === 'expense')
+            .reduce((sum, t) => sum + t.amount, 0) || 0
           const currentNet = currentIncome - currentExpense
 
           const prevIncome = prevTransactions
-            ?.filter((t) => t.type === 'income')
-            .reduce((sum, t) => sum + t.nominal, 0) || 0
+            ?.filter((t) => t.transaction_type === 'income')
+            .reduce((sum, t) => sum + t.amount, 0) || 0
           const prevExpense = prevTransactions
-            ?.filter((t) => t.type === 'expense')
-            .reduce((sum, t) => sum + t.nominal, 0) || 0
+            ?.filter((t) => t.transaction_type === 'expense')
+            .reduce((sum, t) => sum + t.amount, 0) || 0
           const prevNet = prevIncome - prevExpense
 
           setCompareData({
@@ -195,7 +303,7 @@ export default function ReportsScreen() {
         }
       } catch (err: any) {
         console.error('Failed to load transaction data:', err)
-        setDataError('Gagal memuat data transaksi')
+        setDataError(tx.errorLoad)
       } finally {
         setDataLoading(false)
       }
@@ -210,12 +318,12 @@ export default function ReportsScreen() {
         {/* Header */}
         <View style={styles.headerRow}>
           <View>
-            <Text style={styles.title}>Laporan</Text>
-            <Text style={styles.subtitle}>Ringkasan performa finansial bulanan.</Text>
+            <Text style={styles.title}>{tx.title}</Text>
+            <Text style={styles.subtitle}>{tx.subtitle}</Text>
           </View>
           <View style={styles.headerRight}>
             <View testID="reports-month-badge" style={styles.monthBadge}>
-              <Text style={styles.monthBadgeText}>Mei 2026</Text>
+              <Text style={styles.monthBadgeText}>{tx.monthBadge}</Text>
             </View>
             <Pressable
               style={({ pressed }) => [
@@ -224,7 +332,7 @@ export default function ReportsScreen() {
               ]}
               onPress={handleShare}
             >
-              <Text style={styles.shareButtonText}>Bagikan</Text>
+              <Text style={styles.shareButtonText}>{tx.share}</Text>
             </Pressable>
           </View>
         </View>
@@ -260,26 +368,26 @@ export default function ReportsScreen() {
             style={[styles.tabChip, activeTab === 'overview' && styles.tabChipActive]}
             onPress={() => setActiveTab('overview')}
           >
-            <Text style={[styles.tabChipText, activeTab === 'overview' && styles.tabChipTextActive]}>Ringkasan</Text>
+            <Text style={[styles.tabChipText, activeTab === 'overview' && styles.tabChipTextActive]}>{tx.overview}</Text>
           </Pressable>
           <Pressable
             style={[styles.tabChip, activeTab === 'category' && styles.tabChipActive]}
             onPress={() => setActiveTab('category')}
           >
-            <Text style={[styles.tabChipText, activeTab === 'category' && styles.tabChipTextActive]}>Kategori</Text>
+            <Text style={[styles.tabChipText, activeTab === 'category' && styles.tabChipTextActive]}>{tx.category}</Text>
           </Pressable>
           <Pressable
             style={[styles.tabChip, activeTab === 'compare' && styles.tabChipActive]}
             onPress={() => setActiveTab('compare')}
           >
-            <Text style={[styles.tabChipText, activeTab === 'compare' && styles.tabChipTextActive]}>Perbandingan</Text>
+            <Text style={[styles.tabChipText, activeTab === 'compare' && styles.tabChipTextActive]}>{tx.compare}</Text>
           </Pressable>
         </View>
 
         {/* Loading/Error State */}
         {dataLoading && (
           <View style={styles.loadingCard}>
-            <Text style={styles.loadingText}>Memuat data transaksi...</Text>
+            <Text style={styles.loadingText}>{tx.loading}</Text>
           </View>
         )}
         {dataError && !dataLoading && (
@@ -289,7 +397,7 @@ export default function ReportsScreen() {
         )}
         {realTransactionCount !== null && !dataLoading && (
           <View testID="reports-info-card" style={styles.infoCard}>
-            <Text style={styles.infoText}>{realTransactionCount} transaksi ditemukan</Text>
+            <Text style={styles.infoText}>{tx.txFound(realTransactionCount)}</Text>
           </View>
         )}
 
@@ -298,14 +406,14 @@ export default function ReportsScreen() {
             {/* Key Metrics */}
             <View style={styles.metricRow}>
               <View style={[styles.metricCard, { borderBottomWidth: 3, borderBottomColor: theme.colors.success }]}>
-                <Text style={styles.metricLabel}>Pemasukan</Text>
+                <Text style={styles.metricLabel}>{tx.income}</Text>
                 <Text style={[styles.metricValue, { color: theme.colors.success }]}>Rp 18,65 Jt</Text>
                 <View style={styles.metricTrend}>
                   <Text style={[styles.metricTrendText, { color: theme.colors.success }]}>▲ 12.5%</Text>
                 </View>
               </View>
               <View style={[styles.metricCard, { borderBottomWidth: 3, borderBottomColor: theme.colors.danger }]}>
-                <Text style={styles.metricLabel}>Pengeluaran</Text>
+                <Text style={styles.metricLabel}>{tx.expense}</Text>
                 <Text style={[styles.metricValue, { color: theme.colors.danger }]}>Rp 6,40 Jt</Text>
                 <View style={styles.metricTrend}>
                   <Text style={[styles.metricTrendText, { color: theme.colors.danger }]}>▲ 5.2%</Text>
@@ -315,21 +423,21 @@ export default function ReportsScreen() {
 
             <View style={styles.metricRow}>
               <View style={[styles.metricCard, { borderBottomWidth: 3, borderBottomColor: theme.colors.brandPrimary }]}>
-                <Text style={styles.metricLabel}>Tabungan</Text>
+                <Text style={styles.metricLabel}>{tx.savings}</Text>
                 <Text style={[styles.metricValue, { color: theme.colors.brandPrimary }]}>Rp 12,25 Jt</Text>
-                <Text style={styles.metricSub}>65.7% saving rate</Text>
+                <Text style={styles.metricSub}>{tx.savingRate}</Text>
               </View>
               <View style={[styles.metricCard, { borderBottomWidth: 3, borderBottomColor: theme.colors.warning }]}>
-                <Text style={styles.metricLabel}>Transaksi</Text>
+                <Text style={styles.metricLabel}>{tx.transactions}</Text>
                 <Text style={[styles.metricValue, { color: theme.colors.warning }]}>142</Text>
-                <Text style={styles.metricSub}>bulan ini</Text>
+                <Text style={styles.metricSub}>{tx.thisMonth}</Text>
               </View>
             </View>
 
             {/* Chart */}
             <View style={styles.chartCard}>
-              <Text style={styles.chartTitle}>Tren 6 Bulan</Text>
-              <Text style={styles.chartSub}>Pemasukan vs pengeluaran (dalam jutaan Rp)</Text>
+              <Text style={styles.chartTitle}>{tx.trendTitle}</Text>
+              <Text style={styles.chartSub}>{tx.trendSub}</Text>
 
               <View style={styles.lineChartArea}>
                 <View style={styles.lineGrid}>
@@ -361,10 +469,10 @@ export default function ReportsScreen() {
                           <View style={styles.chartTooltip}>
                             <Text style={styles.tooltipTitle}>{month} 2026</Text>
                             <Text style={[styles.tooltipValue, { color: theme.colors.success }]}>
-                              Pemasukan: Rp {incomeData[idx]} Jt
+                              {tx.tooltipIncome}: Rp {incomeData[idx]} Jt
                             </Text>
                             <Text style={[styles.tooltipValue, { color: theme.colors.danger }]}>
-                              Pengeluaran: Rp {expenseData[idx]} Jt
+                              {tx.tooltipExpense}: Rp {expenseData[idx]} Jt
                             </Text>
                           </View>
                         )}
@@ -377,11 +485,11 @@ export default function ReportsScreen() {
               <View style={styles.chartLegend}>
                 <View style={styles.legendItem}>
                   <View style={[styles.legendDot, { backgroundColor: theme.colors.success }]} />
-                  <Text style={styles.legendText}>Pemasukan</Text>
+                  <Text style={styles.legendText}>{tx.income}</Text>
                 </View>
                 <View style={styles.legendItem}>
                   <View style={[styles.legendDot, { backgroundColor: theme.colors.danger }]} />
-                  <Text style={styles.legendText}>Pengeluaran</Text>
+                  <Text style={styles.legendText}>{tx.expense}</Text>
                 </View>
               </View>
             </View>
@@ -391,12 +499,12 @@ export default function ReportsScreen() {
           <>
             {/* Category Breakdown */}
             <View style={styles.categoryCard}>
-              <Text style={styles.categoryCardTitle}>Breakdown Pengeluaran</Text>
-              <Text style={styles.categoryCardSub}>Per kategori bulan Mei 2026</Text>
+              <Text style={styles.categoryCardTitle}>{tx.breakdownTitle}</Text>
+              <Text style={styles.categoryCardSub}>{tx.breakdownSub}</Text>
 
               <View style={styles.ringArea}>
                 <View style={styles.donutChart}>
-                  {categories.map((cat, index) => (
+                  {dynamicCategories.map((cat, index) => (
                     <View
                       key={cat.id}
                       testID={`reports-donut-segment-${cat.id}`}
@@ -411,12 +519,12 @@ export default function ReportsScreen() {
                   ))}
                   <View style={styles.ringInner}>
                     <Text style={styles.ringValue}>Rp 6,4 Jt</Text>
-                    <Text style={styles.ringLabel}>Total</Text>
+                    <Text style={styles.ringLabel}>{tx.ringLabel}</Text>
                   </View>
                 </View>
               </View>
 
-              {categories.map((cat, idx) => (
+              {dynamicCategories.map((cat, idx) => (
                 <View
                   key={cat.label}
                   style={[
@@ -446,19 +554,19 @@ export default function ReportsScreen() {
           <>
             {/* Comparison Panel */}
             <View style={styles.categoryCard}>
-              <Text style={styles.categoryCardTitle}>Perbandingan Bulan Lalu</Text>
-              <Text style={styles.categoryCardSub}>Bandingkan dengan periode sebelumnya</Text>
+              <Text style={styles.categoryCardTitle}>{tx.compareTitle}</Text>
+              <Text style={styles.categoryCardSub}>{tx.compareSub}</Text>
 
               {dataLoading && (
                 <View style={styles.loadingCard}>
-                  <Text style={styles.loadingText}>Memuat data perbandingan...</Text>
+                  <Text style={styles.loadingText}>{tx.loadingCompare}</Text>
                 </View>
               )}
 
               {compareData && compareData.current && compareData.previous && (
                 <>
                   <View style={styles.compareRow}>
-                    <Text style={styles.compareLabel}>Pemasukan</Text>
+                    <Text style={styles.compareLabel}>{tx.compareIncome}</Text>
                     <View style={styles.compareValues}>
                       <Text style={styles.compareCurrent}>{formatRupiah(compareData.current.income / 1_000_000)}</Text>
                       <Text style={[styles.compareDelta, compareData.current.income >= compareData.previous.income ? styles.compareDeltaPositive : styles.compareDeltaNegative]}>
@@ -467,7 +575,7 @@ export default function ReportsScreen() {
                     </View>
                   </View>
                   <View style={styles.compareRow}>
-                    <Text style={styles.compareLabel}>Pengeluaran</Text>
+                    <Text style={styles.compareLabel}>{tx.compareExpense}</Text>
                     <View style={styles.compareValues}>
                       <Text style={styles.compareCurrent}>{formatRupiah(compareData.current.expense / 1_000_000)}</Text>
                       <Text style={[styles.compareDelta, compareData.current.expense <= compareData.previous.expense ? styles.compareDeltaPositive : styles.compareDeltaNegative]}>
@@ -476,7 +584,7 @@ export default function ReportsScreen() {
                     </View>
                   </View>
                   <View style={styles.compareRow}>
-                    <Text style={styles.compareLabel}>Tabungan</Text>
+                    <Text style={styles.compareLabel}>{tx.compareSavings}</Text>
                     <View style={styles.compareValues}>
                       <Text style={styles.compareCurrent}>{formatRupiah(compareData.current.net / 1_000_000)}</Text>
                       <Text style={[styles.compareDelta, compareData.current.net >= compareData.previous.net ? styles.compareDeltaPositive : styles.compareDeltaNegative]}>
@@ -485,7 +593,7 @@ export default function ReportsScreen() {
                     </View>
                   </View>
                   <View style={styles.compareRow}>
-                    <Text style={styles.compareLabel}>Jumlah Transaksi</Text>
+                    <Text style={styles.compareLabel}>{tx.compareTxCount}</Text>
                     <View style={styles.compareValues}>
                       <Text style={styles.compareCurrent}>{compareData.current.count}</Text>
                       <Text style={[styles.compareDelta, compareData.current.count >= compareData.previous.count ? styles.compareDeltaPositive : styles.compareDeltaNegative]}>
@@ -498,7 +606,7 @@ export default function ReportsScreen() {
 
               {compareData && (!compareData.current || !compareData.previous) && (
                 <View style={styles.infoCard}>
-                  <Text style={styles.infoText}>Tidak ada data periode sebelumnya untuk dibandingkan.</Text>
+                  <Text style={styles.infoText}>{tx.noCompareData}</Text>
                 </View>
               )}
             </View>
@@ -517,10 +625,10 @@ export default function ReportsScreen() {
       >
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Pilih Rentang Tanggal</Text>
+            <Text style={styles.modalTitle}>{tx.modalTitle}</Text>
 
             <View style={styles.modalSection}>
-              <Text style={styles.modalSectionTitle}>Mulai</Text>
+              <Text style={styles.modalSectionTitle}>{tx.modalStart}</Text>
               <View style={styles.modalRow}>
                 <Pressable
                   style={styles.modalButton}
@@ -552,7 +660,7 @@ export default function ReportsScreen() {
             </View>
 
             <View style={styles.modalSection}>
-              <Text style={styles.modalSectionTitle}>Selesai</Text>
+              <Text style={styles.modalSectionTitle}>{tx.modalEnd}</Text>
               <View style={styles.modalRow}>
                 <Pressable
                   style={styles.modalButton}
@@ -588,13 +696,13 @@ export default function ReportsScreen() {
                 style={[styles.modalActionButton, styles.modalActionCancel]}
                 onPress={() => setShowDateModal(false)}
               >
-                <Text style={styles.modalActionCancelText}>Batal</Text>
+                <Text style={styles.modalActionCancelText}>{tx.modalCancel}</Text>
               </Pressable>
               <Pressable
                 style={[styles.modalActionButton, styles.modalActionConfirm]}
                 onPress={confirmCustomDateRange}
               >
-                <Text style={styles.modalActionConfirmText}>Terapkan</Text>
+                <Text style={styles.modalActionConfirmText}>{tx.modalApply}</Text>
               </Pressable>
             </View>
           </View>
@@ -606,7 +714,7 @@ export default function ReportsScreen() {
 
 function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
   const brandText = theme.mode === 'light' ? theme.colors.brandPrimaryDeep : theme.colors.brandPrimary
-  const brandSoftBg = theme.mode === 'light' ? 'rgba(163, 255, 18, 0.14)' : 'rgba(163, 255, 18, 0.10)'
+  const brandSoftBg = theme.mode === 'light' ? 'rgba(101, 163, 13, 0.14)' : 'rgba(163, 255, 18, 0.10)'
   const brandSoftBorder = theme.mode === 'light' ? 'rgba(101, 163, 13, 0.28)' : 'rgba(163, 255, 18, 0.35)'
 
   return StyleSheet.create({
