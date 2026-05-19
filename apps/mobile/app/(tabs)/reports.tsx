@@ -11,12 +11,12 @@ const incomeData = [4.2, 5.1, 6.8, 7.2, 8.5, 18.65]
 const expenseData = [3.1, 3.8, 4.2, 5.0, 4.8, 6.4]
 
 const categories = [
-  { label: 'Makanan & Minuman', percent: 32, amount: 'Rp 2.050.000', icon: 'bills' as KaswiseIconName },
-  { label: 'Transportasi', percent: 22, amount: 'Rp 1.408.000', icon: 'card' as KaswiseIconName },
-  { label: 'Belanja', percent: 18, amount: 'Rp 1.152.000', icon: 'wallets' as KaswiseIconName },
-  { label: 'Tagihan', percent: 15, amount: 'Rp 960.000', icon: 'file' as KaswiseIconName },
-  { label: 'Hiburan', percent: 8, amount: 'Rp 512.000', icon: 'insight' as KaswiseIconName },
-  { label: 'Lainnya', percent: 5, amount: 'Rp 320.000', icon: 'chart' as KaswiseIconName },
+  { id: 'food', label: 'Makanan & Minuman', percent: 32, amount: 'Rp 2.050.000', icon: 'bills' as KaswiseIconName, color: '#65A30D', tone: 'success' as const },
+  { id: 'transport', label: 'Transportasi', percent: 22, amount: 'Rp 1.408.000', icon: 'card' as KaswiseIconName, color: '#4A80F0', tone: 'navy' as const },
+  { id: 'shopping', label: 'Belanja', percent: 18, amount: 'Rp 1.152.000', icon: 'wallets' as KaswiseIconName, color: '#B45309', tone: 'warning' as const },
+  { id: 'bills', label: 'Tagihan', percent: 15, amount: 'Rp 960.000', icon: 'file' as KaswiseIconName, color: '#DC2626', tone: 'danger' as const },
+  { id: 'entertainment', label: 'Hiburan', percent: 8, amount: 'Rp 512.000', icon: 'insight' as KaswiseIconName, color: '#0284C7', tone: 'info' as const },
+  { id: 'other', label: 'Lainnya', percent: 5, amount: 'Rp 320.000', icon: 'chart' as KaswiseIconName, color: '#6B7280', tone: 'neutral' as const },
 ]
 
 type Tab = 'overview' | 'category' | 'compare'
@@ -214,7 +214,7 @@ export default function ReportsScreen() {
             <Text style={styles.subtitle}>Ringkasan performa finansial bulanan.</Text>
           </View>
           <View style={styles.headerRight}>
-            <View style={styles.monthBadge}>
+            <View testID="reports-month-badge" style={styles.monthBadge}>
               <Text style={styles.monthBadgeText}>Mei 2026</Text>
             </View>
             <Pressable
@@ -288,7 +288,7 @@ export default function ReportsScreen() {
           </View>
         )}
         {realTransactionCount !== null && !dataLoading && (
-          <View style={styles.infoCard}>
+          <View testID="reports-info-card" style={styles.infoCard}>
             <Text style={styles.infoText}>{realTransactionCount} transaksi ditemukan</Text>
           </View>
         )}
@@ -410,16 +410,16 @@ export default function ReportsScreen() {
                   ]}
                 >
                   <View style={styles.catLeft}>
-                    <IconBubble name={cat.icon} tone="primary" size={36} />
+                    <IconBubble name={cat.icon} tone={cat.tone} size={36} />
                     <View>
                       <Text style={styles.catName}>{cat.label}</Text>
                       <Text style={styles.catAmount}>{cat.amount}</Text>
                     </View>
                   </View>
                   <View style={styles.catRight}>
-                    <Text style={styles.catPct}>{cat.percent}%</Text>
+                    <Text style={[styles.catPct, { color: cat.color }]}>{cat.percent}%</Text>
                     <View style={styles.catBar}>
-                      <View style={[styles.catBarFill, { width: `${cat.percent}%`, backgroundColor: theme.colors.brandPrimary }]} />
+                      <View testID={`reports-category-fill-${cat.id}`} style={[styles.catBarFill, { width: `${cat.percent}%`, backgroundColor: cat.color }]} />
                     </View>
                   </View>
                 </View>
@@ -590,6 +590,10 @@ export default function ReportsScreen() {
 }
 
 function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
+  const brandText = theme.mode === 'light' ? theme.colors.brandPrimaryDeep : theme.colors.brandPrimary
+  const brandSoftBg = theme.mode === 'light' ? 'rgba(163, 255, 18, 0.14)' : 'rgba(163, 255, 18, 0.10)'
+  const brandSoftBorder = theme.mode === 'light' ? 'rgba(101, 163, 13, 0.28)' : 'rgba(163, 255, 18, 0.35)'
+
   return StyleSheet.create({
     screen: { flex: 1, backgroundColor: theme.colors.background },
     content: { padding: 20, gap: 10, paddingBottom: 26 },
@@ -602,17 +606,17 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
     title: { color: theme.colors.textPrimary, fontSize: theme.typography.fontSize['4xl'], fontWeight: theme.typography.fontWeight.extrabold, letterSpacing: theme.typography.letterSpacing.tight },
     subtitle: { color: theme.colors.textSecondary, fontSize: theme.typography.fontSize.sm, marginTop: 2 },
     monthBadge: {
-      backgroundColor: `${theme.colors.brandPrimary}1F`,
+      backgroundColor: brandSoftBg,
       borderWidth: 1,
-      borderColor: `${theme.colors.brandPrimary}52`,
+      borderColor: brandSoftBorder,
       borderRadius: theme.radius.pill,
       paddingHorizontal: 12,
       paddingVertical: 6,
     },
-    monthBadgeText: { color: theme.colors.brandPrimary, fontSize: theme.typography.fontSize.sm, fontWeight: theme.typography.fontWeight.bold },
+    monthBadgeText: { color: brandText, fontSize: theme.typography.fontSize.sm, fontWeight: theme.typography.fontWeight.bold },
     headerRight: { alignItems: 'flex-end', gap: 8 },
     shareButton: {
-      backgroundColor: theme.colors.brandPrimary,
+      backgroundColor: theme.mode === 'light' ? theme.colors.brandPrimaryDeep : theme.colors.brandPrimary,
       borderRadius: theme.radius.pill,
       paddingHorizontal: 12,
       paddingVertical: 6,
@@ -632,8 +636,8 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
       backgroundColor: theme.colors.surface,
     },
     periodChipActive: {
-      backgroundColor: `${theme.colors.brandPrimary}1A`,
-      borderColor: theme.colors.brandPrimary,
+      backgroundColor: brandSoftBg,
+      borderColor: brandSoftBorder,
     },
     periodChipText: {
       fontSize: 11,
@@ -641,7 +645,7 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
       color: theme.colors.textSecondary,
     },
     periodChipTextActive: {
-      color: theme.colors.brandPrimary,
+      color: brandText,
     },
     loadingCard: {
       backgroundColor: theme.colors.surface,
@@ -670,15 +674,15 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
       fontWeight: '600',
     },
     infoCard: {
-      backgroundColor: `${theme.colors.brandPrimary}10`,
+      backgroundColor: brandSoftBg,
       borderRadius: 12,
       borderWidth: 1,
-      borderColor: `${theme.colors.brandPrimary}35`,
+      borderColor: brandSoftBorder,
       paddingVertical: 10,
       paddingHorizontal: 12,
     },
     infoText: {
-      color: theme.colors.brandPrimary,
+      color: brandText,
       fontSize: 12,
       fontWeight: '600',
     },
@@ -693,11 +697,11 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
       alignItems: 'center',
     },
     tabChipActive: {
-      backgroundColor: theme.colors.brandPrimary,
-      borderColor: theme.colors.brandPrimary,
+      backgroundColor: brandSoftBg,
+      borderColor: brandSoftBorder,
     },
     tabChipText: { color: theme.colors.textSecondary, fontSize: 13, fontWeight: '700' },
-    tabChipTextActive: { color: theme.colors.textInverse },
+    tabChipTextActive: { color: brandText },
     metricRow: { flexDirection: 'row', gap: 10 },
     metricCard: {
       flex: 1,
@@ -813,15 +817,15 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
     catBar: { width: 60, height: 4, borderRadius: 999, backgroundColor: theme.colors.mutedSurface },
     catBarFill: { height: '100%', borderRadius: 999 },
     customRangeBadge: {
-      backgroundColor: `${theme.colors.brandPrimary}1A`,
+      backgroundColor: brandSoftBg,
       borderWidth: 1,
-      borderColor: theme.colors.brandPrimary,
+      borderColor: brandSoftBorder,
       borderRadius: 12,
       paddingHorizontal: 12,
       paddingVertical: 8,
     },
     customRangeBadgeText: {
-      color: theme.colors.brandPrimary,
+      color: brandText,
       fontSize: 12,
       fontWeight: '700',
     },
@@ -895,8 +899,8 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
       marginRight: 8,
     },
     monthChipActive: {
-      backgroundColor: theme.colors.brandPrimary,
-      borderColor: theme.colors.brandPrimary,
+      backgroundColor: brandSoftBg,
+      borderColor: brandSoftBorder,
     },
     monthChipText: {
       color: theme.colors.textSecondary,
@@ -904,7 +908,7 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
       fontWeight: '600',
     },
     monthChipTextActive: {
-      color: theme.colors.textInverse,
+      color: brandText,
     },
     modalActions: {
       flexDirection: 'row',
@@ -921,7 +925,7 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
       backgroundColor: theme.colors.mutedSurface,
     },
     modalActionConfirm: {
-      backgroundColor: theme.colors.brandPrimary,
+      backgroundColor: theme.mode === 'light' ? theme.colors.brandPrimaryDeep : theme.colors.brandPrimary,
     },
     modalActionCancelText: {
       color: theme.colors.textSecondary,
