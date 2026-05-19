@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Pressable, ScrollView, StyleSheet, Text, View, Share, Modal } from 'react-native'
+import Svg, { Circle, Polyline } from 'react-native-svg'
 
 import { useTheme } from '../../src/theme/theme-context'
 import { useSupabase } from '../../src/lib/supabase'
@@ -13,7 +14,7 @@ const expenseData = [3.1, 3.8, 4.2, 5.0, 4.8, 6.4]
 
 const categories = [
   { id: 'food', label: 'Makanan & Minuman', percent: 32, amount: 'Rp 2.050.000', icon: 'bills' as KaswiseIconName, color: '#65A30D', tone: 'success' as const },
-  { id: 'transport', label: 'Transportasi', percent: 22, amount: 'Rp 1.408.000', icon: 'card' as KaswiseIconName, color: '#4A80F0', tone: 'navy' as const },
+  { id: 'transport', label: 'Transportasi', percent: 22, amount: 'Rp 1.408.000', icon: 'card' as KaswiseIconName, color: '#2A5DD0', tone: 'navy' as const },
   { id: 'shopping', label: 'Belanja', percent: 18, amount: 'Rp 1.152.000', icon: 'wallets' as KaswiseIconName, color: '#B45309', tone: 'warning' as const },
   { id: 'bills', label: 'Tagihan', percent: 15, amount: 'Rp 960.000', icon: 'file' as KaswiseIconName, color: '#DC2626', tone: 'danger' as const },
   { id: 'entertainment', label: 'Hiburan', percent: 8, amount: 'Rp 512.000', icon: 'insight' as KaswiseIconName, color: '#0284C7', tone: 'info' as const },
@@ -22,6 +23,27 @@ const categories = [
 
 type Tab = 'overview' | 'category' | 'compare'
 type PeriodFilter = 'month' | '3month' | '6month' | 'year' | 'custom'
+type CategoryTone = 'success' | 'warning' | 'danger' | 'info' | 'navy' | 'neutral'
+
+type CategoryVisualMeta = {
+  color: string
+  icon: KaswiseIconName
+  tone: CategoryTone
+}
+
+const fallbackCategoryColors = {
+  light: ['#65A30D', '#2A5DD0', '#B45309', '#DC2626', '#0284C7', '#7C3AED', '#DB2777', '#0F766E'],
+  dark: ['#A3FF12', '#4A80F0', '#F59E0B', '#FF7B7B', '#38BDF8', '#A78BFA', '#F472B6', '#2DD4BF'],
+}
+
+function stableCategoryIndex(categoryName: string, paletteLength: number) {
+  const normalized = categoryName.trim().toLowerCase() || 'other'
+  let hash = 0
+  for (let index = 0; index < normalized.length; index += 1) {
+    hash = (hash * 31 + normalized.charCodeAt(index)) % paletteLength
+  }
+  return hash
+}
 
 const periodLabelsId: Record<PeriodFilter, string> = {
   month: '1 Bulan',
@@ -64,21 +86,33 @@ export default function ReportsScreen() {
   } | null>(null)
   const [dynamicCategories, setDynamicCategories] = useState(categories)
 
-  const neutralCategoryColor = theme.colors.textMuted
-  const categoryColorByName: Record<string, { color: string; icon: KaswiseIconName; tone: 'success' | 'warning' | 'danger' | 'info' | 'navy' | 'neutral' }> = {
-    food: { color: theme.colors.success, icon: 'bills', tone: 'success' },
-    makan: { color: theme.colors.success, icon: 'bills', tone: 'success' },
-    'makan & minum': { color: theme.colors.success, icon: 'bills', tone: 'success' },
-    transport: { color: theme.colors.brandAccent, icon: 'card', tone: 'navy' },
-    transportasi: { color: theme.colors.brandAccent, icon: 'card', tone: 'navy' },
-    shopping: { color: theme.colors.warning, icon: 'wallets', tone: 'warning' },
-    belanja: { color: theme.colors.warning, icon: 'wallets', tone: 'warning' },
-    bills: { color: theme.colors.danger, icon: 'file', tone: 'danger' },
-    tagihan: { color: theme.colors.danger, icon: 'file', tone: 'danger' },
-    entertainment: { color: theme.colors.info, icon: 'insight', tone: 'info' },
-    hiburan: { color: theme.colors.info, icon: 'insight', tone: 'info' },
+  const neutralCategoryColor = theme.mode === 'light' ? '#6B7280' : '#9CA3AF'
+  const categoryColorByName: Record<string, CategoryVisualMeta> = {
+    food: { color: theme.mode === 'light' ? '#65A30D' : '#A3FF12', icon: 'bills', tone: 'success' },
+    makan: { color: theme.mode === 'light' ? '#65A30D' : '#A3FF12', icon: 'bills', tone: 'success' },
+    'makan & minum': { color: theme.mode === 'light' ? '#65A30D' : '#A3FF12', icon: 'bills', tone: 'success' },
+    transport: { color: theme.mode === 'light' ? '#2A5DD0' : '#4A80F0', icon: 'card', tone: 'navy' },
+    transportasi: { color: theme.mode === 'light' ? '#2A5DD0' : '#4A80F0', icon: 'card', tone: 'navy' },
+    shopping: { color: theme.mode === 'light' ? '#B45309' : '#F59E0B', icon: 'wallets', tone: 'warning' },
+    belanja: { color: theme.mode === 'light' ? '#B45309' : '#F59E0B', icon: 'wallets', tone: 'warning' },
+    bills: { color: theme.mode === 'light' ? '#DC2626' : '#FF7B7B', icon: 'file', tone: 'danger' },
+    tagihan: { color: theme.mode === 'light' ? '#DC2626' : '#FF7B7B', icon: 'file', tone: 'danger' },
+    entertainment: { color: theme.mode === 'light' ? '#0284C7' : '#38BDF8', icon: 'insight', tone: 'info' },
+    hiburan: { color: theme.mode === 'light' ? '#0284C7' : '#38BDF8', icon: 'insight', tone: 'info' },
     other: { color: neutralCategoryColor, icon: 'chart', tone: 'neutral' },
     lainnya: { color: neutralCategoryColor, icon: 'chart', tone: 'neutral' },
+  }
+  const getCategoryVisualMeta = (categoryName: string): CategoryVisualMeta => {
+    const key = categoryName.trim().toLowerCase() || 'other'
+    const known = categoryColorByName[key]
+    if (known) return known
+
+    const palette = fallbackCategoryColors[theme.mode]
+    return {
+      color: palette[stableCategoryIndex(key, palette.length)],
+      icon: 'chart',
+      tone: 'neutral',
+    }
   }
 
   const isEn = language === 'en'
@@ -133,6 +167,20 @@ export default function ReportsScreen() {
       }
 
   const maxVal = Math.max(...incomeData, ...expenseData)
+  const lineChartWidth = 300
+  const lineChartHeight = 150
+  const lineChartPadding = 16
+  const linePointFor = (value: number, idx: number) => {
+    const usableWidth = lineChartWidth - lineChartPadding * 2
+    const usableHeight = 118
+    const x = lineChartPadding + (idx / (months.length - 1)) * usableWidth
+    const y = lineChartPadding + (1 - value / maxVal) * usableHeight
+    return `${Math.round(x)},${Math.round(y)}`
+  }
+  const incomeLinePoints = incomeData.map(linePointFor).join(' ')
+  const expenseLinePoints = expenseData.map(linePointFor).join(' ')
+  const donutRadius = 62
+  const donutCircumference = 2 * Math.PI * donutRadius
 
   const formatRupiah = (valueInJuta: number) => `Rp ${(valueInJuta * 1_000_000).toLocaleString('id-ID')}`
 
@@ -235,7 +283,7 @@ export default function ReportsScreen() {
           const generated = Array.from(grouped.entries())
             .map(([key, amount]) => {
               const percent = Math.max(1, Math.round((amount / totalExpense) * 100))
-              const categoryMeta = categoryColorByName[key] || categoryColorByName.other
+              const categoryMeta = getCategoryVisualMeta(key)
               return {
                 id: key,
                 label: key.charAt(0).toUpperCase() + key.slice(1),
@@ -249,7 +297,7 @@ export default function ReportsScreen() {
             .sort((a, b) => b.percent - a.percent)
           setDynamicCategories(generated)
         } else {
-          setDynamicCategories(categories.map((c) => ({ ...c, color: c.color || neutralCategoryColor })))
+          setDynamicCategories(categories.map((c) => ({ ...c, ...getCategoryVisualMeta(c.id) })))
         }
 
         // Load compare data if activeTab is 'compare'
@@ -446,6 +494,10 @@ export default function ReportsScreen() {
                   <View style={styles.gridLine} />
                 </View>
                 <View style={styles.lineGraphLayer}>
+                  <Svg testID="reports-line-chart-svg" width="100%" height={lineChartHeight} viewBox={`0 0 ${lineChartWidth} ${lineChartHeight}`} style={styles.lineSvgLayer}>
+                    <Polyline testID="reports-line-path-income" accessibilityLabel={incomeLinePoints} points={incomeLinePoints} fill="none" stroke={theme.colors.success} strokeWidth={3} strokeLinecap="round" strokeLinejoin="round" />
+                    <Polyline testID="reports-line-path-expense" accessibilityLabel={expenseLinePoints} points={expenseLinePoints} fill="none" stroke={theme.colors.danger} strokeWidth={3} strokeLinecap="round" strokeLinejoin="round" />
+                  </Svg>
                   {months.map((month, idx) => {
                     const incomeTop = 10 + (1 - incomeData[idx] / maxVal) * 118
                     const expenseTop = 10 + (1 - expenseData[idx] / maxVal) * 118
@@ -457,12 +509,6 @@ export default function ReportsScreen() {
                       >
                         <View testID={`reports-line-dot-income-${idx}`} style={[styles.lineDot, styles.incomeDot, { top: incomeTop }]} />
                         <View testID={`reports-line-dot-expense-${idx}`} style={[styles.lineDot, styles.expenseDot, { top: expenseTop }]} />
-                        {idx < months.length - 1 ? (
-                          <>
-                            <View style={[styles.lineSegment, styles.incomeSegment, { top: incomeTop }]} />
-                            <View style={[styles.lineSegment, styles.expenseSegment, { top: expenseTop }]} />
-                          </>
-                        ) : null}
                         <Text style={styles.chartLabel}>{month}</Text>
 
                         {selectedBar === idx && (
@@ -504,19 +550,34 @@ export default function ReportsScreen() {
 
               <View style={styles.ringArea}>
                 <View style={styles.donutChart}>
-                  {dynamicCategories.map((cat, index) => (
-                    <View
-                      key={cat.id}
-                      testID={`reports-donut-segment-${cat.id}`}
-                      style={[
-                        styles.donutSegment,
-                        {
-                          backgroundColor: cat.color,
-                          transform: [{ rotate: `${index * 60}deg` }],
-                        },
-                      ]}
-                    />
-                  ))}
+                  <Svg width={150} height={150} viewBox="0 0 150 150" style={styles.donutSvg}>
+                    {(() => {
+                      let cumulativePercent = 0
+                      return dynamicCategories.map((cat) => {
+                        const dashLength = (cat.percent / 100) * donutCircumference
+                        const gapLength = donutCircumference - dashLength
+                        const segment = (
+                          <Circle
+                            key={cat.id}
+                            testID={`reports-donut-segment-${cat.id}`}
+                            cx={75}
+                            cy={75}
+                            r={donutRadius}
+                            accessibilityLabel={cat.color}
+                            fill="none"
+                            stroke={cat.color}
+                            strokeWidth={26}
+                            strokeDasharray={`${dashLength} ${gapLength}`}
+                            strokeDashoffset={-(cumulativePercent / 100) * donutCircumference}
+                            strokeLinecap="butt"
+                            transform="rotate(-90 75 75)"
+                          />
+                        )
+                        cumulativePercent += cat.percent
+                        return segment
+                      })
+                    })()}
+                  </Svg>
                   <View style={styles.ringInner}>
                     <Text style={styles.ringValue}>Rp 6,4 Jt</Text>
                     <Text style={styles.ringLabel}>{tx.ringLabel}</Text>
@@ -873,6 +934,13 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
       justifyContent: 'space-between',
       paddingTop: 10,
       paddingBottom: 22,
+      position: 'relative',
+    },
+    lineSvgLayer: {
+      position: 'absolute',
+      left: 0,
+      right: 0,
+      top: 0,
     },
     lineColumn: {
       flex: 1,
@@ -952,16 +1020,17 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
       position: 'relative',
       backgroundColor: theme.colors.mutedSurface,
     },
-    donutSegment: {
+    donutSvg: {
       position: 'absolute',
-      width: 75,
-      height: 75,
-      top: 0,
-      left: 75,
-      transformOrigin: '0px 75px',
-      opacity: 0.9,
+      inset: 0,
+    },
+    donutSegment: {
+      height: 150,
+      opacity: 0.92,
     },
     ringInner: {
+      position: 'absolute',
+      alignSelf: 'center',
       width: 92,
       height: 92,
       borderRadius: 46,

@@ -169,14 +169,14 @@ describe('DashboardScreen dark luxury Home parity', () => {
     expect(mockPush).toHaveBeenLastCalledWith('/(tabs)/transactions')
   })
 
-  it('uses softened neon green usage without changing the primary token', async () => {
+  it('uses Bottom Tab and FAB green for light theme primary accents', async () => {
     const screen = renderDashboard()
 
     const avatar = screen.getByTestId('home-avatar')
     const avatarStyle = getFlattenedStyle(avatar)
     expect(avatarStyle.width).toBe(36)
     expect(avatarStyle.height).toBe(36)
-    expect(avatarStyle.backgroundColor).toBe('#A3FF12')
+    expect(avatarStyle.backgroundColor).toBe('#65A30D')
 
     const hero = screen.getByTestId('home-hero-card')
     const heroStyle = getFlattenedStyle(hero)

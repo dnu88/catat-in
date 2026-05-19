@@ -3,6 +3,7 @@ import { useState } from 'react'
 
 import { AuthButton, AuthFooter, AuthFormCard, AuthHeroPanel, AuthLink, AuthScreenLayout } from '../../src/components/ui'
 import { InputField, StateMessage } from '../../src/components/ui'
+import { KaswiseLogoMark } from '../../src/components/brand/KaswiseLogoMark'
 import { useI18n } from '../../src/i18n/i18n-context'
 import { useSupabase } from '../../src/lib/supabase'
 
@@ -36,6 +37,7 @@ export default function LoginScreen() {
 
   return (
     <AuthScreenLayout>
+      <KaswiseLogoMark testID="login-kaswise-logo-mark" size={58} />
       <AuthHeroPanel
         icon="lock"
         iconTone="primary"

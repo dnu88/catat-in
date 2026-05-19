@@ -175,7 +175,7 @@ export const kaswiseTokens = {
         strong: 'rgba(10, 10, 10, 0.16)',
       },
       brand: {
-        primary:        '#A3FF12',
+        primary:        '#65A30D',
         primaryDeep:    '#65A30D',
         secondary:      '#4A80F0',
         secondaryDeep:  '#2A5DD0',
@@ -187,10 +187,10 @@ export const kaswiseTokens = {
         info:    '#0284C7',
       },
       iconBubbles: {
-        primary: { background: 'rgba(163, 255, 18, 0.18)', border: 'rgba(101, 163, 13, 0.28)', color: '#65A30D' },
+        primary: { background: 'rgba(101, 163, 13, 0.16)', border: 'rgba(101, 163, 13, 0.28)', color: '#65A30D' },
         navy:    { background: 'rgba(74, 128, 240, 0.12)', border: 'rgba(42, 93, 208, 0.25)',  color: '#2A5DD0' },
         accent:  { background: 'rgba(74, 128, 240, 0.12)', border: 'rgba(42, 93, 208, 0.25)',  color: '#2A5DD0' },
-        success: { background: 'rgba(163, 255, 18, 0.18)', border: 'rgba(101, 163, 13, 0.28)', color: '#65A30D' },
+        success: { background: 'rgba(101, 163, 13, 0.16)', border: 'rgba(101, 163, 13, 0.28)', color: '#65A30D' },
         warning: { background: 'rgba(245, 158, 11, 0.14)', border: 'rgba(245, 158, 11, 0.30)', color: '#B45309' },
         danger:  { background: 'rgba(239, 68, 68, 0.10)',  border: 'rgba(239, 68, 68, 0.25)',  color: '#DC2626' },
         info:    { background: 'rgba(14, 165, 233, 0.10)', border: 'rgba(14, 165, 233, 0.25)', color: '#0284C7' },
@@ -208,9 +208,9 @@ export const kaswiseTokens = {
       sm: { shadowColor: '#0A0A0A', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.04, shadowRadius: 2,  elevation: 1 },
       md: { shadowColor: '#0A0A0A', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.08, shadowRadius: 12, elevation: 3 },
       lg: { shadowColor: '#0A0A0A', shadowOffset: { width: 0, height: 12 }, shadowOpacity: 0.10, shadowRadius: 30, elevation: 8 },
-      // Neon glow stays — same brand colour, lighter opacity on light bg
+      // Light theme glow follows the Bottom Tab + FAB green instead of neon.
       neon: {
-        shadowColor: '#A3FF12', shadowOffset: { width: 0, height: 8 },
+        shadowColor: '#65A30D', shadowOffset: { width: 0, height: 8 },
         shadowOpacity: 0.35, shadowRadius: 22, elevation: 12,
       },
     },

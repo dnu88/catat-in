@@ -11,6 +11,7 @@ const mockTransactions = [
   { amount: 500000, transaction_type: 'expense', category: 'Makan', date: '2026-05-01' },
   { amount: 350000, transaction_type: 'expense', category: 'Belanja', date: '2026-05-02' },
   { amount: 200000, transaction_type: 'expense', category: 'Transport', date: '2026-05-03' },
+  { amount: 150000, transaction_type: 'expense', category: 'Kesehatan', date: '2026-05-04' },
 ]
 
 jest.mock('../src/lib/supabase', () => {
@@ -100,18 +101,29 @@ describe('ReportsScreen visual parity', () => {
     const foodFill = await screen.findByTestId('reports-category-fill-makan')
     const shoppingFill = await screen.findByTestId('reports-category-fill-belanja')
     const transportFill = await screen.findByTestId('reports-category-fill-transport')
+    const customFill = await screen.findByTestId('reports-category-fill-kesehatan')
     const foodSegment = await screen.findByTestId('reports-donut-segment-makan')
+    const shoppingSegment = await screen.findByTestId('reports-donut-segment-belanja')
+    const transportSegment = await screen.findByTestId('reports-donut-segment-transport')
+    const customSegment = await screen.findByTestId('reports-donut-segment-kesehatan')
 
     expect(getFlattenedStyle(foodFill).backgroundColor).toBe('#65A30D')
     expect(getFlattenedStyle(shoppingFill).backgroundColor).toBe('#B45309')
-    expect(getFlattenedStyle(transportFill).backgroundColor).toBe('#4A80F0')
-    expect(getFlattenedStyle(foodSegment).backgroundColor).toBe(getFlattenedStyle(foodFill).backgroundColor)
+    expect(getFlattenedStyle(transportFill).backgroundColor).toBe('#2A5DD0')
+    expect(getFlattenedStyle(customFill).backgroundColor).toMatch(/^#[0-9A-F]{6}$/)
+    expect(getFlattenedStyle(customFill).backgroundColor).not.toBe('#A3FF12')
+    expect(foodSegment.props.accessibilityLabel).toBe(getFlattenedStyle(foodFill).backgroundColor)
+    expect(shoppingSegment.props.accessibilityLabel).toBe(getFlattenedStyle(shoppingFill).backgroundColor)
+    expect(transportSegment.props.accessibilityLabel).toBe(getFlattenedStyle(transportFill).backgroundColor)
+    expect(customSegment.props.accessibilityLabel).toBe(getFlattenedStyle(customFill).backgroundColor)
     expect(getFlattenedStyle(foodFill).backgroundColor).not.toBe('#A3FF12')
   })
 
-  it('renders the six month trend as line graph dots instead of bars', () => {
+  it('renders the six month trend with continuous svg line paths and six months of visible points', () => {
     const screen = renderReports()
 
+    expect(screen.getByTestId('reports-line-path-income').props.accessibilityLabel.split(' ')).toHaveLength(6)
+    expect(screen.getByTestId('reports-line-path-expense').props.accessibilityLabel.split(' ')).toHaveLength(6)
     expect(screen.getAllByTestId(/reports-line-dot-income-/)).toHaveLength(6)
     expect(screen.getAllByTestId(/reports-line-dot-expense-/)).toHaveLength(6)
     expect(screen.queryByTestId('reports-bar-chart')).toBeNull()

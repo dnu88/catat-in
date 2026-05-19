@@ -4,6 +4,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 
 import { useSupabase } from '../../src/lib/supabase'
 import type { KaswiseIconName } from '../../src/components/icons/kaswise-icons'
+import { KaswiseLogoMark } from '../../src/components/brand/KaswiseLogoMark'
 import { IconBubble } from '../../src/components/ui'
 import { useTheme } from '../../src/theme/theme-context'
 import { useI18n } from '../../src/i18n/i18n-context'
@@ -33,10 +34,11 @@ export default function SettingsScreen() {
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         {/* Header */}
         <View style={styles.headerRow}>
-          <View>
+          <View style={styles.headerCopy}>
             <Text style={styles.title}>{t('settingsTitle')}</Text>
             <Text style={styles.subtitle}>{t('settingsSubtitle')}</Text>
           </View>
+          <KaswiseLogoMark testID="settings-kaswise-logo-mark" size={42} />
         </View>
 
         {/* Profile Card */}
@@ -297,7 +299,8 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
   return StyleSheet.create({
     screen: { flex: 1, backgroundColor: theme.colors.background },
     content: { padding: 20, gap: 10, paddingBottom: 26 },
-    headerRow: { marginBottom: 4 },
+    headerRow: { marginBottom: 4, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 14 },
+    headerCopy: { flex: 1 },
     title: { color: theme.colors.textPrimary, fontSize: theme.typography.fontSize['4xl'], fontWeight: theme.typography.fontWeight.extrabold, letterSpacing: theme.typography.letterSpacing.tight },
     subtitle: { color: theme.colors.textSecondary, fontSize: theme.typography.fontSize.sm, marginTop: 2 },
     profileCard: {
