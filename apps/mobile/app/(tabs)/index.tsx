@@ -5,16 +5,16 @@ import { useRouter } from 'expo-router'
 import { useTheme } from '../../src/theme/theme-context'
 
 const quickActions = [
-  { id: 'manual', label: 'Manual', glyph: '+', route: '/(tabs)/capture' },
-  { id: 'ai', label: 'AI Chat', glyph: 'AI', route: '/(tabs)/capture' },
-  { id: 'receipt', label: 'Struk', glyph: '▧', route: '/(tabs)/capture' },
-  { id: 'import', label: 'Import', glyph: '↥', route: '/(tabs)/imports' },
+  { id: 'manual', label: 'Manual', glyph: '✎', route: '/(tabs)/capture', tone: 'primary' },
+  { id: 'ai', label: 'AI Chat', glyph: 'AI', route: '/(tabs)/capture', tone: 'navy' },
+  { id: 'receipt', label: 'Struk', glyph: '▤', route: '/(tabs)/capture', tone: 'success' },
+  { id: 'import', label: 'Import', glyph: '↓', route: '/(tabs)/imports', tone: 'info' },
 ] as const
 
 const transactions = [
-  { id: 'indomaret', title: 'Indomaret', meta: 'Makan • Hari ini', amount: '- Rp 84.000' },
-  { id: 'fore', title: 'Fore Coffee', meta: 'Jajan • Kemarin', amount: '- Rp 42.000' },
-  { id: 'grab', title: 'Grab Car', meta: 'Transport • Kemarin', amount: '- Rp 68.000' },
+  { id: 'indomaret', title: 'Indomaret', meta: 'Hari ini · GoPay', amount: '-45rb', tone: 'primary' },
+  { id: 'fore', title: 'Fore Coffee', meta: 'Hari ini · GoPay', amount: '-38rb', tone: 'warning' },
+  { id: 'grab', title: 'Grab Car', meta: 'Kemarin · GoPay', amount: '-22rb', tone: 'primary' },
 ] as const
 
 export default function DashboardScreen() {
@@ -30,28 +30,33 @@ export default function DashboardScreen() {
             <Text style={styles.greeting}>Halo, Danu</Text>
             <Text style={styles.dateText}>April 2026</Text>
           </View>
-          <View style={styles.avatarWrap}>
+          <View testID="home-avatar" style={styles.avatarWrap}>
             <Text style={styles.avatarText}>DB</Text>
           </View>
         </View>
 
-        <View style={styles.heroCard}>
+        <View testID="home-hero-card" style={styles.heroCard}>
           <View style={styles.heroBloomOne} />
           <View style={styles.heroBloomTwo} />
-          <View style={styles.heroTopRow}>
-            <View>
-              <Text style={styles.heroLabel}>Total saldo</Text>
-              <Text style={styles.heroAmount}>Rp 4.250.000</Text>
-            </View>
-            <Pressable style={styles.managePill} onPress={() => router.push('/(tabs)/wallets' as never)}>
+
+          <View style={styles.heroControlRow}>
+            <Pressable testID="home-wallet-pill" style={styles.walletPill} onPress={() => router.push('/(tabs)/wallets' as never)}>
+              <Text style={styles.walletIcon}>▱</Text>
+              <Text style={styles.walletName}>Main Wallet</Text>
+              <Text style={styles.walletCaret}>⌄</Text>
+            </Pressable>
+            <Pressable onPress={() => router.push('/(tabs)/wallets' as never)}>
               <Text style={styles.manageText}>Manage</Text>
             </Pressable>
           </View>
 
-          <View style={styles.walletRow}>
-            <Text style={styles.walletName}>Main Wallet</Text>
-            <View style={styles.trendPill}>
-              <Text style={styles.trendText}>↗ 15%</Text>
+          <View style={styles.balanceBlock}>
+            <Text style={styles.heroLabel}>Total saldo</Text>
+            <View style={styles.amountRow}>
+              <Text style={styles.heroAmount}>Rp 4.250.000</Text>
+              <View style={styles.deltaPill}>
+                <Text style={styles.deltaText}>↗ 15%</Text>
+              </View>
             </View>
           </View>
 
@@ -76,49 +81,49 @@ export default function DashboardScreen() {
             <Pressable
               key={action.id}
               testID={`home-quick-action-${action.id}`}
-              style={action.id === 'manual' ? styles.quickActionPrimary : styles.quickActionCard}
+              style={styles.quickActionCard}
               onPress={() => router.push(action.route as never)}
             >
-              <View style={styles.quickGlyphWrap}>
-                <Text style={styles.quickGlyph}>{action.glyph}</Text>
+              <View testID={`home-quick-bubble-${action.id}`} style={[styles.iconBubble, styles[`${action.tone}Bubble`]]}>
+                <Text style={[styles.iconBubbleText, styles[`${action.tone}BubbleText`]]}>{action.glyph}</Text>
               </View>
               <Text style={styles.quickActionLabel}>{action.label}</Text>
             </Pressable>
           ))}
         </View>
 
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Anggaran</Text>
-          <Pressable testID="home-budget-action" style={styles.budgetAction} onPress={() => router.push('/(tabs)/budgets' as never)}>
-            <Text style={styles.budgetActionText}>Lihat →</Text>
-          </Pressable>
-        </View>
-
-        <View style={styles.budgetCard}>
-          <View style={styles.budgetTopRow}>
-            <View>
+        <View testID="home-budget-section" style={styles.sectionCard}>
+          <View style={styles.sectionTopRow}>
+            <Text style={styles.sectionTitle}>Anggaran</Text>
+            <Pressable testID="home-budget-action" onPress={() => router.push('/(tabs)/budgets' as never)}>
+              <Text style={styles.sectionAction}>Lihat →</Text>
+            </Pressable>
+          </View>
+          <View style={styles.budgetContent}>
+            <View style={styles.budgetTopRow}>
               <Text style={styles.budgetName}>Makan</Text>
-              <Text style={styles.budgetMeta}>620rb / 800rb</Text>
+              <Text style={styles.budgetPercent}>77%</Text>
             </View>
-            <Text style={styles.budgetPercent}>77%</Text>
+            <Text style={styles.budgetMeta}>620rb / 800rb</Text>
+            <View style={styles.progressTrack}>
+              <View style={styles.progressFill} />
+            </View>
+            <Text style={styles.budgetStatus}>Sisa 180rb · Hampir habis</Text>
           </View>
-          <View style={styles.progressTrack}>
-            <View style={styles.progressFill} />
-          </View>
-          <Text style={styles.budgetStatus}>Sisa 180rb · Hampir habis</Text>
         </View>
 
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Terakhir</Text>
-          <Pressable style={styles.linkButton} onPress={() => router.push('/(tabs)/transactions' as never)}>
-            <Text style={styles.linkButtonText}>Semua →</Text>
-          </Pressable>
-        </View>
-
-        <View style={styles.transactionCard}>
+        <View style={styles.sectionCard}>
+          <View style={styles.sectionTopRow}>
+            <Text style={styles.sectionTitle}>Terakhir</Text>
+            <Pressable onPress={() => router.push('/(tabs)/transactions' as never)}>
+              <Text style={styles.sectionAction}>Semua →</Text>
+            </Pressable>
+          </View>
           {transactions.map((item, index) => (
             <View key={item.id} style={[styles.txRow, index === transactions.length - 1 && styles.txRowLast]}>
-              <View style={styles.txDot} />
+              <View style={[styles.txBubble, styles[`${item.tone}Bubble`]]}>
+                <Text style={[styles.txBubbleText, styles[`${item.tone}BubbleText`]]}>{item.title.slice(0, 1)}</Text>
+              </View>
               <View style={styles.txInfo}>
                 <Text style={styles.txTitle}>{item.title}</Text>
                 <Text style={styles.txMeta}>{item.meta}</Text>
@@ -129,8 +134,13 @@ export default function DashboardScreen() {
         </View>
 
         <View style={styles.insightCard}>
-          <Text style={styles.insightTitle}>Insight harian</Text>
-          <Text style={styles.insightBody}>Pengeluaran kategori makan naik 12% minggu ini. Kurangi 1 coffee run untuk menjaga target tabungan tetap aman.</Text>
+          <View style={[styles.txBubble, styles.infoBubble]}>
+            <Text style={[styles.txBubbleText, styles.infoBubbleText]}>i</Text>
+          </View>
+          <View style={styles.insightTextBlock}>
+            <Text style={styles.insightTitle}>Insight harian</Text>
+            <Text style={styles.insightBody}>Pengeluaran kategori Belanja melebihi 10% bulan ini. Mungkin saatnya rem sebentar?</Text>
+          </View>
         </View>
       </ScrollView>
     </View>
@@ -155,221 +165,245 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
-      marginTop: 6,
+      paddingTop: 6,
     },
     greeting: {
       color: theme.colors.textPrimary,
-      fontSize: theme.typography.fontSize['3xl'],
+      fontSize: 22,
       fontWeight: theme.typography.fontWeight.extrabold,
-      letterSpacing: -0.7,
+      letterSpacing: -0.3,
     },
     dateText: {
       color: theme.colors.textMuted,
-      fontSize: theme.typography.fontSize.md,
-      marginTop: 3,
-      fontWeight: theme.typography.fontWeight.semibold,
+      fontSize: 13,
+      marginTop: 2,
     },
     avatarWrap: {
-      width: 46,
-      height: 46,
-      borderRadius: 23,
-      backgroundColor: 'rgba(163, 255, 18, 0.12)',
-      borderWidth: 1,
-      borderColor: 'rgba(163, 255, 18, 0.24)',
+      width: 36,
+      height: 36,
+      borderRadius: 18,
+      backgroundColor: theme.colors.brandPrimary,
       alignItems: 'center',
       justifyContent: 'center',
     },
     avatarText: {
-      color: theme.colors.brandPrimary,
-      fontSize: theme.typography.fontSize.sm,
-      fontWeight: theme.typography.fontWeight.extrabold,
+      color: '#FFFFFF',
+      fontSize: 12,
+      fontWeight: theme.typography.fontWeight.bold,
     },
     heroCard: {
       backgroundColor: theme.colors.card,
-      borderRadius: 28,
-      borderWidth: 1,
-      borderColor: theme.colors.borderBase,
+      borderRadius: 24,
       padding: 18,
-      gap: 16,
+      borderWidth: 1,
+      borderColor: theme.colors.borderSoft,
       overflow: 'hidden',
-      ...theme.shadow.lg,
     },
     heroBloomOne: {
       position: 'absolute',
+      top: -60,
+      right: -60,
       width: 180,
       height: 180,
       borderRadius: 90,
-      right: -74,
-      top: -78,
-      backgroundColor: 'rgba(163, 255, 18, 0.09)',
+      backgroundColor: 'rgba(163, 255, 18, 0.14)',
+      opacity: 0.55,
     },
     heroBloomTwo: {
       position: 'absolute',
-      width: 130,
-      height: 130,
-      borderRadius: 65,
-      left: -66,
-      bottom: -70,
-      backgroundColor: 'rgba(74, 128, 240, 0.12)',
+      bottom: -80,
+      left: -60,
+      width: 180,
+      height: 180,
+      borderRadius: 90,
+      backgroundColor: 'rgba(74, 128, 240, 0.10)',
+      opacity: 0.6,
     },
-    heroTopRow: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'flex-start',
-    },
-    heroLabel: {
-      color: theme.colors.textMuted,
-      fontSize: theme.typography.fontSize.sm,
-      fontWeight: theme.typography.fontWeight.semibold,
-      textTransform: 'uppercase',
-      letterSpacing: 0.8,
-    },
-    heroAmount: {
-      color: theme.colors.textPrimary,
-      fontSize: 34,
-      fontWeight: theme.typography.fontWeight.extrabold,
-      letterSpacing: -1.1,
-      marginTop: 6,
-    },
-    managePill: {
-      backgroundColor: 'rgba(255, 255, 255, 0.06)',
-      borderWidth: 1,
-      borderColor: theme.colors.borderBase,
-      borderRadius: theme.radius.pill,
-      paddingHorizontal: 13,
-      paddingVertical: 7,
-    },
-    manageText: {
-      color: theme.colors.textSecondary,
-      fontSize: theme.typography.fontSize.sm,
-      fontWeight: theme.typography.fontWeight.bold,
-    },
-    walletRow: {
+    heroControlRow: {
+      position: 'relative',
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
+      marginBottom: 16,
+    },
+    walletPill: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+      backgroundColor: theme.colors.glass.background,
+      borderWidth: 1,
+      borderColor: theme.colors.glass.border,
+      borderRadius: 999,
+      paddingVertical: 7,
+      paddingHorizontal: 12,
+    },
+    walletIcon: {
+      color: theme.colors.textMuted,
+      fontSize: 13,
+      fontWeight: theme.typography.fontWeight.bold,
     },
     walletName: {
-      color: theme.colors.textSecondary,
-      fontSize: theme.typography.fontSize.md,
+      color: theme.colors.textPrimary,
+      fontSize: 12,
+      fontWeight: theme.typography.fontWeight.bold,
+    },
+    walletCaret: {
+      color: theme.colors.textDim,
+      fontSize: 10,
+      fontWeight: theme.typography.fontWeight.bold,
+    },
+    manageText: {
+      color: theme.colors.textMuted,
+      fontSize: 12,
       fontWeight: theme.typography.fontWeight.semibold,
     },
-    trendPill: {
-      backgroundColor: 'rgba(163, 255, 18, 0.12)',
-      borderRadius: theme.radius.pill,
-      paddingHorizontal: 10,
-      paddingVertical: 5,
+    balanceBlock: {
+      position: 'relative',
+      marginBottom: 14,
     },
-    trendText: {
+    heroLabel: {
+      color: theme.colors.textMuted,
+      fontSize: 11,
+      marginBottom: 4,
+    },
+    amountRow: {
+      flexDirection: 'row',
+      alignItems: 'baseline',
+      gap: 10,
+      flexWrap: 'wrap',
+    },
+    heroAmount: {
+      color: theme.colors.textPrimary,
+      fontSize: 30,
+      fontWeight: theme.typography.fontWeight.extrabold,
+      letterSpacing: -0.6,
+    },
+    deltaPill: {
+      backgroundColor: 'rgba(163, 255, 18, 0.14)',
+      borderRadius: 6,
+      paddingVertical: 3,
+      paddingHorizontal: 8,
+    },
+    deltaText: {
       color: theme.colors.brandPrimary,
-      fontSize: theme.typography.fontSize.sm,
+      fontSize: 10,
       fontWeight: theme.typography.fontWeight.extrabold,
     },
     statsRow: {
+      position: 'relative',
       flexDirection: 'row',
       gap: 8,
     },
     statCard: {
       flex: 1,
-      backgroundColor: 'rgba(255, 255, 255, 0.05)',
+      backgroundColor: 'rgba(255,255,255,0.04)',
       borderWidth: 1,
       borderColor: theme.colors.borderSoft,
-      borderRadius: 18,
-      padding: 11,
-      gap: 4,
+      borderRadius: 14,
+      padding: 10,
     },
     statLabel: {
       color: theme.colors.textMuted,
-      fontSize: 11,
-      fontWeight: theme.typography.fontWeight.semibold,
+      fontSize: 10,
     },
     statValue: {
       color: theme.colors.textPrimary,
-      fontSize: theme.typography.fontSize.lg,
+      fontSize: 14,
       fontWeight: theme.typography.fontWeight.extrabold,
+      marginTop: 2,
     },
     quickActionRow: {
       flexDirection: 'row',
-      gap: 9,
+      gap: 8,
     },
     quickActionCard: {
       flex: 1,
-      backgroundColor: theme.colors.surface,
+      backgroundColor: theme.colors.card,
+      borderRadius: 16,
       borderWidth: 1,
       borderColor: theme.colors.borderSoft,
-      borderRadius: 20,
       paddingVertical: 12,
+      paddingHorizontal: 8,
       alignItems: 'center',
-      gap: 8,
+      gap: 6,
     },
-    quickActionPrimary: {
-      flex: 1,
-      backgroundColor: 'rgba(163, 255, 18, 0.12)',
+    iconBubble: {
+      width: 32,
+      height: 32,
+      borderRadius: 16,
       borderWidth: 1,
-      borderColor: 'rgba(163, 255, 18, 0.24)',
-      borderRadius: 20,
-      paddingVertical: 12,
-      alignItems: 'center',
-      gap: 8,
-    },
-    quickGlyphWrap: {
-      width: 38,
-      height: 38,
-      borderRadius: 19,
-      backgroundColor: 'rgba(255, 255, 255, 0.06)',
       alignItems: 'center',
       justifyContent: 'center',
     },
-    quickGlyph: {
-      color: theme.colors.brandPrimary,
-      fontSize: theme.typography.fontSize.md,
+    iconBubbleText: {
+      fontSize: 12,
       fontWeight: theme.typography.fontWeight.extrabold,
+    },
+    primaryBubble: {
+      backgroundColor: 'rgba(163, 255, 18, 0.14)',
+      borderColor: 'rgba(163, 255, 18, 0.25)',
+    },
+    primaryBubbleText: {
+      color: theme.colors.brandPrimary,
+    },
+    navyBubble: {
+      backgroundColor: 'rgba(74, 128, 240, 0.14)',
+      borderColor: 'rgba(74, 128, 240, 0.30)',
+    },
+    navyBubbleText: {
+      color: theme.colors.brandSecondary,
+    },
+    successBubble: {
+      backgroundColor: 'rgba(163, 255, 18, 0.14)',
+      borderColor: 'rgba(163, 255, 18, 0.25)',
+    },
+    successBubbleText: {
+      color: theme.colors.success,
+    },
+    warningBubble: {
+      backgroundColor: 'rgba(255, 192, 109, 0.14)',
+      borderColor: 'rgba(255, 192, 109, 0.30)',
+    },
+    warningBubbleText: {
+      color: theme.colors.warning,
+    },
+    infoBubble: {
+      backgroundColor: 'rgba(56, 189, 248, 0.14)',
+      borderColor: 'rgba(56, 189, 248, 0.30)',
+    },
+    infoBubbleText: {
+      color: theme.colors.info,
     },
     quickActionLabel: {
       color: theme.colors.textSecondary,
-      fontSize: theme.typography.fontSize.sm,
+      fontSize: 11,
       fontWeight: theme.typography.fontWeight.bold,
     },
-    sectionHeader: {
+    sectionCard: {
+      backgroundColor: theme.colors.card,
+      borderWidth: 1,
+      borderColor: theme.colors.borderSoft,
+      borderRadius: 18,
+      padding: 14,
+      gap: 10,
+    },
+    sectionTopRow: {
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
-      marginTop: 4,
     },
     sectionTitle: {
       color: theme.colors.textPrimary,
-      fontSize: theme.typography.fontSize.xl,
-      fontWeight: theme.typography.fontWeight.extrabold,
-      letterSpacing: -0.4,
-    },
-    budgetAction: {
-      backgroundColor: theme.colors.brandPrimary,
-      borderRadius: theme.radius.pill,
-      paddingHorizontal: 13,
-      paddingVertical: 7,
-      ...theme.shadow.neon,
-    },
-    budgetActionText: {
-      color: theme.colors.textInverse,
-      fontSize: theme.typography.fontSize.sm,
-      fontWeight: theme.typography.fontWeight.extrabold,
-    },
-    linkButton: {
-      paddingHorizontal: 4,
-      paddingVertical: 6,
-    },
-    linkButtonText: {
-      color: theme.colors.brandPrimary,
-      fontSize: theme.typography.fontSize.sm,
+      fontSize: 14,
       fontWeight: theme.typography.fontWeight.bold,
     },
-    budgetCard: {
-      backgroundColor: theme.colors.surface,
-      borderWidth: 1,
-      borderColor: theme.colors.borderSoft,
-      borderRadius: 22,
-      padding: 16,
-      gap: 11,
+    sectionAction: {
+      color: theme.colors.brandPrimary,
+      fontSize: 12,
+      fontWeight: theme.typography.fontWeight.bold,
+    },
+    budgetContent: {
+      gap: 6,
     },
     budgetTopRow: {
       flexDirection: 'row',
@@ -378,100 +412,100 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
     },
     budgetName: {
       color: theme.colors.textPrimary,
-      fontSize: theme.typography.fontSize.lg,
+      fontSize: 13,
+      fontWeight: theme.typography.fontWeight.bold,
+    },
+    budgetPercent: {
+      color: theme.colors.warning,
+      fontSize: 12,
       fontWeight: theme.typography.fontWeight.extrabold,
     },
     budgetMeta: {
       color: theme.colors.textMuted,
-      fontSize: theme.typography.fontSize.sm,
-      marginTop: 3,
-      fontWeight: theme.typography.fontWeight.semibold,
-    },
-    budgetPercent: {
-      color: theme.colors.brandPrimary,
-      fontSize: theme.typography.fontSize['2xl'],
-      fontWeight: theme.typography.fontWeight.extrabold,
+      fontSize: 11,
     },
     progressTrack: {
-      height: 8,
-      backgroundColor: 'rgba(255, 255, 255, 0.08)',
-      borderRadius: theme.radius.pill,
+      height: 6,
+      backgroundColor: 'rgba(255,255,255,0.05)',
+      borderRadius: 999,
       overflow: 'hidden',
     },
     progressFill: {
       width: '77%',
       height: '100%',
-      backgroundColor: theme.colors.brandPrimary,
-      borderRadius: theme.radius.pill,
+      backgroundColor: theme.colors.warning,
+      borderRadius: 999,
     },
     budgetStatus: {
-      color: theme.colors.warning,
-      fontSize: theme.typography.fontSize.sm,
-      fontWeight: theme.typography.fontWeight.semibold,
-    },
-    transactionCard: {
-      backgroundColor: theme.colors.surface,
-      borderWidth: 1,
-      borderColor: theme.colors.borderSoft,
-      borderRadius: 22,
-      paddingHorizontal: 14,
+      color: theme.colors.textMuted,
+      fontSize: 11,
+      marginTop: 2,
     },
     txRow: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 11,
-      paddingVertical: 14,
+      gap: 12,
+      paddingVertical: 8,
       borderBottomWidth: 1,
       borderBottomColor: theme.colors.borderSoft,
     },
     txRowLast: {
       borderBottomWidth: 0,
     },
-    txDot: {
-      width: 38,
-      height: 38,
-      borderRadius: 19,
-      backgroundColor: 'rgba(74, 128, 240, 0.14)',
+    txBubble: {
+      width: 36,
+      height: 36,
+      borderRadius: 18,
       borderWidth: 1,
-      borderColor: 'rgba(74, 128, 240, 0.30)',
+      alignItems: 'center',
+      justifyContent: 'center',
+      flexShrink: 0,
+    },
+    txBubbleText: {
+      fontSize: 12,
+      fontWeight: theme.typography.fontWeight.extrabold,
     },
     txInfo: {
       flex: 1,
     },
     txTitle: {
       color: theme.colors.textPrimary,
-      fontSize: theme.typography.fontSize.md,
+      fontSize: 13,
       fontWeight: theme.typography.fontWeight.bold,
     },
     txMeta: {
-      color: theme.colors.textMuted,
-      fontSize: theme.typography.fontSize.sm,
+      color: theme.colors.textDim,
+      fontSize: 11,
       marginTop: 2,
     },
     txAmount: {
-      color: theme.colors.textSecondary,
-      fontSize: theme.typography.fontSize.sm,
-      fontWeight: theme.typography.fontWeight.bold,
+      color: theme.colors.danger,
+      fontSize: 13,
+      fontWeight: theme.typography.fontWeight.extrabold,
     },
     insightCard: {
-      backgroundColor: 'rgba(163, 255, 18, 0.08)',
+      backgroundColor: theme.colors.mutedSurface,
       borderWidth: 1,
-      borderColor: 'rgba(163, 255, 18, 0.20)',
-      borderRadius: 24,
-      padding: 16,
-      gap: 7,
-      marginBottom: 12,
+      borderColor: theme.colors.borderSoft,
+      borderRadius: 16,
+      padding: 14,
+      flexDirection: 'row',
+      gap: 12,
+      alignItems: 'flex-start',
+    },
+    insightTextBlock: {
+      flex: 1,
     },
     insightTitle: {
-      color: theme.colors.brandPrimary,
-      fontSize: theme.typography.fontSize.lg,
+      color: theme.colors.textPrimary,
+      fontSize: 13,
       fontWeight: theme.typography.fontWeight.extrabold,
     },
     insightBody: {
       color: theme.colors.textSecondary,
-      fontSize: theme.typography.fontSize.md,
-      lineHeight: 21,
-      fontWeight: theme.typography.fontWeight.medium,
+      fontSize: 12,
+      lineHeight: 18,
+      marginTop: 4,
     },
   })
 }

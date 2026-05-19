@@ -172,11 +172,42 @@ describe('DashboardScreen dark luxury Home parity', () => {
   it('uses softened neon green usage without changing the primary token', async () => {
     const screen = renderDashboard()
 
-    const cta = screen.getByTestId('home-budget-action')
-    expect(getFlattenedStyle(cta).backgroundColor).toBe('#A3FF12')
+    const avatar = screen.getByTestId('home-avatar')
+    const avatarStyle = getFlattenedStyle(avatar)
+    expect(avatarStyle.width).toBe(36)
+    expect(avatarStyle.height).toBe(36)
+    expect(avatarStyle.backgroundColor).toBe('#A3FF12')
 
-    const primaryBubble = screen.getByTestId('home-quick-action-manual')
+    const hero = screen.getByTestId('home-hero-card')
+    const heroStyle = getFlattenedStyle(hero)
+    expect(heroStyle.borderRadius).toBe(24)
+    expect(heroStyle.padding).toBe(18)
+    expect(heroStyle.shadowOpacity).toBeUndefined()
+
+    const walletPill = screen.getByTestId('home-wallet-pill')
+    const walletPillStyle = getFlattenedStyle(walletPill)
+    expect(walletPillStyle.borderRadius).toBe(999)
+    expect(walletPillStyle.paddingVertical).toBe(7)
+    expect(walletPillStyle.paddingHorizontal).toBe(12)
+
+    const quickAction = screen.getByTestId('home-quick-action-manual')
+    const quickActionStyle = getFlattenedStyle(quickAction)
+    expect(quickActionStyle.borderRadius).toBe(16)
+    expect(quickActionStyle.paddingVertical).toBe(12)
+    expect(quickActionStyle.paddingHorizontal).toBe(8)
+
+    const sectionCard = screen.getByTestId('home-budget-section')
+    const sectionCardStyle = getFlattenedStyle(sectionCard)
+    expect(sectionCardStyle.borderRadius).toBe(18)
+    expect(sectionCardStyle.padding).toBe(14)
+
+    const cta = screen.getByTestId('home-budget-action')
+    expect(getFlattenedStyle(cta).backgroundColor).toBeUndefined()
+
+    const primaryBubble = screen.getByTestId('home-quick-bubble-manual')
     const primaryBubbleStyle = getFlattenedStyle(primaryBubble)
+    expect(primaryBubbleStyle.width).toBe(32)
+    expect(primaryBubbleStyle.height).toBe(32)
     expect(
       SOFT_GREEN_BACKGROUNDS.includes(primaryBubbleStyle.backgroundColor as string)
         || SOFT_GREEN_BORDERS.includes(primaryBubbleStyle.borderColor as string),
