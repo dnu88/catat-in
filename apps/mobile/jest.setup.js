@@ -1,3 +1,19 @@
+// Supabase Realtime requires a WebSocket constructor in Node 20 test runs.
+if (!global.WebSocket) {
+  global.WebSocket = class MockWebSocket {
+    constructor(url) {
+      this.url = url;
+      this.readyState = 0;
+    }
+    close() {
+      this.readyState = 3;
+    }
+    send() {}
+    addEventListener() {}
+    removeEventListener() {}
+  };
+}
+
 // Mock AsyncStorage globally
 jest.mock('@react-native-async-storage/async-storage', () => ({
   setItem: jest.fn(() => Promise.resolve()),

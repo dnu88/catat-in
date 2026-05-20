@@ -13,12 +13,12 @@ const incomeData = [4.2, 5.1, 6.8, 7.2, 8.5, 18.65]
 const expenseData = [3.1, 3.8, 4.2, 5.0, 4.8, 6.4]
 
 const categories = [
-  { id: 'food', label: 'Makanan & Minuman', percent: 32, amount: 'Rp 2.050.000', icon: 'bills' as KaswiseIconName, color: '#65A30D', tone: 'success' as const },
-  { id: 'transport', label: 'Transportasi', percent: 22, amount: 'Rp 1.408.000', icon: 'card' as KaswiseIconName, color: '#2A5DD0', tone: 'navy' as const },
-  { id: 'shopping', label: 'Belanja', percent: 18, amount: 'Rp 1.152.000', icon: 'wallets' as KaswiseIconName, color: '#B45309', tone: 'warning' as const },
-  { id: 'bills', label: 'Tagihan', percent: 15, amount: 'Rp 960.000', icon: 'file' as KaswiseIconName, color: '#DC2626', tone: 'danger' as const },
-  { id: 'entertainment', label: 'Hiburan', percent: 8, amount: 'Rp 512.000', icon: 'insight' as KaswiseIconName, color: '#0284C7', tone: 'info' as const },
-  { id: 'other', label: 'Lainnya', percent: 5, amount: 'Rp 320.000', icon: 'chart' as KaswiseIconName, color: '#6B7280', tone: 'neutral' as const },
+  { id: 'food', label: 'Makanan & Minuman', percent: 32, value: 2_050_000, amount: 'Rp 2.050.000', icon: 'bills' as KaswiseIconName, color: '#65A30D', tone: 'success' as const },
+  { id: 'transport', label: 'Transportasi', percent: 22, value: 1_408_000, amount: 'Rp 1.408.000', icon: 'card' as KaswiseIconName, color: '#2A5DD0', tone: 'navy' as const },
+  { id: 'shopping', label: 'Belanja', percent: 18, value: 1_152_000, amount: 'Rp 1.152.000', icon: 'wallets' as KaswiseIconName, color: '#B45309', tone: 'warning' as const },
+  { id: 'bills', label: 'Tagihan', percent: 15, value: 960_000, amount: 'Rp 960.000', icon: 'file' as KaswiseIconName, color: '#DC2626', tone: 'danger' as const },
+  { id: 'entertainment', label: 'Hiburan', percent: 8, value: 512_000, amount: 'Rp 512.000', icon: 'insight' as KaswiseIconName, color: '#0284C7', tone: 'info' as const },
+  { id: 'other', label: 'Lainnya', percent: 5, value: 320_000, amount: 'Rp 320.000', icon: 'chart' as KaswiseIconName, color: '#6B7280', tone: 'neutral' as const },
 ]
 
 type Tab = 'overview' | 'category' | 'compare'
@@ -29,6 +29,16 @@ type CategoryVisualMeta = {
   color: string
   icon: KaswiseIconName
   tone: CategoryTone
+}
+
+type ReportTransaction = {
+  amount: number
+  transaction_type: 'income' | 'expense'
+  category: string | null
+  date: string | null
+  description?: string | null
+  merchant?: string | null
+  note?: string | null
 }
 
 const fallbackCategoryColors = {
@@ -74,17 +84,23 @@ export default function ReportsScreen() {
   const [showDateModal, setShowDateModal] = useState(false)
   const [customStartYear, setCustomStartYear] = useState(new Date().getFullYear())
   const [customStartMonth, setCustomStartMonth] = useState(new Date().getMonth() + 1)
+  const [customStartDay, setCustomStartDay] = useState(1)
   const [customEndYear, setCustomEndYear] = useState(new Date().getFullYear())
   const [customEndMonth, setCustomEndMonth] = useState(new Date().getMonth() + 1)
+  const [customEndDay, setCustomEndDay] = useState(new Date().getDate())
   const [tempStartYear, setTempStartYear] = useState(customStartYear)
   const [tempStartMonth, setTempStartMonth] = useState(customStartMonth)
+  const [tempStartDay, setTempStartDay] = useState(customStartDay)
   const [tempEndYear, setTempEndYear] = useState(customEndYear)
   const [tempEndMonth, setTempEndMonth] = useState(customEndMonth)
+  const [tempEndDay, setTempEndDay] = useState(customEndDay)
   const [compareData, setCompareData] = useState<{
     current: { income: number; expense: number; net: number; count: number } | null
     previous: { income: number; expense: number; net: number; count: number } | null
   } | null>(null)
   const [dynamicCategories, setDynamicCategories] = useState(categories)
+  const [reportTransactions, setReportTransactions] = useState<ReportTransaction[]>([])
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null)
 
   const neutralCategoryColor = theme.mode === 'light' ? '#6B7280' : '#9CA3AF'
   const categoryColorByName: Record<string, CategoryVisualMeta> = {
@@ -115,6 +131,31 @@ export default function ReportsScreen() {
     }
   }
 
+  const colorForCategoryIndex = (categoryName: string, offset: number) => {
+    const palette = fallbackCategoryColors[theme.mode]
+    const baseIndex = stableCategoryIndex(categoryName, palette.length)
+    return palette[(baseIndex + offset) % palette.length]
+  }
+
+  const withUniqueCategoryColors = <T extends { id: string; color: string }>(items: T[]) => {
+    const usedColors = new Set<string>()
+    return items.map((item) => {
+      if (!usedColors.has(item.color)) {
+        usedColors.add(item.color)
+        return item
+      }
+
+      let offset = 1
+      let nextColor = colorForCategoryIndex(item.id, offset)
+      while (usedColors.has(nextColor) && offset < fallbackCategoryColors[theme.mode].length) {
+        offset += 1
+        nextColor = colorForCategoryIndex(item.id, offset)
+      }
+      usedColors.add(nextColor)
+      return { ...item, color: nextColor }
+    })
+  }
+
   const isEn = language === 'en'
   const periodLabels = isEn ? periodLabelsEn : periodLabelsId
 
@@ -137,8 +178,8 @@ export default function ReportsScreen() {
         compareIncome: 'Income', compareExpense: 'Expense', compareSavings: 'Savings', compareTxCount: 'Transactions',
         noCompareData: 'No data from the previous period to compare.',
         errorDateRange: 'Invalid date range',
-        modalTitle: 'Select Date Range', modalStart: 'Start', modalEnd: 'End',
-        modalCancel: 'Cancel', modalApply: 'Apply',
+        modalTitle: 'Select Date Range', modalStart: 'Start', modalEnd: 'End', modalDay: 'Day',
+        modalCancel: 'Cancel', modalApply: 'Apply', detailTitle: 'Transactions', noCategoryTransactions: 'No transactions in this category.',
         shareTitle: 'Financial Report', shareIncome: 'Income', shareExpense: 'Expense',
         shareSavings: 'Savings', shareTxCount: 'Transactions',
       }
@@ -160,8 +201,8 @@ export default function ReportsScreen() {
         compareIncome: 'Pemasukan', compareExpense: 'Pengeluaran', compareSavings: 'Tabungan', compareTxCount: 'Jumlah Transaksi',
         noCompareData: 'Tidak ada data periode sebelumnya untuk dibandingkan.',
         errorDateRange: 'Rentang tanggal tidak valid',
-        modalTitle: 'Pilih Rentang Tanggal', modalStart: 'Mulai', modalEnd: 'Selesai',
-        modalCancel: 'Batal', modalApply: 'Terapkan',
+        modalTitle: 'Pilih Rentang Tanggal', modalStart: 'Mulai', modalEnd: 'Selesai', modalDay: 'Tanggal',
+        modalCancel: 'Batal', modalApply: 'Terapkan', detailTitle: 'Transaksi', noCategoryTransactions: 'Belum ada transaksi di kategori ini.',
         shareTitle: 'Laporan Keuangan', shareIncome: 'Pemasukan', shareExpense: 'Pengeluaran',
         shareSavings: 'Tabungan', shareTxCount: 'Jumlah transaksi',
       }
@@ -179,32 +220,84 @@ export default function ReportsScreen() {
   }
   const incomeLinePoints = incomeData.map(linePointFor).join(' ')
   const expenseLinePoints = expenseData.map(linePointFor).join(' ')
-  const donutRadius = 62
+  const donutSize = 180
+  const donutCenter = donutSize / 2
+  const donutRadius = 64
+  const donutStrokeWidth = 18
+  const donutGlowStrokeWidth = 21
   const donutCircumference = 2 * Math.PI * donutRadius
+  const donutSegmentGap = 6
 
   const formatRupiah = (valueInJuta: number) => `Rp ${(valueInJuta * 1_000_000).toLocaleString('id-ID')}`
+  const formatCompactRupiah = (value: number) => {
+    if (value >= 1_000_000) {
+      return `Rp ${(value / 1_000_000).toLocaleString('id-ID', { maximumFractionDigits: 1 })} jt`
+    }
+    if (value >= 1_000) {
+      return `Rp ${(value / 1_000).toLocaleString('id-ID', { maximumFractionDigits: 0 })} rb`
+    }
+    return `Rp ${value.toLocaleString('id-ID')}`
+  }
 
   const totalIncomeJuta = incomeData[incomeData.length - 1] ?? 0
   const totalExpenseJuta = expenseData[expenseData.length - 1] ?? 0
   const netJuta = totalIncomeJuta - totalExpenseJuta
+  const reportExpenseTotal = reportTransactions
+    .filter((transaction) => transaction.transaction_type === 'expense')
+    .reduce((sum, transaction) => sum + (transaction.amount || 0), 0)
+  const donutTotalLabel = formatCompactRupiah(reportExpenseTotal || totalExpenseJuta * 1_000_000)
+  const categoryValueTotal = dynamicCategories.reduce((sum, cat) => sum + Math.max(0, cat.value ?? 0), 0)
+  const categoryPercentTotal = dynamicCategories.reduce((sum, cat) => sum + Math.max(0, cat.percent), 0) || 100
+  const donutSegments = dynamicCategories.map((cat) => {
+    const normalizedRatio = categoryValueTotal > 0
+      ? Math.max(0, cat.value ?? 0) / categoryValueTotal
+      : Math.max(0, cat.percent) / categoryPercentTotal
+    const rawDashLength = normalizedRatio * donutCircumference
+    const segmentGap = Math.min(donutSegmentGap, rawDashLength * 0.32)
+    return {
+      ...cat,
+      dashLength: Math.max(0, rawDashLength - segmentGap),
+      gapLength: donutCircumference - Math.max(0, rawDashLength - segmentGap),
+      sweepLength: rawDashLength,
+      offsetLength: 0,
+    }
+  }).map((cat, index, items) => {
+    const previousLength = items.slice(0, index).reduce((sum, item) => sum + item.sweepLength, 0)
+    return { ...cat, offsetLength: previousLength }
+  })
 
   const monthName = (month: number) => (language === 'en'
     ? ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
     : ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'])[month - 1]
 
-  const customRangeLabel = `${monthName(customStartMonth)} ${customStartYear} - ${monthName(customEndMonth)} ${customEndYear}`
+  const pad2 = (value: number) => String(value).padStart(2, '0')
+  const dateKey = (year: number, month: number, day: number) => `${year}-${pad2(month)}-${pad2(day)}`
+  const daysInMonth = (year: number, month: number) => new Date(year, month, 0).getDate()
+  const dayNumbers = (year: number, month: number) => Array.from({ length: daysInMonth(year, month) }, (_, index) => index + 1)
+  const customRangeLabel = `${customStartDay} ${monthName(customStartMonth)} ${customStartYear} - ${customEndDay} ${monthName(customEndMonth)} ${customEndYear}`
+  const selectedCategory = dynamicCategories.find((cat) => cat.id === selectedCategoryId) ?? null
+  const selectedCategoryTransactions = selectedCategoryId
+    ? reportTransactions
+        .filter((transaction) => transaction.transaction_type === 'expense')
+        .filter((transaction) => ((transaction.category || 'other').toString().trim().toLowerCase() || 'other') === selectedCategoryId)
+        .sort((a, b) => (b.date || '').localeCompare(a.date || ''))
+    : []
 
   const openCustomDateModal = () => {
     setTempStartYear(customStartYear)
     setTempStartMonth(customStartMonth)
+    setTempStartDay(customStartDay)
     setTempEndYear(customEndYear)
     setTempEndMonth(customEndMonth)
+    setTempEndDay(customEndDay)
     setShowDateModal(true)
   }
 
   const confirmCustomDateRange = () => {
-    const tempStart = new Date(tempStartYear, tempStartMonth - 1, 1)
-    const tempEnd = new Date(tempEndYear, tempEndMonth - 1, 1)
+    const safeStartDay = Math.min(tempStartDay, daysInMonth(tempStartYear, tempStartMonth))
+    const safeEndDay = Math.min(tempEndDay, daysInMonth(tempEndYear, tempEndMonth))
+    const tempStart = new Date(tempStartYear, tempStartMonth - 1, safeStartDay)
+    const tempEnd = new Date(tempEndYear, tempEndMonth - 1, safeEndDay)
     if (tempStart > tempEnd) {
       setDataError(tx.errorDateRange)
       return
@@ -212,8 +305,10 @@ export default function ReportsScreen() {
 
     setCustomStartYear(tempStartYear)
     setCustomStartMonth(tempStartMonth)
+    setCustomStartDay(safeStartDay)
     setCustomEndYear(tempEndYear)
     setCustomEndMonth(tempEndMonth)
+    setCustomEndDay(safeEndDay)
     setShowDateModal(false)
   }
 
@@ -248,10 +343,14 @@ export default function ReportsScreen() {
 
         let startDate: Date
         let endDate: Date
+        let startDateString: string
+        let endDateString: string
 
         if (periodFilter === 'custom') {
-          startDate = new Date(customStartYear, customStartMonth - 1, 1)
-          endDate = new Date(customEndYear, customEndMonth, 0)
+          startDate = new Date(customStartYear, customStartMonth - 1, customStartDay)
+          endDate = new Date(customEndYear, customEndMonth - 1, customEndDay)
+          startDateString = dateKey(customStartYear, customStartMonth, customStartDay)
+          endDateString = dateKey(customEndYear, customEndMonth, customEndDay)
         } else {
           const now = new Date()
           const monthsBack = periodFilter === 'month' ? 1 :
@@ -259,20 +358,24 @@ export default function ReportsScreen() {
                            periodFilter === '6month' ? 6 : 12
           startDate = new Date(now.getFullYear(), now.getMonth() - monthsBack + 1, 1)
           endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0)
+          startDateString = dateKey(startDate.getFullYear(), startDate.getMonth() + 1, startDate.getDate())
+          endDateString = dateKey(endDate.getFullYear(), endDate.getMonth() + 1, endDate.getDate())
         }
 
         const { data: transactions, error } = await supabase
           .from('transactions')
-          .select('amount, transaction_type, category, date')
+          .select('amount, transaction_type, category, date, description, merchant, note')
           .eq('user_id', user.id)
-          .gte('date', startDate.toISOString().split('T')[0])
-          .lte('date', endDate.toISOString().split('T')[0])
+          .gte('date', startDateString)
+          .lte('date', endDateString)
 
         if (error) throw error
 
-        setRealTransactionCount(transactions?.length || 0)
+        const loadedTransactions = (transactions || []) as ReportTransaction[]
+        setReportTransactions(loadedTransactions)
+        setRealTransactionCount(loadedTransactions.length)
 
-        const expenseTx = (transactions || []).filter((t) => t.transaction_type === 'expense')
+        const expenseTx = loadedTransactions.filter((t) => t.transaction_type === 'expense')
         const totalExpense = expenseTx.reduce((sum, t) => sum + (t.amount || 0), 0)
         if (expenseTx.length > 0 && totalExpense > 0) {
           const grouped = new Map<string, number>()
@@ -288,6 +391,7 @@ export default function ReportsScreen() {
                 id: key,
                 label: key.charAt(0).toUpperCase() + key.slice(1),
                 percent,
+                value: amount,
                 amount: `Rp ${amount.toLocaleString('id-ID')}`,
                 icon: categoryMeta.icon,
                 color: categoryMeta.color,
@@ -295,9 +399,9 @@ export default function ReportsScreen() {
               }
             })
             .sort((a, b) => b.percent - a.percent)
-          setDynamicCategories(generated)
+          setDynamicCategories(withUniqueCategoryColors(generated))
         } else {
-          setDynamicCategories(categories.map((c) => ({ ...c, ...getCategoryVisualMeta(c.id) })))
+          setDynamicCategories(withUniqueCategoryColors(categories.map((c) => ({ ...c, ...getCategoryVisualMeta(c.id) }))))
         }
 
         // Load compare data if activeTab is 'compare'
@@ -311,8 +415,8 @@ export default function ReportsScreen() {
             .from('transactions')
             .select('amount, transaction_type')
             .eq('user_id', user.id)
-            .gte('date', prevStartDate.toISOString().split('T')[0])
-            .lte('date', prevEndDate.toISOString().split('T')[0])
+            .gte('date', dateKey(prevStartDate.getFullYear(), prevStartDate.getMonth() + 1, prevStartDate.getDate()))
+            .lte('date', dateKey(prevEndDate.getFullYear(), prevEndDate.getMonth() + 1, prevEndDate.getDate()))
 
           if (prevError) console.error('Failed to load previous period:', prevError)
 
@@ -358,7 +462,7 @@ export default function ReportsScreen() {
     }
 
     loadTransactionData()
-  }, [activeTab, periodFilter, customStartYear, customStartMonth, customEndYear, customEndMonth, supabase])
+  }, [activeTab, periodFilter, customStartYear, customStartMonth, customStartDay, customEndYear, customEndMonth, customEndDay, supabase])
 
   return (
     <View style={styles.screen}>
@@ -550,48 +654,87 @@ export default function ReportsScreen() {
 
               <View style={styles.ringArea}>
                 <View style={styles.donutChart}>
-                  <Svg width={150} height={150} viewBox="0 0 150 150" style={styles.donutSvg}>
-                    {(() => {
-                      let cumulativePercent = 0
-                      return dynamicCategories.map((cat) => {
-                        const dashLength = (cat.percent / 100) * donutCircumference
-                        const gapLength = donutCircumference - dashLength
-                        const segment = (
-                          <Circle
-                            key={cat.id}
-                            testID={`reports-donut-segment-${cat.id}`}
-                            cx={75}
-                            cy={75}
-                            r={donutRadius}
-                            accessibilityLabel={cat.color}
-                            fill="none"
-                            stroke={cat.color}
-                            strokeWidth={26}
-                            strokeDasharray={`${dashLength} ${gapLength}`}
-                            strokeDashoffset={-(cumulativePercent / 100) * donutCircumference}
-                            strokeLinecap="butt"
-                            transform="rotate(-90 75 75)"
-                          />
-                        )
-                        cumulativePercent += cat.percent
-                        return segment
-                      })
-                    })()}
+                  <Svg testID="reports-donut-svg" width={donutSize} height={donutSize} viewBox={`0 0 ${donutSize} ${donutSize}`} style={styles.donutSvg}>
+                    <Circle
+                      cx={donutCenter}
+                      cy={donutCenter}
+                      r={donutRadius + 4}
+                      fill="none"
+                      stroke={theme.colors.borderSoft}
+                      strokeWidth={1}
+                      opacity={theme.mode === 'dark' ? 0.55 : 0.72}
+                    />
+                    <Circle
+                      cx={donutCenter}
+                      cy={donutCenter}
+                      r={donutRadius}
+                      fill="none"
+                      stroke={theme.colors.borderSoft}
+                      strokeWidth={donutStrokeWidth}
+                      opacity={theme.mode === 'dark' ? 0.18 : 0.28}
+                    />
+                    <Circle
+                      cx={donutCenter}
+                      cy={donutCenter}
+                      r={donutRadius - 14}
+                      fill="none"
+                      stroke={theme.mode === 'dark' ? 'rgba(255,255,255,0.08)' : 'rgba(15,23,42,0.06)'}
+                      strokeWidth={1}
+                    />
+                    {donutSegments.map((cat) => (
+                      <Circle
+                        key={`glow-${cat.id}`}
+                        testID={`reports-donut-glow-${cat.id}`}
+                        cx={donutCenter}
+                        cy={donutCenter}
+                        r={donutRadius}
+                        accessibilityLabel={cat.color}
+                        fill="none"
+                        stroke={cat.color}
+                        strokeWidth={donutGlowStrokeWidth}
+                        strokeDasharray={`${cat.dashLength} ${cat.gapLength}`}
+                        strokeDashoffset={-cat.offsetLength}
+                        strokeLinecap="butt"
+                        opacity={theme.mode === 'dark' ? 0.09 : 0.045}
+                        transform={`rotate(-90 ${donutCenter} ${donutCenter})`}
+                      />
+                    ))}
+                    {donutSegments.map((cat) => (
+                      <Circle
+                        key={cat.id}
+                        testID={`reports-donut-segment-${cat.id}`}
+                        cx={donutCenter}
+                        cy={donutCenter}
+                        r={donutRadius}
+                        accessibilityLabel={cat.color}
+                        fill="none"
+                        stroke={cat.color}
+                        strokeWidth={donutStrokeWidth}
+                        strokeDasharray={`${cat.dashLength} ${cat.gapLength}`}
+                        strokeDashoffset={-cat.offsetLength}
+                        strokeLinecap="butt"
+                        opacity={theme.mode === 'dark' ? 0.9 : 0.86}
+                        transform={`rotate(-90 ${donutCenter} ${donutCenter})`}
+                      />
+                    ))}
                   </Svg>
                   <View style={styles.ringInner}>
-                    <Text style={styles.ringValue}>Rp 6,4 Jt</Text>
+                    <Text style={styles.ringValue}>{donutTotalLabel}</Text>
                     <Text style={styles.ringLabel}>{tx.ringLabel}</Text>
                   </View>
                 </View>
               </View>
 
               {dynamicCategories.map((cat, idx) => (
-                <View
+                <Pressable
                   key={cat.label}
-                  style={[
+                  testID={`reports-category-row-${cat.id}`}
+                  style={({ pressed }) => [
                     styles.catRow,
                     idx === 0 && { borderTopWidth: 0 },
+                    pressed && { opacity: 0.72 },
                   ]}
+                  onPress={() => setSelectedCategoryId(cat.id)}
                 >
                   <View style={styles.catLeft}>
                     <IconBubble name={cat.icon} tone={cat.tone} size={36} />
@@ -606,7 +749,7 @@ export default function ReportsScreen() {
                       <View testID={`reports-category-fill-${cat.id}`} style={[styles.catBarFill, { width: `${cat.percent}%`, backgroundColor: cat.color }]} />
                     </View>
                   </View>
-                </View>
+                </Pressable>
               ))}
             </View>
           </>
@@ -710,11 +853,27 @@ export default function ReportsScreen() {
                   <Pressable
                     key={m}
                     style={[styles.monthChip, tempStartMonth === m && styles.monthChipActive]}
-                    onPress={() => setTempStartMonth(m)}
+                    onPress={() => {
+                      setTempStartMonth(m)
+                      setTempStartDay(Math.min(tempStartDay, daysInMonth(tempStartYear, m)))
+                    }}
                   >
                     <Text style={[styles.monthChipText, tempStartMonth === m && styles.monthChipTextActive]}>
                       {monthName(m)}
                     </Text>
+                  </Pressable>
+                ))}
+              </ScrollView>
+              <Text style={styles.modalSectionTitle}>{tx.modalDay}</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.monthScroll}>
+                {dayNumbers(tempStartYear, tempStartMonth).map((day) => (
+                  <Pressable
+                    key={day}
+                    testID={`reports-start-day-${day}`}
+                    style={[styles.dayChip, tempStartDay === day && styles.monthChipActive]}
+                    onPress={() => setTempStartDay(day)}
+                  >
+                    <Text style={[styles.monthChipText, tempStartDay === day && styles.monthChipTextActive]}>{day}</Text>
                   </Pressable>
                 ))}
               </ScrollView>
@@ -742,11 +901,27 @@ export default function ReportsScreen() {
                   <Pressable
                     key={m}
                     style={[styles.monthChip, tempEndMonth === m && styles.monthChipActive]}
-                    onPress={() => setTempEndMonth(m)}
+                    onPress={() => {
+                      setTempEndMonth(m)
+                      setTempEndDay(Math.min(tempEndDay, daysInMonth(tempEndYear, m)))
+                    }}
                   >
                     <Text style={[styles.monthChipText, tempEndMonth === m && styles.monthChipTextActive]}>
                       {monthName(m)}
                     </Text>
+                  </Pressable>
+                ))}
+              </ScrollView>
+              <Text style={styles.modalSectionTitle}>{tx.modalDay}</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.monthScroll}>
+                {dayNumbers(tempEndYear, tempEndMonth).map((day) => (
+                  <Pressable
+                    key={day}
+                    testID={`reports-end-day-${day}`}
+                    style={[styles.dayChip, tempEndDay === day && styles.monthChipActive]}
+                    onPress={() => setTempEndDay(day)}
+                  >
+                    <Text style={[styles.monthChipText, tempEndDay === day && styles.monthChipTextActive]}>{day}</Text>
                   </Pressable>
                 ))}
               </ScrollView>
@@ -766,6 +941,52 @@ export default function ReportsScreen() {
                 <Text style={styles.modalActionConfirmText}>{tx.modalApply}</Text>
               </Pressable>
             </View>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal
+        visible={!!selectedCategory}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setSelectedCategoryId(null)}
+      >
+        <View style={styles.modalOverlay}>
+          <View testID="reports-category-detail-modal" style={styles.modalContent}>
+            <View style={styles.detailHeaderRow}>
+              <Pressable
+                testID="reports-category-detail-back"
+                style={({ pressed }) => [styles.detailBackButton, pressed && { opacity: 0.72 }]}
+                onPress={() => setSelectedCategoryId(null)}
+              >
+                <Text style={styles.detailBackText}>‹</Text>
+                <Text style={styles.detailBackLabel}>{tx.modalCancel}</Text>
+              </Pressable>
+              <View style={styles.detailHeaderTitleWrap}>
+                <Text style={styles.modalTitle}>{selectedCategory?.label}</Text>
+              </View>
+            </View>
+            <Text style={styles.detailSubtitle}>{tx.detailTitle} · {selectedCategory?.amount} · {selectedCategory?.percent}%</Text>
+
+            {selectedCategoryTransactions.length === 0 ? (
+              <View style={styles.infoCard}>
+                <Text style={styles.infoText}>{tx.noCategoryTransactions}</Text>
+              </View>
+            ) : selectedCategoryTransactions.map((transaction, index) => {
+              const title = transaction.description || transaction.merchant || transaction.note || selectedCategory?.label || '-'
+              return (
+                <View key={`${transaction.date}-${transaction.amount}-${index}`} style={styles.detailTxRow}>
+                  <View style={styles.detailTxInfo}>
+                    <Text style={styles.detailTxTitle}>{title}</Text>
+                    {transaction.merchant ? <Text style={styles.detailTxMeta}>{transaction.merchant}</Text> : null}
+                    <Text style={styles.detailTxMeta}>{transaction.date || '-'}</Text>
+                  </View>
+                  <Text style={styles.detailTxAmount}>Rp {Number(transaction.amount || 0).toLocaleString('id-ID')}</Text>
+                </View>
+              )
+            })}
+
+
           </View>
         </View>
       </Modal>
@@ -1009,16 +1230,27 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
     },
     categoryCardTitle: { color: theme.colors.textPrimary, fontSize: 16, fontWeight: '800' },
     categoryCardSub: { color: theme.colors.textSecondary, fontSize: 12 },
-    ringArea: { alignItems: 'center', paddingVertical: 14 },
+    ringArea: {
+      alignItems: 'center',
+      paddingTop: 24,
+      paddingBottom: 20,
+    },
     donutChart: {
-      width: 150,
-      height: 150,
-      borderRadius: 75,
+      width: 190,
+      height: 190,
+      borderRadius: 95,
       alignItems: 'center',
       justifyContent: 'center',
-      overflow: 'hidden',
+      overflow: 'visible',
       position: 'relative',
-      backgroundColor: theme.colors.mutedSurface,
+      backgroundColor: theme.mode === 'light' ? '#FBFAF7' : 'rgba(255,255,255,0.035)',
+      borderWidth: 1,
+      borderColor: theme.mode === 'light' ? 'rgba(15,23,42,0.08)' : 'rgba(255,255,255,0.09)',
+      shadowColor: theme.mode === 'light' ? '#0F172A' : '#000000',
+      shadowOpacity: theme.mode === 'light' ? 0.09 : 0.32,
+      shadowRadius: 28,
+      shadowOffset: { width: 0, height: 16 },
+      elevation: 7,
     },
     donutSvg: {
       position: 'absolute',
@@ -1031,17 +1263,22 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
     ringInner: {
       position: 'absolute',
       alignSelf: 'center',
-      width: 92,
-      height: 92,
-      borderRadius: 46,
-      backgroundColor: theme.colors.surface,
+      width: 98,
+      height: 98,
+      borderRadius: 49,
+      backgroundColor: theme.mode === 'light' ? '#FFFFFF' : theme.colors.surface,
       alignItems: 'center',
       justifyContent: 'center',
       borderWidth: 1,
-      borderColor: theme.colors.borderSoft,
+      borderColor: theme.mode === 'light' ? 'rgba(15,23,42,0.07)' : theme.colors.borderSoft,
+      shadowColor: theme.mode === 'light' ? '#0F172A' : '#000000',
+      shadowOpacity: theme.mode === 'light' ? 0.06 : 0.24,
+      shadowRadius: 18,
+      shadowOffset: { width: 0, height: 10 },
+      elevation: 4,
     },
-    ringValue: { color: theme.colors.textPrimary, fontSize: 18, fontWeight: '800' },
-    ringLabel: { color: theme.colors.textMuted, fontSize: 11, marginTop: 2 },
+    ringValue: { color: theme.colors.textPrimary, fontSize: 17, fontWeight: '900', letterSpacing: -0.4 },
+    ringLabel: { color: theme.colors.textMuted, fontSize: 10, fontWeight: '700', letterSpacing: 0.5, marginTop: 3, textTransform: 'uppercase' },
     catRow: {
       flexDirection: 'row',
       justifyContent: 'space-between',
@@ -1140,6 +1377,17 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
       backgroundColor: theme.colors.background,
       marginRight: 8,
     },
+    dayChip: {
+      minWidth: 38,
+      paddingVertical: 8,
+      paddingHorizontal: 10,
+      borderRadius: 999,
+      borderWidth: 1,
+      borderColor: theme.colors.borderSoft,
+      backgroundColor: theme.colors.background,
+      marginRight: 8,
+      alignItems: 'center',
+    },
     monthChipActive: {
       backgroundColor: brandSoftBg,
       borderColor: brandSoftBorder,
@@ -1210,6 +1458,68 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
     },
     compareDeltaNegative: {
       color: theme.colors.danger,
+    },
+    detailHeaderRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginBottom: 8,
+    },
+    detailBackButton: {
+      minHeight: 40,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 4,
+      paddingRight: 12,
+    },
+    detailBackText: {
+      color: brandText,
+      fontSize: 28,
+      fontWeight: '800',
+      lineHeight: 30,
+    },
+    detailBackLabel: {
+      color: brandText,
+      fontSize: 13,
+      fontWeight: '800',
+    },
+    detailHeaderTitleWrap: {
+      flex: 1,
+      paddingRight: 54,
+    },
+    detailSubtitle: {
+      color: theme.colors.textSecondary,
+      fontSize: 12,
+      fontWeight: '600',
+      textAlign: 'center',
+      marginTop: -4,
+      marginBottom: 12,
+    },
+    detailTxRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      gap: 12,
+      paddingVertical: 12,
+      borderBottomWidth: 1,
+      borderBottomColor: theme.colors.borderSoft,
+    },
+    detailTxInfo: {
+      flex: 1,
+    },
+    detailTxTitle: {
+      color: theme.colors.textPrimary,
+      fontSize: 13,
+      fontWeight: '800',
+    },
+    detailTxMeta: {
+      color: theme.colors.textMuted,
+      fontSize: 11,
+      marginTop: 3,
+    },
+    detailTxAmount: {
+      color: theme.colors.danger,
+      fontSize: 13,
+      fontWeight: '800',
     },
   })
 }

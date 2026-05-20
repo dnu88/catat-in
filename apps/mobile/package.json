@@ -39,6 +39,7 @@
   },
   "devDependencies": {
     "@babel/core": "^7.24.0",
+    "@expo/ngrok": "^4.1.0",
     "@react-native/assets-registry": "0.81.5",
     "@testing-library/react-native": "^13.3.3",
     "@types/jest": "^29.5.14",

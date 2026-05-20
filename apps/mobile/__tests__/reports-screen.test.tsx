@@ -1,4 +1,4 @@
-import { fireEvent, render } from '@testing-library/react-native'
+import { fireEvent, render, waitFor } from '@testing-library/react-native'
 import { StyleSheet } from 'react-native'
 import type { StyleProp, ViewStyle } from 'react-native'
 
@@ -8,14 +8,18 @@ import { SupabaseProvider } from '../src/lib/supabase'
 import { I18nProvider } from '../src/i18n/i18n-context'
 
 const mockTransactions = [
-  { amount: 500000, transaction_type: 'expense', category: 'Makan', date: '2026-05-01' },
-  { amount: 350000, transaction_type: 'expense', category: 'Belanja', date: '2026-05-02' },
-  { amount: 200000, transaction_type: 'expense', category: 'Transport', date: '2026-05-03' },
-  { amount: 150000, transaction_type: 'expense', category: 'Kesehatan', date: '2026-05-04' },
+  { amount: 500000, transaction_type: 'expense', category: 'Makan', date: '2026-05-01', description: 'Nasi padang', merchant: 'RM Sederhana', note: null },
+  { amount: 350000, transaction_type: 'expense', category: 'Belanja', date: '2026-05-02', description: 'Groceries', merchant: 'Supermarket', note: null },
+  { amount: 200000, transaction_type: 'expense', category: 'Transport', date: '2026-05-03', description: 'Taxi', merchant: 'Grab', note: null },
+  { amount: 150000, transaction_type: 'expense', category: 'Kesehatan', date: '2026-05-04', description: 'Vitamin', merchant: 'Apotek', note: null },
 ]
 
 jest.mock('../src/lib/supabase', () => {
-  const actual = jest.requireActual('../src/lib/supabase')
+  const gteMock = jest.fn(() => chain)
+  const lteMock = jest.fn(async () => ({ data: mockTransactions, error: null }))
+  ;(globalThis as any).__reportsGteMock = gteMock
+  ;(globalThis as any).__reportsLteMock = lteMock
+
   const chain: {
     select: jest.Mock
     eq: jest.Mock
@@ -24,12 +28,11 @@ jest.mock('../src/lib/supabase', () => {
   } = {
     select: jest.fn(() => chain),
     eq: jest.fn(() => chain),
-    gte: jest.fn(() => chain),
-    lte: jest.fn(async () => ({ data: mockTransactions, error: null })),
+    gte: gteMock,
+    lte: lteMock,
   }
 
   return {
-    ...actual,
     useSupabase: () => ({
       supabase: {
         auth: { getUser: jest.fn(async () => ({ data: { user: { id: 'user-1' } } })) },
@@ -127,5 +130,101 @@ describe('ReportsScreen visual parity', () => {
     expect(screen.getAllByTestId(/reports-line-dot-income-/)).toHaveLength(6)
     expect(screen.getAllByTestId(/reports-line-dot-expense-/)).toHaveLength(6)
     expect(screen.queryByTestId('reports-bar-chart')).toBeNull()
+  })
+
+  it('opens a category transaction detail panel and closes it with the back button', async () => {
+    const screen = renderReports()
+
+    fireEvent.press(screen.getByText('Kategori'))
+    fireEvent.press(await screen.findByTestId('reports-category-row-makan'))
+
+    expect(await screen.findByTestId('reports-category-detail-modal')).toBeTruthy()
+    expect(screen.getAllByText('Makan').length).toBeGreaterThan(0)
+    expect(screen.getByText('Nasi padang')).toBeTruthy()
+    expect(screen.getByText('RM Sederhana')).toBeTruthy()
+    expect(screen.getAllByText('Rp 500.000').length).toBeGreaterThan(0)
+
+    fireEvent.press(screen.getByTestId('reports-category-detail-back'))
+    await waitFor(() => expect(screen.queryByTestId('reports-category-detail-modal')).toBeNull())
+  })
+
+  it('renders refined editorial donut segments without changing category colors', async () => {
+    const screen = renderReports()
+
+    fireEvent.press(screen.getByText('Kategori'))
+
+    const foodFill = await screen.findByTestId('reports-category-fill-makan')
+    const foodSegment = await screen.findByTestId('reports-donut-segment-makan')
+    const foodGlow = await screen.findByTestId('reports-donut-glow-makan')
+
+    expect(foodSegment.props.strokeLinecap).toBe(0)
+    expect(foodSegment.props.strokeWidth).toBeGreaterThanOrEqual(17)
+    expect(foodSegment.props.strokeWidth).toBeLessThanOrEqual(19)
+    expect(foodSegment.props.strokeDasharray).toHaveLength(2)
+    const foodCircumference = 2 * Math.PI * Number(foodSegment.props.r)
+    const foodRawDash = (500000 / (500000 + 350000 + 200000 + 150000)) * foodCircumference
+    expect(Math.abs((Number(foodSegment.props.strokeDasharray[0]) + 6) - foodRawDash)).toBeLessThan(0.001)
+    expect(foodGlow.props.accessibilityLabel).toBe(getFlattenedStyle(foodFill).backgroundColor)
+    expect(foodGlow.props.opacity).toBeLessThan(0.4)
+    expect(foodSegment.props.accessibilityLabel).toBe(getFlattenedStyle(foodFill).backgroundColor)
+  })
+
+  it('uses precise amount-based donut proportions instead of rounded display percentages', async () => {
+    const screen = renderReports()
+
+    fireEvent.press(screen.getByText('Kategori'))
+
+    const foodSegment = await screen.findByTestId('reports-donut-segment-makan')
+    const shoppingSegment = await screen.findByTestId('reports-donut-segment-belanja')
+    const circumference = 2 * Math.PI * Number(foodSegment.props.r)
+    const total = 500000 + 350000 + 200000 + 150000
+
+    expect(Math.abs((Number(foodSegment.props.strokeDasharray[0]) + 6) - ((500000 / total) * circumference))).toBeLessThan(0.001)
+    expect(Math.abs((Number(shoppingSegment.props.strokeDasharray[0]) + 6) - ((350000 / total) * circumference))).toBeLessThan(0.001)
+  })
+
+  it('uses a different donut color for every rendered expense category', async () => {
+    const screen = renderReports()
+
+    fireEvent.press(screen.getByText('Kategori'))
+
+    const segments = await Promise.all([
+      screen.findByTestId('reports-donut-segment-makan'),
+      screen.findByTestId('reports-donut-segment-belanja'),
+      screen.findByTestId('reports-donut-segment-transport'),
+      screen.findByTestId('reports-donut-segment-kesehatan'),
+    ])
+    const colors = segments.map((segment: { props: { accessibilityLabel: string } }) => segment.props.accessibilityLabel)
+
+    expect(new Set(colors).size).toBe(colors.length)
+  })
+
+  it('keeps the premium donut ring centered with enough SVG breathing room for glow caps', async () => {
+    const screen = renderReports()
+
+    fireEvent.press(screen.getByText('Kategori'))
+
+    const donutSvg = await screen.findByTestId('reports-donut-svg')
+    const foodGlow = await screen.findByTestId('reports-donut-glow-makan')
+    const center = Number(foodGlow.props.cx)
+    const outerEdge = Number(foodGlow.props.r) + Number(foodGlow.props.strokeWidth) / 2
+
+    expect(Number(donutSvg.props.width)).toBeGreaterThanOrEqual(170)
+    expect(center - outerEdge).toBeGreaterThanOrEqual(8)
+    expect(foodGlow.props.cy).toBe(foodGlow.props.cx)
+  })
+
+  it('lets custom period choose exact start and end dates for the Supabase query', async () => {
+    const screen = renderReports()
+
+    fireEvent.press(screen.getByText('Kustom'))
+    fireEvent.press(await screen.findByTestId('reports-start-day-15'))
+    fireEvent.press(await screen.findByTestId('reports-end-day-20'))
+    fireEvent.press(screen.getByText('Terapkan'))
+
+    await waitFor(() => {
+      expect((globalThis as any).__reportsGteMock).toHaveBeenLastCalledWith('date', expect.stringMatching(/-15$/))
+      expect((globalThis as any).__reportsLteMock).toHaveBeenLastCalledWith('date', expect.stringMatching(/-20$/))
+    })
   })
 })
