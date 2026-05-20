@@ -83,16 +83,18 @@ export default function DashboardScreen() {
               <Text style={styles.sectionAction}>Lihat →</Text>
             </Pressable>
           </View>
-          <View style={styles.budgetContent}>
+          <View testID="home-envelope-alert" style={styles.budgetContent}>
             <View style={styles.budgetTopRow}>
-              <Text style={styles.budgetName}>Makan</Text>
-              <Text style={styles.budgetPercent}>77%</Text>
+              <View style={styles.budgetTextBlock}>
+                <Text style={styles.budgetName}>Kopi hampir habis</Text>
+                <Text style={styles.budgetMeta}>Rp42.000 tersisa sampai 25 Mei</Text>
+              </View>
+              <Text style={styles.budgetPercent}>82%</Text>
             </View>
-            <Text style={styles.budgetMeta}>620rb / 800rb</Text>
             <View style={styles.progressTrack}>
               <View style={styles.progressFill} />
             </View>
-            <Text style={styles.budgetStatus}>Sisa 180rb · Hampir habis</Text>
+            <Text style={styles.budgetStatus}>Amplop aktif yang perlu perhatian</Text>
           </View>
         </View>
 
@@ -357,6 +359,10 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
       justifyContent: 'space-between',
       alignItems: 'center',
     },
+    budgetTextBlock: {
+      flex: 1,
+      gap: 3,
+    },
     budgetName: {
       color: theme.colors.textPrimary,
       fontSize: 13,
@@ -378,7 +384,7 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
       overflow: 'hidden',
     },
     progressFill: {
-      width: '77%',
+      width: '82%',
       height: '100%',
       backgroundColor: theme.colors.warning,
       borderRadius: 999,

@@ -124,10 +124,10 @@ describe('DashboardScreen dark luxury Home parity', () => {
 
     expect(screen.getByText('Anggaran')).toBeTruthy()
     expect(screen.getByText('Lihat →')).toBeTruthy()
-    expect(screen.getByText('Makan')).toBeTruthy()
-    expect(screen.getByText('77%')).toBeTruthy()
-    expect(screen.getByText('620rb / 800rb')).toBeTruthy()
-    expect(screen.getByText('Sisa 180rb · Hampir habis')).toBeTruthy()
+    expect(screen.getByText('Kopi hampir habis')).toBeTruthy()
+    expect(screen.getByText('82%')).toBeTruthy()
+    expect(screen.getByText('Rp42.000 tersisa sampai 25 Mei')).toBeTruthy()
+    expect(screen.getByText('Amplop aktif yang perlu perhatian')).toBeTruthy()
 
     expect(screen.getByText('Terakhir')).toBeTruthy()
     expect(screen.getByText('Semua →')).toBeTruthy()
@@ -149,6 +149,15 @@ describe('DashboardScreen dark luxury Home parity', () => {
       'Terakhir',
       'Insight harian',
     ])
+  })
+
+  it('shows actionable envelope alerts without low-confidence review noise', () => {
+    const screen = renderDashboard()
+
+    expect(screen.getByText(/Kopi hampir habis|Kopi/i)).toBeTruthy()
+    expect(screen.getByText('Rp42.000 tersisa sampai 25 Mei')).toBeTruthy()
+    expect(screen.getByText('82%')).toBeTruthy()
+    expect(screen.queryByText(/perlu cek/i)).toBeNull()
   })
 
   it('routes primary Home actions to the expected tabs', async () => {
