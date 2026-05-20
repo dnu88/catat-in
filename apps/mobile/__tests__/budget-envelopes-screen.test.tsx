@@ -2,6 +2,7 @@ import React from 'react'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react-native'
 
 import BudgetsScreen from '../app/(tabs)/budgets'
+import { I18nProvider, useI18n, type Language } from '../src/i18n/i18n-context'
 import { ThemeProvider } from '../src/theme/theme-context'
 
 const mockCreateBudgetEnvelope = jest.fn(async (_supabase: unknown, input: any) => ({
@@ -106,11 +107,20 @@ jest.mock('../src/lib/supabase', () => ({
   }),
 }))
 
-function renderScreen() {
+function LanguageSetter({ language }: { language: Language }) {
+  const { setLanguage } = useI18n()
+  React.useEffect(() => setLanguage(language), [language, setLanguage])
+  return null
+}
+
+function renderScreen(language: Language = 'id') {
   return render(
-    <ThemeProvider>
-      <BudgetsScreen />
-    </ThemeProvider>,
+    <I18nProvider>
+      <LanguageSetter language={language} />
+      <ThemeProvider>
+        <BudgetsScreen />
+      </ThemeProvider>
+    </I18nProvider>,
   )
 }
 
@@ -122,7 +132,7 @@ describe('Budget envelopes screen', () => {
   it('shows active, review, and archive envelope sections', async () => {
     renderScreen()
 
-    await waitFor(() => expect(screen.getByText('Amplop Aktif')).toBeTruthy())
+    await waitFor(() => expect(screen.getByText('Dompet Aktif')).toBeTruthy())
     expect(screen.getByText('Kopi')).toBeTruthy()
     expect(screen.getByText('Perlu cek')).toBeTruthy()
     expect(screen.getByText('Cafe dekat kampus')).toBeTruthy()
@@ -130,20 +140,30 @@ describe('Budget envelopes screen', () => {
     expect(screen.getByText('Ramadan')).toBeTruthy()
   })
 
-  it('opens the create form and saves a Kopi envelope', async () => {
+  it('uses the selected app language for budget wallet copy', async () => {
+    renderScreen('en')
+
+    await waitFor(() => expect(screen.getByText('Active Wallets')).toBeTruthy())
+    expect(screen.getByText('Needs review')).toBeTruthy()
+    expect(screen.queryByText(/Amplop/i)).toBeNull()
+  })
+
+  it('opens the create form with icon and color dropdowns, then saves a Kopi envelope', async () => {
     renderScreen()
 
     await waitFor(() => expect(screen.getByText('+ Baru')).toBeTruthy())
     fireEvent.press(screen.getByText('+ Baru'))
 
-    fireEvent.changeText(screen.getByPlaceholderText('Nama amplop'), 'Kopi')
+    fireEvent.changeText(screen.getByPlaceholderText('Nama dompet'), 'Kopi')
     fireEvent.changeText(screen.getByPlaceholderText('Limit'), '250000')
     fireEvent.changeText(screen.getByPlaceholderText('Tanggal mulai'), '2026-05-10')
     fireEvent.changeText(screen.getByPlaceholderText('Tanggal akhir'), '2026-05-25')
-    fireEvent.changeText(screen.getByPlaceholderText('Ikon'), 'coffee')
-    fireEvent.changeText(screen.getByPlaceholderText('Warna'), '#4A80F0')
+    fireEvent.press(screen.getByTestId('budget-wallet-icon-dropdown'))
+    fireEvent.press(screen.getByText('Kartu'))
+    fireEvent.press(screen.getByTestId('budget-wallet-color-dropdown'))
+    fireEvent.press(screen.getByTestId('budget-wallet-color-#65A30D'))
     fireEvent.changeText(screen.getByPlaceholderText('Catatan'), 'Kopi Kenangan, Fore')
-    fireEvent.press(screen.getByText('Simpan amplop'))
+    fireEvent.press(screen.getByText('Simpan dompet'))
 
     await waitFor(() => expect(mockCreateBudgetEnvelope).toHaveBeenCalled())
     expect(mockCreateBudgetEnvelope.mock.calls[0][1]).toEqual({
@@ -153,8 +173,8 @@ describe('Budget envelopes screen', () => {
       limit_amount: 250000,
       start_date: '2026-05-10',
       end_date: '2026-05-25',
-      icon: 'coffee',
-      color: '#4A80F0',
+      icon: 'card',
+      color: '#65A30D',
       notes: 'Kopi Kenangan, Fore',
     })
   })

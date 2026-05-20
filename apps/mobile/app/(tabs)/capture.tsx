@@ -3,6 +3,7 @@ import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, 
 import { useRouter } from 'expo-router'
 
 import { useTransactionRealtime } from '../../src/hooks/useTransactionRealtime'
+import { useI18n } from '../../src/i18n/i18n-context'
 import { useSupabase } from '../../src/lib/supabase'
 import { useTheme } from '../../src/theme/theme-context'
 import { IconBubble } from '../../src/components/ui'
@@ -21,7 +22,18 @@ type ModeId = (typeof modes)[number]['id']
 export default function CaptureScreen() {
   const { supabase } = useSupabase()
   const { theme } = useTheme()
+  const { language } = useI18n()
   const router = useRouter()
+  const isEn = language === 'en'
+  const tx = useMemo(() => (isEn ? {
+    budgetWallet: 'Budget Wallet',
+    remainingAfter: (amount: number) => `Rp${amount.toLocaleString('id-ID')} left after this transaction`,
+    needsReview: 'Needs review in Reports',
+  } : {
+    budgetWallet: 'Dompet',
+    remainingAfter: (amount: number) => `Rp${amount.toLocaleString('id-ID')} tersisa setelah transaksi ini`,
+    needsReview: 'Perlu cek di Reports',
+  }), [isEn])
   const styles = useMemo(() => createStyles(theme), [theme])
 
   const [textInput, setTextInput] = useState('')
@@ -187,14 +199,14 @@ export default function CaptureScreen() {
             <Text style={styles.feedbackSub}>Mau cek dulu sebelum disimpan?</Text>
             {envelopeSuggestion ? (
               <View testID="capture-envelope-suggestion" style={styles.suggestionCard}>
-                <Text style={styles.suggestionLabel}>Amplop</Text>
+                <Text style={styles.suggestionLabel}>{tx.budgetWallet}</Text>
                 <Text style={styles.suggestionTitle}>{envelopeSuggestion.name}</Text>
                 {typeof envelopeSuggestion.remaining_after_transaction === 'number' ? (
                   <Text style={styles.suggestionMeta}>
-                    Rp{Math.max(envelopeSuggestion.remaining_after_transaction, 0).toLocaleString('id-ID')} tersisa setelah transaksi ini
+                    {tx.remainingAfter(Math.max(envelopeSuggestion.remaining_after_transaction, 0))}
                   </Text>
                 ) : null}
-                {envelopeSuggestion.needs_review ? <Text style={styles.suggestionWarning}>Perlu cek di Reports</Text> : null}
+                {envelopeSuggestion.needs_review ? <Text style={styles.suggestionWarning}>{tx.needsReview}</Text> : null}
               </View>
             ) : null}
             <Pressable style={styles.secondaryButton} onPress={() => router.push('/(tabs)/transactions')}>

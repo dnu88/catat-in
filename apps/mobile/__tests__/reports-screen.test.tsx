@@ -88,11 +88,12 @@ function renderReports() {
 }
 
 describe('ReportsScreen visual parity', () => {
-  it('exposes envelope management entry point in Reports', async () => {
+  it('exposes budget wallet management entry point in Reports', async () => {
     renderReports()
 
-    await waitFor(() => expect(screen.getByText(/Amplop/i)).toBeTruthy())
+    await waitFor(() => expect(screen.getByText(/Dompet/i)).toBeTruthy())
     expect(screen.getByText('Kelola')).toBeTruthy()
+    expect(screen.queryByText(/Amplop/i)).toBeNull()
   })
 
   it('uses softened light-theme green accents instead of solid neon for non-primary controls', () => {
@@ -230,7 +231,7 @@ describe('ReportsScreen visual parity', () => {
     expect(new Set(colors).size).toBe(colors.length)
   })
 
-  it('keeps the premium donut ring centered with enough SVG breathing room for glow caps', async () => {
+  it('keeps the donut ring perfectly centered and square for a precise circle', async () => {
     const screen = renderReports()
 
     fireEvent.press(screen.getByText('Kategori'))
@@ -240,8 +241,10 @@ describe('ReportsScreen visual parity', () => {
     const center = Number(foodGlow.props.cx)
     const outerEdge = Number(foodGlow.props.r) + Number(foodGlow.props.strokeWidth) / 2
 
-    expect(Number(donutSvg.props.width)).toBeGreaterThanOrEqual(170)
+    expect(Number(donutSvg.props.width)).toBe(Number(donutSvg.props.height))
+    expect(donutSvg.props.accessibilityLabel).toBe(`0 0 ${Number(donutSvg.props.width)} ${Number(donutSvg.props.height)}`)
     expect(center - outerEdge).toBeGreaterThanOrEqual(8)
+    expect(Number(donutSvg.props.width) - (center + outerEdge)).toBeGreaterThanOrEqual(8)
     expect(foodGlow.props.cy).toBe(foodGlow.props.cx)
   })
 

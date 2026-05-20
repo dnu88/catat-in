@@ -2,6 +2,7 @@ import React from 'react'
 import { render, screen, waitFor } from '@testing-library/react-native'
 
 import CaptureScreen from '../app/(tabs)/capture'
+import { I18nProvider } from '../src/i18n/i18n-context'
 import { ThemeProvider } from '../src/theme/theme-context'
 
 const mockCreateEnvelopeAllocation = jest.fn(async (..._args: any[]) => ({ id: 'alloc-1' }))
@@ -54,6 +55,16 @@ jest.mock('expo-router', () => ({
   useRouter: () => ({ push: jest.fn() }),
 }))
 
+function renderCapture() {
+  return render(
+    <I18nProvider>
+      <ThemeProvider>
+        <CaptureScreen />
+      </ThemeProvider>
+    </I18nProvider>,
+  )
+}
+
 describe('Capture envelope suggestion', () => {
   beforeEach(() => {
     mockCreateEnvelopeAllocation.mockClear()
@@ -68,13 +79,9 @@ describe('Capture envelope suggestion', () => {
   })
 
   it('shows suggested envelope without blocking save', () => {
-    render(
-      <ThemeProvider>
-        <CaptureScreen />
-      </ThemeProvider>,
-    )
+    renderCapture()
 
-    expect(screen.getByText(/Amplop/i)).toBeTruthy()
+    expect(screen.getByText(/Dompet/i)).toBeTruthy()
     expect(screen.getByText(/Kopi/i)).toBeTruthy()
     expect(screen.getByText(/17\.000|Rp17\.000 tersisa/i)).toBeTruthy()
     expect(screen.getByText(/Langsung simpan/i)).toBeTruthy()
@@ -90,22 +97,14 @@ describe('Capture envelope suggestion', () => {
       needs_review: true,
     }
 
-    render(
-      <ThemeProvider>
-        <CaptureScreen />
-      </ThemeProvider>,
-    )
+    renderCapture()
 
     expect(screen.getByTestId('capture-envelope-suggestion')).toBeTruthy()
     expect(screen.getByText('Perlu cek di Reports')).toBeTruthy()
   })
 
   it('persists an envelope allocation when suggestion has an envelope id', async () => {
-    render(
-      <ThemeProvider>
-        <CaptureScreen />
-      </ThemeProvider>,
-    )
+    renderCapture()
 
     await waitFor(() => expect(mockCreateEnvelopeAllocation).toHaveBeenCalledTimes(1))
     expect(mockCreateEnvelopeAllocation.mock.calls[0][1]).toEqual({
@@ -120,11 +119,7 @@ describe('Capture envelope suggestion', () => {
   it('is safe when the transaction has no envelope suggestion', async () => {
     mockEnvelopeSuggestion = null
 
-    render(
-      <ThemeProvider>
-        <CaptureScreen />
-      </ThemeProvider>,
-    )
+    renderCapture()
 
     expect(screen.getByText(/Transaksi tercatat/i)).toBeTruthy()
     expect(screen.queryByTestId('capture-envelope-suggestion')).toBeNull()

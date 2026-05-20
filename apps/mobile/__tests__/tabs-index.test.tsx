@@ -178,7 +178,7 @@ describe('DashboardScreen dark luxury Home parity', () => {
     await waitFor(() => expect(screen.getByText('Kopi hampir habis')).toBeTruthy())
     expect(screen.getByText('83%')).toBeTruthy()
     expect(screen.getByText(/Rp42\.000 tersisa/)).toBeTruthy()
-    expect(screen.getByText('Amplop aktif yang perlu perhatian')).toBeTruthy()
+    expect(screen.getByText('Dompet aktif yang perlu perhatian')).toBeTruthy()
 
     expect(screen.getByText('Terakhir')).toBeTruthy()
     expect(screen.getByText('Semua →')).toBeTruthy()

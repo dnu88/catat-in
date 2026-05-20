@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { useRouter } from 'expo-router'
 
+import { useI18n } from '../../src/i18n/i18n-context'
 import { useSupabase } from '../../src/lib/supabase'
 import {
   buildEnvelopeProgress,
@@ -27,7 +28,26 @@ const transactions = [
 export default function DashboardScreen() {
   const { supabase } = useSupabase()
   const { theme } = useTheme()
+  const { language } = useI18n()
   const router = useRouter()
+  const isEn = language === 'en'
+  const tx = useMemo(() => (isEn ? {
+    budget: 'Budgets',
+    view: 'View →',
+    over: 'over budget',
+    near: 'almost used up',
+    overUntil: (amount: number, day: string, month: string) => `Over Rp${amount.toLocaleString('id-ID')} until ${day}/${month}`,
+    remainingUntil: (amount: number, day: string, month: string) => `Rp${amount.toLocaleString('id-ID')} left until ${day}/${month}`,
+    attention: 'Active budget wallet needs attention',
+  } : {
+    budget: 'Anggaran',
+    view: 'Lihat →',
+    over: 'lewat budget',
+    near: 'hampir habis',
+    overUntil: (amount: number, day: string, month: string) => `Lewat Rp${amount.toLocaleString('id-ID')} sampai ${day}/${month}`,
+    remainingUntil: (amount: number, day: string, month: string) => `Rp${amount.toLocaleString('id-ID')} tersisa sampai ${day}/${month}`,
+    attention: 'Dompet aktif yang perlu perhatian',
+  }), [isEn])
   const styles = useMemo(() => createStyles(theme), [theme])
   const [envelopeAlerts, setEnvelopeAlerts] = useState<EnvelopeSummary[]>([])
 
@@ -125,9 +145,9 @@ export default function DashboardScreen() {
 
         <View testID="home-budget-section" style={styles.sectionCard}>
           <View style={styles.sectionTopRow}>
-            <Text style={styles.sectionTitle}>Anggaran</Text>
+            <Text style={styles.sectionTitle}>{tx.budget}</Text>
             <Pressable testID="home-budget-action" onPress={() => router.push('/(tabs)/budgets' as never)}>
-              <Text style={styles.sectionAction}>Lihat →</Text>
+              <Text style={styles.sectionAction}>{tx.view}</Text>
             </Pressable>
           </View>
           {primaryEnvelopeAlert ? (
@@ -136,13 +156,13 @@ export default function DashboardScreen() {
                 <View style={styles.budgetTextBlock}>
                   <Text style={styles.budgetName}>
                     {primaryEnvelopeAlert.progress.is_over_budget
-                      ? `${primaryEnvelopeAlert.envelope.name} lewat budget`
-                      : `${primaryEnvelopeAlert.envelope.name} hampir habis`}
+                      ? `${primaryEnvelopeAlert.envelope.name} ${tx.over}`
+                      : `${primaryEnvelopeAlert.envelope.name} ${tx.near}`}
                   </Text>
                   <Text style={styles.budgetMeta}>
                     {primaryEnvelopeAlert.progress.is_over_budget
-                      ? `Lewat Rp${primaryEnvelopeAlert.progress.over_budget_amount.toLocaleString('id-ID')} sampai ${primaryEnvelopeAlert.envelope.end_date.slice(8, 10)} ${primaryEnvelopeAlert.envelope.end_date.slice(5, 7)}`
-                      : `Rp${Math.max(primaryEnvelopeAlert.progress.remaining_amount, 0).toLocaleString('id-ID')} tersisa sampai ${primaryEnvelopeAlert.envelope.end_date.slice(8, 10)} ${primaryEnvelopeAlert.envelope.end_date.slice(5, 7)}`}
+                      ? tx.overUntil(primaryEnvelopeAlert.progress.over_budget_amount, primaryEnvelopeAlert.envelope.end_date.slice(8, 10), primaryEnvelopeAlert.envelope.end_date.slice(5, 7))
+                      : tx.remainingUntil(Math.max(primaryEnvelopeAlert.progress.remaining_amount, 0), primaryEnvelopeAlert.envelope.end_date.slice(8, 10), primaryEnvelopeAlert.envelope.end_date.slice(5, 7))}
                   </Text>
                 </View>
                 <Text style={styles.budgetPercent}>{primaryEnvelopeAlert.progress.used_percentage}%</Text>
@@ -150,7 +170,7 @@ export default function DashboardScreen() {
               <View style={styles.progressTrack}>
                 <View style={[styles.progressFill, { width: `${Math.min(primaryEnvelopeAlert.progress.used_percentage, 100)}%` }]} />
               </View>
-              <Text style={styles.budgetStatus}>Amplop aktif yang perlu perhatian</Text>
+              <Text style={styles.budgetStatus}>{tx.attention}</Text>
             </View>
           ) : null}
         </View>

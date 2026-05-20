@@ -184,6 +184,7 @@ export default function ReportsScreen() {
         modalCancel: 'Cancel', modalApply: 'Apply', detailTitle: 'Transactions', noCategoryTransactions: 'No transactions in this category.',
         shareTitle: 'Financial Report', shareIncome: 'Income', shareExpense: 'Expense',
         shareSavings: 'Savings', shareTxCount: 'Transactions',
+        budgetWalletTitle: 'Budget Wallets', budgetWalletMeta: 'Personal budgets like Coffee, Ride-hailing, and Hangout.', budgetWalletManage: 'Manage',
       }
     : {
         title: 'Laporan', subtitle: 'Ringkasan performa finansial bulanan.', share: 'Bagikan',
@@ -207,6 +208,7 @@ export default function ReportsScreen() {
         modalCancel: 'Batal', modalApply: 'Terapkan', detailTitle: 'Transaksi', noCategoryTransactions: 'Belum ada transaksi di kategori ini.',
         shareTitle: 'Laporan Keuangan', shareIncome: 'Pemasukan', shareExpense: 'Pengeluaran',
         shareSavings: 'Tabungan', shareTxCount: 'Jumlah transaksi',
+        budgetWalletTitle: 'Dompet', budgetWalletMeta: 'Budget personal seperti Kopi, Ojol, dan Nongkrong.', budgetWalletManage: 'Kelola',
       }
 
   const maxVal = Math.max(...incomeData, ...expenseData)
@@ -522,8 +524,8 @@ export default function ReportsScreen() {
             <View style={styles.envelopeEntryTitleRow}>
               <IconBubble name="budgets" tone="primary" size={36} />
               <View>
-                <Text style={styles.envelopeEntryTitle}>Amplop</Text>
-                <Text style={styles.envelopeEntryMeta}>Budget personal seperti Kopi, Ojol, dan Nongkrong.</Text>
+                <Text style={styles.envelopeEntryTitle}>{tx.budgetWalletTitle}</Text>
+                <Text style={styles.envelopeEntryMeta}>{tx.budgetWalletMeta}</Text>
               </View>
             </View>
             <Pressable
@@ -531,7 +533,7 @@ export default function ReportsScreen() {
               style={styles.envelopeManageButton}
               onPress={() => router.push('/(tabs)/budgets' as never)}
             >
-              <Text style={styles.envelopeManageText}>Kelola</Text>
+              <Text style={styles.envelopeManageText}>{tx.budgetWalletManage}</Text>
             </Pressable>
           </View>
         </View>
@@ -670,7 +672,7 @@ export default function ReportsScreen() {
 
               <View style={styles.ringArea}>
                 <View style={styles.donutChart}>
-                  <Svg testID="reports-donut-svg" width={donutSize} height={donutSize} viewBox={`0 0 ${donutSize} ${donutSize}`} style={styles.donutSvg}>
+                  <Svg testID="reports-donut-svg" width={donutSize} height={donutSize} viewBox={`0 0 ${donutSize} ${donutSize}`} accessibilityLabel={`0 0 ${donutSize} ${donutSize}`} style={styles.donutSvg}>
                     <Circle
                       cx={donutCenter}
                       cy={donutCenter}
@@ -1339,9 +1341,9 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
       paddingBottom: 20,
     },
     donutChart: {
-      width: 190,
-      height: 190,
-      borderRadius: 95,
+      width: 180,
+      height: 180,
+      borderRadius: 90,
       alignItems: 'center',
       justifyContent: 'center',
       overflow: 'visible',
@@ -1357,7 +1359,10 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
     },
     donutSvg: {
       position: 'absolute',
-      inset: 0,
+      top: 0,
+      left: 0,
+      width: 180,
+      height: 180,
     },
     donutSegment: {
       height: 150,
@@ -1365,7 +1370,8 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
     },
     ringInner: {
       position: 'absolute',
-      alignSelf: 'center',
+      top: 41,
+      left: 41,
       width: 98,
       height: 98,
       borderRadius: 49,
