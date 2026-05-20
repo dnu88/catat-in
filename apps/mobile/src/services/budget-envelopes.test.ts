@@ -3,6 +3,7 @@ import {
   getEnvelopeStatus,
   getHomeEnvelopeAlerts,
   listBudgetEnvelopes,
+  listEnvelopeAllocations,
   matchEnvelopeForTransaction,
   type BudgetEnvelope,
   type EnvelopeAllocation,
@@ -127,5 +128,92 @@ describe('budget envelope service query builders', () => {
     expect(calls.some((call) => call.startsWith('select:'))).toBe(true)
     expect(calls).toContain('eq:user_id:user-1')
     expect(calls).toContain('order:end_date')
+  })
+
+  it('returns no allocations without querying when envelope id list is empty', async () => {
+    const supabase = { from: jest.fn() }
+
+    await expect(listEnvelopeAllocations(supabase as never, [])).resolves.toEqual([])
+
+    expect(supabase.from).not.toHaveBeenCalled()
+  })
+
+  it('maps allocation transaction fields from existing tanggal and catatan columns', async () => {
+    const calls: string[] = []
+    const chain = {
+      select: jest.fn((value: string) => { calls.push(`select:${value}`); return chain }),
+      in: jest.fn((key: string, values: string[]) => {
+        calls.push(`in:${key}:${values.join(',')}`)
+        return Promise.resolve({
+          data: [
+            {
+              id: 'alloc-1',
+              transaction_id: 'tx-1',
+              envelope_id: 'env-1',
+              amount: '25000',
+              confidence: '0.920',
+              needs_review: false,
+              created_at: '2026-05-15T00:00:00Z',
+              updated_at: '2026-05-15T00:00:00Z',
+              transaction: {
+                tanggal: '2026-05-15',
+                catatan: 'Kopi Kenangan kampus',
+                merchant: 'Kopi Kenangan',
+              },
+            },
+          ],
+          error: null,
+        })
+      }),
+    }
+    const supabase = { from: jest.fn(() => chain) }
+
+    const result = await listEnvelopeAllocations(supabase as never, ['env-1'])
+
+    expect(supabase.from).toHaveBeenCalledWith('transaction_envelope_allocations')
+    expect(calls).toContain('select:*, transaction:transactions(id,tanggal,catatan,merchant)')
+    expect(calls).toContain('in:envelope_id:env-1')
+    expect(result).toEqual([
+      {
+        id: 'alloc-1',
+        transaction_id: 'tx-1',
+        envelope_id: 'env-1',
+        amount: 25000,
+        confidence: 0.92,
+        needs_review: false,
+        transaction_date: '2026-05-15',
+        transaction_description: 'Kopi Kenangan kampus',
+        created_at: '2026-05-15T00:00:00Z',
+        updated_at: '2026-05-15T00:00:00Z',
+      },
+    ])
+  })
+
+  it('falls back to merchant when allocation transaction catatan is empty', async () => {
+    const chain = {
+      select: jest.fn(() => chain),
+      in: jest.fn(() => Promise.resolve({
+        data: [
+          {
+            id: 'alloc-2',
+            transaction_id: 'tx-2',
+            envelope_id: 'env-1',
+            amount: 48000,
+            confidence: null,
+            needs_review: true,
+            created_at: '2026-05-16T00:00:00Z',
+            updated_at: '2026-05-16T00:00:00Z',
+            transaction: { tanggal: '2026-05-16', catatan: null, merchant: 'Fore Coffee' },
+          },
+        ],
+        error: null,
+      })),
+    }
+    const supabase = { from: jest.fn(() => chain) }
+
+    const result = await listEnvelopeAllocations(supabase as never, ['env-1'])
+
+    expect(result[0].transaction_date).toBe('2026-05-16')
+    expect(result[0].transaction_description).toBe('Fore Coffee')
   })
 })

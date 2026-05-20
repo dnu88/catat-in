@@ -210,7 +210,7 @@ type EnvelopeAllocationRow = {
   needs_review: boolean | null
   created_at: string
   updated_at: string
-  transaction?: { date?: string | null; description?: string | null } | null
+  transaction?: { tanggal?: string | null; catatan?: string | null; merchant?: string | null } | null
 }
 
 function mapBudgetEnvelope(row: BudgetEnvelopeRow): BudgetEnvelope {
@@ -259,7 +259,7 @@ export async function listEnvelopeAllocations(supabase: SupabaseLike, envelopeId
 
   const { data, error } = await supabase
     .from('transaction_envelope_allocations')
-    .select('*, transaction:transactions(id,date,description)')
+    .select('*, transaction:transactions(id,tanggal,catatan,merchant)')
     .in('envelope_id', envelopeIds)
 
   if (error) throw error
@@ -270,8 +270,8 @@ export async function listEnvelopeAllocations(supabase: SupabaseLike, envelopeId
     amount: Number(row.amount ?? 0),
     confidence: row.confidence == null ? null : Number(row.confidence),
     needs_review: Boolean(row.needs_review),
-    transaction_date: row.transaction?.date ?? null,
-    transaction_description: row.transaction?.description ?? null,
+    transaction_date: row.transaction?.tanggal ?? null,
+    transaction_description: row.transaction?.catatan ?? row.transaction?.merchant ?? null,
     created_at: row.created_at,
     updated_at: row.updated_at,
   }))

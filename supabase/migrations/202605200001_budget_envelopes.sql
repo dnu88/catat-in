@@ -91,3 +91,12 @@ create policy "Users can update own envelope allocations"
       where e.id = envelope_id and e.user_id = auth.uid()
     )
   );
+
+create policy "Users can delete own envelope allocations"
+  on public.transaction_envelope_allocations for delete
+  using (
+    exists (
+      select 1 from public.budget_envelopes e
+      where e.id = envelope_id and e.user_id = auth.uid()
+    )
+  );
