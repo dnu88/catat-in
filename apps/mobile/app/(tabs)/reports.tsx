@@ -227,6 +227,8 @@ export default function ReportsScreen() {
   const donutGlowStrokeWidth = 21
   const donutCircumference = 2 * Math.PI * donutRadius
   const donutSegmentGap = 6
+  const incomeAccent = theme.mode === 'light' ? '#65A30D' : '#A3FF12'
+  const expenseAccent = theme.mode === 'light' ? theme.colors.textPrimary : '#FF7B7B'
 
   const formatRupiah = (valueInJuta: number) => `Rp ${(valueInJuta * 1_000_000).toLocaleString('id-ID')}`
   const formatCompactRupiah = (value: number) => {
@@ -489,33 +491,32 @@ export default function ReportsScreen() {
           </View>
         </View>
 
-        {/* Period Selector */}
-        <View style={styles.periodRow}>
-          {(Object.keys(periodLabels) as PeriodFilter[]).map((key) => (
-            <Pressable
-              key={key}
-              style={[styles.periodChip, periodFilter === key && styles.periodChipActive]}
-              onPress={() => {
-                setPeriodFilter(key)
-                if (key === 'custom') {
-                  openCustomDateModal()
-                }
-              }}
-            >
-              <Text style={[styles.periodChipText, periodFilter === key && styles.periodChipTextActive]}>
-                {periodLabels[key]}
-              </Text>
-            </Pressable>
-          ))}
+        {/* Summary Row — shown before controls */}
+        <View testID="reports-summary-card" style={styles.summaryCard}>
+          <View style={styles.heroBloomOne} />
+          <View style={styles.heroBloomTwo} />
+          <View style={styles.summaryTopRow}>
+            <View style={styles.summaryHalf}>
+              <Text style={styles.summaryLabel}>{tx.income}</Text>
+              <Text testID="reports-summary-income-value" style={[styles.summaryValue, { color: incomeAccent }]}>Rp 18,65 Jt</Text>
+              <Text style={[styles.summaryTrend, { color: incomeAccent }]}>▲ 12.5%</Text>
+            </View>
+            <View style={styles.summaryDivider} />
+            <View style={styles.summaryHalf}>
+              <Text style={styles.summaryLabel}>{tx.expense}</Text>
+              <Text testID="reports-summary-expense-value" style={[styles.summaryValue, { color: expenseAccent }]}>Rp 6,40 Jt</Text>
+              <Text style={[styles.summaryTrend, { color: expenseAccent }]}>▲ 5.2%</Text>
+            </View>
+          </View>
+          <View style={styles.summarySavingsRow}>
+            <Text style={styles.summaryLabel}>{tx.savings}</Text>
+            <Text testID="reports-summary-savings-value" style={[styles.summaryValue, { color: theme.colors.textPrimary }]}>Rp 12,25 Jt</Text>
+            <Text style={styles.summarySavingRate}>{tx.savingRate}</Text>
+          </View>
         </View>
-        {periodFilter === 'custom' && (
-          <Pressable style={styles.customRangeBadge} onPress={openCustomDateModal}>
-            <Text style={styles.customRangeBadgeText}>{customRangeLabel}</Text>
-          </Pressable>
-        )}
 
         {/* Tab Selector */}
-        <View style={styles.tabRow}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.tabScrollView} contentContainerStyle={styles.tabRow}>
           <Pressable
             style={[styles.tabChip, activeTab === 'overview' && styles.tabChipActive]}
             onPress={() => setActiveTab('overview')}
@@ -534,7 +535,32 @@ export default function ReportsScreen() {
           >
             <Text style={[styles.tabChipText, activeTab === 'compare' && styles.tabChipTextActive]}>{tx.compare}</Text>
           </Pressable>
-        </View>
+        </ScrollView>
+
+        {/* Period Selector */}
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.periodScrollView} contentContainerStyle={styles.periodRow}>
+          {(Object.keys(periodLabels) as PeriodFilter[]).map((key) => (
+            <Pressable
+              key={key}
+              style={[styles.periodChip, periodFilter === key && styles.periodChipActive]}
+              onPress={() => {
+                setPeriodFilter(key)
+                if (key === 'custom') {
+                  openCustomDateModal()
+                }
+              }}
+            >
+              <Text style={[styles.periodChipText, periodFilter === key && styles.periodChipTextActive]}>
+                {periodLabels[key]}
+              </Text>
+            </Pressable>
+          ))}
+        </ScrollView>
+        {periodFilter === 'custom' && (
+          <Pressable style={styles.customRangeBadge} onPress={openCustomDateModal}>
+            <Text style={styles.customRangeBadgeText}>{customRangeLabel}</Text>
+          </Pressable>
+        )}
 
         {/* Loading/Error State */}
         {dataLoading && (
@@ -555,37 +581,6 @@ export default function ReportsScreen() {
 
         {activeTab === 'overview' && (
           <>
-            {/* Key Metrics */}
-            <View style={styles.metricRow}>
-              <View style={[styles.metricCard, { borderBottomWidth: 3, borderBottomColor: theme.colors.success }]}>
-                <Text style={styles.metricLabel}>{tx.income}</Text>
-                <Text style={[styles.metricValue, { color: theme.colors.success }]}>Rp 18,65 Jt</Text>
-                <View style={styles.metricTrend}>
-                  <Text style={[styles.metricTrendText, { color: theme.colors.success }]}>▲ 12.5%</Text>
-                </View>
-              </View>
-              <View style={[styles.metricCard, { borderBottomWidth: 3, borderBottomColor: theme.colors.danger }]}>
-                <Text style={styles.metricLabel}>{tx.expense}</Text>
-                <Text style={[styles.metricValue, { color: theme.colors.danger }]}>Rp 6,40 Jt</Text>
-                <View style={styles.metricTrend}>
-                  <Text style={[styles.metricTrendText, { color: theme.colors.danger }]}>▲ 5.2%</Text>
-                </View>
-              </View>
-            </View>
-
-            <View style={styles.metricRow}>
-              <View style={[styles.metricCard, { borderBottomWidth: 3, borderBottomColor: theme.colors.brandPrimary }]}>
-                <Text style={styles.metricLabel}>{tx.savings}</Text>
-                <Text style={[styles.metricValue, { color: theme.colors.brandPrimary }]}>Rp 12,25 Jt</Text>
-                <Text style={styles.metricSub}>{tx.savingRate}</Text>
-              </View>
-              <View style={[styles.metricCard, { borderBottomWidth: 3, borderBottomColor: theme.colors.warning }]}>
-                <Text style={styles.metricLabel}>{tx.transactions}</Text>
-                <Text style={[styles.metricValue, { color: theme.colors.warning }]}>142</Text>
-                <Text style={styles.metricSub}>{tx.thisMonth}</Text>
-              </View>
-            </View>
-
             {/* Chart */}
             <View style={styles.chartCard}>
               <Text style={styles.chartTitle}>{tx.trendTitle}</Text>
@@ -1027,10 +1022,14 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
       paddingVertical: 6,
     },
     shareButtonText: { color: theme.colors.textInverse, fontSize: 11, fontWeight: theme.typography.fontWeight.bold },
+    periodScrollView: {
+      marginHorizontal: -20,
+    },
     periodRow: {
       flexDirection: 'row',
       gap: 8,
       marginBottom: 8,
+      paddingHorizontal: 20,
     },
     periodChip: {
       paddingVertical: 6,
@@ -1091,10 +1090,14 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
       fontSize: 12,
       fontWeight: '600',
     },
-    tabRow: { flexDirection: 'row', gap: 8 },
+    tabScrollView: {
+      marginHorizontal: -20,
+    },
+    tabRow: { flexDirection: 'row', gap: 8, paddingHorizontal: 20 },
     tabChip: {
-      flex: 1,
+      minWidth: 96,
       paddingVertical: 10,
+      paddingHorizontal: 16,
       borderRadius: 12,
       borderWidth: 1,
       borderColor: theme.colors.borderSoft,
@@ -1107,21 +1110,58 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
     },
     tabChipText: { color: theme.colors.textSecondary, fontSize: 13, fontWeight: '700' },
     tabChipTextActive: { color: brandText },
-    metricRow: { flexDirection: 'row', gap: 10 },
-    metricCard: {
-      flex: 1,
-      backgroundColor: theme.colors.surface,
-      borderRadius: 16,
+    summaryCard: {
+      backgroundColor: theme.colors.card,
+      borderRadius: 24,
+      padding: 18,
       borderWidth: 1,
       borderColor: theme.colors.borderSoft,
-      padding: 14,
-      gap: 3,
+      gap: 14,
+      overflow: 'hidden',
     },
-    metricLabel: { color: theme.colors.textSecondary, fontSize: 12, fontWeight: '600' },
-    metricValue: { fontSize: 18, fontWeight: '800', marginTop: 2 },
-    metricTrend: { marginTop: 2 },
-    metricTrendText: { fontSize: 11, fontWeight: '700' },
-    metricSub: { color: theme.colors.textMuted, fontSize: 11, marginTop: 2 },
+    heroBloomOne: {
+      position: 'absolute',
+      top: -60,
+      right: -60,
+      width: 180,
+      height: 180,
+      borderRadius: 90,
+      backgroundColor: 'rgba(163, 255, 18, 0.14)',
+      opacity: 0.55,
+    },
+    heroBloomTwo: {
+      position: 'absolute',
+      bottom: -80,
+      left: -60,
+      width: 180,
+      height: 180,
+      borderRadius: 90,
+      backgroundColor: 'rgba(74, 128, 240, 0.10)',
+      opacity: 0.6,
+    },
+    summaryTopRow: {
+      flexDirection: 'row',
+      alignItems: 'stretch',
+      gap: 12,
+    },
+    summaryHalf: {
+      flex: 1,
+      gap: 4,
+    },
+    summaryDivider: {
+      width: 1,
+      backgroundColor: theme.colors.borderSoft,
+    },
+    summarySavingsRow: {
+      borderTopWidth: 1,
+      borderTopColor: theme.colors.borderSoft,
+      paddingTop: 12,
+      gap: 4,
+    },
+    summaryLabel: { color: theme.colors.textSecondary, fontSize: 12, fontWeight: '600' },
+    summaryValue: { fontSize: 18, fontWeight: '800', marginTop: 2 },
+    summaryTrend: { fontSize: 11, fontWeight: '700' },
+    summarySavingRate: { color: theme.colors.textMuted, fontSize: 11, marginTop: 2 },
     chartCard: {
       backgroundColor: theme.colors.surface,
       borderRadius: 20,

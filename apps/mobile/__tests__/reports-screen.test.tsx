@@ -96,6 +96,26 @@ describe('ReportsScreen visual parity', () => {
     expect((getFlattenedStyle(activePeriodText) as { color?: string }).color).not.toBe('#A3FF12')
   })
 
+  it('matches home hero light-theme treatment for reports summary accents', () => {
+    const screen = renderReports()
+
+    const summaryCard = screen.getByTestId('reports-summary-card')
+    const incomeValue = screen.getByTestId('reports-summary-income-value')
+    const expenseValue = screen.getByTestId('reports-summary-expense-value')
+    const savingsValue = screen.getByTestId('reports-summary-savings-value')
+
+    const summaryCardStyle = getFlattenedStyle(summaryCard)
+    const incomeStyle = getFlattenedStyle(incomeValue) as { color?: string }
+    const expenseStyle = getFlattenedStyle(expenseValue) as { color?: string }
+    const savingsStyle = getFlattenedStyle(savingsValue) as { color?: string }
+
+    expect(summaryCardStyle.backgroundColor).toBe('#FFFFFF')
+    expect(summaryCardStyle.borderColor).toBe('rgba(10, 10, 10, 0.06)')
+    expect(incomeStyle.color).toBe('#65A30D')
+    expect(expenseStyle.color).not.toBe('#FF7B7B')
+    expect(savingsStyle.color).toBe('#0A0A0A')
+  })
+
   it('maps recorded category names to donut colors instead of falling back to a static neon palette', async () => {
     const screen = renderReports()
 
