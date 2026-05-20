@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Pressable, ScrollView, StyleSheet, Text, View, Share, Modal } from 'react-native'
+import { useRouter } from 'expo-router'
 import Svg, { Circle, Polyline } from 'react-native-svg'
 
 import { useTheme } from '../../src/theme/theme-context'
@@ -72,6 +73,7 @@ const periodLabelsEn: Record<PeriodFilter, string> = {
 
 export default function ReportsScreen() {
   const { theme } = useTheme()
+  const router = useRouter()
   const { supabase } = useSupabase()
   const { language } = useI18n()
   const styles = useMemo(() => createStyles(theme), [theme])
@@ -512,6 +514,25 @@ export default function ReportsScreen() {
             <Text style={styles.summaryLabel}>{tx.savings}</Text>
             <Text testID="reports-summary-savings-value" style={[styles.summaryValue, { color: theme.colors.textPrimary }]}>Rp 12,25 Jt</Text>
             <Text style={styles.summarySavingRate}>{tx.savingRate}</Text>
+          </View>
+        </View>
+
+        <View testID="reports-envelope-entry" style={styles.envelopeEntryCard}>
+          <View style={styles.envelopeEntryTopRow}>
+            <View style={styles.envelopeEntryTitleRow}>
+              <IconBubble name="budgets" tone="primary" size={36} />
+              <View>
+                <Text style={styles.envelopeEntryTitle}>Amplop</Text>
+                <Text style={styles.envelopeEntryMeta}>Budget personal seperti Kopi, Ojol, dan Nongkrong.</Text>
+              </View>
+            </View>
+            <Pressable
+              testID="reports-envelope-manage"
+              style={styles.envelopeManageButton}
+              onPress={() => router.push('/(tabs)/budgets' as never)}
+            >
+              <Text style={styles.envelopeManageText}>Kelola</Text>
+            </Pressable>
           </View>
         </View>
 
@@ -1089,6 +1110,48 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
       color: brandText,
       fontSize: 12,
       fontWeight: '600',
+    },
+    envelopeEntryCard: {
+      backgroundColor: theme.colors.surface,
+      borderRadius: 18,
+      borderWidth: 1,
+      borderColor: theme.colors.borderSoft,
+      padding: 14,
+    },
+    envelopeEntryTopRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: 12,
+    },
+    envelopeEntryTitleRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 10,
+      flex: 1,
+    },
+    envelopeEntryTitle: {
+      color: theme.colors.textPrimary,
+      fontSize: 15,
+      fontWeight: '800',
+    },
+    envelopeEntryMeta: {
+      color: theme.colors.textMuted,
+      fontSize: 12,
+      marginTop: 2,
+    },
+    envelopeManageButton: {
+      borderRadius: 999,
+      borderWidth: 1,
+      borderColor: brandSoftBorder,
+      backgroundColor: brandSoftBg,
+      paddingHorizontal: 12,
+      paddingVertical: 7,
+    },
+    envelopeManageText: {
+      color: brandText,
+      fontSize: 12,
+      fontWeight: '800',
     },
     tabScrollView: {
       marginHorizontal: -20,

@@ -1,4 +1,4 @@
-import { fireEvent, render, waitFor } from '@testing-library/react-native'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react-native'
 import { StyleSheet } from 'react-native'
 import type { StyleProp, ViewStyle } from 'react-native'
 
@@ -50,6 +50,10 @@ jest.mock('../src/components/ui', () => ({
   },
 }))
 
+jest.mock('expo-router', () => ({
+  useRouter: () => ({ push: jest.fn() }),
+}))
+
 jest.mock('react-native/Libraries/Share/Share', () => ({
   default: {
     share: jest.fn(() => Promise.resolve({ action: 'sharedAction' })),
@@ -84,6 +88,13 @@ function renderReports() {
 }
 
 describe('ReportsScreen visual parity', () => {
+  it('exposes envelope management entry point in Reports', async () => {
+    renderReports()
+
+    await waitFor(() => expect(screen.getByText(/Amplop/i)).toBeTruthy())
+    expect(screen.getByText('Kelola')).toBeTruthy()
+  })
+
   it('uses softened light-theme green accents instead of solid neon for non-primary controls', () => {
     const screen = renderReports()
 

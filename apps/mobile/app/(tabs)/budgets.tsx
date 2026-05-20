@@ -1,131 +1,117 @@
 import { useEffect, useMemo, useState } from 'react'
 import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from 'react-native'
 
-import type { KaswiseIconName } from '../../src/components/icons/kaswise-icons'
 import { EmptyState, IconBubble, ScreenHeader, StateMessage } from '../../src/components/ui'
+import { useSupabase } from '../../src/lib/supabase'
+import {
+  buildEnvelopeProgress,
+  getEnvelopeStatus,
+  listBudgetEnvelopes,
+  listEnvelopeAllocations,
+  type BudgetEnvelope,
+  type EnvelopeAllocation,
+  type EnvelopeProgress,
+} from '../../src/services/budget-envelopes'
 import { useTheme } from '../../src/theme/theme-context'
-import { listBudgets, type Budget } from '../../src/services/budgets'
-import { listTransactions } from '../../src/services/transactions'
 
-type Period = 'current' | 'prev'
+type EnvelopeSummary = {
+  envelope: BudgetEnvelope
+  progress: EnvelopeProgress
+}
 
-type BudgetWithSpent = Budget & { spent_amount: number }
-
-type BudgetRowProps = {
-  item: BudgetWithSpent
+type EnvelopeRowProps = {
+  item: EnvelopeSummary
   theme: ReturnType<typeof useTheme>['theme']
   styles: ReturnType<typeof createStyles>
 }
 
-const categoryIcons: Record<string, KaswiseIconName> = {
-  'Makan': 'chart',
-  'Makanan': 'chart',
-  'Transport': 'transactions',
-  'Transportasi': 'transactions',
-  'Belanja': 'wallets',
-  'Hiburan': 'insight',
-  'Tagihan': 'bills',
-  'Kesehatan': 'budgets',
-  'Pendidikan': 'file',
-  'Lainnya': 'card',
+function formatRupiah(value: number) {
+  return `Rp ${Math.abs(value).toLocaleString('id-ID', { maximumFractionDigits: 0 })}`
 }
 
-function BudgetRow({ item: budget, theme, styles }: BudgetRowProps) {
-  const spent = budget.spent_amount ?? 0
-  const pct = budget.limit_amount > 0 ? Math.round((spent / budget.limit_amount) * 100) : 0
-  const over = spent > budget.limit_amount
-  const warn = pct >= 80 && !over
-  const remaining = budget.limit_amount - spent
-  const toneColor = over ? theme.colors.danger : warn ? theme.colors.warning : theme.colors.brandPrimary
-  const categoryName = budget.category?.name ?? 'Kategori'
-  const categoryIcon = categoryIcons[categoryName] ?? 'card'
+function EnvelopeRow({ item, theme, styles }: EnvelopeRowProps) {
+  const { envelope, progress } = item
+  const toneColor = progress.is_over_budget ? theme.colors.danger : progress.is_near_limit ? theme.colors.warning : theme.colors.brandPrimary
 
   return (
-    <Pressable style={styles.budgetCard}>
+    <Pressable testID={`envelope-card-${envelope.id}`} style={styles.budgetCard}>
       <View style={styles.budgetTop}>
         <View style={styles.budgetLeft}>
           <IconBubble
-            name={categoryIcon}
-            tone={over ? 'danger' : warn ? 'warning' : 'primary'}
+            name="budgets"
+            tone={progress.is_over_budget ? 'danger' : progress.is_near_limit ? 'warning' : 'primary'}
             size={44}
           />
-          <View>
-            <Text style={styles.budgetCategory} numberOfLines={1} ellipsizeMode="tail">{categoryName}</Text>
+          <View style={styles.budgetTextWrap}>
+            <Text style={styles.budgetCategory} numberOfLines={1} ellipsizeMode="tail">{envelope.name}</Text>
             <Text style={styles.budgetMeta}>
-              Rp {(spent / 1000).toFixed(0)}rb / Rp {(budget.limit_amount / 1000).toFixed(0)}rb
+              {envelope.parent_category_name ?? 'Tanpa kategori'} · {envelope.start_date}–{envelope.end_date}
             </Text>
           </View>
         </View>
         <View style={[styles.budgetBadge, { backgroundColor: `${toneColor}15`, borderColor: `${toneColor}40` }]}>
-          <Text style={[styles.budgetBadgeText, { color: toneColor }]}>{pct}%</Text>
+          <Text style={[styles.budgetBadgeText, { color: toneColor }]}>{progress.used_percentage}%</Text>
         </View>
       </View>
 
       <View style={styles.budgetBar}>
-        <View style={[styles.budgetBarFill, { width: `${Math.min(pct, 100)}%`, backgroundColor: toneColor }]} />
+        <View style={[styles.budgetBarFill, { width: `${Math.min(progress.used_percentage, 100)}%`, backgroundColor: toneColor }]} />
       </View>
 
       <Text style={styles.budgetFooter}>
-        {over
-          ? `Melebihi anggaran Rp ${Math.abs(remaining / 1000).toFixed(0)}rb`
-          : `Sisa Rp ${Math.max(remaining, 0).toLocaleString('id-ID', { maximumFractionDigits: 0 })}`}
+        {progress.is_over_budget
+          ? `Lewat ${formatRupiah(progress.over_budget_amount)}`
+          : `Sisa ${formatRupiah(Math.max(progress.remaining_amount, 0))}`}
       </Text>
     </Pressable>
   )
 }
 
 export default function BudgetsScreen() {
+  const { supabase } = useSupabase()
   const { theme } = useTheme()
   const styles = useMemo(() => createStyles(theme), [theme])
-  const [period, setPeriod] = useState<Period>('current')
-  const [budgets, setBudgets] = useState<BudgetWithSpent[]>([])
+  const [activeSummaries, setActiveSummaries] = useState<EnvelopeSummary[]>([])
+  const [archivedSummaries, setArchivedSummaries] = useState<EnvelopeSummary[]>([])
+  const [reviewAllocations, setReviewAllocations] = useState<EnvelopeAllocation[]>([])
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
 
   useEffect(() => {
-    loadBudgets()
+    loadEnvelopes()
   }, [])
 
-  const loadBudgets = async () => {
+  const loadEnvelopes = async () => {
     try {
+      setLoading(true)
       setLoadError(null)
-      const [budgetData, txData] = await Promise.all([listBudgets(), listTransactions()])
-      const active = budgetData.filter((b) => b.is_active)
+      const { data: { user } } = await supabase.auth.getUser()
 
-      const spentByCategory = new Map<string, number>()
-      for (const tx of txData) {
-        if (tx.transaction_type !== 'expense' || !tx.category) continue
-        const key = tx.category.toLowerCase()
-        spentByCategory.set(key, (spentByCategory.get(key) ?? 0) + Number(tx.amount ?? 0))
+      if (!user) {
+        setLoadError('Sesi login tidak ditemukan. Silakan login ulang.')
+        setActiveSummaries([])
+        setArchivedSummaries([])
+        setReviewAllocations([])
+        return
       }
 
-      const withSpent = active.map((b) => {
-        const name = b.category?.name?.toLowerCase()
-        const spent = name ? spentByCategory.get(name) ?? 0 : 0
-        return { ...b, spent_amount: spent }
-      })
+      const envelopes = await listBudgetEnvelopes(supabase, user.id)
+      const allocations = await listEnvelopeAllocations(supabase, envelopes.map((envelope) => envelope.id))
+      const summaries = envelopes.map((envelope) => ({
+        envelope,
+        progress: buildEnvelopeProgress(envelope, allocations),
+      }))
 
-      setBudgets(withSpent)
+      setActiveSummaries(summaries.filter((item) => getEnvelopeStatus(item.envelope) === 'active'))
+      setArchivedSummaries(summaries.filter((item) => getEnvelopeStatus(item.envelope) === 'archived'))
+      setReviewAllocations(allocations.filter((allocation) => allocation.needs_review))
     } catch (error) {
-      console.error('Error loading budgets:', error)
-      setLoadError('Gagal memuat data anggaran. Coba lagi sebentar.')
+      console.error('Error loading budget envelopes:', error)
+      setLoadError('Gagal memuat data amplop. Coba lagi sebentar.')
     } finally {
       setLoading(false)
     }
   }
-
-  const totalSpent = useMemo(
-    () => budgets.reduce((a, b) => a + (b.spent_amount ?? 0), 0),
-    [budgets],
-  )
-  const totalLimit = useMemo(
-    () => budgets.reduce((a, b) => a + b.limit_amount, 0),
-    [budgets],
-  )
-  const totalPct = useMemo(
-    () => (totalLimit > 0 ? Math.round((totalSpent / totalLimit) * 100) : 0),
-    [totalSpent, totalLimit],
-  )
 
   if (loading) {
     return (
@@ -135,17 +121,15 @@ export default function BudgetsScreen() {
     )
   }
 
-  const renderBudget = ({ item }: { item: BudgetWithSpent }) => (
-    <BudgetRow item={item} theme={theme} styles={styles} />
+  const renderEnvelope = ({ item }: { item: EnvelopeSummary }) => (
+    <EnvelopeRow item={item} theme={theme} styles={styles} />
   )
-
-  const keyExtractor = (item: BudgetWithSpent) => item.id
 
   const ListHeader = () => (
     <>
       <ScreenHeader
         title="Anggaran"
-        subtitle="Kelola batas pengeluaranmu per kategori."
+        subtitle="Kelola amplop budget personal di bawah kategori laporan."
         action={(
           <Pressable style={styles.addButton}>
             <Text style={styles.addButtonText}>+ Baru</Text>
@@ -153,53 +137,25 @@ export default function BudgetsScreen() {
         )}
       />
 
-      <View style={styles.periodRow}>
-        <Pressable
-          style={[styles.periodChip, period === 'current' && styles.periodChipActive]}
-          onPress={() => setPeriod('current')}
-        >
-          <Text style={[styles.periodText, period === 'current' && styles.periodTextActive]}>Mei 2026</Text>
-        </Pressable>
-        <Pressable
-          style={[styles.periodChip, period === 'prev' && styles.periodChipActive]}
-          onPress={() => setPeriod('prev')}
-        >
-          <Text style={[styles.periodText, period === 'prev' && styles.periodTextActive]}>Apr 2026</Text>
-        </Pressable>
-      </View>
-
       {loadError ? <StateMessage message={loadError} tone="error" /> : null}
 
       <View style={styles.overviewCard}>
         <View style={styles.overviewTop}>
           <View>
-            <Text style={styles.overviewLabel}>Total Anggaran Terpakai</Text>
-            <Text style={styles.overviewPct}>{totalPct}%</Text>
+            <Text style={styles.overviewLabel}>Amplop aktif</Text>
+            <Text style={styles.overviewPct}>{activeSummaries.length}</Text>
           </View>
           <View style={styles.overviewRight}>
-            <Text style={styles.overviewSpent}>Rp {(totalSpent / 1000000).toFixed(2)} Jt</Text>
-            <Text style={styles.overviewLimit}>dari Rp {(totalLimit / 1000000).toFixed(1)} Jt</Text>
+            <Text style={styles.overviewSpent}>{reviewAllocations.length} perlu cek</Text>
+            <Text style={styles.overviewLimit}>Review hanya di Reports/Amplop</Text>
           </View>
         </View>
-        <View style={styles.overviewBar}>
-          <View
-            style={[
-              styles.overviewBarFill,
-              {
-                width: `${Math.min(totalPct, 100)}%`,
-                backgroundColor: totalPct > 80 ? theme.colors.warning : theme.colors.brandPrimary,
-              },
-            ]}
-          />
-        </View>
         <Text style={styles.overviewHelper}>
-          {totalPct < 50
-            ? 'Kamu masih punya ruang anggaran yang baik.'
-            : totalPct < 80
-              ? 'Penggunaan anggaran masih terkontrol.'
-              : 'Hati-hati, anggaranmu hampir habis bulan ini.'}
+          Budget tidak memblokir transaksi. Amplop membantu melihat sisa dan over budget.
         </Text>
       </View>
+
+      <Text style={styles.sectionTitle}>Amplop Aktif</Text>
     </>
   )
 
@@ -207,20 +163,46 @@ export default function BudgetsScreen() {
     <EmptyState
       icon="budgets"
       tone="primary"
-      title="Belum ada anggaran"
-      description="Tambahkan anggaran baru untuk memantau pengeluaran."
+      title="Belum ada amplop aktif"
+      description="Buat amplop seperti Kopi, Ojol, atau Nongkrong untuk memantau budget personal."
     />
+  )
+
+  const ListFooter = () => (
+    <View style={styles.footerSections}>
+      <Text style={styles.sectionTitle}>Perlu cek</Text>
+      {reviewAllocations.length > 0 ? reviewAllocations.map((allocation) => (
+        <View key={allocation.id} style={styles.reviewCard}>
+          <Text style={styles.reviewTitle}>{allocation.transaction_description ?? 'Transaksi'}</Text>
+          <Text style={styles.budgetMeta}>Confidence rendah · cek amplop transaksi ini</Text>
+        </View>
+      )) : (
+        <Text style={styles.emptyInlineText}>Tidak ada transaksi yang perlu dicek.</Text>
+      )}
+
+      <Text style={styles.sectionTitle}>Arsip</Text>
+      {archivedSummaries.length > 0 ? archivedSummaries.map((item) => (
+        <View key={item.envelope.id} style={styles.archiveCard}>
+          <Text style={styles.reviewTitle}>{item.envelope.name}</Text>
+          <Text style={styles.budgetMeta}>{item.envelope.start_date}–{item.envelope.end_date}</Text>
+        </View>
+      )) : (
+        <Text style={styles.emptyInlineText}>Belum ada amplop yang selesai.</Text>
+      )}
+
+      <View style={{ height: 100 }} />
+    </View>
   )
 
   return (
     <View style={styles.screen}>
       <FlatList
-        data={budgets}
-        renderItem={renderBudget}
-        keyExtractor={keyExtractor}
+        data={activeSummaries}
+        renderItem={renderEnvelope}
+        keyExtractor={(item) => item.envelope.id}
         ListHeaderComponent={ListHeader}
         ListEmptyComponent={ListEmpty}
-        ListFooterComponent={<View style={{ height: 100 }} />}
+        ListFooterComponent={ListFooter}
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
         initialNumToRender={10}
@@ -236,13 +218,6 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
   return StyleSheet.create({
     screen: { flex: 1, backgroundColor: theme.colors.background },
     content: { padding: 20, gap: 8, paddingBottom: 26 },
-    headerRow: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'flex-start',
-    },
-    title: { color: theme.colors.textPrimary, fontSize: 28, fontWeight: '800', letterSpacing: -0.4 },
-    subtitle: { color: theme.colors.textSecondary, fontSize: 13, marginTop: 2 },
     addButton: {
       backgroundColor: theme.colors.brandPrimary,
       borderRadius: 999,
@@ -250,22 +225,6 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
       paddingVertical: 8,
     },
     addButtonText: { color: theme.colors.textInverse, fontSize: 12, fontWeight: '700' },
-    periodRow: { flexDirection: 'row', gap: 8 },
-    periodChip: {
-      flex: 1,
-      paddingVertical: 10,
-      borderRadius: 12,
-      borderWidth: 1,
-      borderColor: theme.colors.borderSoft,
-      backgroundColor: theme.colors.surface,
-      alignItems: 'center',
-    },
-    periodChipActive: {
-      backgroundColor: theme.colors.brandPrimary,
-      borderColor: theme.colors.brandPrimary,
-    },
-    periodText: { color: theme.colors.textSecondary, fontSize: 13, fontWeight: '700' },
-    periodTextActive: { color: theme.colors.textInverse },
     overviewCard: {
       backgroundColor: theme.colors.surface,
       borderRadius: 20,
@@ -284,14 +243,14 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
     overviewRight: { alignItems: 'flex-end' },
     overviewSpent: { color: theme.colors.textPrimary, fontSize: 15, fontWeight: '800' },
     overviewLimit: { color: theme.colors.textMuted, fontSize: 12, marginTop: 2 },
-    overviewBar: {
-      height: 8,
-      backgroundColor: theme.colors.mutedSurface,
-      borderRadius: 999,
-      overflow: 'hidden',
+    overviewHelper: { color: theme.colors.textMuted, fontSize: 11, lineHeight: 16 },
+    sectionTitle: {
+      color: theme.colors.textPrimary,
+      fontSize: 16,
+      fontWeight: '800',
+      marginTop: 14,
+      marginBottom: 4,
     },
-    overviewBarFill: { height: '100%', borderRadius: 999 },
-    overviewHelper: { color: theme.colors.textMuted, fontSize: 11 },
     budgetCard: {
       backgroundColor: theme.colors.surface,
       borderRadius: 18,
@@ -300,8 +259,9 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
       padding: 14,
       gap: 10,
     },
-    budgetTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-    budgetLeft: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+    budgetTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 10 },
+    budgetLeft: { flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 },
+    budgetTextWrap: { flex: 1 },
     budgetCategory: { color: theme.colors.textPrimary, fontSize: 14, fontWeight: '700' },
     budgetMeta: { color: theme.colors.textMuted, fontSize: 12, marginTop: 2 },
     budgetBadge: {
@@ -319,17 +279,22 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
     },
     budgetBarFill: { height: '100%', borderRadius: 999 },
     budgetFooter: { color: theme.colors.textMuted, fontSize: 11, fontWeight: '600' },
-    emptyCard: {
+    footerSections: { gap: 8 },
+    reviewCard: {
       backgroundColor: theme.colors.surface,
-      borderRadius: 18,
+      borderRadius: 16,
       borderWidth: 1,
       borderColor: theme.colors.borderSoft,
-      borderStyle: 'dashed',
-      padding: 24,
-      alignItems: 'center',
-      gap: 8,
+      padding: 12,
     },
-    emptyTitle: { color: theme.colors.textPrimary, fontSize: 15, fontWeight: '800' },
-    emptySub: { color: theme.colors.textMuted, fontSize: 13, textAlign: 'center', lineHeight: 20 },
+    archiveCard: {
+      backgroundColor: theme.colors.mutedSurface,
+      borderRadius: 16,
+      borderWidth: 1,
+      borderColor: theme.colors.borderSoft,
+      padding: 12,
+    },
+    reviewTitle: { color: theme.colors.textPrimary, fontSize: 14, fontWeight: '700' },
+    emptyInlineText: { color: theme.colors.textMuted, fontSize: 12, lineHeight: 18 },
   })
 }
