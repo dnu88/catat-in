@@ -85,6 +85,11 @@ export default function CaptureScreen() {
   const isSuccess = transaction?.status === 'done' || (transaction?.confidence ?? 0) >= 0.85
   const isError = Boolean(error) || transaction?.status === 'error'
   const isProcessing = Boolean(transactionId) && !isSuccess && !isError
+  const envelopeSuggestion = (transaction as any)?.envelope_suggestion as null | {
+    name: string
+    remaining_after_transaction?: number
+    needs_review?: boolean
+  }
 
   const resetCapture = (clearText = true) => {
     setTransactionId(null)
@@ -153,6 +158,18 @@ export default function CaptureScreen() {
             </View>
             <Text style={styles.feedbackTitle}>Transaksi tercatat!</Text>
             <Text style={styles.feedbackSub}>Mau cek dulu sebelum disimpan?</Text>
+            {envelopeSuggestion ? (
+              <View testID="capture-envelope-suggestion" style={styles.suggestionCard}>
+                <Text style={styles.suggestionLabel}>Amplop</Text>
+                <Text style={styles.suggestionTitle}>{envelopeSuggestion.name}</Text>
+                {typeof envelopeSuggestion.remaining_after_transaction === 'number' ? (
+                  <Text style={styles.suggestionMeta}>
+                    Rp{Math.max(envelopeSuggestion.remaining_after_transaction, 0).toLocaleString('id-ID')} tersisa setelah transaksi ini
+                  </Text>
+                ) : null}
+                {envelopeSuggestion.needs_review ? <Text style={styles.suggestionWarning}>Perlu cek di Reports</Text> : null}
+              </View>
+            ) : null}
             <Pressable style={styles.secondaryButton} onPress={() => router.push('/(tabs)/transactions')}>
               <Text style={styles.secondaryButtonText}>Lihat & Review</Text>
             </Pressable>
@@ -239,6 +256,29 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
     },
     feedbackTitle: { color: theme.colors.textPrimary, fontSize: 16, fontWeight: '800', textAlign: 'center' },
     feedbackSub: { color: theme.colors.textSecondary, fontSize: 13, textAlign: 'center', lineHeight: 20 },
+    suggestionCard: {
+      alignSelf: 'stretch',
+      backgroundColor: theme.colors.card,
+      borderRadius: 14,
+      borderWidth: 1,
+      borderColor: theme.colors.borderSoft,
+      padding: 12,
+      gap: 4,
+    },
+    suggestionLabel: {
+      color: theme.colors.textSecondary,
+      fontSize: 11,
+      fontWeight: theme.typography.fontWeight.bold,
+      textTransform: 'uppercase',
+      letterSpacing: 0.4,
+    },
+    suggestionTitle: {
+      color: theme.colors.brandPrimary,
+      fontSize: 15,
+      fontWeight: theme.typography.fontWeight.extrabold,
+    },
+    suggestionMeta: { color: theme.colors.textSecondary, fontSize: 12, lineHeight: 18 },
+    suggestionWarning: { color: theme.colors.warning, fontSize: 12, fontWeight: theme.typography.fontWeight.bold },
     secondaryButton: {
       backgroundColor: `${theme.colors.brandPrimary}15`,
       borderRadius: 999,
