@@ -6,8 +6,6 @@ import { useTheme } from '../../src/theme/theme-context'
 
 const quickActions = [
   { id: 'manual', label: 'Manual', glyph: '✎', route: '/(tabs)/capture', tone: 'primary' },
-  { id: 'ai', label: 'AI Chat', glyph: 'AI', route: '/(tabs)/capture', tone: 'navy' },
-  { id: 'receipt', label: 'Struk', glyph: '▤', route: '/(tabs)/capture', tone: 'success' },
   { id: 'import', label: 'Import', glyph: '↓', route: '/(tabs)/imports', tone: 'info' },
 ] as const
 
@@ -60,20 +58,6 @@ export default function DashboardScreen() {
             </View>
           </View>
 
-          <View style={styles.statsRow}>
-            <View style={styles.statCard}>
-              <Text style={styles.statLabel}>Pemasukan</Text>
-              <Text style={styles.statValue}>8,00 Jt</Text>
-            </View>
-            <View style={styles.statCard}>
-              <Text style={styles.statLabel}>Pengeluaran</Text>
-              <Text style={styles.statValue}>3,75 Jt</Text>
-            </View>
-            <View style={styles.statCard}>
-              <Text style={styles.statLabel}>Tabungan</Text>
-              <Text style={styles.statValue}>53%</Text>
-            </View>
-          </View>
         </View>
 
         <View style={styles.quickActionRow}>
@@ -289,29 +273,6 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
       fontSize: 10,
       fontWeight: theme.typography.fontWeight.extrabold,
     },
-    statsRow: {
-      position: 'relative',
-      flexDirection: 'row',
-      gap: 8,
-    },
-    statCard: {
-      flex: 1,
-      backgroundColor: 'rgba(255,255,255,0.04)',
-      borderWidth: 1,
-      borderColor: theme.colors.borderSoft,
-      borderRadius: 14,
-      padding: 10,
-    },
-    statLabel: {
-      color: theme.colors.textMuted,
-      fontSize: 10,
-    },
-    statValue: {
-      color: theme.colors.textPrimary,
-      fontSize: 14,
-      fontWeight: theme.typography.fontWeight.extrabold,
-      marginTop: 2,
-    },
     quickActionRow: {
       flexDirection: 'row',
       gap: 8,
@@ -345,20 +306,6 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
     },
     primaryBubbleText: {
       color: theme.colors.brandPrimary,
-    },
-    navyBubble: {
-      backgroundColor: 'rgba(74, 128, 240, 0.14)',
-      borderColor: 'rgba(74, 128, 240, 0.30)',
-    },
-    navyBubbleText: {
-      color: theme.colors.brandSecondary,
-    },
-    successBubble: {
-      backgroundColor: 'rgba(163, 255, 18, 0.14)',
-      borderColor: 'rgba(163, 255, 18, 0.25)',
-    },
-    successBubbleText: {
-      color: theme.colors.success,
     },
     warningBubble: {
       backgroundColor: 'rgba(255, 192, 109, 0.14)',

@@ -50,9 +50,6 @@ export default function SettingsScreen() {
             <Text style={styles.profileName}>Danu Baskara</Text>
             <Text style={styles.profileEmail}>danu@example.com</Text>
           </View>
-          <Pressable style={styles.profileEdit}>
-            <Text style={styles.profileEditText}>{language === 'id' ? 'Edit' : 'Edit'}</Text>
-          </Pressable>
         </View>
 
         {/* Theme Section */}
@@ -153,26 +150,6 @@ export default function SettingsScreen() {
           />
         </View>
 
-        {/* Quick Links */}
-        <View style={styles.sectionCard}>
-          <Text style={styles.sectionTitle}>{language === 'id' ? 'Akses Cepat' : 'Quick Access'}</Text>
-          <Text style={styles.sectionSub}>{language === 'id' ? 'Navigasi ke halaman lain.' : 'Navigate to other pages.'}</Text>
-
-          <NavRow icon="wallets" tone="primary" title={t('headerWallets')} helper={language === 'id' ? 'Kelola saldo akun' : 'Manage account balances'} onPress={() => router.push('/(tabs)/wallets')} />
-          <NavRow icon="budgets" tone="warning" title={t('headerBudgets')} helper={language === 'id' ? 'Batas pengeluaran' : 'Spending limits'} onPress={() => router.push('/(tabs)/budgets')} />
-          <NavRow icon="bills" tone="accent" title={t('headerBills')} helper={language === 'id' ? 'Pengingat rutin' : 'Recurring reminders'} onPress={() => router.push('/(tabs)/bills')} />
-          <NavRow icon="groups" tone="info" title={t('headerGroups')} helper={language === 'id' ? 'Keuangan bersama' : 'Shared finances'} onPress={() => router.push('/(tabs)/groups')} />
-          <NavRow icon="imports" tone="accent" title={t('headerImports')} helper={language === 'id' ? 'Mutasi & struk' : 'Statements & receipts'} onPress={() => router.push('/(tabs)/imports')} />
-        </View>
-
-        {/* Account Section */}
-        <View style={styles.sectionCard}>
-          <Text style={styles.sectionTitle}>{language === 'id' ? 'Akun & Keamanan' : 'Account & Security'}</Text>
-
-          <NavRow icon="lock" tone="danger" title={language === 'id' ? 'Ubah Password' : 'Change Password'} helper={language === 'id' ? 'Perbarui password akun' : 'Update account password'} onPress={() => {}} />
-          <NavRow icon="settings" tone="info" title={t('language')} helper={t('languageHelper')} onPress={() => {}} />
-          <NavRow icon="file" tone="accent" title={language === 'id' ? 'Kebijakan Privasi' : 'Privacy Policy'} helper={language === 'id' ? 'Baca syarat & ketentuan' : 'Read terms & conditions'} onPress={() => {}} />
-        </View>
 
         {/* App Info */}
         <View style={styles.appInfo}>
@@ -252,49 +229,8 @@ function ToggleRow({
   )
 }
 
-function NavRow({
-  icon,
-  tone,
-  title,
-  helper,
-  onPress,
-}: {
-  icon: KaswiseIconName
-  tone: 'primary' | 'success' | 'warning' | 'danger' | 'accent' | 'info'
-  title: string
-  helper: string
-  onPress: () => void
-}) {
-  const { theme } = useTheme()
-
-  return (
-    <Pressable
-      onPress={onPress}
-      style={{
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        paddingVertical: 10,
-        borderTopWidth: 1,
-        borderTopColor: theme.colors.borderSoft,
-        gap: 12,
-      }}
-    >
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 }}>
-        <IconBubble name={icon} tone={tone} size={32} />
-        <View>
-          <Text style={{ color: theme.colors.textPrimary, fontSize: 13, fontWeight: '700' }}>{title}</Text>
-          <Text style={{ color: theme.colors.textMuted, fontSize: 11, marginTop: 1 }}>{helper}</Text>
-        </View>
-      </View>
-      <Text style={{ color: theme.colors.textMuted, fontSize: 16 }}>›</Text>
-    </Pressable>
-  )
-}
-
 function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
   const lightBrand = theme.mode === 'light' ? theme.colors.brandPrimaryDeep : theme.colors.brandPrimary
-  const lightBrandSoft = theme.mode === 'light' ? `${theme.colors.brandPrimaryDeep}15` : `${theme.colors.brandPrimary}15`
 
   return StyleSheet.create({
     screen: { flex: 1, backgroundColor: theme.colors.background },
@@ -325,13 +261,6 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
     profileInfo: { flex: 1 },
     profileName: { color: theme.colors.textPrimary, fontSize: theme.typography.fontSize.lg, fontWeight: theme.typography.fontWeight.extrabold },
     profileEmail: { color: theme.colors.textMuted, fontSize: theme.typography.fontSize.sm, marginTop: 2 },
-    profileEdit: {
-      backgroundColor: lightBrandSoft,
-      borderRadius: theme.radius.pill,
-      paddingHorizontal: 12,
-      paddingVertical: 6,
-    },
-    profileEditText: { color: lightBrand, fontSize: 12, fontWeight: '700' },
     sectionCard: {
       backgroundColor: theme.colors.surface,
       borderRadius: 18,

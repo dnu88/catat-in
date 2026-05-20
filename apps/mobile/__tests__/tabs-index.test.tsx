@@ -110,16 +110,16 @@ describe('DashboardScreen dark luxury Home parity', () => {
     expect(screen.getByText('Main Wallet')).toBeTruthy()
     expect(screen.getByText('Manage')).toBeTruthy()
     expect(screen.getByText('↗ 15%')).toBeTruthy()
-    expect(screen.getByText('Pemasukan')).toBeTruthy()
-    expect(screen.getByText('8,00 Jt')).toBeTruthy()
-    expect(screen.getByText('Pengeluaran')).toBeTruthy()
-    expect(screen.getByText('3,75 Jt')).toBeTruthy()
-    expect(screen.getByText('Tabungan')).toBeTruthy()
-    expect(screen.getByText('53%')).toBeTruthy()
+    expect(screen.queryByText('Pemasukan')).toBeNull()
+    expect(screen.queryByText('8,00 Jt')).toBeNull()
+    expect(screen.queryByText('Pengeluaran')).toBeNull()
+    expect(screen.queryByText('3,75 Jt')).toBeNull()
+    expect(screen.queryByText('Tabungan')).toBeNull()
+    expect(screen.queryByText('53%')).toBeNull()
 
     expect(screen.getByText('Manual')).toBeTruthy()
-    expect(screen.getByText('AI Chat')).toBeTruthy()
-    expect(screen.getByText('Struk')).toBeTruthy()
+    expect(screen.queryByText('AI Chat')).toBeNull()
+    expect(screen.queryByText('Struk')).toBeNull()
     expect(screen.getByText('Import')).toBeTruthy()
 
     expect(screen.getByText('Anggaran')).toBeTruthy()
@@ -144,8 +144,6 @@ describe('DashboardScreen dark luxury Home parity', () => {
       'Total saldo',
       'Rp 4.250.000',
       'Manual',
-      'AI Chat',
-      'Struk',
       'Import',
       'Anggaran',
       'Terakhir',
