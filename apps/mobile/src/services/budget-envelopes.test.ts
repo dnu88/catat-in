@@ -2,6 +2,7 @@ import {
   buildEnvelopeProgress,
   getEnvelopeStatus,
   getHomeEnvelopeAlerts,
+  listBudgetEnvelopes,
   matchEnvelopeForTransaction,
   type BudgetEnvelope,
   type EnvelopeAllocation,
@@ -107,5 +108,24 @@ describe('budget envelope helpers', () => {
     expect(match?.envelope.id).toBe('env-1')
     expect(match?.confidence).toBeLessThan(0.85)
     expect(match?.needs_review).toBe(true)
+  })
+})
+
+describe('budget envelope service query builders', () => {
+  it('lists envelopes with parent category and allocations', async () => {
+    const calls: string[] = []
+    const chain = {
+      select: jest.fn((value: string) => { calls.push(`select:${value}`); return chain }),
+      eq: jest.fn((key: string, value: string) => { calls.push(`eq:${key}:${value}`); return chain }),
+      order: jest.fn((key: string) => { calls.push(`order:${key}`); return Promise.resolve({ data: [], error: null }) }),
+    }
+    const supabase = { from: jest.fn(() => chain) }
+
+    await listBudgetEnvelopes(supabase as never, 'user-1')
+
+    expect(supabase.from).toHaveBeenCalledWith('budget_envelopes')
+    expect(calls.some((call) => call.startsWith('select:'))).toBe(true)
+    expect(calls).toContain('eq:user_id:user-1')
+    expect(calls).toContain('order:end_date')
   })
 })

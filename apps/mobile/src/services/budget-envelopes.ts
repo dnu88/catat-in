@@ -167,3 +167,112 @@ export function matchEnvelopeForTransaction(
     needs_review: confidence < HIGH_CONFIDENCE_THRESHOLD,
   }
 }
+
+type SupabaseLike = {
+  from: (table: string) => any
+}
+
+export type BudgetEnvelopeInput = {
+  user_id: string
+  name: string
+  parent_category_id: string | null
+  limit_amount: number
+  start_date: string
+  end_date: string
+  icon: string | null
+  color: string | null
+  notes: string | null
+}
+
+type BudgetEnvelopeRow = {
+  id: string
+  user_id: string
+  name: string
+  parent_category_id: string | null
+  limit_amount: number | string | null
+  start_date: string
+  end_date: string
+  icon: string | null
+  color: string | null
+  notes: string | null
+  status: BudgetEnvelopeStatus
+  created_at: string
+  updated_at: string
+  category?: { name?: string | null } | null
+}
+
+type EnvelopeAllocationRow = {
+  id: string
+  transaction_id: string
+  envelope_id: string
+  amount: number | string | null
+  confidence: number | string | null
+  needs_review: boolean | null
+  created_at: string
+  updated_at: string
+  transaction?: { date?: string | null; description?: string | null } | null
+}
+
+function mapBudgetEnvelope(row: BudgetEnvelopeRow): BudgetEnvelope {
+  return {
+    id: row.id,
+    user_id: row.user_id,
+    name: row.name,
+    parent_category_id: row.parent_category_id,
+    parent_category_name: row.category?.name ?? null,
+    limit_amount: Number(row.limit_amount ?? 0),
+    start_date: row.start_date,
+    end_date: row.end_date,
+    icon: row.icon,
+    color: row.color,
+    notes: row.notes,
+    status: row.status,
+    created_at: row.created_at,
+    updated_at: row.updated_at,
+  }
+}
+
+export async function listBudgetEnvelopes(supabase: SupabaseLike, userId: string): Promise<BudgetEnvelope[]> {
+  const { data, error } = await supabase
+    .from('budget_envelopes')
+    .select('*, category:categories(id,name)')
+    .eq('user_id', userId)
+    .order('end_date')
+
+  if (error) throw error
+  return (data ?? []).map(mapBudgetEnvelope)
+}
+
+export async function createBudgetEnvelope(supabase: SupabaseLike, input: BudgetEnvelopeInput): Promise<BudgetEnvelope> {
+  const { data, error } = await supabase
+    .from('budget_envelopes')
+    .insert(input)
+    .select('*, category:categories(id,name)')
+    .single()
+
+  if (error) throw error
+  return mapBudgetEnvelope(data)
+}
+
+export async function listEnvelopeAllocations(supabase: SupabaseLike, envelopeIds: string[]): Promise<EnvelopeAllocation[]> {
+  if (envelopeIds.length === 0) return []
+
+  const { data, error } = await supabase
+    .from('transaction_envelope_allocations')
+    .select('*, transaction:transactions(id,date,description)')
+    .in('envelope_id', envelopeIds)
+
+  if (error) throw error
+  return (data ?? []).map((row: EnvelopeAllocationRow) => ({
+    id: row.id,
+    transaction_id: row.transaction_id,
+    envelope_id: row.envelope_id,
+    amount: Number(row.amount ?? 0),
+    confidence: row.confidence == null ? null : Number(row.confidence),
+    needs_review: Boolean(row.needs_review),
+    transaction_date: row.transaction?.date ?? null,
+    transaction_description: row.transaction?.description ?? null,
+    created_at: row.created_at,
+    updated_at: row.updated_at,
+  }))
+}
