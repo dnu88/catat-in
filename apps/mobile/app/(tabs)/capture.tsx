@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native'
 import { useRouter } from 'expo-router'
 
@@ -7,6 +7,7 @@ import { useSupabase } from '../../src/lib/supabase'
 import { useTheme } from '../../src/theme/theme-context'
 import { IconBubble } from '../../src/components/ui'
 import { KaswiseIcon, type KaswiseIconName } from '../../src/components/icons/kaswise-icons'
+import { createEnvelopeAllocation } from '../../src/services/budget-envelopes'
 
 const modes = [
   { id: 'Teks', label: 'Teks', icon: 'file' as KaswiseIconName, helper: 'Ketik transaksi dengan bahasa natural' },
@@ -27,6 +28,7 @@ export default function CaptureScreen() {
   const [transactionId, setTransactionId] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const persistedSuggestionKeyRef = useRef<string | null>(null)
 
   const { transaction, loading } = useTransactionRealtime(transactionId)
 
@@ -86,10 +88,35 @@ export default function CaptureScreen() {
   const isError = Boolean(error) || transaction?.status === 'error'
   const isProcessing = Boolean(transactionId) && !isSuccess && !isError
   const envelopeSuggestion = (transaction as any)?.envelope_suggestion as null | {
+    id?: string
+    envelope_id?: string
     name: string
+    amount?: number
+    confidence?: number
     remaining_after_transaction?: number
     needs_review?: boolean
   }
+
+  useEffect(() => {
+    const currentTransactionId = (transaction as any)?.id as string | undefined
+    const suggestion = envelopeSuggestion
+    const envelopeId = suggestion?.envelope_id ?? suggestion?.id
+    if (!isSuccess || !currentTransactionId || !envelopeId || !suggestion) return
+
+    const persistKey = `${currentTransactionId}:${envelopeId}`
+    if (persistedSuggestionKeyRef.current === persistKey) return
+    persistedSuggestionKeyRef.current = persistKey
+
+    createEnvelopeAllocation(supabase, {
+      transaction_id: currentTransactionId,
+      envelope_id: envelopeId,
+      amount: Number(suggestion.amount ?? (transaction as any)?.amount ?? 0),
+      confidence: typeof suggestion.confidence === 'number' ? suggestion.confidence : null,
+      needs_review: Boolean(suggestion.needs_review),
+    }).catch((error) => {
+      console.error('Failed to persist envelope allocation:', error)
+    })
+  }, [envelopeSuggestion, isSuccess, supabase, transaction])
 
   const resetCapture = (clearText = true) => {
     setTransactionId(null)

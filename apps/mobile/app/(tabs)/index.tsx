@@ -1,7 +1,16 @@
-import { useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { useRouter } from 'expo-router'
 
+import { useSupabase } from '../../src/lib/supabase'
+import {
+  buildEnvelopeProgress,
+  getEnvelopeStatus,
+  getHomeEnvelopeAlerts,
+  listBudgetEnvelopes,
+  listEnvelopeAllocations,
+  type EnvelopeSummary,
+} from '../../src/services/budget-envelopes'
 import { useTheme } from '../../src/theme/theme-context'
 
 const quickActions = [
@@ -16,9 +25,47 @@ const transactions = [
 ] as const
 
 export default function DashboardScreen() {
+  const { supabase } = useSupabase()
   const { theme } = useTheme()
   const router = useRouter()
   const styles = useMemo(() => createStyles(theme), [theme])
+  const [envelopeAlerts, setEnvelopeAlerts] = useState<EnvelopeSummary[]>([])
+
+  useEffect(() => {
+    let mounted = true
+
+    const loadEnvelopeAlerts = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) {
+          if (mounted) setEnvelopeAlerts([])
+          return
+        }
+
+        const envelopes = await listBudgetEnvelopes(supabase, user.id)
+        const activeEnvelopes = envelopes.filter((envelope) => getEnvelopeStatus(envelope) === 'active')
+        const allocations = await listEnvelopeAllocations(supabase, activeEnvelopes.map((envelope) => envelope.id))
+        const summaries = activeEnvelopes.map((envelope) => ({
+          envelope,
+          progress: buildEnvelopeProgress(envelope, allocations),
+          reviewCount: allocations.filter((allocation) => allocation.envelope_id === envelope.id && allocation.needs_review).length,
+        }))
+
+        if (mounted) setEnvelopeAlerts(getHomeEnvelopeAlerts(summaries))
+      } catch (error) {
+        console.error('Error loading home envelope alerts:', error)
+        if (mounted) setEnvelopeAlerts([])
+      }
+    }
+
+    loadEnvelopeAlerts()
+
+    return () => {
+      mounted = false
+    }
+  }, [supabase])
+
+  const primaryEnvelopeAlert = envelopeAlerts[0]
 
   return (
     <View style={styles.screen}>
@@ -83,19 +130,29 @@ export default function DashboardScreen() {
               <Text style={styles.sectionAction}>Lihat →</Text>
             </Pressable>
           </View>
-          <View testID="home-envelope-alert" style={styles.budgetContent}>
-            <View style={styles.budgetTopRow}>
-              <View style={styles.budgetTextBlock}>
-                <Text style={styles.budgetName}>Kopi hampir habis</Text>
-                <Text style={styles.budgetMeta}>Rp42.000 tersisa sampai 25 Mei</Text>
+          {primaryEnvelopeAlert ? (
+            <View testID="home-envelope-alert" style={styles.budgetContent}>
+              <View style={styles.budgetTopRow}>
+                <View style={styles.budgetTextBlock}>
+                  <Text style={styles.budgetName}>
+                    {primaryEnvelopeAlert.progress.is_over_budget
+                      ? `${primaryEnvelopeAlert.envelope.name} lewat budget`
+                      : `${primaryEnvelopeAlert.envelope.name} hampir habis`}
+                  </Text>
+                  <Text style={styles.budgetMeta}>
+                    {primaryEnvelopeAlert.progress.is_over_budget
+                      ? `Lewat Rp${primaryEnvelopeAlert.progress.over_budget_amount.toLocaleString('id-ID')} sampai ${primaryEnvelopeAlert.envelope.end_date.slice(8, 10)} ${primaryEnvelopeAlert.envelope.end_date.slice(5, 7)}`
+                      : `Rp${Math.max(primaryEnvelopeAlert.progress.remaining_amount, 0).toLocaleString('id-ID')} tersisa sampai ${primaryEnvelopeAlert.envelope.end_date.slice(8, 10)} ${primaryEnvelopeAlert.envelope.end_date.slice(5, 7)}`}
+                  </Text>
+                </View>
+                <Text style={styles.budgetPercent}>{primaryEnvelopeAlert.progress.used_percentage}%</Text>
               </View>
-              <Text style={styles.budgetPercent}>82%</Text>
+              <View style={styles.progressTrack}>
+                <View style={[styles.progressFill, { width: `${Math.min(primaryEnvelopeAlert.progress.used_percentage, 100)}%` }]} />
+              </View>
+              <Text style={styles.budgetStatus}>Amplop aktif yang perlu perhatian</Text>
             </View>
-            <View style={styles.progressTrack}>
-              <View style={styles.progressFill} />
-            </View>
-            <Text style={styles.budgetStatus}>Amplop aktif yang perlu perhatian</Text>
-          </View>
+          ) : null}
         </View>
 
         <View style={styles.sectionCard}>

@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from 'react'
-import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from 'react-native'
+import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, TextInput, View } from 'react-native'
 
 import { EmptyState, IconBubble, ScreenHeader, StateMessage } from '../../src/components/ui'
 import { useSupabase } from '../../src/lib/supabase'
 import {
   buildEnvelopeProgress,
+  createBudgetEnvelope,
   getEnvelopeStatus,
   listBudgetEnvelopes,
   listEnvelopeAllocations,
@@ -74,6 +75,16 @@ export default function BudgetsScreen() {
   const [activeSummaries, setActiveSummaries] = useState<EnvelopeSummary[]>([])
   const [archivedSummaries, setArchivedSummaries] = useState<EnvelopeSummary[]>([])
   const [reviewAllocations, setReviewAllocations] = useState<EnvelopeAllocation[]>([])
+  const [userId, setUserId] = useState<string | null>(null)
+  const [showCreateForm, setShowCreateForm] = useState(false)
+  const [name, setName] = useState('')
+  const [limitAmount, setLimitAmount] = useState('')
+  const [startDate, setStartDate] = useState('')
+  const [endDate, setEndDate] = useState('')
+  const [icon, setIcon] = useState('')
+  const [color, setColor] = useState('')
+  const [notes, setNotes] = useState('')
+  const [saving, setSaving] = useState(false)
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
 
@@ -86,6 +97,8 @@ export default function BudgetsScreen() {
       setLoading(true)
       setLoadError(null)
       const { data: { user } } = await supabase.auth.getUser()
+
+      setUserId(user?.id ?? null)
 
       if (!user) {
         setLoadError('Sesi login tidak ditemukan. Silakan login ulang.')
@@ -113,6 +126,46 @@ export default function BudgetsScreen() {
     }
   }
 
+  const saveEnvelope = async () => {
+    if (!userId || saving) return
+    const trimmedName = name.trim()
+    const amount = Number(limitAmount.replace(/[^0-9]/g, ''))
+    if (!trimmedName || !amount || !startDate.trim() || !endDate.trim()) {
+      setLoadError('Isi nama, limit, tanggal mulai, dan tanggal akhir.')
+      return
+    }
+
+    try {
+      setSaving(true)
+      setLoadError(null)
+      await createBudgetEnvelope(supabase, {
+        user_id: userId,
+        name: trimmedName,
+        parent_category_id: null,
+        limit_amount: amount,
+        start_date: startDate.trim(),
+        end_date: endDate.trim(),
+        icon: icon.trim() || null,
+        color: color.trim() || null,
+        notes: notes.trim() || null,
+      })
+      setShowCreateForm(false)
+      setName('')
+      setLimitAmount('')
+      setStartDate('')
+      setEndDate('')
+      setIcon('')
+      setColor('')
+      setNotes('')
+      await loadEnvelopes()
+    } catch (error) {
+      console.error('Error creating budget envelope:', error)
+      setLoadError('Gagal menyimpan amplop. Coba lagi sebentar.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
   if (loading) {
     return (
       <View style={[styles.screen, { justifyContent: 'center', alignItems: 'center' }]}>
@@ -131,13 +184,33 @@ export default function BudgetsScreen() {
         title="Anggaran"
         subtitle="Kelola amplop budget personal di bawah kategori laporan."
         action={(
-          <Pressable style={styles.addButton}>
+          <Pressable style={styles.addButton} onPress={() => setShowCreateForm((value) => !value)}>
             <Text style={styles.addButtonText}>+ Baru</Text>
           </Pressable>
         )}
       />
 
       {loadError ? <StateMessage message={loadError} tone="error" /> : null}
+
+      {showCreateForm ? (
+        <View testID="envelope-create-form" style={styles.createCard}>
+          <Text style={styles.createTitle}>Buat amplop</Text>
+          <TextInput style={styles.input} placeholder="Nama amplop" placeholderTextColor={theme.colors.textMuted} value={name} onChangeText={setName} />
+          <TextInput style={styles.input} placeholder="Limit" placeholderTextColor={theme.colors.textMuted} value={limitAmount} onChangeText={setLimitAmount} keyboardType="numeric" />
+          <View style={styles.inputRow}>
+            <TextInput style={[styles.input, styles.inputHalf]} placeholder="Tanggal mulai" placeholderTextColor={theme.colors.textMuted} value={startDate} onChangeText={setStartDate} />
+            <TextInput style={[styles.input, styles.inputHalf]} placeholder="Tanggal akhir" placeholderTextColor={theme.colors.textMuted} value={endDate} onChangeText={setEndDate} />
+          </View>
+          <View style={styles.inputRow}>
+            <TextInput style={[styles.input, styles.inputHalf]} placeholder="Ikon" placeholderTextColor={theme.colors.textMuted} value={icon} onChangeText={setIcon} />
+            <TextInput style={[styles.input, styles.inputHalf]} placeholder="Warna" placeholderTextColor={theme.colors.textMuted} value={color} onChangeText={setColor} />
+          </View>
+          <TextInput style={[styles.input, styles.notesInput]} placeholder="Catatan" placeholderTextColor={theme.colors.textMuted} value={notes} onChangeText={setNotes} multiline />
+          <Pressable style={[styles.saveButton, saving && { opacity: 0.7 }]} onPress={saveEnvelope} disabled={saving}>
+            <Text style={styles.saveButtonText}>{saving ? 'Menyimpan...' : 'Simpan amplop'}</Text>
+          </Pressable>
+        </View>
+      ) : null}
 
       <View style={styles.overviewCard}>
         <View style={styles.overviewTop}>
@@ -225,6 +298,35 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
       paddingVertical: 8,
     },
     addButtonText: { color: theme.colors.textInverse, fontSize: 12, fontWeight: '700' },
+    createCard: {
+      backgroundColor: theme.colors.surface,
+      borderRadius: 20,
+      borderWidth: 1,
+      borderColor: theme.colors.borderSoft,
+      padding: 14,
+      gap: 10,
+    },
+    createTitle: { color: theme.colors.textPrimary, fontSize: 15, fontWeight: '800' },
+    input: {
+      backgroundColor: theme.colors.mutedSurface,
+      borderRadius: 14,
+      borderWidth: 1,
+      borderColor: theme.colors.borderSoft,
+      color: theme.colors.textPrimary,
+      paddingHorizontal: 12,
+      paddingVertical: 10,
+      fontSize: 13,
+    },
+    inputRow: { flexDirection: 'row', gap: 8 },
+    inputHalf: { flex: 1 },
+    notesInput: { minHeight: 64, textAlignVertical: 'top' },
+    saveButton: {
+      backgroundColor: theme.colors.brandPrimary,
+      borderRadius: 14,
+      alignItems: 'center',
+      paddingVertical: 12,
+    },
+    saveButtonText: { color: theme.colors.textInverse, fontSize: 13, fontWeight: '800' },
     overviewCard: {
       backgroundColor: theme.colors.surface,
       borderRadius: 20,

@@ -1,8 +1,17 @@
 import React from 'react'
-import { render, screen, waitFor } from '@testing-library/react-native'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react-native'
 
 import BudgetsScreen from '../app/(tabs)/budgets'
 import { ThemeProvider } from '../src/theme/theme-context'
+
+const mockCreateBudgetEnvelope = jest.fn(async (_supabase: unknown, input: any) => ({
+  id: 'env-new',
+  parent_category_name: null,
+  status: 'active',
+  created_at: '',
+  updated_at: '',
+  ...input,
+}))
 
 jest.mock('../src/services/budget-envelopes', () => ({
   listBudgetEnvelopes: jest.fn(async () => [
@@ -39,6 +48,7 @@ jest.mock('../src/services/budget-envelopes', () => ({
       updated_at: '',
     },
   ]),
+  createBudgetEnvelope: (...args: any[]) => mockCreateBudgetEnvelope.apply(null, args),
   listEnvelopeAllocations: jest.fn(async () => [
     {
       id: 'a1',
@@ -105,6 +115,10 @@ function renderScreen() {
 }
 
 describe('Budget envelopes screen', () => {
+  beforeEach(() => {
+    mockCreateBudgetEnvelope.mockClear()
+  })
+
   it('shows active, review, and archive envelope sections', async () => {
     renderScreen()
 
@@ -114,5 +128,34 @@ describe('Budget envelopes screen', () => {
     expect(screen.getByText('Cafe dekat kampus')).toBeTruthy()
     expect(screen.getByText('Arsip')).toBeTruthy()
     expect(screen.getByText('Ramadan')).toBeTruthy()
+  })
+
+  it('opens the create form and saves a Kopi envelope', async () => {
+    renderScreen()
+
+    await waitFor(() => expect(screen.getByText('+ Baru')).toBeTruthy())
+    fireEvent.press(screen.getByText('+ Baru'))
+
+    fireEvent.changeText(screen.getByPlaceholderText('Nama amplop'), 'Kopi')
+    fireEvent.changeText(screen.getByPlaceholderText('Limit'), '250000')
+    fireEvent.changeText(screen.getByPlaceholderText('Tanggal mulai'), '2026-05-10')
+    fireEvent.changeText(screen.getByPlaceholderText('Tanggal akhir'), '2026-05-25')
+    fireEvent.changeText(screen.getByPlaceholderText('Ikon'), 'coffee')
+    fireEvent.changeText(screen.getByPlaceholderText('Warna'), '#4A80F0')
+    fireEvent.changeText(screen.getByPlaceholderText('Catatan'), 'Kopi Kenangan, Fore')
+    fireEvent.press(screen.getByText('Simpan amplop'))
+
+    await waitFor(() => expect(mockCreateBudgetEnvelope).toHaveBeenCalled())
+    expect(mockCreateBudgetEnvelope.mock.calls[0][1]).toEqual({
+      user_id: 'user-1',
+      name: 'Kopi',
+      parent_category_id: null,
+      limit_amount: 250000,
+      start_date: '2026-05-10',
+      end_date: '2026-05-25',
+      icon: 'coffee',
+      color: '#4A80F0',
+      notes: 'Kopi Kenangan, Fore',
+    })
   })
 })

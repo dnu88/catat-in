@@ -35,10 +35,12 @@ create index if not exists transaction_envelope_allocations_envelope_idx
 create index if not exists transaction_envelope_allocations_transaction_idx
   on public.transaction_envelope_allocations (transaction_id);
 
+drop trigger if exists set_budget_envelopes_updated_at on public.budget_envelopes;
 create trigger set_budget_envelopes_updated_at
   before update on public.budget_envelopes
   for each row execute function public.set_updated_at();
 
+drop trigger if exists set_transaction_envelope_allocations_updated_at on public.transaction_envelope_allocations;
 create trigger set_transaction_envelope_allocations_updated_at
   before update on public.transaction_envelope_allocations
   for each row execute function public.set_updated_at();

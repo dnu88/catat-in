@@ -2,6 +2,7 @@ import {
   buildEnvelopeProgress,
   getEnvelopeStatus,
   getHomeEnvelopeAlerts,
+  createEnvelopeAllocation,
   listBudgetEnvelopes,
   listEnvelopeAllocations,
   matchEnvelopeForTransaction,
@@ -215,5 +216,44 @@ describe('budget envelope service query builders', () => {
 
     expect(result[0].transaction_date).toBe('2026-05-16')
     expect(result[0].transaction_description).toBe('Fore Coffee')
+  })
+
+  it('creates an envelope allocation for a suggested envelope', async () => {
+    const calls: string[] = []
+    const chain = {
+      insert: jest.fn((value) => { calls.push(`insert:${JSON.stringify(value)}`); return chain }),
+      select: jest.fn((value: string) => { calls.push(`select:${value}`); return chain }),
+      single: jest.fn(() => Promise.resolve({
+        data: {
+          id: 'alloc-3',
+          transaction_id: 'tx-3',
+          envelope_id: 'env-1',
+          amount: '25000',
+          confidence: '0.910',
+          needs_review: false,
+          created_at: '2026-05-17T00:00:00Z',
+          updated_at: '2026-05-17T00:00:00Z',
+          transaction: { tanggal: '2026-05-17', catatan: 'Kopi Kenangan', merchant: 'Kopi Kenangan' },
+        },
+        error: null,
+      })),
+    }
+    const supabase = { from: jest.fn(() => chain) }
+
+    const result = await createEnvelopeAllocation(supabase as never, {
+      transaction_id: 'tx-3',
+      envelope_id: 'env-1',
+      amount: 25000,
+      confidence: 0.91,
+      needs_review: false,
+    })
+
+    expect(supabase.from).toHaveBeenCalledWith('transaction_envelope_allocations')
+    expect(calls[0]).toContain('"transaction_id":"tx-3"')
+    expect(calls[0]).toContain('"envelope_id":"env-1"')
+    expect(calls[0]).toContain('"amount":25000')
+    expect(calls).toContain('select:*, transaction:transactions(id,tanggal,catatan,merchant)')
+    expect(result.envelope_id).toBe('env-1')
+    expect(result.amount).toBe(25000)
   })
 })

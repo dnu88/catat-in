@@ -6,10 +6,29 @@ import { I18nProvider } from '../src/i18n/i18n-context'
 import DashboardScreen from '../app/(tabs)/index'
 
 const mockPush = jest.fn()
+let mockEnvelopes: any[] = []
+let mockAllocations: any[] = []
 
 jest.mock('expo-router', () => ({
   useRouter: () => ({ push: mockPush }),
 }))
+
+jest.mock('../src/lib/supabase', () => ({
+  useSupabase: () => ({
+    supabase: {
+      auth: { getUser: jest.fn(async () => ({ data: { user: { id: 'user-1' } } })) },
+    },
+  }),
+}))
+
+jest.mock('../src/services/budget-envelopes', () => {
+  const actual = jest.requireActual('../src/services/budget-envelopes')
+  return {
+    ...actual,
+    listBudgetEnvelopes: jest.fn(async () => mockEnvelopes),
+    listEnvelopeAllocations: jest.fn(async () => mockAllocations),
+  }
+})
 
 function renderDashboard() {
   return render(
@@ -93,6 +112,38 @@ const SOFT_GREEN_BORDERS = [
 describe('DashboardScreen dark luxury Home parity', () => {
   beforeEach(() => {
     mockPush.mockClear()
+    mockEnvelopes = [
+      {
+        id: 'env-kopi',
+        user_id: 'user-1',
+        name: 'Kopi',
+        parent_category_id: null,
+        parent_category_name: 'Makan & Minum',
+        limit_amount: 250000,
+        start_date: '2026-05-10',
+        end_date: '2026-05-25',
+        icon: 'coffee',
+        color: '#4A80F0',
+        notes: 'Kopi Kenangan',
+        status: 'active',
+        created_at: '',
+        updated_at: '',
+      },
+    ]
+    mockAllocations = [
+      {
+        id: 'alloc-1',
+        transaction_id: 'tx-1',
+        envelope_id: 'env-kopi',
+        amount: 208000,
+        confidence: 0.9,
+        needs_review: false,
+        transaction_date: '2026-05-15',
+        transaction_description: 'Kopi Kenangan',
+        created_at: '',
+        updated_at: '',
+      },
+    ]
   })
 
   it('renders the Screens.jsx Home section order and labels', async () => {
@@ -124,9 +175,9 @@ describe('DashboardScreen dark luxury Home parity', () => {
 
     expect(screen.getByText('Anggaran')).toBeTruthy()
     expect(screen.getByText('Lihat →')).toBeTruthy()
-    expect(screen.getByText('Kopi hampir habis')).toBeTruthy()
-    expect(screen.getByText('82%')).toBeTruthy()
-    expect(screen.getByText('Rp42.000 tersisa sampai 25 Mei')).toBeTruthy()
+    await waitFor(() => expect(screen.getByText('Kopi hampir habis')).toBeTruthy())
+    expect(screen.getByText('83%')).toBeTruthy()
+    expect(screen.getByText(/Rp42\.000 tersisa/)).toBeTruthy()
     expect(screen.getByText('Amplop aktif yang perlu perhatian')).toBeTruthy()
 
     expect(screen.getByText('Terakhir')).toBeTruthy()
@@ -151,13 +202,36 @@ describe('DashboardScreen dark luxury Home parity', () => {
     ])
   })
 
-  it('shows actionable envelope alerts without low-confidence review noise', () => {
+  it('shows actionable envelope alerts without low-confidence review noise', async () => {
     const screen = renderDashboard()
 
-    expect(screen.getByText(/Kopi hampir habis|Kopi/i)).toBeTruthy()
-    expect(screen.getByText('Rp42.000 tersisa sampai 25 Mei')).toBeTruthy()
-    expect(screen.getByText('82%')).toBeTruthy()
+    await waitFor(() => expect(screen.getByText(/Kopi hampir habis|Kopi/i)).toBeTruthy())
+    expect(screen.getByText(/Rp42\.000 tersisa/)).toBeTruthy()
+    expect(screen.getByText('83%')).toBeTruthy()
     expect(screen.queryByText(/perlu cek/i)).toBeNull()
+  })
+
+  it('does not show an envelope alert when no active envelope needs attention', async () => {
+    mockAllocations = [
+      {
+        id: 'alloc-safe',
+        transaction_id: 'tx-safe',
+        envelope_id: 'env-kopi',
+        amount: 50000,
+        confidence: 0.5,
+        needs_review: true,
+        transaction_date: '2026-05-15',
+        transaction_description: 'Cafe dekat kampus',
+        created_at: '',
+        updated_at: '',
+      },
+    ]
+
+    const screen = renderDashboard()
+
+    await waitFor(() => expect(screen.queryByTestId('home-envelope-alert')).toBeNull())
+    expect(screen.queryByText(/perlu cek/i)).toBeNull()
+    expect(screen.queryByText(/Kopi hampir habis/i)).toBeNull()
   })
 
   it('routes primary Home actions to the expected tabs', async () => {

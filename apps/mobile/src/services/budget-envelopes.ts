@@ -184,6 +184,14 @@ export type BudgetEnvelopeInput = {
   notes: string | null
 }
 
+export type EnvelopeAllocationInput = {
+  transaction_id: string
+  envelope_id: string
+  amount: number
+  confidence: number | null
+  needs_review: boolean
+}
+
 type BudgetEnvelopeRow = {
   id: string
   user_id: string
@@ -254,16 +262,8 @@ export async function createBudgetEnvelope(supabase: SupabaseLike, input: Budget
   return mapBudgetEnvelope(data)
 }
 
-export async function listEnvelopeAllocations(supabase: SupabaseLike, envelopeIds: string[]): Promise<EnvelopeAllocation[]> {
-  if (envelopeIds.length === 0) return []
-
-  const { data, error } = await supabase
-    .from('transaction_envelope_allocations')
-    .select('*, transaction:transactions(id,tanggal,catatan,merchant)')
-    .in('envelope_id', envelopeIds)
-
-  if (error) throw error
-  return (data ?? []).map((row: EnvelopeAllocationRow) => ({
+function mapEnvelopeAllocation(row: EnvelopeAllocationRow): EnvelopeAllocation {
+  return {
     id: row.id,
     transaction_id: row.transaction_id,
     envelope_id: row.envelope_id,
@@ -274,5 +274,31 @@ export async function listEnvelopeAllocations(supabase: SupabaseLike, envelopeId
     transaction_description: row.transaction?.catatan ?? row.transaction?.merchant ?? null,
     created_at: row.created_at,
     updated_at: row.updated_at,
-  }))
+  }
+}
+
+export async function listEnvelopeAllocations(supabase: SupabaseLike, envelopeIds: string[]): Promise<EnvelopeAllocation[]> {
+  if (envelopeIds.length === 0) return []
+
+  const { data, error } = await supabase
+    .from('transaction_envelope_allocations')
+    .select('*, transaction:transactions(id,tanggal,catatan,merchant)')
+    .in('envelope_id', envelopeIds)
+
+  if (error) throw error
+  return (data ?? []).map(mapEnvelopeAllocation)
+}
+
+export async function createEnvelopeAllocation(
+  supabase: SupabaseLike,
+  input: EnvelopeAllocationInput,
+): Promise<EnvelopeAllocation> {
+  const { data, error } = await supabase
+    .from('transaction_envelope_allocations')
+    .insert(input)
+    .select('*, transaction:transactions(id,tanggal,catatan,merchant)')
+    .single()
+
+  if (error) throw error
+  return mapEnvelopeAllocation(data)
 }
