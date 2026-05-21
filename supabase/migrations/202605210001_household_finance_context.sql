@@ -109,6 +109,44 @@ as $$
   select coalesce(public.household_role(target_household_id) in ('owner', 'admin'), false);
 $$;
 
+create or replace function public.prevent_financial_scope_change()
+returns trigger
+language plpgsql
+set search_path = public
+as $$
+begin
+  if new.user_id is distinct from old.user_id then
+    raise exception 'Cannot change financial row user scope';
+  end if;
+
+  if new.household_id is distinct from old.household_id then
+    raise exception 'Cannot change financial row household scope';
+  end if;
+
+  if new.created_by is distinct from old.created_by then
+    raise exception 'Cannot change financial row creator scope';
+  end if;
+
+  return new;
+end;
+$$;
+
+create or replace function public.create_owner_household_membership()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  insert into public.household_members (household_id, user_id, role, status)
+  values (new.id, new.owner_id, 'owner', 'active')
+  on conflict (household_id, user_id)
+  do update set role = 'owner', status = 'active', updated_at = timezone('utc'::text, now());
+
+  return new;
+end;
+$$;
+
 create or replace function public.join_household_by_invite_code(invite_code_input text)
 returns table(household_id uuid)
 language plpgsql
@@ -117,7 +155,12 @@ set search_path = public
 as $$
 declare
   target_household_id uuid;
+  joining_user_id uuid := auth.uid();
 begin
+  if joining_user_id is null then
+    raise exception 'Authentication required';
+  end if;
+
   select h.id into target_household_id
   from public.households h
   where h.invite_code = upper(trim(invite_code_input));
@@ -127,9 +170,15 @@ begin
   end if;
 
   insert into public.household_members (household_id, user_id, role, status)
-  values (target_household_id, auth.uid(), 'member', 'active')
+  values (target_household_id, joining_user_id, 'member', 'active')
   on conflict (household_id, user_id)
-  do update set status = 'active', role = 'member', updated_at = timezone('utc'::text, now());
+  do update set
+    status = 'active',
+    role = case
+      when public.household_members.role in ('owner', 'admin') then public.household_members.role
+      else 'member'
+    end,
+    updated_at = timezone('utc'::text, now());
 
   return query select target_household_id;
 end;
@@ -140,10 +189,46 @@ create trigger set_households_updated_at
 before update on public.households
 for each row execute function public.set_updated_at();
 
+drop trigger if exists create_owner_household_membership on public.households;
+create trigger create_owner_household_membership
+after insert on public.households
+for each row execute function public.create_owner_household_membership();
+
 drop trigger if exists set_household_members_updated_at on public.household_members;
 create trigger set_household_members_updated_at
 before update on public.household_members
 for each row execute function public.set_updated_at();
+
+drop trigger if exists prevent_transactions_scope_change on public.transactions;
+create trigger prevent_transactions_scope_change
+before update on public.transactions
+for each row execute function public.prevent_financial_scope_change();
+
+drop trigger if exists prevent_wallets_scope_change on public.wallets;
+create trigger prevent_wallets_scope_change
+before update on public.wallets
+for each row execute function public.prevent_financial_scope_change();
+
+drop trigger if exists prevent_budgets_scope_change on public.budgets;
+create trigger prevent_budgets_scope_change
+before update on public.budgets
+for each row execute function public.prevent_financial_scope_change();
+
+drop trigger if exists prevent_bill_reminders_scope_change on public.bill_reminders;
+create trigger prevent_bill_reminders_scope_change
+before update on public.bill_reminders
+for each row execute function public.prevent_financial_scope_change();
+
+drop trigger if exists prevent_budget_envelopes_scope_change on public.budget_envelopes;
+create trigger prevent_budget_envelopes_scope_change
+before update on public.budget_envelopes
+for each row execute function public.prevent_financial_scope_change();
+
+insert into public.household_members (household_id, user_id, role, status)
+select h.id, h.owner_id, 'owner', 'active'
+from public.households h
+on conflict (household_id, user_id)
+do update set role = 'owner', status = 'active', updated_at = timezone('utc'::text, now());
 
 alter table public.households enable row level security;
 alter table public.household_members enable row level security;
@@ -152,6 +237,7 @@ alter table public.wallets enable row level security;
 alter table public.budgets enable row level security;
 alter table public.bill_reminders enable row level security;
 alter table public.budget_envelopes enable row level security;
+alter table public.transaction_envelope_allocations enable row level security;
 
 drop policy if exists "households_select_member" on public.households;
 create policy "households_select_member" on public.households
@@ -171,7 +257,10 @@ create policy "households_delete_owner" on public.households
 
 drop policy if exists "household_members_select_active_peer" on public.household_members;
 create policy "household_members_select_active_peer" on public.household_members
-  for select using (public.is_household_member(household_id));
+  for select using (
+    public.can_admin_household(household_id)
+    or (status = 'active' and public.is_household_member(household_id))
+  );
 
 drop policy if exists "household_members_insert_admin" on public.household_members;
 create policy "household_members_insert_admin" on public.household_members
@@ -542,5 +631,126 @@ create policy "budget_envelopes_delete_personal_or_household" on public.budget_e
         public.can_admin_household(household_id)
         or (created_by = auth.uid() and public.household_role(household_id) = 'member')
       )
+    )
+  );
+
+drop policy if exists "Users can read own envelope allocations" on public.transaction_envelope_allocations;
+drop policy if exists "Users can insert own envelope allocations" on public.transaction_envelope_allocations;
+drop policy if exists "Users can update own envelope allocations" on public.transaction_envelope_allocations;
+drop policy if exists "Users can delete own envelope allocations" on public.transaction_envelope_allocations;
+drop policy if exists "transaction_envelope_allocations_select_personal_or_household" on public.transaction_envelope_allocations;
+drop policy if exists "transaction_envelope_allocations_insert_personal_or_household" on public.transaction_envelope_allocations;
+drop policy if exists "transaction_envelope_allocations_update_personal_or_household" on public.transaction_envelope_allocations;
+drop policy if exists "transaction_envelope_allocations_delete_personal_or_household" on public.transaction_envelope_allocations;
+
+create policy "transaction_envelope_allocations_select_personal_or_household" on public.transaction_envelope_allocations
+  for select using (
+    exists (
+      select 1
+      from public.transactions t
+      join public.budget_envelopes e on e.id = envelope_id
+      where t.id = transaction_id
+        and (
+          (
+            t.household_id is null
+            and e.household_id is null
+            and t.user_id = auth.uid()
+            and e.user_id = auth.uid()
+          )
+          or (
+            t.household_id is not null
+            and e.household_id = t.household_id
+            and public.is_household_member(t.household_id)
+          )
+        )
+    )
+  );
+
+create policy "transaction_envelope_allocations_insert_personal_or_household" on public.transaction_envelope_allocations
+  for insert with check (
+    exists (
+      select 1
+      from public.transactions t
+      join public.budget_envelopes e on e.id = envelope_id
+      where t.id = transaction_id
+        and (
+          (
+            t.household_id is null
+            and e.household_id is null
+            and t.user_id = auth.uid()
+            and e.user_id = auth.uid()
+          )
+          or (
+            t.household_id is not null
+            and e.household_id = t.household_id
+            and public.can_write_household(t.household_id)
+          )
+        )
+    )
+  );
+
+create policy "transaction_envelope_allocations_update_personal_or_household" on public.transaction_envelope_allocations
+  for update using (
+    exists (
+      select 1
+      from public.transactions t
+      join public.budget_envelopes e on e.id = envelope_id
+      where t.id = transaction_id
+        and (
+          (
+            t.household_id is null
+            and e.household_id is null
+            and t.user_id = auth.uid()
+            and e.user_id = auth.uid()
+          )
+          or (
+            t.household_id is not null
+            and e.household_id = t.household_id
+            and public.is_household_member(t.household_id)
+          )
+        )
+    )
+  ) with check (
+    exists (
+      select 1
+      from public.transactions t
+      join public.budget_envelopes e on e.id = envelope_id
+      where t.id = transaction_id
+        and (
+          (
+            t.household_id is null
+            and e.household_id is null
+            and t.user_id = auth.uid()
+            and e.user_id = auth.uid()
+          )
+          or (
+            t.household_id is not null
+            and e.household_id = t.household_id
+            and public.can_write_household(t.household_id)
+          )
+        )
+    )
+  );
+
+create policy "transaction_envelope_allocations_delete_personal_or_household" on public.transaction_envelope_allocations
+  for delete using (
+    exists (
+      select 1
+      from public.transactions t
+      join public.budget_envelopes e on e.id = envelope_id
+      where t.id = transaction_id
+        and (
+          (
+            t.household_id is null
+            and e.household_id is null
+            and t.user_id = auth.uid()
+            and e.user_id = auth.uid()
+          )
+          or (
+            t.household_id is not null
+            and e.household_id = t.household_id
+            and public.can_write_household(t.household_id)
+          )
+        )
     )
   );
