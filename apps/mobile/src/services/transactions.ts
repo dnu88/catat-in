@@ -86,39 +86,6 @@ function buildInsertPayload(tx: TransactionCreate, userId: string) {
 	return payload;
 }
 
-async function applyWalletDelta(
-	walletId: string | null | undefined,
-	deltaAmount: number,
-) {
-	if (!walletId || !Number.isFinite(deltaAmount) || deltaAmount === 0) return;
-
-	const { data, error } = await supabase
-		.from("wallets")
-		.select("id, balance")
-		.eq("id", walletId)
-		.maybeSingle();
-
-	if (error) throw error;
-	if (!data) throw new Error("Wallet tidak ditemukan untuk sinkronisasi saldo");
-
-	const currentBalance = Number(data.balance ?? 0);
-	const nextBalance = currentBalance + deltaAmount;
-
-	const { error: updateError } = await supabase
-		.from("wallets")
-		.update({ balance: nextBalance })
-		.eq("id", walletId);
-	if (updateError) throw updateError;
-}
-
-function signedDelta(
-	tx: Pick<Transaction | TransactionCreate, "transaction_type" | "amount">,
-): number {
-	const n = Number(tx.amount ?? 0);
-	if (!Number.isFinite(n)) return 0;
-	return tx.transaction_type === "income" ? n : -n;
-}
-
 async function getTransactionById(id: string): Promise<Transaction | null> {
 	const { data, error } = await supabase
 		.from("transactions")
@@ -149,9 +116,7 @@ export async function createTransaction(
 
 	if (error) throw error;
 
-	const created = data as Transaction;
-	await applyWalletDelta(created.wallet_id, signedDelta(created));
-	return created;
+	return data as Transaction;
 }
 
 export async function listTransactions(
@@ -206,12 +171,7 @@ export async function updateTransaction(
 
 	if (error) throw error;
 
-	const next = data as Transaction;
-
-	await applyWalletDelta(previous.wallet_id, -signedDelta(previous));
-	await applyWalletDelta(next.wallet_id, signedDelta(next));
-
-	return next;
+	return data as Transaction;
 }
 
 export async function deleteTransaction(
@@ -226,6 +186,4 @@ export async function deleteTransaction(
 
 	const { error } = await supabase.from("transactions").delete().eq("id", id);
 	if (error) throw error;
-
-	await applyWalletDelta(previous.wallet_id, -signedDelta(previous));
 }

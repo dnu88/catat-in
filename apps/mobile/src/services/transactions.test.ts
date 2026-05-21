@@ -58,6 +58,7 @@ describe("Transaction Service", () => {
 		expect(mockSingle).toHaveBeenCalled();
 		expect(result.id).toBe("tx-123");
 		expect(result.transaction_type).toBe("expense");
+		expect(supabase.from).not.toHaveBeenCalledWith("wallets");
 	});
 
 	test("createTransaction should include optional fields when provided", async () => {
@@ -259,7 +260,7 @@ describe("Transaction Service", () => {
 		expect(supabase.from).not.toHaveBeenCalled();
 	});
 
-	test("updateTransaction fetches previous transaction before update and applies wallet delta", async () => {
+	test("updateTransaction fetches previous transaction for permissions and relies on database trigger for wallet balance", async () => {
 		const previous = {
 			id: "tx-1",
 			user_id: "user-123",
@@ -279,24 +280,19 @@ describe("Transaction Service", () => {
 		const updateSingle = jest
 			.fn()
 			.mockResolvedValue({ data: updated, error: null });
-		const walletSelectSingle = jest
-			.fn()
-			.mockResolvedValueOnce({ data: { id: "w-1", balance: 100000 }, error: null })
-			.mockResolvedValueOnce({ data: { id: "w-1", balance: 150000 }, error: null });
-		const walletUpdateEq = jest.fn().mockResolvedValue({ error: null });
 		const mockUpdate = jest.fn().mockReturnValue({
-			eq: jest.fn().mockReturnValue({ select: jest.fn().mockReturnValue({ single: updateSingle }) }),
+			eq: jest
+				.fn()
+				.mockReturnValue({
+					select: jest.fn().mockReturnValue({ single: updateSingle }),
+				}),
 		});
 		const transactionsSelect = jest.fn().mockReturnValue({
 			eq: jest.fn().mockReturnValue({ maybeSingle: previousSingle }),
 		});
-		const walletSelect = jest.fn().mockReturnValue({
-			eq: jest.fn().mockReturnValue({ maybeSingle: walletSelectSingle }),
-		});
-		const walletUpdate = jest.fn().mockReturnValue({ eq: walletUpdateEq });
 		(supabase.from as jest.Mock).mockImplementation((table: string) => {
-			if (table === "transactions") return { select: transactionsSelect, update: mockUpdate };
-			if (table === "wallets") return { select: walletSelect, update: walletUpdate };
+			if (table === "transactions")
+				return { select: transactionsSelect, update: mockUpdate };
 			throw new Error(`unexpected table ${table}`);
 		});
 
@@ -309,8 +305,7 @@ describe("Transaction Service", () => {
 			amount: 75000,
 			updated_by: "user-123",
 		});
-		expect(walletUpdate).toHaveBeenNthCalledWith(1, { balance: 150000 });
-		expect(walletUpdate).toHaveBeenNthCalledWith(2, { balance: 75000 });
+		expect(supabase.from).not.toHaveBeenCalledWith("wallets");
 		expect(result.id).toBe("tx-1");
 	});
 
@@ -403,6 +398,7 @@ describe("Transaction Service", () => {
 		await expect(deleteTransaction("tx-1")).resolves.toBeUndefined();
 
 		expect(supabase.from).toHaveBeenCalledWith("transactions");
+		expect(supabase.from).not.toHaveBeenCalledWith("wallets");
 		expect(mockDelete).toHaveBeenCalled();
 		expect(mockEq).toHaveBeenCalledWith("id", "tx-1");
 	});
@@ -427,51 +423,4 @@ describe("Transaction Service", () => {
 		).rejects.toEqual(mockError);
 	});
 
-	test("createTransaction propagates wallet balance sync errors", async () => {
-		const created = {
-			id: "tx-err",
-			user_id: "user-123",
-			household_id: null,
-			created_by: "user-123",
-			wallet_id: "w-1",
-			transaction_type: "expense",
-			amount: 100,
-			category: "Food",
-			description: "Test",
-		};
-		const walletError = { message: "wallet read failed", code: "500" };
-		const insertSingle = jest
-			.fn()
-			.mockResolvedValue({ data: created, error: null });
-		const walletSingle = jest
-			.fn()
-			.mockResolvedValue({ data: null, error: walletError });
-		(supabase.from as jest.Mock).mockImplementation((table: string) => {
-			if (table === "transactions") {
-				return {
-					insert: jest.fn().mockReturnValue({
-						select: jest.fn().mockReturnValue({ single: insertSingle }),
-					}),
-				};
-			}
-			if (table === "wallets") {
-				return {
-					select: jest.fn().mockReturnValue({
-						eq: jest.fn().mockReturnValue({ maybeSingle: walletSingle }),
-					}),
-				};
-			}
-			throw new Error(`unexpected table ${table}`);
-		});
-
-		await expect(
-			createTransaction({
-				wallet_id: "w-1",
-				transaction_type: "expense",
-				amount: 100,
-				category: "Food",
-				description: "Test",
-			}),
-		).rejects.toEqual(walletError);
-	});
 });
