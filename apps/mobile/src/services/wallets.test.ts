@@ -192,6 +192,47 @@ describe("Wallet Service", () => {
 		expect(result.name).toBe("Updated Cash");
 	});
 
+	test("updateWallet strips balance from update payload", async () => {
+		const existingWallet = {
+			id: "w-1",
+			user_id: "user-123",
+			household_id: null,
+			created_by: "user-123",
+			name: "Cash",
+			type: "cash",
+			balance: 100000,
+		};
+		const updatedWallet = { ...existingWallet, name: "Updated Cash" };
+		const readSingle = jest
+			.fn()
+			.mockResolvedValue({ data: existingWallet, error: null });
+		const updateSingle = jest
+			.fn()
+			.mockResolvedValue({ data: updatedWallet, error: null });
+		const mockUpdate = jest.fn().mockReturnValue({
+			eq: jest.fn().mockReturnValue({
+				select: jest.fn().mockReturnValue({ single: updateSingle }),
+			}),
+		});
+		(supabase.from as jest.Mock).mockReturnValue({
+			select: jest.fn().mockReturnValue({
+				eq: jest.fn().mockReturnValue({ maybeSingle: readSingle }),
+			}),
+			update: mockUpdate,
+		});
+
+		await updateWallet("w-1", {
+			name: "Updated Cash",
+			balance: 999999,
+		} as any);
+
+		expect(mockUpdate).toHaveBeenCalledWith({
+			name: "Updated Cash",
+			updated_by: "user-123",
+		});
+		expect(mockUpdate.mock.calls[0][0]).not.toHaveProperty("balance");
+	});
+
 	test("updateWallet denies household member updating another member's wallet", async () => {
 		const existingWallet = {
 			id: "w-1",

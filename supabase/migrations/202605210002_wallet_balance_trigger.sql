@@ -15,16 +15,16 @@ begin
   if tg_op = 'INSERT' then
     target_wallet_id := new.wallet_id;
     delta_amount := case
-      when new.transaction_type = 'income' then coalesce(new.amount, 0)
-      when new.transaction_type = 'expense' then -coalesce(new.amount, 0)
+      when new.type = 'income' then coalesce(new.nominal, 0)
+      when new.type = 'expense' then -coalesce(new.nominal, 0)
       else 0
     end;
   elsif tg_op = 'UPDATE' then
     if old.wallet_id is distinct from new.wallet_id then
       if old.wallet_id is not null then
         delta_amount := -(case
-          when old.transaction_type = 'income' then coalesce(old.amount, 0)
-          when old.transaction_type = 'expense' then -coalesce(old.amount, 0)
+          when old.type = 'income' then coalesce(old.nominal, 0)
+          when old.type = 'expense' then -coalesce(old.nominal, 0)
           else 0
         end);
         update public.wallets
@@ -34,30 +34,30 @@ begin
 
       target_wallet_id := new.wallet_id;
       delta_amount := case
-        when new.transaction_type = 'income' then coalesce(new.amount, 0)
-        when new.transaction_type = 'expense' then -coalesce(new.amount, 0)
+        when new.type = 'income' then coalesce(new.nominal, 0)
+        when new.type = 'expense' then -coalesce(new.nominal, 0)
         else 0
       end;
     else
       target_wallet_id := new.wallet_id;
       delta_amount :=
         (case
-          when new.transaction_type = 'income' then coalesce(new.amount, 0)
-          when new.transaction_type = 'expense' then -coalesce(new.amount, 0)
+          when new.type = 'income' then coalesce(new.nominal, 0)
+          when new.type = 'expense' then -coalesce(new.nominal, 0)
           else 0
         end)
         -
         (case
-          when old.transaction_type = 'income' then coalesce(old.amount, 0)
-          when old.transaction_type = 'expense' then -coalesce(old.amount, 0)
+          when old.type = 'income' then coalesce(old.nominal, 0)
+          when old.type = 'expense' then -coalesce(old.nominal, 0)
           else 0
         end);
     end if;
   elsif tg_op = 'DELETE' then
     target_wallet_id := old.wallet_id;
     delta_amount := -(case
-      when old.transaction_type = 'income' then coalesce(old.amount, 0)
-      when old.transaction_type = 'expense' then -coalesce(old.amount, 0)
+      when old.type = 'income' then coalesce(old.nominal, 0)
+      when old.type = 'expense' then -coalesce(old.nominal, 0)
       else 0
     end);
   end if;

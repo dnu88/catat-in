@@ -33,6 +33,25 @@ class WalletBalanceTriggerMigrationTest(unittest.TestCase):
         self.assertRegex(body, r"update public\.wallets\s+set balance = balance \+ delta_amount")
         self.assertNotRegex(body, r"select .*balance.*from public\.wallets")
 
+    def test_wallet_balance_trigger_uses_base_transaction_schema_columns(self):
+        function_match = re.search(
+            r"create or replace function public\.sync_wallet_balance_from_transaction\(\).*?\$\$\n(.*?)\n\$\$;",
+            SQL,
+            re.S,
+        )
+        if function_match is None:
+            raise AssertionError("sync_wallet_balance_from_transaction function not found")
+        body = function_match.group(1)
+
+        self.assertIn("new.type", body)
+        self.assertIn("old.type", body)
+        self.assertIn("new.nominal", body)
+        self.assertIn("old.nominal", body)
+        self.assertNotIn("transaction_type", body)
+        self.assertNotIn("new.amount", body)
+        self.assertNotIn("old.amount", body)
+        self.assertNotIn(".amount", body)
+
 
 if __name__ == "__main__":
     unittest.main()
