@@ -160,8 +160,8 @@ set search_path = public
 as $$
 begin
   if tg_op = 'INSERT' then
-    new.created_by = coalesce(new.created_by, auth.uid(), new.user_id);
-    new.updated_by = coalesce(new.updated_by, new.created_by, auth.uid(), new.user_id);
+    new.created_by = coalesce(auth.uid(), new.created_by, new.user_id);
+    new.updated_by = coalesce(auth.uid(), new.updated_by, new.created_by, new.user_id);
   elsif tg_op = 'UPDATE' then
     new.updated_by = coalesce(auth.uid(), new.updated_by);
   end if;
@@ -414,6 +414,7 @@ create policy "transactions_insert_personal_or_household" on public.transactions
         household_id is null
         and user_id = auth.uid()
         and created_by = auth.uid()
+        and updated_by = auth.uid()
       )
       or (
         household_id is not null
@@ -426,7 +427,12 @@ create policy "transactions_insert_personal_or_household" on public.transactions
 
 create policy "transactions_update_personal_or_household" on public.transactions
   for update using (
-    (household_id is null and user_id = auth.uid())
+    (
+      household_id is null
+      and user_id = auth.uid()
+      and created_by = auth.uid()
+      and updated_by = auth.uid()
+    )
     or (
       household_id is not null
       and (
@@ -440,6 +446,7 @@ create policy "transactions_update_personal_or_household" on public.transactions
       (
         household_id is null
         and user_id = auth.uid()
+        and created_by = auth.uid()
         and updated_by = auth.uid()
       )
       or (
@@ -482,7 +489,12 @@ create policy "wallets_select_personal_or_household" on public.wallets
 
 create policy "wallets_insert_personal_or_household" on public.wallets
   for insert with check (
-    (household_id is null and user_id = auth.uid())
+    (
+      household_id is null
+      and user_id = auth.uid()
+      and created_by = auth.uid()
+      and updated_by = auth.uid()
+    )
     or (
       household_id is not null
       and user_id = auth.uid()
@@ -493,7 +505,12 @@ create policy "wallets_insert_personal_or_household" on public.wallets
 
 create policy "wallets_update_personal_or_household" on public.wallets
   for update using (
-    (household_id is null and user_id = auth.uid())
+    (
+      household_id is null
+      and user_id = auth.uid()
+      and created_by = auth.uid()
+      and updated_by = auth.uid()
+    )
     or (
       household_id is not null
       and (
@@ -502,7 +519,12 @@ create policy "wallets_update_personal_or_household" on public.wallets
       )
     )
   ) with check (
-    (household_id is null and user_id = auth.uid())
+    (
+      household_id is null
+      and user_id = auth.uid()
+      and created_by = auth.uid()
+      and updated_by = auth.uid()
+    )
     or (
       household_id is not null
       and updated_by = auth.uid()
@@ -542,7 +564,12 @@ create policy "budgets_select_personal_or_household" on public.budgets
 
 create policy "budgets_insert_personal_or_household" on public.budgets
   for insert with check (
-    (household_id is null and user_id = auth.uid())
+    (
+      household_id is null
+      and user_id = auth.uid()
+      and created_by = auth.uid()
+      and updated_by = auth.uid()
+    )
     or (
       household_id is not null
       and user_id = auth.uid()
@@ -553,7 +580,12 @@ create policy "budgets_insert_personal_or_household" on public.budgets
 
 create policy "budgets_update_personal_or_household" on public.budgets
   for update using (
-    (household_id is null and user_id = auth.uid())
+    (
+      household_id is null
+      and user_id = auth.uid()
+      and created_by = auth.uid()
+      and updated_by = auth.uid()
+    )
     or (
       household_id is not null
       and (
@@ -562,7 +594,12 @@ create policy "budgets_update_personal_or_household" on public.budgets
       )
     )
   ) with check (
-    (household_id is null and user_id = auth.uid())
+    (
+      household_id is null
+      and user_id = auth.uid()
+      and created_by = auth.uid()
+      and updated_by = auth.uid()
+    )
     or (
       household_id is not null
       and updated_by = auth.uid()
@@ -602,7 +639,12 @@ create policy "bill_reminders_select_personal_or_household" on public.bill_remin
 
 create policy "bill_reminders_insert_personal_or_household" on public.bill_reminders
   for insert with check (
-    (household_id is null and user_id = auth.uid())
+    (
+      household_id is null
+      and user_id = auth.uid()
+      and created_by = auth.uid()
+      and updated_by = auth.uid()
+    )
     or (
       household_id is not null
       and user_id = auth.uid()
@@ -613,7 +655,12 @@ create policy "bill_reminders_insert_personal_or_household" on public.bill_remin
 
 create policy "bill_reminders_update_personal_or_household" on public.bill_reminders
   for update using (
-    (household_id is null and user_id = auth.uid())
+    (
+      household_id is null
+      and user_id = auth.uid()
+      and created_by = auth.uid()
+      and updated_by = auth.uid()
+    )
     or (
       household_id is not null
       and (
@@ -622,7 +669,12 @@ create policy "bill_reminders_update_personal_or_household" on public.bill_remin
       )
     )
   ) with check (
-    (household_id is null and user_id = auth.uid())
+    (
+      household_id is null
+      and user_id = auth.uid()
+      and created_by = auth.uid()
+      and updated_by = auth.uid()
+    )
     or (
       household_id is not null
       and updated_by = auth.uid()
@@ -665,6 +717,8 @@ create policy "budget_envelopes_insert_personal_or_household" on public.budget_e
     (
       household_id is null
       and user_id = auth.uid()
+      and created_by = auth.uid()
+      and updated_by = auth.uid()
       and (
         parent_category_id is null
         or exists (
@@ -690,7 +744,12 @@ create policy "budget_envelopes_insert_personal_or_household" on public.budget_e
 
 create policy "budget_envelopes_update_personal_or_household" on public.budget_envelopes
   for update using (
-    (household_id is null and user_id = auth.uid())
+    (
+      household_id is null
+      and user_id = auth.uid()
+      and created_by = auth.uid()
+      and updated_by = auth.uid()
+    )
     or (
       household_id is not null
       and (
@@ -702,6 +761,8 @@ create policy "budget_envelopes_update_personal_or_household" on public.budget_e
     (
       household_id is null
       and user_id = auth.uid()
+      and created_by = auth.uid()
+      and updated_by = auth.uid()
       and (
         parent_category_id is null
         or exists (
