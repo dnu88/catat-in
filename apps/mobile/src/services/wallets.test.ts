@@ -142,7 +142,11 @@ describe("Wallet Service", () => {
 			select: jest.fn().mockReturnValue(query),
 		});
 
-		await listWallets({ type: "household", householdId: "hh-1", role: "member" });
+		await listWallets({
+			type: "household",
+			householdId: "hh-1",
+			role: "member",
+		});
 
 		expect(mockEq).toHaveBeenCalledWith("household_id", "hh-1");
 	});
@@ -236,7 +240,11 @@ describe("Wallet Service", () => {
 		});
 
 		await expect(
-			deleteWallet("w-1", { type: "household", householdId: "hh-1", role: "viewer" }),
+			deleteWallet("w-1", {
+				type: "household",
+				householdId: "hh-1",
+				role: "viewer",
+			}),
 		).rejects.toThrow("Akses lihat saja");
 
 		expect(mockUpdate).not.toHaveBeenCalled();

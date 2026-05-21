@@ -281,11 +281,9 @@ describe("Transaction Service", () => {
 			.fn()
 			.mockResolvedValue({ data: updated, error: null });
 		const mockUpdate = jest.fn().mockReturnValue({
-			eq: jest
-				.fn()
-				.mockReturnValue({
-					select: jest.fn().mockReturnValue({ single: updateSingle }),
-				}),
+			eq: jest.fn().mockReturnValue({
+				select: jest.fn().mockReturnValue({ single: updateSingle }),
+			}),
 		});
 		const transactionsSelect = jest.fn().mockReturnValue({
 			eq: jest.fn().mockReturnValue({ maybeSingle: previousSingle }),
@@ -422,5 +420,4 @@ describe("Transaction Service", () => {
 			}),
 		).rejects.toEqual(mockError);
 	});
-
 });
