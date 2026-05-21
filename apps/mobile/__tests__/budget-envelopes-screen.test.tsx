@@ -169,10 +169,14 @@ describe('Budget envelopes screen', () => {
     expect(screen.getByText('Other expenses')).toBeTruthy()
     fireEvent.press(screen.getAllByText('Makanan & Minuman')[0])
     fireEvent.press(screen.getByTestId('budget-wallet-color-dropdown'))
-    expect(screen.getAllByTestId(/budget-wallet-color-/)).toHaveLength(14)
+    const colorOptionNodes = screen.getAllByTestId(/^budget-wallet-color-#[0-9A-F]{6}$/)
+    const colorOptionIds = colorOptionNodes.map((node) => node.props.testID)
+    expect(colorOptionNodes).toHaveLength(11)
+    expect(new Set(colorOptionIds).size).toBe(colorOptionIds.length)
+    expect(colorOptionIds).not.toContain('budget-wallet-color-#65A30D')
     expect(screen.getByTestId('budget-wallet-color-#DB2777')).toBeTruthy()
     expect(screen.getByTestId('budget-wallet-color-#2563EB')).toBeTruthy()
-    fireEvent.press(screen.getByTestId('budget-wallet-color-#65A30D'))
+    fireEvent.press(screen.getByTestId('budget-wallet-color-#DB2777'))
     fireEvent.changeText(screen.getByPlaceholderText('Catatan'), 'Kopi Kenangan, Fore')
     fireEvent.press(screen.getByText('Simpan dompet'))
 
@@ -185,7 +189,7 @@ describe('Budget envelopes screen', () => {
       start_date: '2026-05-10',
       end_date: '2026-05-25',
       icon: 'food',
-      color: '#65A30D',
+      color: '#DB2777',
       notes: 'Kopi Kenangan, Fore',
     })
   })

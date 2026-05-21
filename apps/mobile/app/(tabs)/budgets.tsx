@@ -270,6 +270,7 @@ export default function BudgetsScreen() {
   const colorOptions = theme.mode === 'light' ? lightColorOptions : darkColorOptions
   const selectedIconOption = iconOptions.find((option) => option.value === icon) ?? iconOptions[0]
   const selectedColor = color || colorOptions[0]
+  const visibleColorOptions = colorOptions.filter((option) => option !== selectedColor)
 
   const renderEnvelope = ({ item }: { item: EnvelopeSummary }) => (
     <EnvelopeRow item={item} theme={theme} styles={styles} noCategoryLabel={tx.noCategory} />
@@ -330,7 +331,7 @@ export default function BudgetsScreen() {
               </Pressable>
               {showColorOptions ? (
                 <View testID="budget-wallet-color-options" style={styles.colorOptionList}>
-                  {colorOptions.map((option) => (
+                  {visibleColorOptions.map((option) => (
                     <Pressable key={option} testID={`budget-wallet-color-${option}`} style={[styles.colorOption, selectedColor === option && styles.colorOptionActive]} onPress={() => { setColor(option); setShowColorOptions(false) }}>
                       <View style={[styles.colorOptionSwatch, { backgroundColor: option }]} />
                     </Pressable>
