@@ -37,6 +37,9 @@ describe('Wallet + Transaction Integration Flow', () => {
 
     expect(mockInsert).toHaveBeenCalledWith({
       user_id: 'user-123',
+      household_id: null,
+      created_by: 'user-123',
+      updated_by: 'user-123',
       name: 'Main Wallet',
       type: 'cash',
       balance: 0,

@@ -78,6 +78,10 @@ group_members
   id, group_id, user_id, role (admin|member), joined_at
 ```
 
+### Household finance context
+
+Mobile supports two finance contexts: personal rows with `household_id = null`, and household rows with `household_id` set. Household access is controlled by `households`, `household_members`, and RLS roles `owner/admin/member/viewer`. Mobile service functions must apply the active finance context to every financial query.
+
 ### Legacy Stack (Firestore — Maintenance-Only)
 Semua data user disimpan di sub-collection `users/{uid}/*`:
 
