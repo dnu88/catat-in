@@ -71,6 +71,7 @@
 ## Task 1: Supabase Household Schema and RLS
 
 **Files:**
+
 - Create: `supabase/migrations/202605210001_household_finance_context.sql`
 - Test/Verify: run migration in Supabase local or SQL editor; if no local Supabase is available, run SQL lint by applying to a scratch database before merge.
 
@@ -351,6 +352,7 @@ git commit -m "feat(db): add household finance context"
 ## Task 2: Finance Context Query Helpers
 
 **Files:**
+
 - Create: `apps/mobile/src/services/finance-context-query.ts`
 - Create: `apps/mobile/src/services/finance-context-query.test.ts`
 
@@ -366,77 +368,114 @@ import {
   canDeleteInContext,
   canUpdateInContext,
   type FinanceContext,
-} from './finance-context-query'
+} from "./finance-context-query";
 
 function makeQueryRecorder() {
-  const calls: Array<[string, string, unknown?]> = []
+  const calls: Array<[string, string, unknown?]> = [];
   const query = {
     is(column: string, value: unknown) {
-      calls.push(['is', column, value])
-      return query
+      calls.push(["is", column, value]);
+      return query;
     },
     eq(column: string, value: unknown) {
-      calls.push(['eq', column, value])
-      return query
+      calls.push(["eq", column, value]);
+      return query;
     },
-  }
-  return { query, calls }
+  };
+  return { query, calls };
 }
 
-describe('finance context query helpers', () => {
-  it('filters personal rows to household_id is null', () => {
-    const { query, calls } = makeQueryRecorder()
+describe("finance context query helpers", () => {
+  it("filters personal rows to household_id is null", () => {
+    const { query, calls } = makeQueryRecorder();
 
-    applyFinanceContextFilter(query, { type: 'personal' })
+    applyFinanceContextFilter(query, { type: "personal" });
 
-    expect(calls).toEqual([['is', 'household_id', null]])
-  })
+    expect(calls).toEqual([["is", "household_id", null]]);
+  });
 
-  it('filters household rows by active household id', () => {
-    const { query, calls } = makeQueryRecorder()
+  it("filters household rows by active household id", () => {
+    const { query, calls } = makeQueryRecorder();
 
-    applyFinanceContextFilter(query, { type: 'household', householdId: 'hh-1', role: 'member' })
+    applyFinanceContextFilter(query, {
+      type: "household",
+      householdId: "hh-1",
+      role: "member",
+    });
 
-    expect(calls).toEqual([['eq', 'household_id', 'hh-1']])
-  })
+    expect(calls).toEqual([["eq", "household_id", "hh-1"]]);
+  });
 
-  it('builds personal insert audit fields without household_id', () => {
-    expect(buildFinanceInsertAudit({ type: 'personal' }, 'user-1')).toEqual({
-      user_id: 'user-1',
+  it("builds personal insert audit fields without household_id", () => {
+    expect(buildFinanceInsertAudit({ type: "personal" }, "user-1")).toEqual({
+      user_id: "user-1",
       household_id: null,
-      created_by: 'user-1',
-      updated_by: 'user-1',
-    })
-  })
+      created_by: "user-1",
+      updated_by: "user-1",
+    });
+  });
 
-  it('builds household insert audit fields with household id', () => {
-    expect(buildFinanceInsertAudit({ type: 'household', householdId: 'hh-1', role: 'admin' }, 'user-1')).toEqual({
-      user_id: 'user-1',
-      household_id: 'hh-1',
-      created_by: 'user-1',
-      updated_by: 'user-1',
-    })
-  })
+  it("builds household insert audit fields with household id", () => {
+    expect(
+      buildFinanceInsertAudit(
+        { type: "household", householdId: "hh-1", role: "admin" },
+        "user-1",
+      ),
+    ).toEqual({
+      user_id: "user-1",
+      household_id: "hh-1",
+      created_by: "user-1",
+      updated_by: "user-1",
+    });
+  });
 
-  it('allows owner/admin/member to create but viewer cannot create', () => {
-    expect(canCreateInContext({ type: 'personal' })).toBe(true)
-    expect(canCreateInContext({ type: 'household', householdId: 'hh-1', role: 'owner' })).toBe(true)
-    expect(canCreateInContext({ type: 'household', householdId: 'hh-1', role: 'admin' })).toBe(true)
-    expect(canCreateInContext({ type: 'household', householdId: 'hh-1', role: 'member' })).toBe(true)
-    expect(canCreateInContext({ type: 'household', householdId: 'hh-1', role: 'viewer' })).toBe(false)
-  })
+  it("allows owner/admin/member to create but viewer cannot create", () => {
+    expect(canCreateInContext({ type: "personal" })).toBe(true);
+    expect(
+      canCreateInContext({
+        type: "household",
+        householdId: "hh-1",
+        role: "owner",
+      }),
+    ).toBe(true);
+    expect(
+      canCreateInContext({
+        type: "household",
+        householdId: "hh-1",
+        role: "admin",
+      }),
+    ).toBe(true);
+    expect(
+      canCreateInContext({
+        type: "household",
+        householdId: "hh-1",
+        role: "member",
+      }),
+    ).toBe(true);
+    expect(
+      canCreateInContext({
+        type: "household",
+        householdId: "hh-1",
+        role: "viewer",
+      }),
+    ).toBe(false);
+  });
 
-  it('limits member update/delete to rows they created', () => {
-    const member: FinanceContext = { type: 'household', householdId: 'hh-1', role: 'member' }
-    const ownRow = { household_id: 'hh-1', created_by: 'user-1' }
-    const otherRow = { household_id: 'hh-1', created_by: 'user-2' }
+  it("limits member update/delete to rows they created", () => {
+    const member: FinanceContext = {
+      type: "household",
+      householdId: "hh-1",
+      role: "member",
+    };
+    const ownRow = { household_id: "hh-1", created_by: "user-1" };
+    const otherRow = { household_id: "hh-1", created_by: "user-2" };
 
-    expect(canUpdateInContext(member, ownRow, 'user-1')).toBe(true)
-    expect(canDeleteInContext(member, ownRow, 'user-1')).toBe(true)
-    expect(canUpdateInContext(member, otherRow, 'user-1')).toBe(false)
-    expect(canDeleteInContext(member, otherRow, 'user-1')).toBe(false)
-  })
-})
+    expect(canUpdateInContext(member, ownRow, "user-1")).toBe(true);
+    expect(canDeleteInContext(member, ownRow, "user-1")).toBe(true);
+    expect(canUpdateInContext(member, otherRow, "user-1")).toBe(false);
+    expect(canDeleteInContext(member, otherRow, "user-1")).toBe(false);
+  });
+});
 ```
 
 - [ ] **Step 2: Run failing tests**
@@ -453,40 +492,46 @@ Expected: FAIL because `finance-context-query.ts` does not exist.
 Create `apps/mobile/src/services/finance-context-query.ts`:
 
 ```ts
-export type HouseholdRole = 'owner' | 'admin' | 'member' | 'viewer'
+export type HouseholdRole = "owner" | "admin" | "member" | "viewer";
 
 export type FinanceContext =
-  | { type: 'personal' }
-  | { type: 'household'; householdId: string; role: HouseholdRole }
+  | { type: "personal" }
+  | { type: "household"; householdId: string; role: HouseholdRole };
 
 type FilterableQuery<TQuery> = TQuery & {
-  is(column: string, value: unknown): TQuery
-  eq(column: string, value: unknown): TQuery
-}
+  is(column: string, value: unknown): TQuery;
+  eq(column: string, value: unknown): TQuery;
+};
 
-export function applyFinanceContextFilter<TQuery>(query: FilterableQuery<TQuery>, context: FinanceContext): TQuery {
-  if (context.type === 'personal') {
-    return query.is('household_id', null)
+export function applyFinanceContextFilter<TQuery>(
+  query: FilterableQuery<TQuery>,
+  context: FinanceContext,
+): TQuery {
+  if (context.type === "personal") {
+    return query.is("household_id", null);
   }
 
-  return query.eq('household_id', context.householdId)
+  return query.eq("household_id", context.householdId);
 }
 
-export function buildFinanceInsertAudit(context: FinanceContext, userId: string) {
+export function buildFinanceInsertAudit(
+  context: FinanceContext,
+  userId: string,
+) {
   return {
     user_id: userId,
-    household_id: context.type === 'household' ? context.householdId : null,
+    household_id: context.type === "household" ? context.householdId : null,
     created_by: userId,
     updated_by: userId,
-  }
+  };
 }
 
 export function buildFinanceUpdateAudit(userId: string) {
-  return { updated_by: userId }
+  return { updated_by: userId };
 }
 
 export function canCreateInContext(context: FinanceContext) {
-  return context.type === 'personal' || context.role !== 'viewer'
+  return context.type === "personal" || context.role !== "viewer";
 }
 
 export function canUpdateInContext(
@@ -494,10 +539,14 @@ export function canUpdateInContext(
   row: { household_id?: string | null; created_by?: string | null },
   userId: string,
 ) {
-  if (context.type === 'personal') return row.household_id == null
-  if (context.role === 'owner' || context.role === 'admin') return row.household_id === context.householdId
-  if (context.role === 'member') return row.household_id === context.householdId && row.created_by === userId
-  return false
+  if (context.type === "personal") return row.household_id == null;
+  if (context.role === "owner" || context.role === "admin")
+    return row.household_id === context.householdId;
+  if (context.role === "member")
+    return (
+      row.household_id === context.householdId && row.created_by === userId
+    );
+  return false;
 }
 
 export function canDeleteInContext(
@@ -505,7 +554,7 @@ export function canDeleteInContext(
   row: { household_id?: string | null; created_by?: string | null },
   userId: string,
 ) {
-  return canUpdateInContext(context, row, userId)
+  return canUpdateInContext(context, row, userId);
 }
 ```
 
@@ -530,6 +579,7 @@ git commit -m "feat(mobile): add finance context query helpers"
 ## Task 3: Household Service
 
 **Files:**
+
 - Create: `apps/mobile/src/services/households.ts`
 - Create: `apps/mobile/src/services/households.test.ts`
 
@@ -544,15 +594,15 @@ import {
   listMyHouseholds,
   removeHouseholdMember,
   updateHouseholdMemberRole,
-} from './households'
+} from "./households";
 
-const mockSingle = jest.fn()
-const mockSelect = jest.fn(() => chain)
-const mockInsert = jest.fn(() => chain)
-const mockUpdate = jest.fn(() => chain)
-const mockEq = jest.fn(() => chain)
-const mockOrder = jest.fn(() => chain)
-const mockFrom = jest.fn(() => chain)
+const mockSingle = jest.fn();
+const mockSelect = jest.fn(() => chain);
+const mockInsert = jest.fn(() => chain);
+const mockUpdate = jest.fn(() => chain);
+const mockEq = jest.fn(() => chain);
+const mockOrder = jest.fn(() => chain);
+const mockFrom = jest.fn(() => chain);
 
 const chain = {
   select: mockSelect,
@@ -561,60 +611,74 @@ const chain = {
   eq: mockEq,
   order: mockOrder,
   single: mockSingle,
-}
+};
 
-const supabase = { from: mockFrom } as any
+const supabase = { from: mockFrom } as any;
 
-describe('household service', () => {
+describe("household service", () => {
   beforeEach(() => {
-    jest.clearAllMocks()
-    mockSingle.mockResolvedValue({ data: { id: 'hh-1', name: 'Keluarga Budi', invite_code: 'ABC123' }, error: null })
-  })
+    jest.clearAllMocks();
+    mockSingle.mockResolvedValue({
+      data: { id: "hh-1", name: "Keluarga Budi", invite_code: "ABC123" },
+      error: null,
+    });
+  });
 
-  it('creates household with owner membership', async () => {
-    await createHousehold(supabase, { name: 'Keluarga Budi', ownerId: 'user-1' })
+  it("creates household with owner membership", async () => {
+    await createHousehold(supabase, {
+      name: "Keluarga Budi",
+      ownerId: "user-1",
+    });
 
-    expect(mockFrom).toHaveBeenCalledWith('households')
-    expect(mockInsert).toHaveBeenCalledWith(expect.objectContaining({
-      name: 'Keluarga Budi',
-      owner_id: 'user-1',
-    }))
-  })
+    expect(mockFrom).toHaveBeenCalledWith("households");
+    expect(mockInsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: "Keluarga Budi",
+        owner_id: "user-1",
+      }),
+    );
+  });
 
-  it('lists active memberships for current user', async () => {
-    await listMyHouseholds(supabase, 'user-1')
+  it("lists active memberships for current user", async () => {
+    await listMyHouseholds(supabase, "user-1");
 
-    expect(mockFrom).toHaveBeenCalledWith('household_members')
-    expect(mockEq).toHaveBeenCalledWith('user_id', 'user-1')
-    expect(mockEq).toHaveBeenCalledWith('status', 'active')
-  })
+    expect(mockFrom).toHaveBeenCalledWith("household_members");
+    expect(mockEq).toHaveBeenCalledWith("user_id", "user-1");
+    expect(mockEq).toHaveBeenCalledWith("status", "active");
+  });
 
-  it('joins household by invite code through RPC', async () => {
-    const rpc = jest.fn().mockResolvedValue({ data: { household_id: 'hh-1' }, error: null })
-    await joinHouseholdByInviteCode({ rpc } as any, 'ABC123')
+  it("joins household by invite code through RPC", async () => {
+    const rpc = jest
+      .fn()
+      .mockResolvedValue({ data: { household_id: "hh-1" }, error: null });
+    await joinHouseholdByInviteCode({ rpc } as any, "ABC123");
 
-    expect(rpc).toHaveBeenCalledWith('join_household_by_invite_code', { invite_code_input: 'ABC123' })
-  })
+    expect(rpc).toHaveBeenCalledWith("join_household_by_invite_code", {
+      invite_code_input: "ABC123",
+    });
+  });
 
-  it('updates member role without allowing owner role', async () => {
-    await updateHouseholdMemberRole(supabase, 'member-1', 'admin')
+  it("updates member role without allowing owner role", async () => {
+    await updateHouseholdMemberRole(supabase, "member-1", "admin");
 
-    expect(mockFrom).toHaveBeenCalledWith('household_members')
-    expect(mockUpdate).toHaveBeenCalledWith({ role: 'admin' })
-    expect(mockEq).toHaveBeenCalledWith('id', 'member-1')
-  })
+    expect(mockFrom).toHaveBeenCalledWith("household_members");
+    expect(mockUpdate).toHaveBeenCalledWith({ role: "admin" });
+    expect(mockEq).toHaveBeenCalledWith("id", "member-1");
+  });
 
-  it('rejects role update to owner from client service', async () => {
-    await expect(updateHouseholdMemberRole(supabase, 'member-1', 'owner' as any)).rejects.toThrow('Owner transfer is not supported from this action')
-  })
+  it("rejects role update to owner from client service", async () => {
+    await expect(
+      updateHouseholdMemberRole(supabase, "member-1", "owner" as any),
+    ).rejects.toThrow("Owner transfer is not supported from this action");
+  });
 
-  it('removes member by marking status removed', async () => {
-    await removeHouseholdMember(supabase, 'member-1')
+  it("removes member by marking status removed", async () => {
+    await removeHouseholdMember(supabase, "member-1");
 
-    expect(mockUpdate).toHaveBeenCalledWith({ status: 'removed' })
-    expect(mockEq).toHaveBeenCalledWith('id', 'member-1')
-  })
-})
+    expect(mockUpdate).toHaveBeenCalledWith({ status: "removed" });
+    expect(mockEq).toHaveBeenCalledWith("id", "member-1");
+  });
+});
 ```
 
 - [ ] **Step 2: Run failing tests**
@@ -631,109 +695,131 @@ Expected: FAIL because `households.ts` does not exist.
 Create `apps/mobile/src/services/households.ts`:
 
 ```ts
-export type HouseholdRole = 'owner' | 'admin' | 'member' | 'viewer'
+export type HouseholdRole = "owner" | "admin" | "member" | "viewer";
 
 export type Household = {
-  id: string
-  name: string
-  owner_id: string
-  invite_code: string
-  created_at: string
-  updated_at: string
-}
+  id: string;
+  name: string;
+  owner_id: string;
+  invite_code: string;
+  created_at: string;
+  updated_at: string;
+};
 
 export type HouseholdMember = {
-  id: string
-  household_id: string
-  user_id: string
-  role: HouseholdRole
-  status: 'active' | 'invited' | 'removed'
-  joined_at: string
-  households?: Household
-}
+  id: string;
+  household_id: string;
+  user_id: string;
+  role: HouseholdRole;
+  status: "active" | "invited" | "removed";
+  joined_at: string;
+  households?: Household;
+};
 
 function generateInviteCode() {
-  return Math.random().toString(36).slice(2, 8).toUpperCase()
+  return Math.random().toString(36).slice(2, 8).toUpperCase();
 }
 
-export async function createHousehold(supabase: any, input: { name: string; ownerId: string }) {
+export async function createHousehold(
+  supabase: any,
+  input: { name: string; ownerId: string },
+) {
   const { data: household, error } = await supabase
-    .from('households')
-    .insert({ name: input.name.trim(), owner_id: input.ownerId, invite_code: generateInviteCode() })
-    .select('*')
-    .single()
+    .from("households")
+    .insert({
+      name: input.name.trim(),
+      owner_id: input.ownerId,
+      invite_code: generateInviteCode(),
+    })
+    .select("*")
+    .single();
 
-  if (error) throw error
+  if (error) throw error;
 
   const { error: memberError } = await supabase
-    .from('household_members')
-    .insert({ household_id: household.id, user_id: input.ownerId, role: 'owner', status: 'active' })
+    .from("household_members")
+    .insert({
+      household_id: household.id,
+      user_id: input.ownerId,
+      role: "owner",
+      status: "active",
+    });
 
-  if (memberError) throw memberError
-  return household as Household
+  if (memberError) throw memberError;
+  return household as Household;
 }
 
-export async function listMyHouseholds(supabase: any, userId: string): Promise<HouseholdMember[]> {
+export async function listMyHouseholds(
+  supabase: any,
+  userId: string,
+): Promise<HouseholdMember[]> {
   const { data, error } = await supabase
-    .from('household_members')
-    .select('*, households(*)')
-    .eq('user_id', userId)
-    .eq('status', 'active')
-    .order('joined_at', { ascending: false })
+    .from("household_members")
+    .select("*, households(*)")
+    .eq("user_id", userId)
+    .eq("status", "active")
+    .order("joined_at", { ascending: false });
 
-  if (error) throw error
-  return (data ?? []) as HouseholdMember[]
+  if (error) throw error;
+  return (data ?? []) as HouseholdMember[];
 }
 
-export async function joinHouseholdByInviteCode(supabase: any, inviteCode: string) {
-  const { data, error } = await supabase.rpc('join_household_by_invite_code', {
+export async function joinHouseholdByInviteCode(
+  supabase: any,
+  inviteCode: string,
+) {
+  const { data, error } = await supabase.rpc("join_household_by_invite_code", {
     invite_code_input: inviteCode.trim().toUpperCase(),
-  })
-  if (error) throw error
-  return data
+  });
+  if (error) throw error;
+  return data;
 }
 
-export async function listHouseholdMembers(supabase: any, householdId: string): Promise<HouseholdMember[]> {
+export async function listHouseholdMembers(
+  supabase: any,
+  householdId: string,
+): Promise<HouseholdMember[]> {
   const { data, error } = await supabase
-    .from('household_members')
-    .select('*')
-    .eq('household_id', householdId)
-    .eq('status', 'active')
-    .order('joined_at', { ascending: true })
+    .from("household_members")
+    .select("*")
+    .eq("household_id", householdId)
+    .eq("status", "active")
+    .order("joined_at", { ascending: true });
 
-  if (error) throw error
-  return (data ?? []) as HouseholdMember[]
+  if (error) throw error;
+  return (data ?? []) as HouseholdMember[];
 }
 
 export async function updateHouseholdMemberRole(
   supabase: any,
   memberId: string,
-  role: Exclude<HouseholdRole, 'owner'>,
+  role: Exclude<HouseholdRole, "owner">,
 ) {
-  if (role === 'owner') throw new Error('Owner transfer is not supported from this action')
+  if (role === "owner")
+    throw new Error("Owner transfer is not supported from this action");
 
   const { data, error } = await supabase
-    .from('household_members')
+    .from("household_members")
     .update({ role })
-    .eq('id', memberId)
-    .select('*')
-    .single()
+    .eq("id", memberId)
+    .select("*")
+    .single();
 
-  if (error) throw error
-  return data as HouseholdMember
+  if (error) throw error;
+  return data as HouseholdMember;
 }
 
 export async function removeHouseholdMember(supabase: any, memberId: string) {
   const { error } = await supabase
-    .from('household_members')
-    .update({ status: 'removed' })
-    .eq('id', memberId)
+    .from("household_members")
+    .update({ status: "removed" })
+    .eq("id", memberId);
 
-  if (error) throw error
+  if (error) throw error;
 }
 
 export async function leaveHousehold(supabase: any, memberId: string) {
-  return removeHouseholdMember(supabase, memberId)
+  return removeHouseholdMember(supabase, memberId);
 }
 ```
 
@@ -790,6 +876,7 @@ git commit -m "feat(mobile): add household service"
 ## Task 4: Finance Context Provider
 
 **Files:**
+
 - Create: `apps/mobile/src/state/finance-context.tsx`
 - Create: `apps/mobile/src/state/finance-context.test.tsx`
 - Modify: `apps/mobile/app/_layout.tsx`
@@ -799,47 +886,80 @@ git commit -m "feat(mobile): add household service"
 Create `apps/mobile/src/state/finance-context.test.tsx`:
 
 ```tsx
-import React from 'react'
-import { Text, Pressable } from 'react-native'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react-native'
+import React from "react";
+import { Text, Pressable } from "react-native";
+import {
+  render,
+  screen,
+  fireEvent,
+  waitFor,
+} from "@testing-library/react-native";
 
-import { FinanceContextProvider, useFinanceContext } from './finance-context'
+import { FinanceContextProvider, useFinanceContext } from "./finance-context";
 
 const memberships = [
-  { id: 'm1', household_id: 'hh-1', role: 'admin', status: 'active', households: { id: 'hh-1', name: 'Keluarga Budi', invite_code: 'ABC123', owner_id: 'user-1', created_at: '', updated_at: '' } },
-]
+  {
+    id: "m1",
+    household_id: "hh-1",
+    role: "admin",
+    status: "active",
+    households: {
+      id: "hh-1",
+      name: "Keluarga Budi",
+      invite_code: "ABC123",
+      owner_id: "user-1",
+      created_at: "",
+      updated_at: "",
+    },
+  },
+];
 
 function Harness() {
-  const { activeContext, memberships, setActiveHousehold, setPersonalContext, canCreate } = useFinanceContext()
+  const {
+    activeContext,
+    memberships,
+    setActiveHousehold,
+    setPersonalContext,
+    canCreate,
+  } = useFinanceContext();
   return (
     <>
       <Text testID="context-type">{activeContext.type}</Text>
       <Text testID="membership-count">{memberships.length}</Text>
-      <Text testID="can-create">{canCreate ? 'yes' : 'no'}</Text>
-      <Pressable testID="set-household" onPress={() => setActiveHousehold('hh-1')}><Text>Household</Text></Pressable>
-      <Pressable testID="set-personal" onPress={setPersonalContext}><Text>Personal</Text></Pressable>
+      <Text testID="can-create">{canCreate ? "yes" : "no"}</Text>
+      <Pressable
+        testID="set-household"
+        onPress={() => setActiveHousehold("hh-1")}
+      >
+        <Text>Household</Text>
+      </Pressable>
+      <Pressable testID="set-personal" onPress={setPersonalContext}>
+        <Text>Personal</Text>
+      </Pressable>
     </>
-  )
+  );
 }
 
-describe('FinanceContextProvider', () => {
-  it('loads memberships and switches contexts', async () => {
+describe("FinanceContextProvider", () => {
+  it("loads memberships and switches contexts", async () => {
     render(
       <FinanceContextProvider loadMemberships={async () => memberships as any}>
         <Harness />
       </FinanceContextProvider>,
-    )
+    );
 
-    await waitFor(() => expect(screen.getByTestId('membership-count').props.children).toBe(1))
-    expect(screen.getByTestId('context-type').props.children).toBe('personal')
+    await waitFor(() =>
+      expect(screen.getByTestId("membership-count").props.children).toBe(1),
+    );
+    expect(screen.getByTestId("context-type").props.children).toBe("personal");
 
-    fireEvent.press(screen.getByTestId('set-household'))
-    expect(screen.getByTestId('context-type').props.children).toBe('household')
+    fireEvent.press(screen.getByTestId("set-household"));
+    expect(screen.getByTestId("context-type").props.children).toBe("household");
 
-    fireEvent.press(screen.getByTestId('set-personal'))
-    expect(screen.getByTestId('context-type').props.children).toBe('personal')
-  })
-})
+    fireEvent.press(screen.getByTestId("set-personal"));
+    expect(screen.getByTestId("context-type").props.children).toBe("personal");
+  });
+});
 ```
 
 - [ ] **Step 2: Run failing tests**
@@ -856,77 +976,115 @@ Expected: FAIL because provider does not exist.
 Create `apps/mobile/src/state/finance-context.tsx` with:
 
 ```tsx
-import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
+import React, {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 
-import { useSupabase } from '../lib/supabase'
-import { getCurrentUserId } from '../services/currentUser'
-import { canCreateInContext, type FinanceContext } from '../services/finance-context-query'
-import { listMyHouseholds, type HouseholdMember } from '../services/households'
+import { useSupabase } from "../lib/supabase";
+import { getCurrentUserId } from "../services/currentUser";
+import {
+  canCreateInContext,
+  type FinanceContext,
+} from "../services/finance-context-query";
+import { listMyHouseholds, type HouseholdMember } from "../services/households";
 
 type FinanceContextValue = {
-  activeContext: FinanceContext
-  memberships: HouseholdMember[]
-  loading: boolean
-  canCreate: boolean
-  refreshMemberships: () => Promise<void>
-  setPersonalContext: () => void
-  setActiveHousehold: (householdId: string) => void
-}
+  activeContext: FinanceContext;
+  memberships: HouseholdMember[];
+  loading: boolean;
+  canCreate: boolean;
+  refreshMemberships: () => Promise<void>;
+  setPersonalContext: () => void;
+  setActiveHousehold: (householdId: string) => void;
+};
 
-const Context = createContext<FinanceContextValue | null>(null)
+const Context = createContext<FinanceContextValue | null>(null);
 
 export function FinanceContextProvider({
   children,
   loadMemberships,
 }: {
-  children: React.ReactNode
-  loadMemberships?: () => Promise<HouseholdMember[]>
+  children: React.ReactNode;
+  loadMemberships?: () => Promise<HouseholdMember[]>;
 }) {
-  const { supabase } = useSupabase()
-  const [activeContext, setActiveContext] = useState<FinanceContext>({ type: 'personal' })
-  const [memberships, setMemberships] = useState<HouseholdMember[]>([])
-  const [loading, setLoading] = useState(true)
+  const { supabase } = useSupabase();
+  const [activeContext, setActiveContext] = useState<FinanceContext>({
+    type: "personal",
+  });
+  const [memberships, setMemberships] = useState<HouseholdMember[]>([]);
+  const [loading, setLoading] = useState(true);
 
   const refreshMemberships = useCallback(async () => {
-    setLoading(true)
+    setLoading(true);
     try {
-      const rows = loadMemberships ? await loadMemberships() : await listMyHouseholds(supabase, await getCurrentUserId())
-      setMemberships(rows)
-      if (activeContext.type === 'household' && !rows.some((row) => row.household_id === activeContext.householdId)) {
-        setActiveContext({ type: 'personal' })
+      const rows = loadMemberships
+        ? await loadMemberships()
+        : await listMyHouseholds(supabase, await getCurrentUserId());
+      setMemberships(rows);
+      if (
+        activeContext.type === "household" &&
+        !rows.some((row) => row.household_id === activeContext.householdId)
+      ) {
+        setActiveContext({ type: "personal" });
       }
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }, [activeContext, loadMemberships, supabase])
+  }, [activeContext, loadMemberships, supabase]);
 
   useEffect(() => {
-    refreshMemberships()
-  }, [])
+    refreshMemberships();
+  }, []);
 
-  const setActiveHousehold = useCallback((householdId: string) => {
-    const membership = memberships.find((row) => row.household_id === householdId)
-    if (!membership) return
-    setActiveContext({ type: 'household', householdId, role: membership.role })
-  }, [memberships])
+  const setActiveHousehold = useCallback(
+    (householdId: string) => {
+      const membership = memberships.find(
+        (row) => row.household_id === householdId,
+      );
+      if (!membership) return;
+      setActiveContext({
+        type: "household",
+        householdId,
+        role: membership.role,
+      });
+    },
+    [memberships],
+  );
 
-  const value = useMemo<FinanceContextValue>(() => ({
-    activeContext,
-    memberships,
-    loading,
-    canCreate: canCreateInContext(activeContext),
-    refreshMemberships,
-    setPersonalContext: () => setActiveContext({ type: 'personal' }),
-    setActiveHousehold,
-  }), [activeContext, loading, memberships, refreshMemberships, setActiveHousehold])
+  const value = useMemo<FinanceContextValue>(
+    () => ({
+      activeContext,
+      memberships,
+      loading,
+      canCreate: canCreateInContext(activeContext),
+      refreshMemberships,
+      setPersonalContext: () => setActiveContext({ type: "personal" }),
+      setActiveHousehold,
+    }),
+    [
+      activeContext,
+      loading,
+      memberships,
+      refreshMemberships,
+      setActiveHousehold,
+    ],
+  );
 
-  return <Context.Provider value={value}>{children}</Context.Provider>
+  return <Context.Provider value={value}>{children}</Context.Provider>;
 }
 
 export function useFinanceContext() {
-  const value = useContext(Context)
-  if (!value) throw new Error('useFinanceContext must be used within FinanceContextProvider')
-  return value
+  const value = useContext(Context);
+  if (!value)
+    throw new Error(
+      "useFinanceContext must be used within FinanceContextProvider",
+    );
+  return value;
 }
 ```
 
@@ -935,7 +1093,7 @@ export function useFinanceContext() {
 Modify `apps/mobile/app/_layout.tsx` so `FinanceContextProvider` wraps the tab app inside existing providers:
 
 ```tsx
-import { FinanceContextProvider } from '../src/state/finance-context'
+import { FinanceContextProvider } from "../src/state/finance-context";
 ```
 
 Then nest:
@@ -968,6 +1126,7 @@ git commit -m "feat(mobile): add finance context provider"
 ## Task 5: Context-Aware Transactions and Wallets First Slice
 
 **Files:**
+
 - Modify: `apps/mobile/src/services/transactions.ts`
 - Modify: `apps/mobile/src/services/transactions.test.ts`
 - Modify: `apps/mobile/src/services/wallets.ts`
@@ -978,20 +1137,38 @@ git commit -m "feat(mobile): add finance context provider"
 In `apps/mobile/src/services/transactions.test.ts`, add tests asserting:
 
 ```ts
-it('lists personal transactions with household_id is null', async () => {
-  await listTransactions(undefined, { type: 'personal' })
-  expect(mockIs).toHaveBeenCalledWith('household_id', null)
-})
+it("lists personal transactions with household_id is null", async () => {
+  await listTransactions(undefined, { type: "personal" });
+  expect(mockIs).toHaveBeenCalledWith("household_id", null);
+});
 
-it('lists household transactions by household_id', async () => {
-  await listTransactions(undefined, { type: 'household', householdId: 'hh-1', role: 'member' })
-  expect(mockEq).toHaveBeenCalledWith('household_id', 'hh-1')
-})
+it("lists household transactions by household_id", async () => {
+  await listTransactions(undefined, {
+    type: "household",
+    householdId: "hh-1",
+    role: "member",
+  });
+  expect(mockEq).toHaveBeenCalledWith("household_id", "hh-1");
+});
 
-it('creates household transaction with audit fields', async () => {
-  await createTransaction({ transaction_type: 'expense', amount: 10000, category: 'Makan', description: 'Bakso' }, { type: 'household', householdId: 'hh-1', role: 'member' })
-  expect(mockInsert).toHaveBeenCalledWith(expect.objectContaining({ household_id: 'hh-1', created_by: 'user-1', updated_by: 'user-1' }))
-})
+it("creates household transaction with audit fields", async () => {
+  await createTransaction(
+    {
+      transaction_type: "expense",
+      amount: 10000,
+      category: "Makan",
+      description: "Bakso",
+    },
+    { type: "household", householdId: "hh-1", role: "member" },
+  );
+  expect(mockInsert).toHaveBeenCalledWith(
+    expect.objectContaining({
+      household_id: "hh-1",
+      created_by: "user-1",
+      updated_by: "user-1",
+    }),
+  );
+});
 ```
 
 - [ ] **Step 2: Add failing wallet tests**
@@ -999,15 +1176,24 @@ it('creates household transaction with audit fields', async () => {
 In `apps/mobile/src/services/wallets.test.ts`, add tests asserting:
 
 ```ts
-it('lists personal wallets with household_id is null', async () => {
-  await listWallets({ type: 'personal' })
-  expect(mockIs).toHaveBeenCalledWith('household_id', null)
-})
+it("lists personal wallets with household_id is null", async () => {
+  await listWallets({ type: "personal" });
+  expect(mockIs).toHaveBeenCalledWith("household_id", null);
+});
 
-it('creates household wallet with audit fields', async () => {
-  await createWallet({ name: 'Kas Rumah', type: 'cash' }, { type: 'household', householdId: 'hh-1', role: 'admin' })
-  expect(mockInsert).toHaveBeenCalledWith(expect.objectContaining({ household_id: 'hh-1', created_by: 'user-1', updated_by: 'user-1' }))
-})
+it("creates household wallet with audit fields", async () => {
+  await createWallet(
+    { name: "Kas Rumah", type: "cash" },
+    { type: "household", householdId: "hh-1", role: "admin" },
+  );
+  expect(mockInsert).toHaveBeenCalledWith(
+    expect.objectContaining({
+      household_id: "hh-1",
+      created_by: "user-1",
+      updated_by: "user-1",
+    }),
+  );
+});
 ```
 
 - [ ] **Step 3: Run failing tests**
@@ -1024,26 +1210,48 @@ Expected: FAIL because service signatures do not accept context and do not apply
 In `transactions.ts`:
 
 ```ts
-import { applyFinanceContextFilter, buildFinanceInsertAudit, buildFinanceUpdateAudit, canCreateInContext, type FinanceContext } from './finance-context-query'
+import {
+  applyFinanceContextFilter,
+  buildFinanceInsertAudit,
+  buildFinanceUpdateAudit,
+  canCreateInContext,
+  type FinanceContext,
+} from "./finance-context-query";
 
-const defaultContext: FinanceContext = { type: 'personal' }
+const defaultContext: FinanceContext = { type: "personal" };
 
-export async function createTransaction(tx: TransactionCreate, context: FinanceContext = defaultContext): Promise<Transaction> {
-  if (!canCreateInContext(context)) throw new Error('Akses lihat saja')
-  const userId = await getCurrentUserId()
-  const payload = { ...buildInsertPayload(tx, userId), ...buildFinanceInsertAudit(context, userId) }
+export async function createTransaction(
+  tx: TransactionCreate,
+  context: FinanceContext = defaultContext,
+): Promise<Transaction> {
+  if (!canCreateInContext(context)) throw new Error("Akses lihat saja");
+  const userId = await getCurrentUserId();
+  const payload = {
+    ...buildInsertPayload(tx, userId),
+    ...buildFinanceInsertAudit(context, userId),
+  };
   // existing insert uses payload
 }
 
-export async function listTransactions(filters?: Filters, context: FinanceContext = defaultContext): Promise<Transaction[]> {
-  let query = supabase.from('transactions').select('*').order('date', { ascending: false })
-  query = applyFinanceContextFilter(query, context) as typeof query
+export async function listTransactions(
+  filters?: Filters,
+  context: FinanceContext = defaultContext,
+): Promise<Transaction[]> {
+  let query = supabase
+    .from("transactions")
+    .select("*")
+    .order("date", { ascending: false });
+  query = applyFinanceContextFilter(query, context) as typeof query;
   // existing filters remain
 }
 
-export async function updateTransaction(id: string, updates: Partial<TransactionCreate>, context: FinanceContext = defaultContext): Promise<Transaction> {
-  const userId = await getCurrentUserId()
-  const payload = { ...updates, ...buildFinanceUpdateAudit(userId) }
+export async function updateTransaction(
+  id: string,
+  updates: Partial<TransactionCreate>,
+  context: FinanceContext = defaultContext,
+): Promise<Transaction> {
+  const userId = await getCurrentUserId();
+  const payload = { ...updates, ...buildFinanceUpdateAudit(userId) };
   // existing update uses payload
 }
 ```
@@ -1072,6 +1280,7 @@ git commit -m "feat(mobile): scope transactions and wallets by finance context"
 ## Task 6: Context Switcher UI
 
 **Files:**
+
 - Create: `apps/mobile/src/components/FinanceContextSwitcher.tsx`
 - Create: `apps/mobile/__tests__/family-context-switcher.test.tsx`
 - Modify: `apps/mobile/app/(tabs)/index.tsx`
@@ -1081,36 +1290,40 @@ git commit -m "feat(mobile): scope transactions and wallets by finance context"
 Create `apps/mobile/__tests__/family-context-switcher.test.tsx`:
 
 ```tsx
-import React from 'react'
-import { render, screen, fireEvent } from '@testing-library/react-native'
+import React from "react";
+import { render, screen, fireEvent } from "@testing-library/react-native";
 
-import { FinanceContextSwitcher } from '../src/components/FinanceContextSwitcher'
+import { FinanceContextSwitcher } from "../src/components/FinanceContextSwitcher";
 
-const mockSetPersonalContext = jest.fn()
-const mockSetActiveHousehold = jest.fn()
+const mockSetPersonalContext = jest.fn();
+const mockSetActiveHousehold = jest.fn();
 
-jest.mock('../src/state/finance-context', () => ({
+jest.mock("../src/state/finance-context", () => ({
   useFinanceContext: () => ({
-    activeContext: { type: 'personal' },
+    activeContext: { type: "personal" },
     memberships: [
-      { household_id: 'hh-1', role: 'admin', households: { name: 'Keluarga Budi' } },
+      {
+        household_id: "hh-1",
+        role: "admin",
+        households: { name: "Keluarga Budi" },
+      },
     ],
     setPersonalContext: mockSetPersonalContext,
     setActiveHousehold: mockSetActiveHousehold,
   }),
-}))
+}));
 
-describe('FinanceContextSwitcher', () => {
-  it('shows personal and household choices', () => {
-    render(<FinanceContextSwitcher />)
+describe("FinanceContextSwitcher", () => {
+  it("shows personal and household choices", () => {
+    render(<FinanceContextSwitcher />);
 
-    expect(screen.getByText('Pribadi')).toBeTruthy()
-    fireEvent.press(screen.getByTestId('finance-context-switcher'))
-    expect(screen.getByText('Keluarga Budi')).toBeTruthy()
-    fireEvent.press(screen.getByText('Keluarga Budi'))
-    expect(mockSetActiveHousehold).toHaveBeenCalledWith('hh-1')
-  })
-})
+    expect(screen.getByText("Pribadi")).toBeTruthy();
+    fireEvent.press(screen.getByTestId("finance-context-switcher"));
+    expect(screen.getByText("Keluarga Budi")).toBeTruthy();
+    fireEvent.press(screen.getByText("Keluarga Budi"));
+    expect(mockSetActiveHousehold).toHaveBeenCalledWith("hh-1");
+  });
+});
 ```
 
 - [ ] **Step 2: Run failing test**
@@ -1160,6 +1373,7 @@ git commit -m "feat(mobile): add finance context switcher"
 ## Task 7: Family Center Screen
 
 **Files:**
+
 - Modify: `apps/mobile/app/(tabs)/groups.tsx`
 - Create/Modify: `apps/mobile/__tests__/groups-family-center.test.tsx`
 
@@ -1168,28 +1382,41 @@ git commit -m "feat(mobile): add finance context switcher"
 Create `apps/mobile/__tests__/groups-family-center.test.tsx` with tests that mock `households.ts` and assert:
 
 ```tsx
-it('renders family center copy and active household list', async () => {
-  renderGroupsScreen()
-  expect(await screen.findByText('Keluarga')).toBeTruthy()
-  expect(screen.getByText('Keluarga Budi')).toBeTruthy()
-  expect(screen.getByText('Admin')).toBeTruthy()
-})
+it("renders family center copy and active household list", async () => {
+  renderGroupsScreen();
+  expect(await screen.findByText("Keluarga")).toBeTruthy();
+  expect(screen.getByText("Keluarga Budi")).toBeTruthy();
+  expect(screen.getByText("Admin")).toBeTruthy();
+});
 
-it('creates a household from the form', async () => {
-  renderGroupsScreen()
-  fireEvent.press(screen.getByText('Buat'))
-  fireEvent.changeText(screen.getByPlaceholderText('Nama keluarga'), 'Keluarga Budi')
-  fireEvent.press(screen.getByText('Simpan keluarga'))
-  await waitFor(() => expect(mockCreateHousehold).toHaveBeenCalledWith(expect.anything(), { name: 'Keluarga Budi', ownerId: 'user-1' }))
-})
+it("creates a household from the form", async () => {
+  renderGroupsScreen();
+  fireEvent.press(screen.getByText("Buat"));
+  fireEvent.changeText(
+    screen.getByPlaceholderText("Nama keluarga"),
+    "Keluarga Budi",
+  );
+  fireEvent.press(screen.getByText("Simpan keluarga"));
+  await waitFor(() =>
+    expect(mockCreateHousehold).toHaveBeenCalledWith(expect.anything(), {
+      name: "Keluarga Budi",
+      ownerId: "user-1",
+    }),
+  );
+});
 
-it('joins household by invite code', async () => {
-  renderGroupsScreen()
-  fireEvent.press(screen.getByText('Gabung'))
-  fireEvent.changeText(screen.getByPlaceholderText('Kode undangan'), 'ABC123')
-  fireEvent.press(screen.getByText('Gabung keluarga'))
-  await waitFor(() => expect(mockJoinHouseholdByInviteCode).toHaveBeenCalledWith(expect.anything(), 'ABC123'))
-})
+it("joins household by invite code", async () => {
+  renderGroupsScreen();
+  fireEvent.press(screen.getByText("Gabung"));
+  fireEvent.changeText(screen.getByPlaceholderText("Kode undangan"), "ABC123");
+  fireEvent.press(screen.getByText("Gabung keluarga"));
+  await waitFor(() =>
+    expect(mockJoinHouseholdByInviteCode).toHaveBeenCalledWith(
+      expect.anything(),
+      "ABC123",
+    ),
+  );
+});
 ```
 
 - [ ] **Step 2: Run failing tests**
@@ -1242,6 +1469,7 @@ git commit -m "feat(mobile): build family center"
 ## Task 8: Expand Context to Budgets, Bills, Envelopes, and Reports
 
 **Files:**
+
 - Modify: `apps/mobile/src/services/budgets.ts`
 - Modify: `apps/mobile/src/services/bills.ts`
 - Modify: `apps/mobile/src/services/budget-envelopes.ts`
@@ -1255,11 +1483,15 @@ git commit -m "feat(mobile): build family center"
 For each service, add one personal filter and one household filter test:
 
 ```ts
-await listBudgets(supabase, userId, { type: 'personal' })
-expect(mockIs).toHaveBeenCalledWith('household_id', null)
+await listBudgets(supabase, userId, { type: "personal" });
+expect(mockIs).toHaveBeenCalledWith("household_id", null);
 
-await listBudgets(supabase, userId, { type: 'household', householdId: 'hh-1', role: 'admin' })
-expect(mockEq).toHaveBeenCalledWith('household_id', 'hh-1')
+await listBudgets(supabase, userId, {
+  type: "household",
+  householdId: "hh-1",
+  role: "admin",
+});
+expect(mockEq).toHaveBeenCalledWith("household_id", "hh-1");
 ```
 
 Repeat with actual function signatures for bills and budget envelopes.
@@ -1278,7 +1510,13 @@ Expected: FAIL until services apply finance context.
 Import and use:
 
 ```ts
-import { applyFinanceContextFilter, buildFinanceInsertAudit, buildFinanceUpdateAudit, canCreateInContext, type FinanceContext } from './finance-context-query'
+import {
+  applyFinanceContextFilter,
+  buildFinanceInsertAudit,
+  buildFinanceUpdateAudit,
+  canCreateInContext,
+  type FinanceContext,
+} from "./finance-context-query";
 ```
 
 Every list function applies `applyFinanceContextFilter`. Every create function adds `buildFinanceInsertAudit`. Every update function adds `buildFinanceUpdateAudit`. Viewer creates throw `new Error('Akses lihat saja')`.
@@ -1314,6 +1552,7 @@ git commit -m "feat(mobile): scope remaining finance screens by context"
 ## Task 9: Multi-Device Freshness
 
 **Files:**
+
 - Modify: `apps/mobile/src/hooks/useTransactionRealtime.ts`
 - Modify: screens that already load financial data.
 
@@ -1322,14 +1561,16 @@ git commit -m "feat(mobile): scope remaining finance screens by context"
 If `useTransactionRealtime.ts` has tests, add a test that subscribes to a context-specific channel name:
 
 ```ts
-expect(channelName).toBe('transactions:household:hh-1')
+expect(channelName).toBe("transactions:household:hh-1");
 ```
 
 If no hook test exists, add a small pure helper in the hook file:
 
 ```ts
 export function transactionChannelName(context: FinanceContext) {
-  return context.type === 'household' ? `transactions:household:${context.householdId}` : 'transactions:personal'
+  return context.type === "household"
+    ? `transactions:household:${context.householdId}`
+    : "transactions:personal";
 }
 ```
 
@@ -1365,6 +1606,7 @@ git commit -m "feat(mobile): refresh finance data across devices"
 ## Task 10: Final Verification and Documentation
 
 **Files:**
+
 - Modify: `CLAUDE.md`
 - Modify or create: `docs/AI_HANDOFF_FAMILY_FINANCE_2026-05-21.md`
 

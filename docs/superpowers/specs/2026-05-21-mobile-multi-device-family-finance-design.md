@@ -206,8 +206,12 @@ Add a small global state module:
 
 ```ts
 type FinanceContext =
-  | { type: 'personal' }
-  | { type: 'household'; householdId: string; role: 'owner' | 'admin' | 'member' | 'viewer' }
+  | { type: "personal" }
+  | {
+      type: "household";
+      householdId: string;
+      role: "owner" | "admin" | "member" | "viewer";
+    };
 ```
 
 Responsibilities:
