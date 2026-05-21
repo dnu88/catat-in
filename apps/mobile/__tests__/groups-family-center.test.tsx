@@ -126,7 +126,10 @@ describe("Family Center screen", () => {
 		renderGroupsScreen();
 
 		fireEvent.press(screen.getByLabelText("Buat keluarga baru"));
-		fireEvent.changeText(screen.getByLabelText("Nama keluarga"), "Keluarga Budi");
+		fireEvent.changeText(
+			screen.getByLabelText("Nama keluarga"),
+			"Keluarga Budi",
+		);
 		fireEvent.press(screen.getByLabelText("Simpan keluarga"));
 
 		await waitFor(() => expect(mockCreateHousehold).toHaveBeenCalledTimes(1));
@@ -139,6 +142,8 @@ describe("Family Center screen", () => {
 		expect(screen.queryByLabelText("Kode undangan")).toBeNull();
 
 		resolveCreate({ id: "hh-new" });
-		await waitFor(() => expect(mockRefreshMemberships).toHaveBeenCalledTimes(1));
+		await waitFor(() =>
+			expect(mockRefreshMemberships).toHaveBeenCalledTimes(1),
+		);
 	});
 });
