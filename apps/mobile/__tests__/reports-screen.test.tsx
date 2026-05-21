@@ -88,12 +88,21 @@ function renderReports() {
 }
 
 describe('ReportsScreen visual parity', () => {
-  it('exposes budget wallet management entry point in Reports', async () => {
+  it('exposes budget wallet management entry point in Reports without letting copy collide with the action', async () => {
     renderReports()
 
     await waitFor(() => expect(screen.getByText(/Dompet/i)).toBeTruthy())
     expect(screen.getByText('Kelola')).toBeTruthy()
     expect(screen.queryByText(/Amplop/i)).toBeNull()
+
+    const entryCopy = screen.getByTestId('reports-envelope-copy')
+    const manageButton = screen.getByTestId('reports-envelope-manage')
+    const copyStyle = getFlattenedStyle(entryCopy)
+    const buttonStyle = getFlattenedStyle(manageButton)
+
+    expect(copyStyle.flexShrink).toBe(1)
+    expect(copyStyle.paddingRight).toBeGreaterThanOrEqual(8)
+    expect(buttonStyle.flexShrink).toBe(0)
   })
 
   it('uses softened light-theme green accents instead of solid neon for non-primary controls', () => {
@@ -154,9 +163,12 @@ describe('ReportsScreen visual parity', () => {
     expect(getFlattenedStyle(foodFill).backgroundColor).not.toBe('#A3FF12')
   })
 
-  it('renders the six month trend with continuous svg line paths and six months of visible points', () => {
+  it('renders the six month trend with continuous proportional svg lines and visible points', () => {
     const screen = renderReports()
 
+    const chartSvg = screen.getByTestId('reports-line-chart-svg')
+    expect(chartSvg.props.accessibilityLabel).toBe('0 0 340 168')
+    expect(screen.getAllByTestId(/reports-line-guide-/)).toHaveLength(3)
     expect(screen.getByTestId('reports-line-path-income').props.accessibilityLabel.split(' ')).toHaveLength(6)
     expect(screen.getByTestId('reports-line-path-expense').props.accessibilityLabel.split(' ')).toHaveLength(6)
     expect(screen.getAllByTestId(/reports-line-dot-income-/)).toHaveLength(6)

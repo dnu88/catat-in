@@ -159,8 +159,19 @@ describe('Budget envelopes screen', () => {
     fireEvent.changeText(screen.getByPlaceholderText('Tanggal mulai'), '2026-05-10')
     fireEvent.changeText(screen.getByPlaceholderText('Tanggal akhir'), '2026-05-25')
     fireEvent.press(screen.getByTestId('budget-wallet-icon-dropdown'))
-    fireEvent.press(screen.getByText('Kartu'))
+    expect(screen.getAllByText('Makanan & Minuman').length).toBeGreaterThanOrEqual(1)
+    expect(screen.getByText('Transportasi')).toBeTruthy()
+    expect(screen.getByText('Olahraga')).toBeTruthy()
+    expect(screen.getByText('Rekreasi')).toBeTruthy()
+    expect(screen.getByText('Groceries')).toBeTruthy()
+    expect(screen.getByText('Investasi')).toBeTruthy()
+    expect(screen.getByText('Hadiah')).toBeTruthy()
+    expect(screen.getByText('Other expenses')).toBeTruthy()
+    fireEvent.press(screen.getAllByText('Makanan & Minuman')[0])
     fireEvent.press(screen.getByTestId('budget-wallet-color-dropdown'))
+    expect(screen.getAllByTestId(/budget-wallet-color-/)).toHaveLength(14)
+    expect(screen.getByTestId('budget-wallet-color-#DB2777')).toBeTruthy()
+    expect(screen.getByTestId('budget-wallet-color-#2563EB')).toBeTruthy()
     fireEvent.press(screen.getByTestId('budget-wallet-color-#65A30D'))
     fireEvent.changeText(screen.getByPlaceholderText('Catatan'), 'Kopi Kenangan, Fore')
     fireEvent.press(screen.getByText('Simpan dompet'))
@@ -173,7 +184,7 @@ describe('Budget envelopes screen', () => {
       limit_amount: 250000,
       start_date: '2026-05-10',
       end_date: '2026-05-25',
-      icon: 'card',
+      icon: 'food',
       color: '#65A30D',
       notes: 'Kopi Kenangan, Fore',
     })

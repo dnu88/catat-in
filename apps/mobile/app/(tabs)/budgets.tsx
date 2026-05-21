@@ -30,16 +30,25 @@ type EnvelopeRowProps = {
 }
 
 const iconOptions: { value: KaswiseIconName; labelId: string; labelEn: string }[] = [
-  { value: 'wallets', labelId: 'Dompet', labelEn: 'Wallet' },
-  { value: 'budgets', labelId: 'Budget', labelEn: 'Budget' },
+  { value: 'food', labelId: 'Makanan & Minuman', labelEn: 'Food & Beverage' },
+  { value: 'transport', labelId: 'Transportasi', labelEn: 'Transport' },
+  { value: 'sport', labelId: 'Olahraga', labelEn: 'Sport' },
+  { value: 'recreation', labelId: 'Rekreasi', labelEn: 'Recreation' },
   { value: 'bills', labelId: 'Tagihan', labelEn: 'Bills' },
-  { value: 'card', labelId: 'Kartu', labelEn: 'Card' },
-  { value: 'chart', labelId: 'Grafik', labelEn: 'Chart' },
-  { value: 'insight', labelId: 'Insight', labelEn: 'Insight' },
+  { value: 'groceries', labelId: 'Groceries', labelEn: 'Groceries' },
+  { value: 'investment', labelId: 'Investasi', labelEn: 'Investment' },
+  { value: 'gift', labelId: 'Hadiah', labelEn: 'Gift' },
+  { value: 'otherExpenses', labelId: 'Other expenses', labelEn: 'Other expenses' },
 ]
 
-const lightColorOptions = ['#4A80F0', '#65A30D', '#B45309', '#DC2626', '#7C3AED', '#0F766E']
-const darkColorOptions = ['#4A80F0', '#A3FF12', '#F59E0B', '#FF7B7B', '#A78BFA', '#2DD4BF']
+const lightColorOptions = [
+  '#65A30D', '#4A80F0', '#B45309', '#DC2626', '#7C3AED', '#0F766E',
+  '#DB2777', '#2563EB', '#0891B2', '#9333EA', '#EA580C', '#475569',
+]
+const darkColorOptions = [
+  '#A3FF12', '#4A80F0', '#F59E0B', '#FF7B7B', '#A78BFA', '#2DD4BF',
+  '#F472B6', '#60A5FA', '#22D3EE', '#C084FC', '#FDBA74', '#94A3B8',
+]
 
 function formatRupiah(value: number) {
   return `Rp ${Math.abs(value).toLocaleString('id-ID', { maximumFractionDigits: 0 })}`
@@ -163,7 +172,7 @@ export default function BudgetsScreen() {
   const [limitAmount, setLimitAmount] = useState('')
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
-  const [icon, setIcon] = useState<KaswiseIconName>('wallets')
+  const [icon, setIcon] = useState<KaswiseIconName>('food')
   const [color, setColor] = useState('')
   const [showIconOptions, setShowIconOptions] = useState(false)
   const [showColorOptions, setShowColorOptions] = useState(false)
@@ -238,7 +247,7 @@ export default function BudgetsScreen() {
       setLimitAmount('')
       setStartDate('')
       setEndDate('')
-      setIcon('wallets')
+      setIcon('food')
       setColor('')
       setNotes('')
       await loadEnvelopes()

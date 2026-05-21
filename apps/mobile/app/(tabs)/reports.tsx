@@ -212,14 +212,15 @@ export default function ReportsScreen() {
       }
 
   const maxVal = Math.max(...incomeData, ...expenseData)
-  const lineChartWidth = 300
-  const lineChartHeight = 150
-  const lineChartPadding = 16
+  const lineChartWidth = 340
+  const lineChartHeight = 168
+  const lineChartPaddingX = 18
+  const lineChartPlotTop = 18
+  const lineChartPlotHeight = 126
   const linePointFor = (value: number, idx: number) => {
-    const usableWidth = lineChartWidth - lineChartPadding * 2
-    const usableHeight = 118
-    const x = lineChartPadding + (idx / (months.length - 1)) * usableWidth
-    const y = lineChartPadding + (1 - value / maxVal) * usableHeight
+    const usableWidth = lineChartWidth - lineChartPaddingX * 2
+    const x = lineChartPaddingX + (idx / (months.length - 1)) * usableWidth
+    const y = lineChartPlotTop + (1 - value / maxVal) * lineChartPlotHeight
     return `${Math.round(x)},${Math.round(y)}`
   }
   const incomeLinePoints = incomeData.map(linePointFor).join(' ')
@@ -523,9 +524,9 @@ export default function ReportsScreen() {
           <View style={styles.envelopeEntryTopRow}>
             <View style={styles.envelopeEntryTitleRow}>
               <IconBubble name="budgets" tone="primary" size={36} />
-              <View>
+              <View testID="reports-envelope-copy" style={styles.envelopeEntryCopy}>
                 <Text style={styles.envelopeEntryTitle}>{tx.budgetWalletTitle}</Text>
-                <Text style={styles.envelopeEntryMeta}>{tx.budgetWalletMeta}</Text>
+                <Text style={styles.envelopeEntryMeta} numberOfLines={2} ellipsizeMode="tail">{tx.budgetWalletMeta}</Text>
               </View>
             </View>
             <Pressable
@@ -611,18 +612,18 @@ export default function ReportsScreen() {
 
               <View style={styles.lineChartArea}>
                 <View style={styles.lineGrid}>
-                  <View style={styles.gridLine} />
-                  <View style={styles.gridLine} />
-                  <View style={styles.gridLine} />
+                  <View testID="reports-line-guide-0" style={styles.gridLine} />
+                  <View testID="reports-line-guide-1" style={styles.gridLine} />
+                  <View testID="reports-line-guide-2" style={styles.gridLine} />
                 </View>
                 <View style={styles.lineGraphLayer}>
-                  <Svg testID="reports-line-chart-svg" width="100%" height={lineChartHeight} viewBox={`0 0 ${lineChartWidth} ${lineChartHeight}`} style={styles.lineSvgLayer}>
+                  <Svg testID="reports-line-chart-svg" width="100%" height={lineChartHeight} viewBox={`0 0 ${lineChartWidth} ${lineChartHeight}`} accessibilityLabel={`0 0 ${lineChartWidth} ${lineChartHeight}`} style={styles.lineSvgLayer}>
                     <Polyline testID="reports-line-path-income" accessibilityLabel={incomeLinePoints} points={incomeLinePoints} fill="none" stroke={theme.colors.success} strokeWidth={3} strokeLinecap="round" strokeLinejoin="round" />
                     <Polyline testID="reports-line-path-expense" accessibilityLabel={expenseLinePoints} points={expenseLinePoints} fill="none" stroke={theme.colors.danger} strokeWidth={3} strokeLinecap="round" strokeLinejoin="round" />
                   </Svg>
                   {months.map((month, idx) => {
-                    const incomeTop = 10 + (1 - incomeData[idx] / maxVal) * 118
-                    const expenseTop = 10 + (1 - expenseData[idx] / maxVal) * 118
+                    const incomeTop = lineChartPlotTop + (1 - incomeData[idx] / maxVal) * lineChartPlotHeight
+                    const expenseTop = lineChartPlotTop + (1 - expenseData[idx] / maxVal) * lineChartPlotHeight
                     return (
                       <Pressable
                         key={month}
@@ -1131,6 +1132,13 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
       alignItems: 'center',
       gap: 10,
       flex: 1,
+      minWidth: 0,
+    },
+    envelopeEntryCopy: {
+      flex: 1,
+      flexShrink: 1,
+      minWidth: 0,
+      paddingRight: 8,
     },
     envelopeEntryTitle: {
       color: theme.colors.textPrimary,
@@ -1140,6 +1148,7 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
     envelopeEntryMeta: {
       color: theme.colors.textMuted,
       fontSize: 12,
+      lineHeight: 16,
       marginTop: 2,
     },
     envelopeManageButton: {
@@ -1149,6 +1158,9 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
       backgroundColor: brandSoftBg,
       paddingHorizontal: 12,
       paddingVertical: 7,
+      flexShrink: 0,
+      minHeight: 34,
+      justifyContent: 'center',
     },
     envelopeManageText: {
       color: brandText,
@@ -1238,7 +1250,7 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
     chartTitle: { color: theme.colors.textPrimary, fontSize: 16, fontWeight: '800' },
     chartSub: { color: theme.colors.textSecondary, fontSize: 12 },
     lineChartArea: {
-      height: 170,
+      height: 190,
       marginTop: 8,
       position: 'relative',
     },
@@ -1246,8 +1258,8 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
       position: 'absolute',
       left: 0,
       right: 0,
-      top: 10,
-      bottom: 24,
+      top: 18,
+      bottom: 36,
       justifyContent: 'space-between',
     },
     gridLine: {
@@ -1258,8 +1270,8 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
       flex: 1,
       flexDirection: 'row',
       justifyContent: 'space-between',
-      paddingTop: 10,
-      paddingBottom: 22,
+      paddingTop: 18,
+      paddingBottom: 32,
       position: 'relative',
     },
     lineSvgLayer: {
