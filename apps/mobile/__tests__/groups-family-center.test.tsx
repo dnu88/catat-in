@@ -1,4 +1,3 @@
-import React from "react";
 import {
 	fireEvent,
 	render,
@@ -82,7 +81,10 @@ describe("Family Center screen", () => {
 		renderGroupsScreen();
 
 		fireEvent.press(screen.getByLabelText("Buat keluarga baru"));
-		fireEvent.changeText(screen.getByLabelText("Nama keluarga"), "  Keluarga Budi  ");
+		fireEvent.changeText(
+			screen.getByLabelText("Nama keluarga"),
+			"  Keluarga Budi  ",
+		);
 		fireEvent.press(screen.getByLabelText("Simpan keluarga"));
 
 		await waitFor(() =>
@@ -99,7 +101,9 @@ describe("Family Center screen", () => {
 
 		fireEvent.press(screen.getByLabelText("Gabung keluarga"));
 		fireEvent.changeText(screen.getByLabelText("Kode undangan"), "ABC123");
-		fireEvent.press(screen.getByLabelText("Gabung keluarga dengan kode undangan"));
+		fireEvent.press(
+			screen.getByLabelText("Gabung keluarga dengan kode undangan"),
+		);
 
 		await waitFor(() =>
 			expect(mockJoinHouseholdByInviteCode).toHaveBeenCalledWith(
@@ -108,5 +112,33 @@ describe("Family Center screen", () => {
 			),
 		);
 		expect(mockRefreshMemberships).toHaveBeenCalledTimes(1);
+	});
+
+	it("locks family form controls while creating a household", async () => {
+		let resolveCreate: (value: { id: string }) => void = () => {};
+		mockCreateHousehold.mockImplementationOnce(
+			() =>
+				new Promise((resolve) => {
+					resolveCreate = resolve;
+				}),
+		);
+
+		renderGroupsScreen();
+
+		fireEvent.press(screen.getByLabelText("Buat keluarga baru"));
+		fireEvent.changeText(screen.getByLabelText("Nama keluarga"), "Keluarga Budi");
+		fireEvent.press(screen.getByLabelText("Simpan keluarga"));
+
+		await waitFor(() => expect(mockCreateHousehold).toHaveBeenCalledTimes(1));
+
+		fireEvent.press(screen.getByLabelText("Gabung keluarga"));
+		fireEvent.press(screen.getByLabelText("Simpan keluarga"));
+
+		expect(mockCreateHousehold).toHaveBeenCalledTimes(1);
+		expect(screen.getByLabelText("Nama keluarga")).toBeTruthy();
+		expect(screen.queryByLabelText("Kode undangan")).toBeNull();
+
+		resolveCreate({ id: "hh-new" });
+		await waitFor(() => expect(mockRefreshMemberships).toHaveBeenCalledTimes(1));
 	});
 });
