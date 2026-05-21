@@ -275,12 +275,16 @@ describe('DashboardScreen dark luxury Home parity', () => {
     expect(heroStyle.shadowOpacity).toBeUndefined()
 
     const walletPill = screen.getByTestId('home-wallet-pill')
+    expect(walletPill.props.accessibilityRole).toBe('button')
+    expect(walletPill.props.accessibilityLabel).toBe('Buka daftar dompet, dompet aktif Main Wallet')
     const walletPillStyle = getFlattenedStyle(walletPill)
     expect(walletPillStyle.borderRadius).toBe(999)
     expect(walletPillStyle.paddingVertical).toBe(7)
     expect(walletPillStyle.paddingHorizontal).toBe(12)
 
     const quickAction = screen.getByTestId('home-quick-action-manual')
+    expect(quickAction.props.accessibilityRole).toBe('button')
+    expect(quickAction.props.accessibilityLabel).toBe('Aksi cepat Manual')
     const quickActionStyle = getFlattenedStyle(quickAction)
     expect(quickActionStyle.borderRadius).toBe(16)
     expect(quickActionStyle.paddingVertical).toBe(12)
@@ -292,6 +296,8 @@ describe('DashboardScreen dark luxury Home parity', () => {
     expect(sectionCardStyle.padding).toBe(14)
 
     const cta = screen.getByTestId('home-budget-action')
+    expect(cta.props.accessibilityRole).toBe('button')
+    expect(cta.props.accessibilityLabel).toBe('Lihat semua budget')
     expect(getFlattenedStyle(cta).backgroundColor).toBeUndefined()
 
     const primaryBubble = screen.getByTestId('home-quick-bubble-manual')

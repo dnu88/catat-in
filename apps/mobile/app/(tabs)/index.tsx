@@ -92,7 +92,7 @@ export default function DashboardScreen() {
     <View style={styles.screen}>
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.headerRow}>
-          <View>
+          <View style={styles.headerCopy}>
             <Text style={styles.greeting}>Halo, Danu</Text>
             <Text style={styles.dateText}>April 2026</Text>
           </View>
@@ -109,12 +109,22 @@ export default function DashboardScreen() {
           <View style={styles.heroBloomTwo} />
 
           <View style={styles.heroControlRow}>
-            <Pressable testID="home-wallet-pill" style={styles.walletPill} onPress={() => router.push('/(tabs)/wallets' as never)}>
+            <Pressable
+              testID="home-wallet-pill"
+              accessibilityRole="button"
+              accessibilityLabel="Buka daftar dompet, dompet aktif Main Wallet"
+              style={styles.walletPill}
+              onPress={() => router.push('/(tabs)/wallets' as never)}
+            >
               <Text style={styles.walletIcon}>▱</Text>
-              <Text style={styles.walletName}>Main Wallet</Text>
+              <Text style={styles.walletName} numberOfLines={1}>Main Wallet</Text>
               <Text style={styles.walletCaret}>⌄</Text>
             </Pressable>
-            <Pressable onPress={() => router.push('/(tabs)/wallets' as never)}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Kelola dompet"
+              onPress={() => router.push('/(tabs)/wallets' as never)}
+            >
               <Text style={styles.manageText}>Manage</Text>
             </Pressable>
           </View>
@@ -136,6 +146,8 @@ export default function DashboardScreen() {
             <Pressable
               key={action.id}
               testID={`home-quick-action-${action.id}`}
+              accessibilityRole="button"
+              accessibilityLabel={`Aksi cepat ${action.label}`}
               style={styles.quickActionCard}
               onPress={() => router.push(action.route as never)}
             >
@@ -150,7 +162,12 @@ export default function DashboardScreen() {
         <View testID="home-budget-section" style={styles.sectionCard}>
           <View style={styles.sectionTopRow}>
             <Text style={styles.sectionTitle}>{tx.budget}</Text>
-            <Pressable testID="home-budget-action" onPress={() => router.push('/(tabs)/budgets' as never)}>
+            <Pressable
+              testID="home-budget-action"
+              accessibilityRole="button"
+              accessibilityLabel="Lihat semua budget"
+              onPress={() => router.push('/(tabs)/budgets' as never)}
+            >
               <Text style={styles.sectionAction}>{tx.view}</Text>
             </Pressable>
           </View>
@@ -182,7 +199,11 @@ export default function DashboardScreen() {
         <View style={styles.sectionCard}>
           <View style={styles.sectionTopRow}>
             <Text style={styles.sectionTitle}>Terakhir</Text>
-            <Pressable onPress={() => router.push('/(tabs)/transactions' as never)}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Lihat semua transaksi"
+              onPress={() => router.push('/(tabs)/transactions' as never)}
+            >
               <Text style={styles.sectionAction}>Semua →</Text>
             </Pressable>
           </View>
@@ -233,6 +254,11 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
       justifyContent: 'space-between',
       alignItems: 'center',
       paddingTop: 6,
+      gap: 8,
+    },
+    headerCopy: {
+      flexShrink: 1,
+      minWidth: 0,
     },
     greeting: {
       color: theme.colors.textPrimary,
@@ -249,6 +275,8 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
       flexDirection: 'row',
       alignItems: 'center',
       gap: 8,
+      flexShrink: 1,
+      minWidth: 0,
     },
     avatarWrap: {
       width: 36,
@@ -299,6 +327,8 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
       marginBottom: 16,
     },
     walletPill: {
+      flexShrink: 1,
+      minWidth: 0,
       flexDirection: 'row',
       alignItems: 'center',
       gap: 8,
@@ -315,6 +345,8 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
       fontWeight: theme.typography.fontWeight.bold,
     },
     walletName: {
+      flexShrink: 1,
+      minWidth: 0,
       color: theme.colors.textPrimary,
       fontSize: 12,
       fontWeight: theme.typography.fontWeight.bold,

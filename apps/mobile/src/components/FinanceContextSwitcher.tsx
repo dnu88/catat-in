@@ -30,7 +30,7 @@ export function FinanceContextSwitcher() {
       <Pressable
         testID="finance-context-switcher"
         accessibilityRole="button"
-        accessibilityLabel="Pilih konteks keuangan"
+        accessibilityLabel={`Pilih konteks keuangan, saat ini ${activeLabel}`}
         style={styles.trigger}
         onPress={() => setOpen((current) => !current)}
       >
@@ -49,6 +49,7 @@ export function FinanceContextSwitcher() {
           <Pressable
             testID="finance-context-option-personal"
             accessibilityRole="button"
+            accessibilityState={{ selected: activeContext.type === 'personal' }}
             style={[styles.option, activeContext.type === 'personal' && styles.optionActive]}
             onPress={choosePersonal}
           >
@@ -65,6 +66,7 @@ export function FinanceContextSwitcher() {
                 key={membership.household_id}
                 testID={`finance-context-option-${membership.household_id}`}
                 accessibilityRole="button"
+                accessibilityState={{ selected: isActive }}
                 style={[styles.option, isActive && styles.optionActive]}
                 onPress={() => chooseHousehold(membership.household_id)}
               >
@@ -84,9 +86,12 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
     container: {
       position: 'relative',
       zIndex: 10,
+      flexShrink: 1,
+      minWidth: 0,
     },
     trigger: {
-      minWidth: 164,
+      minWidth: 0,
+      maxWidth: 164,
       minHeight: 52,
       borderRadius: theme.radius.lg,
       borderWidth: 1,
@@ -143,9 +148,11 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
       ...theme.shadow.md,
     },
     option: {
+      minHeight: 44,
       borderRadius: theme.radius.md,
       paddingHorizontal: theme.spacing.md,
       paddingVertical: theme.spacing.sm,
+      justifyContent: 'center',
     },
     optionActive: {
       backgroundColor: `${theme.colors.brandPrimary}14`,
