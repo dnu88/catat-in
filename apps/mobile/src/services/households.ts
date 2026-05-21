@@ -100,12 +100,8 @@ export async function listHouseholdMembers(
 export async function updateHouseholdMemberRole(
 	supabase: SupabaseLike,
 	memberId: string,
-	role: HouseholdRole,
+	role: Exclude<HouseholdRole, "owner">,
 ): Promise<HouseholdMember> {
-	if (role === "owner") {
-		throw new Error("Owner transfer is not supported from this action");
-	}
-
 	const { data, error } = await supabase
 		.from("household_members")
 		.update({ role })

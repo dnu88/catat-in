@@ -79,12 +79,6 @@ describe("household service", () => {
 		expect(mockEq).toHaveBeenCalledWith("id", "member-1");
 	});
 
-	it("rejects role update to owner from client service", async () => {
-		await expect(
-			updateHouseholdMemberRole(supabase, "member-1", "owner" as any),
-		).rejects.toThrow("Owner transfer is not supported from this action");
-	});
-
 	it("removes member by marking status removed", async () => {
 		await removeHouseholdMember(supabase, "member-1");
 
