@@ -241,12 +241,31 @@ begin
   do update set
     status = 'active',
     role = case
-      when public.household_members.role in ('owner', 'admin') then public.household_members.role
+      when public.household_members.role = 'owner'
+        and exists (
+          select 1
+          from public.households h
+          where h.id = target_household_id
+            and h.owner_id = joining_user_id
+        )
+        then 'owner'
       else 'member'
     end,
     updated_at = timezone('utc'::text, now());
 
   return query select target_household_id;
+end;
+$$;
+
+do $$
+begin
+  if pg_get_functiondef('public.join_household_by_invite_code(text)'::regprocedure) like '%role in (''owner'', ''admin'')%' then
+    raise exception 'join_household_by_invite_code must not preserve admin role on invite rejoin';
+  end if;
+
+  if pg_get_functiondef('public.join_household_by_invite_code(text)'::regprocedure) not like '%h.owner_id = joining_user_id%' then
+    raise exception 'join_household_by_invite_code must only preserve owner role for owner self-recovery';
+  end if;
 end;
 $$;
 
