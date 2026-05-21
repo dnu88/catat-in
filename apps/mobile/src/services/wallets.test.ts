@@ -25,6 +25,9 @@ describe('Wallet Service', () => {
 
     expect(mockInsert).toHaveBeenCalledWith({
       user_id: 'user-123',
+      household_id: null,
+      created_by: 'user-123',
+      updated_by: 'user-123',
       name: 'My Wallet',
       type: 'cash',
       balance: 100000,
@@ -41,18 +44,59 @@ describe('Wallet Service', () => {
       { id: 'w-1', name: 'Cash', type: 'cash' },
       { id: 'w-2', name: 'Bank BCA', type: 'bank' },
     ];
-    const mockOrder = jest.fn().mockResolvedValue({ data: mockWallets, error: null });
-    const mockSelect = jest.fn().mockReturnValue({ order: mockOrder });
+    const mockIs = jest.fn().mockReturnThis();
+    const query = {
+      order: jest.fn().mockReturnThis(),
+      is: mockIs,
+      then: (resolve: any) => Promise.resolve({ data: mockWallets, error: null }).then(resolve),
+    };
+    const mockSelect = jest.fn().mockReturnValue(query);
     (supabase.from as jest.Mock).mockReturnValue({ select: mockSelect });
 
     const result = await listWallets();
 
     expect(supabase.from).toHaveBeenCalledWith('wallets');
     expect(mockSelect).toHaveBeenCalledWith('*');
-    expect(mockOrder).toHaveBeenCalledWith('created_at', { ascending: false });
+    expect(query.order).toHaveBeenCalledWith('created_at', { ascending: false });
+    expect(mockIs).toHaveBeenCalledWith('household_id', null);
     expect(Array.isArray(result)).toBe(true);
     expect(result).toHaveLength(2);
     expect(result[0].id).toBe('w-1');
+  });
+
+  test('lists personal wallets with household_id is null', async () => {
+    const mockIs = jest.fn().mockReturnThis();
+    const query = {
+      order: jest.fn().mockReturnThis(),
+      is: mockIs,
+      then: (resolve: any) => Promise.resolve({ data: [], error: null }).then(resolve),
+    };
+    (supabase.from as jest.Mock).mockReturnValue({ select: jest.fn().mockReturnValue(query) });
+
+    await listWallets({ type: 'personal' });
+
+    expect(mockIs).toHaveBeenCalledWith('household_id', null);
+  });
+
+  test('creates household wallet with audit fields', async () => {
+    (supabase as any).auth.getUser.mockResolvedValue({ data: { user: { id: 'user-1' } }, error: null });
+    const mockSingle = jest.fn().mockResolvedValue({ data: { id: 'wallet-household' }, error: null });
+    const mockSelect = jest.fn().mockReturnValue({ single: mockSingle });
+    const mockInsert = jest.fn().mockReturnValue({ select: mockSelect });
+    (supabase.from as jest.Mock).mockReturnValue({ insert: mockInsert });
+
+    await createWallet(
+      { name: 'Kas Rumah', type: 'cash' },
+      { type: 'household', householdId: 'hh-1', role: 'admin' },
+    );
+
+    expect(mockInsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        household_id: 'hh-1',
+        created_by: 'user-1',
+        updated_by: 'user-1',
+      }),
+    );
   });
 
   test('updateWallet should call update/eq/select/single and return updated record', async () => {
@@ -66,7 +110,7 @@ describe('Wallet Service', () => {
     const result = await updateWallet('w-1', { name: 'Updated Cash' });
 
     expect(supabase.from).toHaveBeenCalledWith('wallets');
-    expect(mockUpdate).toHaveBeenCalledWith({ name: 'Updated Cash' });
+    expect(mockUpdate).toHaveBeenCalledWith({ name: 'Updated Cash', updated_by: 'user-123' });
     expect(mockEq).toHaveBeenCalledWith('id', 'w-1');
     expect(mockSelect).toHaveBeenCalled();
     expect(mockSingle).toHaveBeenCalled();
@@ -82,14 +126,18 @@ describe('Wallet Service', () => {
     await expect(deleteWallet('w-1')).resolves.toBeUndefined();
 
     expect(supabase.from).toHaveBeenCalledWith('wallets');
-    expect(mockUpdate).toHaveBeenCalledWith({ is_active: false });
+    expect(mockUpdate).toHaveBeenCalledWith({ is_active: false, updated_by: 'user-123' });
     expect(mockEq).toHaveBeenCalledWith('id', 'w-1');
   });
 
   test('listWallets should throw when Supabase returns error', async () => {
     const mockError = { message: 'DB connection failed', code: '500' };
-    const mockOrder = jest.fn().mockResolvedValue({ data: null, error: mockError });
-    const mockSelect = jest.fn().mockReturnValue({ order: mockOrder });
+    const query = {
+      order: jest.fn().mockReturnThis(),
+      is: jest.fn().mockReturnThis(),
+      then: (resolve: any) => Promise.resolve({ data: null, error: mockError }).then(resolve),
+    };
+    const mockSelect = jest.fn().mockReturnValue(query);
     (supabase.from as jest.Mock).mockReturnValue({ select: mockSelect });
 
     await expect(listWallets()).rejects.toEqual(mockError);

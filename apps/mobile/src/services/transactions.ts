@@ -1,7 +1,16 @@
 import { supabase } from '../lib/supabase';
 import { getCurrentUserId } from './currentUser';
+import {
+  applyFinanceContextFilter,
+  buildFinanceInsertAudit,
+  buildFinanceUpdateAudit,
+  canCreateInContext,
+  type FinanceContext,
+} from './finance-context-query';
 
 export type TransactionType = 'income' | 'expense';
+
+const defaultContext: FinanceContext = { type: 'personal' };
 
 export interface TransactionCreate {
   wallet_id?: string | null;
@@ -40,7 +49,9 @@ export interface Transaction {
   visibility: string | null;
   ai_confidence: number | null;
   ai_extracted: Record<string, unknown> | null;
+  household_id: string | null;
   created_by: string | null;
+  updated_by?: string | null;
   on_behalf_of: string | null;
   is_disputed: boolean;
   dispute_resolved_at: string | null;
@@ -117,12 +128,21 @@ async function getTransactionSafely(id: string): Promise<Transaction | null> {
   }
 }
 
-export async function createTransaction(tx: TransactionCreate): Promise<Transaction> {
+export async function createTransaction(
+  tx: TransactionCreate,
+  context: FinanceContext = defaultContext,
+): Promise<Transaction> {
+  if (!canCreateInContext(context)) throw new Error('Akses lihat saja');
+
   const userId = await getCurrentUserId();
+  const payload = {
+    ...buildInsertPayload(tx, userId),
+    ...buildFinanceInsertAudit(context, userId),
+  };
 
   const { data, error } = await supabase
     .from('transactions')
-    .insert(buildInsertPayload(tx, userId))
+    .insert(payload)
     .select()
     .single();
 
@@ -133,15 +153,20 @@ export async function createTransaction(tx: TransactionCreate): Promise<Transact
   return created;
 }
 
-export async function listTransactions(filters?: {
-  wallet_id?: string;
-  transaction_type?: TransactionType;
-  category?: string;
-}): Promise<Transaction[]> {
-  let query = supabase
+export async function listTransactions(
+  filters?: {
+    wallet_id?: string;
+    transaction_type?: TransactionType;
+    category?: string;
+  },
+  context: FinanceContext = defaultContext,
+): Promise<Transaction[]> {
+  let query: any = supabase
     .from('transactions')
     .select('*')
     .order('date', { ascending: false });
+
+  query = applyFinanceContextFilter(query, context);
 
   if (filters?.wallet_id) {
     query = query.eq('wallet_id', filters.wallet_id);
@@ -161,10 +186,16 @@ export async function listTransactions(filters?: {
 export async function updateTransaction(
   id: string,
   updates: Partial<TransactionCreate>,
+  context: FinanceContext = defaultContext,
 ): Promise<Transaction> {
+  if (context.type === 'household' && context.role === 'viewer') throw new Error('Akses lihat saja');
+
+  const userId = await getCurrentUserId();
+  const payload = { ...updates, ...buildFinanceUpdateAudit(userId) };
+
   const { data, error } = await supabase
     .from('transactions')
-    .update(updates)
+    .update(payload)
     .eq('id', id)
     .select()
     .single();

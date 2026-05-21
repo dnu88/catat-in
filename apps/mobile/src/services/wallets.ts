@@ -1,5 +1,14 @@
 import { supabase } from '../lib/supabase';
 import { getCurrentUserId } from './currentUser';
+import {
+  applyFinanceContextFilter,
+  buildFinanceInsertAudit,
+  buildFinanceUpdateAudit,
+  canCreateInContext,
+  type FinanceContext,
+} from './finance-context-query';
+
+const defaultContext: FinanceContext = { type: 'personal' };
 
 export interface WalletCreate {
   name: string;
@@ -13,19 +22,27 @@ export interface WalletCreate {
 export interface Wallet extends WalletCreate {
   id: string;
   user_id: string;
+  household_id: string | null;
+  created_by: string | null;
+  updated_by: string | null;
   is_active: boolean;
   created_at: string;
   updated_at: string;
 }
 
-export async function createWallet(wallet: WalletCreate): Promise<Wallet> {
+export async function createWallet(
+  wallet: WalletCreate,
+  context: FinanceContext = defaultContext,
+): Promise<Wallet> {
+  if (!canCreateInContext(context)) throw new Error('Akses lihat saja');
+
   const userId = await getCurrentUserId();
 
   const { data, error } = await supabase
     .from('wallets')
     .insert({
       ...wallet,
-      user_id: userId,
+      ...buildFinanceInsertAudit(context, userId),
       balance: wallet.balance ?? 0,
       currency: wallet.currency || 'IDR',
       is_active: true,
@@ -37,20 +54,35 @@ export async function createWallet(wallet: WalletCreate): Promise<Wallet> {
   return data as Wallet;
 }
 
-export async function listWallets(): Promise<Wallet[]> {
-  const { data, error } = await supabase
+export async function listWallets(
+  context: FinanceContext = defaultContext,
+): Promise<Wallet[]> {
+  let query: any = supabase
     .from('wallets')
     .select('*')
     .order('created_at', { ascending: false });
+
+  query = applyFinanceContextFilter(query, context);
+
+  const { data, error } = await query;
 
   if (error) throw error;
   return data as Wallet[];
 }
 
-export async function updateWallet(id: string, updates: Partial<WalletCreate>): Promise<Wallet> {
+export async function updateWallet(
+  id: string,
+  updates: Partial<WalletCreate>,
+  context: FinanceContext = defaultContext,
+): Promise<Wallet> {
+  if (context.type === 'household' && context.role === 'viewer') throw new Error('Akses lihat saja');
+
+  const userId = await getCurrentUserId();
+  const payload = { ...updates, ...buildFinanceUpdateAudit(userId) };
+
   const { data, error } = await supabase
     .from('wallets')
-    .update(updates)
+    .update(payload)
     .eq('id', id)
     .select()
     .single();
@@ -59,8 +91,17 @@ export async function updateWallet(id: string, updates: Partial<WalletCreate>): 
   return data as Wallet;
 }
 
-export async function deleteWallet(id: string): Promise<void> {
-  const { error } = await supabase.from('wallets').update({ is_active: false }).eq('id', id);
+export async function deleteWallet(
+  id: string,
+  context: FinanceContext = defaultContext,
+): Promise<void> {
+  if (context.type === 'household' && context.role === 'viewer') throw new Error('Akses lihat saja');
+
+  const userId = await getCurrentUserId();
+  const { error } = await supabase
+    .from('wallets')
+    .update({ is_active: false, ...buildFinanceUpdateAudit(userId) })
+    .eq('id', id);
 
   if (error) throw error;
 }

@@ -41,12 +41,14 @@ describe('Transaction Service', () => {
     expect(supabase.from).toHaveBeenCalledWith('transactions');
     expect(mockInsert).toHaveBeenCalledWith({
       user_id: 'user-123',
+      household_id: null,
       wallet_id: 'w-1',
       transaction_type: 'expense',
       amount: 50000,
       category: 'Food',
       description: 'Lunch',
       created_by: 'user-123',
+      updated_by: 'user-123',
     });
     expect(mockSelect).toHaveBeenCalled();
     expect(mockSingle).toHaveBeenCalled();
@@ -86,58 +88,132 @@ describe('Transaction Service', () => {
       { id: 'tx-1', transaction_type: 'expense', amount: 10000 },
       { id: 'tx-2', transaction_type: 'income', amount: 500000 },
     ];
-    const mockOrder = jest.fn().mockResolvedValue({ data: mockTxs, error: null });
-    const mockSelect = jest.fn().mockReturnValue({ order: mockOrder });
+    const mockIs = jest.fn().mockReturnThis();
+    const query = {
+      order: jest.fn().mockReturnThis(),
+      is: mockIs,
+      then: (resolve: any) => Promise.resolve({ data: mockTxs, error: null }).then(resolve),
+    };
+    const mockSelect = jest.fn().mockReturnValue(query);
     (supabase.from as jest.Mock).mockReturnValue({ select: mockSelect });
 
     const result = await listTransactions();
 
     expect(supabase.from).toHaveBeenCalledWith('transactions');
     expect(mockSelect).toHaveBeenCalledWith('*');
-    expect(mockOrder).toHaveBeenCalledWith('date', { ascending: false });
+    expect(query.order).toHaveBeenCalledWith('date', { ascending: false });
+    expect(mockIs).toHaveBeenCalledWith('household_id', null);
     expect(Array.isArray(result)).toBe(true);
     expect(result).toHaveLength(2);
   });
 
+  test('lists personal transactions with household_id is null', async () => {
+    const mockIs = jest.fn().mockReturnThis();
+    const query = {
+      order: jest.fn().mockReturnThis(),
+      is: mockIs,
+      then: (resolve: any) => Promise.resolve({ data: [], error: null }).then(resolve),
+    };
+    (supabase.from as jest.Mock).mockReturnValue({ select: jest.fn().mockReturnValue(query) });
+
+    await listTransactions(undefined, { type: 'personal' });
+
+    expect(mockIs).toHaveBeenCalledWith('household_id', null);
+  });
+
+  test('lists household transactions by household_id', async () => {
+    const mockEq = jest.fn().mockReturnThis();
+    const query = {
+      order: jest.fn().mockReturnThis(),
+      eq: mockEq,
+      then: (resolve: any) => Promise.resolve({ data: [], error: null }).then(resolve),
+    };
+    (supabase.from as jest.Mock).mockReturnValue({ select: jest.fn().mockReturnValue(query) });
+
+    await listTransactions(undefined, {
+      type: 'household',
+      householdId: 'hh-1',
+      role: 'member',
+    });
+
+    expect(mockEq).toHaveBeenCalledWith('household_id', 'hh-1');
+  });
+
+  test('creates household transaction with audit fields', async () => {
+    (supabase as any).auth.getUser.mockResolvedValue({ data: { user: { id: 'user-1' } }, error: null });
+    const mockData = { id: 'tx-household', wallet_id: null, transaction_type: 'expense', amount: 10000 };
+    const mockSingle = jest.fn().mockResolvedValue({ data: mockData, error: null });
+    const mockSelect = jest.fn().mockReturnValue({ single: mockSingle });
+    const mockInsert = jest.fn().mockReturnValue({ select: mockSelect });
+    (supabase.from as jest.Mock).mockReturnValue({ insert: mockInsert });
+
+    await createTransaction(
+      {
+        transaction_type: 'expense',
+        amount: 10000,
+        category: 'Makan',
+        description: 'Bakso',
+      },
+      { type: 'household', householdId: 'hh-1', role: 'member' },
+    );
+
+    expect(mockInsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        household_id: 'hh-1',
+        created_by: 'user-1',
+        updated_by: 'user-1',
+      }),
+    );
+  });
+
   test('listTransactions should apply wallet_id filter when provided', async () => {
     const mockTxs = [{ id: 'tx-1', wallet_id: 'w-1' }];
-    const mockFinalResolve = jest.fn().mockResolvedValue({ data: mockTxs, error: null });
-    const mockEq = jest.fn().mockReturnValue(mockFinalResolve());
-    const mockOrderChain = jest.fn().mockReturnValue({ eq: mockEq });
-    const mockSelectChain = jest.fn().mockReturnValue({ order: mockOrderChain });
+    const query = {
+      order: jest.fn().mockReturnThis(),
+      is: jest.fn().mockReturnThis(),
+      eq: jest.fn().mockReturnThis(),
+      then: (resolve: any) => Promise.resolve({ data: mockTxs, error: null }).then(resolve),
+    };
+    const mockSelectChain = jest.fn().mockReturnValue(query);
     (supabase.from as jest.Mock).mockReturnValue({ select: mockSelectChain });
 
     const result = await listTransactions({ wallet_id: 'w-1' });
 
-    expect(mockEq).toHaveBeenCalledWith('wallet_id', 'w-1');
+    expect(query.eq).toHaveBeenCalledWith('wallet_id', 'w-1');
     expect(Array.isArray(result)).toBe(true);
   });
 
   test('listTransactions should apply transaction_type filter when provided', async () => {
     const mockTxs = [{ id: 'tx-2', transaction_type: 'income' }];
-    const mockFinalResolve = jest.fn().mockResolvedValue({ data: mockTxs, error: null });
-    const mockEq = jest.fn().mockReturnValue(mockFinalResolve());
-    const mockOrder = jest.fn().mockReturnValue({ eq: mockEq });
-    const mockSelect = jest.fn().mockReturnValue({ order: mockOrder });
+    const query = {
+      order: jest.fn().mockReturnThis(),
+      is: jest.fn().mockReturnThis(),
+      eq: jest.fn().mockReturnThis(),
+      then: (resolve: any) => Promise.resolve({ data: mockTxs, error: null }).then(resolve),
+    };
+    const mockSelect = jest.fn().mockReturnValue(query);
     (supabase.from as jest.Mock).mockReturnValue({ select: mockSelect });
 
     const result = await listTransactions({ transaction_type: 'income' });
 
-    expect(mockEq).toHaveBeenCalledWith('transaction_type', 'income');
+    expect(query.eq).toHaveBeenCalledWith('transaction_type', 'income');
     expect(Array.isArray(result)).toBe(true);
   });
 
   test('listTransactions should apply category filter when provided', async () => {
     const mockTxs = [{ id: 'tx-3', category: 'Food' }];
-    const mockFinalResolve = jest.fn().mockResolvedValue({ data: mockTxs, error: null });
-    const mockEq = jest.fn().mockReturnValue(mockFinalResolve());
-    const mockOrder = jest.fn().mockReturnValue({ eq: mockEq });
-    const mockSelect = jest.fn().mockReturnValue({ order: mockOrder });
+    const query = {
+      order: jest.fn().mockReturnThis(),
+      is: jest.fn().mockReturnThis(),
+      eq: jest.fn().mockReturnThis(),
+      then: (resolve: any) => Promise.resolve({ data: mockTxs, error: null }).then(resolve),
+    };
+    const mockSelect = jest.fn().mockReturnValue(query);
     (supabase.from as jest.Mock).mockReturnValue({ select: mockSelect });
 
     const result = await listTransactions({ category: 'Food' });
 
-    expect(mockEq).toHaveBeenCalledWith('category', 'Food');
+    expect(query.eq).toHaveBeenCalledWith('category', 'Food');
     expect(Array.isArray(result)).toBe(true);
   });
 
@@ -152,7 +228,7 @@ describe('Transaction Service', () => {
     const result = await updateTransaction('tx-1', { amount: 75000 });
 
     expect(supabase.from).toHaveBeenCalledWith('transactions');
-    expect(mockUpdate).toHaveBeenCalledWith({ amount: 75000 });
+    expect(mockUpdate).toHaveBeenCalledWith({ amount: 75000, updated_by: 'user-123' });
     expect(mockEq).toHaveBeenCalledWith('id', 'tx-1');
     expect(mockSelect).toHaveBeenCalled();
     expect(mockSingle).toHaveBeenCalled();
