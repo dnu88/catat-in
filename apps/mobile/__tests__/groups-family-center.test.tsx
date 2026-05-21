@@ -12,6 +12,7 @@ import { ThemeProvider } from "../src/theme/theme-context";
 const mockCreateHousehold = jest.fn();
 const mockJoinHouseholdByInviteCode = jest.fn();
 const mockListMyHouseholds = jest.fn();
+const mockRefreshMemberships = jest.fn();
 const mockSupabase = { from: jest.fn(), rpc: jest.fn() };
 
 jest.mock("../src/lib/supabase", () => ({
@@ -27,6 +28,12 @@ jest.mock("../src/services/households", () => ({
 	joinHouseholdByInviteCode: (...args: unknown[]) =>
 		mockJoinHouseholdByInviteCode(...args),
 	listMyHouseholds: (...args: unknown[]) => mockListMyHouseholds(...args),
+}));
+
+jest.mock("../src/state/finance-context", () => ({
+	useFinanceContext: () => ({
+		refreshMemberships: mockRefreshMemberships,
+	}),
 }));
 
 function renderGroupsScreen() {
@@ -60,6 +67,7 @@ describe("Family Center screen", () => {
 		]);
 		mockCreateHousehold.mockResolvedValue({ id: "hh-new" });
 		mockJoinHouseholdByInviteCode.mockResolvedValue({ household_id: "hh-1" });
+		mockRefreshMemberships.mockResolvedValue(undefined);
 	});
 
 	it("renders family center copy and active household list", async () => {
@@ -70,15 +78,12 @@ describe("Family Center screen", () => {
 		expect(screen.getByText("Admin")).toBeTruthy();
 	});
 
-	it("creates a household from the form", async () => {
+	it("creates a household from the form with trimmed name and refreshes global memberships", async () => {
 		renderGroupsScreen();
 
-		fireEvent.press(screen.getByText("Buat"));
-		fireEvent.changeText(
-			screen.getByPlaceholderText("Nama keluarga"),
-			"Keluarga Budi",
-		);
-		fireEvent.press(screen.getByText("Simpan keluarga"));
+		fireEvent.press(screen.getByLabelText("Buat keluarga baru"));
+		fireEvent.changeText(screen.getByLabelText("Nama keluarga"), "  Keluarga Budi  ");
+		fireEvent.press(screen.getByLabelText("Simpan keluarga"));
 
 		await waitFor(() =>
 			expect(mockCreateHousehold).toHaveBeenCalledWith(expect.anything(), {
@@ -86,17 +91,15 @@ describe("Family Center screen", () => {
 				ownerId: "user-1",
 			}),
 		);
+		expect(mockRefreshMemberships).toHaveBeenCalledTimes(1);
 	});
 
-	it("joins household by invite code", async () => {
+	it("joins household by invite code and refreshes global memberships", async () => {
 		renderGroupsScreen();
 
-		fireEvent.press(screen.getByText("Gabung"));
-		fireEvent.changeText(
-			screen.getByPlaceholderText("Kode undangan"),
-			"ABC123",
-		);
-		fireEvent.press(screen.getByText("Gabung keluarga"));
+		fireEvent.press(screen.getByLabelText("Gabung keluarga"));
+		fireEvent.changeText(screen.getByLabelText("Kode undangan"), "ABC123");
+		fireEvent.press(screen.getByLabelText("Gabung keluarga dengan kode undangan"));
 
 		await waitFor(() =>
 			expect(mockJoinHouseholdByInviteCode).toHaveBeenCalledWith(
@@ -104,5 +107,6 @@ describe("Family Center screen", () => {
 				"ABC123",
 			),
 		);
+		expect(mockRefreshMemberships).toHaveBeenCalledTimes(1);
 	});
 });

@@ -20,6 +20,7 @@ import {
 	type HouseholdMember,
 	type HouseholdRole,
 } from "../../src/services/households";
+import { useFinanceContext } from "../../src/state/finance-context";
 import { useTheme } from "../../src/theme/theme-context";
 
 type ActiveForm = "create" | "join" | null;
@@ -34,6 +35,7 @@ const roleLabels: Record<HouseholdRole, string> = {
 export default function GroupsScreen() {
 	const { theme } = useTheme();
 	const { supabase } = useSupabase();
+	const { refreshMemberships } = useFinanceContext();
 	const styles = useMemo(() => createStyles(theme), [theme]);
 	const [memberships, setMemberships] = useState<HouseholdMember[]>([]);
 	const [activeForm, setActiveForm] = useState<ActiveForm>(null);
@@ -67,16 +69,19 @@ export default function GroupsScreen() {
 		setError(null);
 		try {
 			const userId = await getCurrentUserId();
-			await createHousehold(supabase, { name: householdName, ownerId: userId });
+			await createHousehold(supabase, {
+				name: householdName.trim(),
+				ownerId: userId,
+			});
 			setHouseholdName("");
 			setActiveForm(null);
-			await refreshHouseholds();
+			await Promise.all([refreshHouseholds(), refreshMemberships()]);
 		} catch (err) {
 			setError(err instanceof Error ? err.message : "Gagal membuat keluarga");
 		} finally {
 			setSubmitting(false);
 		}
-	}, [householdName, refreshHouseholds, supabase]);
+	}, [householdName, refreshHouseholds, refreshMemberships, supabase]);
 
 	const handleJoin = useCallback(async () => {
 		if (!inviteCode.trim()) return;
@@ -86,13 +91,13 @@ export default function GroupsScreen() {
 			await joinHouseholdByInviteCode(supabase, inviteCode);
 			setInviteCode("");
 			setActiveForm(null);
-			await refreshHouseholds();
+			await Promise.all([refreshHouseholds(), refreshMemberships()]);
 		} catch (err) {
 			setError(err instanceof Error ? err.message : "Gagal bergabung keluarga");
 		} finally {
 			setSubmitting(false);
 		}
-	}, [inviteCode, refreshHouseholds, supabase]);
+	}, [inviteCode, refreshHouseholds, refreshMemberships, supabase]);
 
 	return (
 		<View style={styles.screen}>
@@ -106,18 +111,26 @@ export default function GroupsScreen() {
 					action={
 						<View style={styles.headerActions}>
 							<Pressable
-								style={styles.addButton}
+								accessibilityRole="button"
+								accessibilityLabel="Buat keluarga baru"
+								accessibilityHint="Menampilkan atau menyembunyikan formulir pembuatan keluarga"
+								style={[styles.addButton, submitting && styles.disabledButton]}
 								onPress={() =>
 									setActiveForm(activeForm === "create" ? null : "create")
 								}
+								disabled={submitting}
 							>
 								<Text style={styles.addButtonText}>Buat</Text>
 							</Pressable>
 							<Pressable
-								style={styles.secondaryButton}
+								accessibilityRole="button"
+								accessibilityLabel="Gabung keluarga"
+								accessibilityHint="Menampilkan atau menyembunyikan formulir kode undangan"
+								style={[styles.secondaryButton, submitting && styles.disabledButton]}
 								onPress={() =>
 									setActiveForm(activeForm === "join" ? null : "join")
 								}
+								disabled={submitting}
 							>
 								<Text style={styles.secondaryButtonText}>Gabung</Text>
 							</Pressable>
@@ -140,6 +153,7 @@ export default function GroupsScreen() {
 					<Card variant="default" style={styles.formCard}>
 						<Text style={styles.formTitle}>Buat keluarga baru</Text>
 						<TextInput
+							accessibilityLabel="Nama keluarga"
 							value={householdName}
 							onChangeText={setHouseholdName}
 							placeholder="Nama keluarga"
@@ -147,6 +161,9 @@ export default function GroupsScreen() {
 							style={styles.input}
 						/>
 						<Pressable
+							accessibilityRole="button"
+							accessibilityLabel="Simpan keluarga"
+							accessibilityHint="Membuat keluarga baru dengan nama yang diisi"
 							style={[styles.submitButton, submitting && styles.disabledButton]}
 							onPress={handleCreate}
 							disabled={submitting}
@@ -160,6 +177,7 @@ export default function GroupsScreen() {
 					<Card variant="default" style={styles.formCard}>
 						<Text style={styles.formTitle}>Masukkan kode undangan</Text>
 						<TextInput
+							accessibilityLabel="Kode undangan"
 							value={inviteCode}
 							onChangeText={setInviteCode}
 							placeholder="Kode undangan"
@@ -168,6 +186,9 @@ export default function GroupsScreen() {
 							style={styles.input}
 						/>
 						<Pressable
+							accessibilityRole="button"
+							accessibilityLabel="Gabung keluarga dengan kode undangan"
+							accessibilityHint="Bergabung ke keluarga memakai kode undangan yang diisi"
 							style={[styles.submitButton, submitting && styles.disabledButton]}
 							onPress={handleJoin}
 							disabled={submitting}
