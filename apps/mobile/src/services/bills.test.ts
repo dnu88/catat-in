@@ -6,6 +6,7 @@ jest.mock("../lib/supabase");
 describe("Bill Service", () => {
 	beforeEach(() => {
 		jest.clearAllMocks();
+		(supabase.from as jest.Mock).mockReset();
 		(supabase as any).auth = {
 			getUser: jest
 				.fn()
@@ -103,37 +104,100 @@ describe("Bill Service", () => {
 		expect(result).toHaveLength(2);
 	});
 
-	test("updateBill should call update/eq/select/single and return updated record", async () => {
+	test("updateBill fetches existing row, checks permission, updates with audit, and returns updated record", async () => {
+		const existing = { id: "bill-1", user_id: "user-123", household_id: null, created_by: "user-123" };
 		const updated = { id: "bill-1", is_paid: true };
-		const mockSingle = jest
-			.fn()
-			.mockResolvedValue({ data: updated, error: null });
-		const mockSelect = jest.fn().mockReturnValue({ single: mockSingle });
-		const mockEq = jest.fn().mockReturnValue({ select: mockSelect });
-		const mockUpdate = jest.fn().mockReturnValue({ eq: mockEq });
-		(supabase.from as jest.Mock).mockReturnValue({ update: mockUpdate });
+		const fetchSingle = jest.fn().mockResolvedValue({ data: existing, error: null });
+		const fetchEq = jest.fn().mockReturnValue({ single: fetchSingle });
+		const fetchSelect = jest.fn().mockReturnValue({ eq: fetchEq });
+		const updateSingle = jest.fn().mockResolvedValue({ data: updated, error: null });
+		const updateSelect = jest.fn().mockReturnValue({ single: updateSingle });
+		const updateEq = jest.fn().mockReturnValue({ select: updateSelect });
+		const mockUpdate = jest.fn().mockReturnValue({ eq: updateEq });
+		(supabase.from as jest.Mock)
+			.mockReturnValueOnce({ select: fetchSelect })
+			.mockReturnValueOnce({ update: mockUpdate });
 
 		const result = await updateBill("bill-1", { is_paid: true });
 
-		expect(supabase.from).toHaveBeenCalledWith("bill_reminders");
+		expect(fetchSelect).toHaveBeenCalledWith("id,user_id,household_id,created_by");
+		expect(fetchEq).toHaveBeenCalledWith("id", "bill-1");
 		expect(mockUpdate).toHaveBeenCalledWith({
 			is_paid: true,
 			updated_by: "user-123",
 		});
-		expect(mockEq).toHaveBeenCalledWith("id", "bill-1");
+		expect(updateEq).toHaveBeenCalledWith("id", "bill-1");
 		expect(result.id).toBe("bill-1");
 	});
 
-	test("deleteBill should hard-delete the record", async () => {
-		const mockEq = jest.fn().mockResolvedValue({ error: null });
-		const mockDelete = jest.fn().mockReturnValue({ eq: mockEq });
-		(supabase.from as jest.Mock).mockReturnValue({ delete: mockDelete });
+	test("deleteBill fetches existing row, checks permission, then hard-deletes the record", async () => {
+		const existing = { id: "bill-1", user_id: "user-123", household_id: null, created_by: "user-123" };
+		const fetchSingle = jest.fn().mockResolvedValue({ data: existing, error: null });
+		const fetchEq = jest.fn().mockReturnValue({ single: fetchSingle });
+		const fetchSelect = jest.fn().mockReturnValue({ eq: fetchEq });
+		const deleteEq = jest.fn().mockResolvedValue({ error: null });
+		const mockDelete = jest.fn().mockReturnValue({ eq: deleteEq });
+		(supabase.from as jest.Mock)
+			.mockReturnValueOnce({ select: fetchSelect })
+			.mockReturnValueOnce({ delete: mockDelete });
 
 		await expect(deleteBill("bill-1")).resolves.toBeUndefined();
 
-		expect(supabase.from).toHaveBeenCalledWith("bill_reminders");
+		expect(fetchSelect).toHaveBeenCalledWith("id,user_id,household_id,created_by");
+		expect(fetchEq).toHaveBeenCalledWith("id", "bill-1");
 		expect(mockDelete).toHaveBeenCalled();
-		expect(mockEq).toHaveBeenCalledWith("id", "bill-1");
+		expect(deleteEq).toHaveBeenCalledWith("id", "bill-1");
+	});
+
+	test("updateBill rejects viewer context before updating", async () => {
+		const existing = { id: "bill-1", user_id: "user-456", household_id: "hh-1", created_by: "user-456" };
+		const fetchSingle = jest.fn().mockResolvedValue({ data: existing, error: null });
+		const fetchEq = jest.fn().mockReturnValue({ single: fetchSingle });
+		const fetchSelect = jest.fn().mockReturnValue({ eq: fetchEq });
+		const mockUpdate = jest.fn();
+		(supabase.from as jest.Mock)
+			.mockReturnValueOnce({ select: fetchSelect })
+			.mockReturnValueOnce({ update: mockUpdate });
+
+		await expect(
+			updateBill("bill-1", { is_paid: true }, { type: "household", householdId: "hh-1", role: "viewer" }),
+		).rejects.toThrow("Akses lihat saja");
+		expect(mockUpdate).not.toHaveBeenCalled();
+	});
+
+	test("member cannot update or delete another member bill row", async () => {
+		const existing = { id: "bill-1", user_id: "user-456", household_id: "hh-1", created_by: "user-456" };
+		const fetchSingle = jest.fn().mockResolvedValue({ data: existing, error: null });
+		const fetchEq = jest.fn().mockReturnValue({ single: fetchSingle });
+		const fetchSelect = jest.fn().mockReturnValue({ eq: fetchEq });
+		(supabase.from as jest.Mock).mockReturnValue({ select: fetchSelect });
+
+		await expect(
+			updateBill("bill-1", { is_paid: true }, { type: "household", householdId: "hh-1", role: "member" }),
+		).rejects.toThrow("Tidak diizinkan");
+		await expect(
+			deleteBill("bill-1", { type: "household", householdId: "hh-1", role: "member" }),
+		).rejects.toThrow("Tidak diizinkan");
+	});
+
+	test("member can update own household bill row", async () => {
+		const existing = { id: "bill-1", user_id: "user-123", household_id: "hh-1", created_by: "user-123" };
+		const updated = { id: "bill-1", is_paid: true };
+		const fetchSingle = jest.fn().mockResolvedValue({ data: existing, error: null });
+		const fetchEq = jest.fn().mockReturnValue({ single: fetchSingle });
+		const fetchSelect = jest.fn().mockReturnValue({ eq: fetchEq });
+		const updateSingle = jest.fn().mockResolvedValue({ data: updated, error: null });
+		const updateSelect = jest.fn().mockReturnValue({ single: updateSingle });
+		const updateEq = jest.fn().mockReturnValue({ select: updateSelect });
+		const mockUpdate = jest.fn().mockReturnValue({ eq: updateEq });
+		(supabase.from as jest.Mock)
+			.mockReturnValueOnce({ select: fetchSelect })
+			.mockReturnValueOnce({ update: mockUpdate });
+
+		await expect(
+			updateBill("bill-1", { is_paid: true }, { type: "household", householdId: "hh-1", role: "member" }),
+		).resolves.toEqual(updated);
+		expect(mockUpdate).toHaveBeenCalledWith({ is_paid: true, updated_by: "user-123" });
 	});
 
 	test("listBills filters personal rows to household_id null", async () => {

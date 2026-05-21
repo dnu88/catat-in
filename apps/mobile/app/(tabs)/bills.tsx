@@ -165,7 +165,7 @@ export default function BillsScreen() {
 
 		try {
 			setPayingId(id);
-			await updateBill(id, { is_paid: true });
+			await updateBill(id, { is_paid: true }, activeContext);
 			await loadBills();
 		} catch (error) {
 			console.error("Error marking bill as paid:", error);

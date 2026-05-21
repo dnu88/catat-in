@@ -5,7 +5,10 @@ import {
 	buildFinanceInsertAudit,
 	buildFinanceUpdateAudit,
 	canCreateInContext,
+	canDeleteInContext,
+	canUpdateInContext,
 	type FinanceContext,
+	type FinancePermissionRow,
 } from "./finance-context-query";
 
 const defaultContext: FinanceContext = { type: "personal" };
@@ -65,11 +68,32 @@ export async function listBills(
 	return data as Bill[];
 }
 
+async function getBillPermissionRow(id: string): Promise<FinancePermissionRow> {
+	const { data, error } = await supabase
+		.from("bill_reminders")
+		.select("id,user_id,household_id,created_by")
+		.eq("id", id)
+		.single();
+
+	if (error) throw error;
+	return data as FinancePermissionRow;
+}
+
 export async function updateBill(
 	id: string,
 	updates: Partial<BillCreate & { is_paid?: boolean }>,
+	context: FinanceContext = defaultContext,
 ): Promise<Bill> {
 	const userId = await getCurrentUserId();
+	const existing = await getBillPermissionRow(id);
+	if (!canUpdateInContext(context, existing, userId)) {
+		throw new Error(
+			context.type === "household" && context.role === "viewer"
+				? "Akses lihat saja"
+				: "Tidak diizinkan",
+		);
+	}
+
 	const { data, error } = await supabase
 		.from("bill_reminders")
 		.update({ ...updates, ...buildFinanceUpdateAudit(userId) })
@@ -81,7 +105,20 @@ export async function updateBill(
 	return data as Bill;
 }
 
-export async function deleteBill(id: string): Promise<void> {
+export async function deleteBill(
+	id: string,
+	context: FinanceContext = defaultContext,
+): Promise<void> {
+	const userId = await getCurrentUserId();
+	const existing = await getBillPermissionRow(id);
+	if (!canDeleteInContext(context, existing, userId)) {
+		throw new Error(
+			context.type === "household" && context.role === "viewer"
+				? "Akses lihat saja"
+				: "Tidak diizinkan",
+		);
+	}
+
 	const { error } = await supabase.from("bill_reminders").delete().eq("id", id);
 
 	if (error) throw error;
