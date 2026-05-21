@@ -7,6 +7,7 @@ import {
 } from "./households";
 
 const mockSingle = jest.fn();
+let chain: any;
 const mockSelect = jest.fn(() => chain);
 const mockInsert = jest.fn(() => chain);
 const mockUpdate = jest.fn(() => chain);
@@ -14,7 +15,7 @@ const mockEq = jest.fn(() => chain);
 const mockOrder = jest.fn(() => chain);
 const mockFrom = jest.fn(() => chain);
 
-const chain = {
+chain = {
 	select: mockSelect,
 	insert: mockInsert,
 	update: mockUpdate,
@@ -34,12 +35,13 @@ describe("household service", () => {
 		});
 	});
 
-	it("creates household with owner membership", async () => {
+	it("creates household and relies on database trigger for owner membership", async () => {
 		await createHousehold(supabase, {
 			name: "Keluarga Budi",
 			ownerId: "user-1",
 		});
 
+		expect(mockFrom).toHaveBeenCalledTimes(1);
 		expect(mockFrom).toHaveBeenCalledWith("households");
 		expect(mockInsert).toHaveBeenCalledWith(
 			expect.objectContaining({
@@ -47,6 +49,7 @@ describe("household service", () => {
 				owner_id: "user-1",
 			}),
 		);
+		expect(mockFrom).not.toHaveBeenCalledWith("household_members");
 	});
 
 	it("lists active memberships for current user", async () => {

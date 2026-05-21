@@ -49,16 +49,6 @@ export async function createHousehold(
 
 	if (error) throw error;
 
-	const { error: memberError } = await supabase
-		.from("household_members")
-		.insert({
-			household_id: household.id,
-			user_id: input.ownerId,
-			role: "owner",
-			status: "active",
-		});
-
-	if (memberError) throw memberError;
 	return household as Household;
 }
 
