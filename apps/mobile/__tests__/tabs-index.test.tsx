@@ -30,6 +30,15 @@ jest.mock('../src/services/budget-envelopes', () => {
   }
 })
 
+jest.mock('../src/state/finance-context', () => ({
+  useFinanceContext: () => ({
+    activeContext: { type: 'personal' },
+    memberships: [],
+    setPersonalContext: jest.fn(),
+    setActiveHousehold: jest.fn(),
+  }),
+}))
+
 function renderDashboard() {
   return render(
     <ThemeProvider>

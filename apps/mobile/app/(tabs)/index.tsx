@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { useRouter } from 'expo-router'
 
+import { FinanceContextSwitcher } from '../../src/components/FinanceContextSwitcher'
 import { useI18n } from '../../src/i18n/i18n-context'
 import { useSupabase } from '../../src/lib/supabase'
 import {
@@ -95,8 +96,11 @@ export default function DashboardScreen() {
             <Text style={styles.greeting}>Halo, Danu</Text>
             <Text style={styles.dateText}>April 2026</Text>
           </View>
-          <View testID="home-avatar" style={styles.avatarWrap}>
-            <Text style={styles.avatarText}>DB</Text>
+          <View style={styles.headerActions}>
+            <FinanceContextSwitcher />
+            <View testID="home-avatar" style={styles.avatarWrap}>
+              <Text style={styles.avatarText}>DB</Text>
+            </View>
           </View>
         </View>
 
@@ -240,6 +244,11 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
       color: theme.colors.textMuted,
       fontSize: 13,
       marginTop: 2,
+    },
+    headerActions: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
     },
     avatarWrap: {
       width: 36,
