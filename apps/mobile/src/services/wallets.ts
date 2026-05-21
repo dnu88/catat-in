@@ -95,7 +95,8 @@ export async function updateWallet(
 	if (!canUpdateInContext(context, existing, userId))
 		throw new Error("Akses lihat saja");
 
-	const { balance: _balance, ...safeUpdates } = updates as Partial<WalletCreate>;
+	const { balance: _balance, ...safeUpdates } =
+		updates as Partial<WalletCreate>;
 	const payload = { ...safeUpdates, ...buildFinanceUpdateAudit(userId) };
 
 	const { data, error } = await supabase

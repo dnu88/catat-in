@@ -114,7 +114,8 @@ function buildUpdatePayload(updates: Partial<TransactionCreate>) {
 	if ("date" in updates) payload.tanggal = updates.date;
 	if ("payment_method" in updates)
 		payload.payment_method = updates.payment_method ?? null;
-	if ("receipt_url" in updates) payload.receipt_url = updates.receipt_url ?? null;
+	if ("receipt_url" in updates)
+		payload.receipt_url = updates.receipt_url ?? null;
 	if ("group_id" in updates) payload.group_id = updates.group_id ?? null;
 	if ("is_shared" in updates) payload.is_shared = updates.is_shared;
 	if ("visibility" in updates) payload.visibility = updates.visibility ?? null;
@@ -200,7 +201,10 @@ export async function updateTransaction(
 	if (!canUpdateInContext(context, previous, userId))
 		throw new Error("Akses lihat saja");
 
-	const payload = { ...buildUpdatePayload(updates), ...buildFinanceUpdateAudit(userId) };
+	const payload = {
+		...buildUpdatePayload(updates),
+		...buildFinanceUpdateAudit(userId),
+	};
 
 	const { data, error } = await supabase
 		.from("transactions")
