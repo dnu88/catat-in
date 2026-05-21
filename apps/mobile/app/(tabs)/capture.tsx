@@ -9,6 +9,8 @@ import { useTheme } from '../../src/theme/theme-context'
 import { IconBubble } from '../../src/components/ui'
 import { KaswiseIcon, type KaswiseIconName } from '../../src/components/icons/kaswise-icons'
 import { createEnvelopeAllocation } from '../../src/services/budget-envelopes'
+import { buildFinanceInsertAudit } from '../../src/services/finance-context-query'
+import { useFinanceContext } from '../../src/state/finance-context'
 
 const modes = [
   { id: 'Teks', label: 'Teks', icon: 'file' as KaswiseIconName, helper: 'Ketik transaksi dengan bahasa natural' },
@@ -24,6 +26,7 @@ export default function CaptureScreen() {
   const { theme } = useTheme()
   const { language } = useI18n()
   const router = useRouter()
+  const { activeContext } = useFinanceContext()
   const isEn = language === 'en'
   const tx = useMemo(() => (isEn ? {
     budgetWallet: 'Budget Wallet',
@@ -63,7 +66,7 @@ export default function CaptureScreen() {
       const { data, error: insertError } = await supabase
         .from('transactions')
         .insert({
-          user_id: user.id,
+          ...buildFinanceInsertAudit(activeContext, user.id),
           input_type: 'text',
           status: 'processing',
           raw_input: value,

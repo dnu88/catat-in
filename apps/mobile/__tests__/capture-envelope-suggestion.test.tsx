@@ -1,11 +1,15 @@
 import React from 'react'
-import { render, screen, waitFor } from '@testing-library/react-native'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react-native'
 
 import CaptureScreen from '../app/(tabs)/capture'
 import { I18nProvider } from '../src/i18n/i18n-context'
 import { ThemeProvider } from '../src/theme/theme-context'
 
-const mockCreateEnvelopeAllocation = jest.fn(async (..._args: any[]) => ({ id: 'alloc-1' }))
+const mockCreateEnvelopeAllocation = jest.fn(async (..._args: unknown[]) => ({ id: 'alloc-1' }))
+const mockInsert = jest.fn()
+const mockInvoke = jest.fn()
+const mockGetUser = jest.fn(async () => ({ data: { user: { id: 'user-1' } } }))
+let mockActiveContext: { type: 'personal' } | { type: 'household'; householdId: string; role: 'admin' | 'member' | 'owner' | 'viewer' } = { type: 'personal' }
 let mockEnvelopeSuggestion: null | {
   id?: string
   envelope_id?: string
@@ -38,15 +42,24 @@ jest.mock('../src/hooks/useTransactionRealtime', () => ({
 }))
 
 jest.mock('../src/services/budget-envelopes', () => ({
-  createEnvelopeAllocation: (...args: any[]) => mockCreateEnvelopeAllocation.apply(null, args),
+  createEnvelopeAllocation: (...args: unknown[]) => mockCreateEnvelopeAllocation.apply(null, args),
+}))
+
+jest.mock('../src/state/finance-context', () => ({
+  useFinanceContext: () => ({
+    activeContext: mockActiveContext,
+    canCreate: true,
+  }),
 }))
 
 jest.mock('../src/lib/supabase', () => ({
   useSupabase: () => ({
     supabase: {
-      auth: { getUser: jest.fn(async () => ({ data: { user: { id: 'user-1' } } })) },
-      from: jest.fn(),
-      functions: { invoke: jest.fn() },
+      auth: { getUser: mockGetUser },
+      from: jest.fn(() => ({
+        insert: mockInsert,
+      })),
+      functions: { invoke: mockInvoke },
     },
   }),
 }))
@@ -68,6 +81,16 @@ function renderCapture() {
 describe('Capture envelope suggestion', () => {
   beforeEach(() => {
     mockCreateEnvelopeAllocation.mockClear()
+    mockInsert.mockReset()
+    mockInvoke.mockReset()
+    mockGetUser.mockClear()
+    mockInsert.mockReturnValue({
+      select: () => ({
+        single: async () => ({ data: { id: 'tx-created' }, error: null }),
+      }),
+    })
+    mockInvoke.mockResolvedValue({ data: null, error: null })
+    mockActiveContext = { type: 'personal' }
     mockEnvelopeSuggestion = {
       envelope_id: 'env-kopi',
       name: 'Kopi',
@@ -124,5 +147,26 @@ describe('Capture envelope suggestion', () => {
     expect(screen.getByText(/Transaksi tercatat/i)).toBeTruthy()
     expect(screen.queryByTestId('capture-envelope-suggestion')).toBeNull()
     await waitFor(() => expect(mockCreateEnvelopeAllocation).not.toHaveBeenCalled())
+  })
+
+  it('creates the processing transaction in the active household context', async () => {
+    mockEnvelopeSuggestion = null
+    mockActiveContext = { type: 'household', householdId: 'hh-1', role: 'admin' }
+    renderCapture()
+
+    fireEvent.changeText(screen.getByPlaceholderText(/Beli kopi/i), 'Beli kopi 35rb')
+    fireEvent.press(screen.getByText('Proses dengan AI'))
+
+    await waitFor(() => expect(mockInsert).toHaveBeenCalledTimes(1))
+    expect(mockInsert).toHaveBeenCalledWith({
+      user_id: 'user-1',
+      household_id: 'hh-1',
+      created_by: 'user-1',
+      updated_by: 'user-1',
+      input_type: 'text',
+      status: 'processing',
+      raw_input: 'Beli kopi 35rb',
+      review_required: false,
+    })
   })
 })
