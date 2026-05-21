@@ -44,6 +44,7 @@ type BillRowProps = {
 	styles: ReturnType<typeof createStyles>;
 	payingId: string | null;
 	onMarkPaid: (id: string) => void;
+	canUpdate: boolean;
 };
 
 function BillRow({
@@ -52,6 +53,7 @@ function BillRow({
 	styles,
 	payingId,
 	onMarkPaid,
+	canUpdate,
 }: BillRowProps) {
 	const statusColor =
 		bill.status === "paid"
@@ -115,7 +117,7 @@ function BillRow({
 				<Text style={styles.billAmount}>
 					Rp {bill.amount.toLocaleString("id-ID")}
 				</Text>
-				{bill.status === "upcoming" && (
+				{canUpdate && bill.status === "upcoming" && (
 					<Pressable
 						style={[styles.payButton, payingId === bill.id && { opacity: 0.7 }]}
 						onPress={() => onMarkPaid(bill.id)}
@@ -232,6 +234,7 @@ export default function BillsScreen() {
 			styles={styles}
 			payingId={payingId}
 			onMarkPaid={markAsPaid}
+			canUpdate={canCreate}
 		/>
 	);
 

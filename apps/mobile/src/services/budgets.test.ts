@@ -21,9 +21,10 @@ describe("Budget Service", () => {
 	test("createBudget should insert with defaults and return budget", async () => {
 		const mockBudget = {
 			id: "b-1",
-			category_id: "cat-1",
+			category: "Makan",
 			limit_amount: 500000,
 			period: "monthly",
+			period_start: "2026-05-01",
 			notify_at_percent: 80,
 			is_active: true,
 		};
@@ -35,9 +36,9 @@ describe("Budget Service", () => {
 		(supabase.from as jest.Mock).mockReturnValue({ insert: mockInsert });
 
 		const result = await createBudget({
-			category_id: "cat-1",
+			category: "Makan",
 			limit_amount: 500000,
-			start_date: "2026-05-01",
+			period_start: "2026-05-01",
 		});
 
 		expect(mockInsert).toHaveBeenCalledWith(
@@ -46,9 +47,9 @@ describe("Budget Service", () => {
 				household_id: null,
 				created_by: "user-123",
 				updated_by: "user-123",
-				category_id: "cat-1",
+				category: "Makan",
 				limit_amount: 500000,
-				start_date: "2026-05-01",
+				period_start: "2026-05-01",
 				period: "monthly",
 				notify_at_percent: 80,
 				is_active: true,
@@ -68,9 +69,9 @@ describe("Budget Service", () => {
 		(supabase.from as jest.Mock).mockReturnValue({ insert: mockInsert });
 
 		await createBudget({
-			category_id: "cat-9",
+			category: "Tagihan",
 			limit_amount: 2000000,
-			start_date: "2026-01-01",
+			period_start: "2026-01-01",
 			period: "yearly",
 			notify_at_percent: 70,
 		});
@@ -83,25 +84,27 @@ describe("Budget Service", () => {
 		);
 	});
 
-	test("listBudgets should return array ordered by start_date desc", async () => {
+	test("listBudgets should select deployed schema columns and order by period_start desc", async () => {
 		const mockBudgets = [
-			{ id: "b-1", start_date: "2026-05-01" },
-			{ id: "b-2", start_date: "2026-04-01" },
+			{ id: "b-1", period_start: "2026-05-01" },
+			{ id: "b-2", period_start: "2026-04-01" },
 		];
 		const mockOrder = jest
 			.fn()
 			.mockResolvedValue({ data: mockBudgets, error: null });
-		const chain = { is: jest.fn().mockReturnThis(), order: mockOrder };
+		const chain = {
+			is: jest.fn().mockReturnThis(),
+			eq: jest.fn().mockReturnThis(),
+			order: mockOrder,
+		};
 		const mockSelect = jest.fn().mockReturnValue(chain);
 		(supabase.from as jest.Mock).mockReturnValue({ select: mockSelect });
 
 		const result = await listBudgets();
 
 		expect(supabase.from).toHaveBeenCalledWith("budgets");
-		expect(mockSelect).toHaveBeenCalledWith(
-			"*, category:categories(id, name, icon)",
-		);
-		expect(mockOrder).toHaveBeenCalledWith("start_date", { ascending: false });
+		expect(mockSelect).toHaveBeenCalledWith("*");
+		expect(mockOrder).toHaveBeenCalledWith("period_start", { ascending: false });
 		expect(result).toHaveLength(2);
 	});
 
@@ -133,7 +136,10 @@ describe("Budget Service", () => {
 
 		await expect(deleteBudget("b-1")).resolves.toBeUndefined();
 
-		expect(mockUpdate).toHaveBeenCalledWith({ is_active: false });
+		expect(mockUpdate).toHaveBeenCalledWith({
+			is_active: false,
+			updated_by: "user-123",
+		});
 		expect(mockEq).toHaveBeenCalledWith("id", "b-1");
 	});
 
@@ -174,7 +180,7 @@ describe("Budget Service", () => {
 	test("createBudget rejects viewer context", async () => {
 		await expect(
 			createBudget(
-				{ category_id: "cat-1", limit_amount: 1, start_date: "2026-05-01" },
+				{ category: "Makan", limit_amount: 1, period_start: "2026-05-01" },
 				{ type: "household", householdId: "hh-1", role: "viewer" },
 			),
 		).rejects.toThrow("Akses lihat saja");
@@ -189,7 +195,7 @@ describe("Budget Service", () => {
 		(supabase.from as jest.Mock).mockReturnValue({ insert: mockInsert });
 
 		await createBudget(
-			{ category_id: "cat-1", limit_amount: 1, start_date: "2026-05-01" },
+			{ category: "Makan", limit_amount: 1, period_start: "2026-05-01" },
 			{ type: "household", householdId: "hh-1", role: "admin" },
 		);
 
@@ -207,7 +213,11 @@ describe("Budget Service", () => {
 		const mockOrder = jest
 			.fn()
 			.mockResolvedValue({ data: null, error: mockError });
-		const chain = { is: jest.fn().mockReturnThis(), order: mockOrder };
+		const chain = {
+			is: jest.fn().mockReturnThis(),
+			eq: jest.fn().mockReturnThis(),
+			order: mockOrder,
+		};
 		const mockSelect = jest.fn().mockReturnValue(chain);
 		(supabase.from as jest.Mock).mockReturnValue({ select: mockSelect });
 

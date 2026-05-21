@@ -112,6 +112,27 @@ type ReportTransaction = {
 	note?: string | null;
 };
 
+type ReportTransactionRow = {
+	nominal?: number | string | null;
+	type?: "income" | "expense" | null;
+	kategori?: string | null;
+	tanggal?: string | null;
+	catatan?: string | null;
+	merchant?: string | null;
+};
+
+function normalizeReportTransaction(row: ReportTransactionRow): ReportTransaction {
+	return {
+		amount: Number(row.nominal ?? 0),
+		transaction_type: row.type === "income" ? "income" : "expense",
+		category: row.kategori ?? null,
+		date: row.tanggal ?? null,
+		description: row.catatan ?? row.merchant ?? null,
+		merchant: row.merchant ?? null,
+		note: row.catatan ?? null,
+	};
+}
+
 const fallbackCategoryColors = {
 	light: [
 		"#65A30D",
@@ -673,21 +694,23 @@ export default function ReportsScreen() {
 
 				let query = supabase
 					.from("transactions")
-					.select(
-						"amount, transaction_type, category, date, description, merchant, note",
-					)
-					.eq("user_id", user.id);
+					.select("nominal, type, kategori, tanggal, catatan, merchant");
 				query = applyFinanceContextFilter(
 					query as any,
 					activeContext,
 				) as typeof query;
+				if (activeContext.type === "personal") {
+					query = query.eq("user_id", user.id) as typeof query;
+				}
 				const { data: transactions, error } = await query
-					.gte("date", startDateString)
-					.lte("date", endDateString);
+					.gte("tanggal", startDateString)
+					.lte("tanggal", endDateString);
 
 				if (error) throw error;
 
-				const loadedTransactions = (transactions || []) as ReportTransaction[];
+				const loadedTransactions = ((transactions || []) as ReportTransactionRow[]).map(
+					normalizeReportTransaction,
+				);
 				setReportTransactions(loadedTransactions);
 				setRealTransactionCount(loadedTransactions.length);
 
@@ -743,15 +766,17 @@ export default function ReportsScreen() {
 
 					let prevQuery = supabase
 						.from("transactions")
-						.select("amount, transaction_type")
-						.eq("user_id", user.id);
+						.select("nominal, type");
 					prevQuery = applyFinanceContextFilter(
 						prevQuery as any,
 						activeContext,
 					) as typeof prevQuery;
-					const { data: prevTransactions, error: prevError } = await prevQuery
+					if (activeContext.type === "personal") {
+						prevQuery = prevQuery.eq("user_id", user.id) as typeof prevQuery;
+					}
+					const { data: prevTransactionsRows, error: prevError } = await prevQuery
 						.gte(
-							"date",
+							"tanggal",
 							dateKey(
 								prevStartDate.getFullYear(),
 								prevStartDate.getMonth() + 1,
@@ -759,7 +784,7 @@ export default function ReportsScreen() {
 							),
 						)
 						.lte(
-							"date",
+							"tanggal",
 							dateKey(
 								prevEndDate.getFullYear(),
 								prevEndDate.getMonth() + 1,
@@ -771,22 +796,25 @@ export default function ReportsScreen() {
 						console.error("Failed to load previous period:", prevError);
 
 					const currentIncome =
-						transactions
-							?.filter((t) => t.transaction_type === "income")
+						loadedTransactions
+							.filter((t) => t.transaction_type === "income")
 							.reduce((sum, t) => sum + t.amount, 0) || 0;
 					const currentExpense =
-						transactions
-							?.filter((t) => t.transaction_type === "expense")
+						loadedTransactions
+							.filter((t) => t.transaction_type === "expense")
 							.reduce((sum, t) => sum + t.amount, 0) || 0;
 					const currentNet = currentIncome - currentExpense;
 
+					const prevTransactions = (
+						(prevTransactionsRows || []) as ReportTransactionRow[]
+					).map(normalizeReportTransaction);
 					const prevIncome =
 						prevTransactions
-							?.filter((t) => t.transaction_type === "income")
+							.filter((t) => t.transaction_type === "income")
 							.reduce((sum, t) => sum + t.amount, 0) || 0;
 					const prevExpense =
 						prevTransactions
-							?.filter((t) => t.transaction_type === "expense")
+							.filter((t) => t.transaction_type === "expense")
 							.reduce((sum, t) => sum + t.amount, 0) || 0;
 					const prevNet = prevIncome - prevExpense;
 
@@ -795,7 +823,7 @@ export default function ReportsScreen() {
 							income: currentIncome,
 							expense: currentExpense,
 							net: currentNet,
-							count: transactions?.length || 0,
+							count: loadedTransactions.length,
 						},
 						previous: {
 							income: prevIncome,

@@ -266,9 +266,11 @@ export async function listBudgetEnvelopes(
 ): Promise<BudgetEnvelope[]> {
 	let query = supabase
 		.from("budget_envelopes")
-		.select("*, category:categories(id,name)")
-		.eq("user_id", userId);
+		.select("*, category:categories(id,name)");
 	query = applyFinanceContextFilter(query, context) as typeof query;
+	if (context.type === "personal") {
+		query = query.eq("user_id", userId);
+	}
 	const { data, error } = await query.order("end_date");
 
 	if (error) throw error;

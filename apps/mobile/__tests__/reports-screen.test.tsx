@@ -12,42 +12,40 @@ import { ThemeProvider } from "../src/theme/theme-context";
 import { SupabaseProvider } from "../src/lib/supabase";
 import { I18nProvider } from "../src/i18n/i18n-context";
 
+let mockActiveContext: { type: "personal" } | { type: "household"; householdId: string; role: "admin" | "viewer" } = { type: "personal" };
+
 const mockTransactions = [
 	{
-		amount: 500000,
-		transaction_type: "expense",
-		category: "Makan",
-		date: "2026-05-01",
-		description: "Nasi padang",
+		nominal: 500000,
+		type: "expense",
+		kategori: "Makan",
+		tanggal: "2026-05-01",
+		catatan: "Nasi padang",
 		merchant: "RM Sederhana",
-		note: null,
 	},
 	{
-		amount: 350000,
-		transaction_type: "expense",
-		category: "Belanja",
-		date: "2026-05-02",
-		description: "Groceries",
+		nominal: 350000,
+		type: "expense",
+		kategori: "Belanja",
+		tanggal: "2026-05-02",
+		catatan: "Groceries",
 		merchant: "Supermarket",
-		note: null,
 	},
 	{
-		amount: 200000,
-		transaction_type: "expense",
-		category: "Transport",
-		date: "2026-05-03",
-		description: "Taxi",
+		nominal: 200000,
+		type: "expense",
+		kategori: "Transport",
+		tanggal: "2026-05-03",
+		catatan: "Taxi",
 		merchant: "Grab",
-		note: null,
 	},
 	{
-		amount: 150000,
-		transaction_type: "expense",
-		category: "Kesehatan",
-		date: "2026-05-04",
-		description: "Vitamin",
+		nominal: 150000,
+		type: "expense",
+		kategori: "Kesehatan",
+		tanggal: "2026-05-04",
+		catatan: "Vitamin",
 		merchant: "Apotek",
-		note: null,
 	},
 ];
 
@@ -73,6 +71,7 @@ jest.mock("../src/lib/supabase", () => {
 		gte: gteMock,
 		lte: lteMock,
 	};
+	(globalThis as any).__reportsQueryChain = chain;
 
 	return {
 		useSupabase: () => ({
@@ -104,8 +103,8 @@ jest.mock("../src/components/ui", () => ({
 
 jest.mock("../src/state/finance-context", () => ({
 	useFinanceContext: () => ({
-		activeContext: { type: "personal" },
-		canCreate: true,
+		activeContext: mockActiveContext,
+		canCreate: mockActiveContext.type === "personal" || mockActiveContext.role !== "viewer",
 	}),
 }));
 
@@ -154,6 +153,10 @@ function renderReports() {
 }
 
 describe("ReportsScreen visual parity", () => {
+	beforeEach(() => {
+		mockActiveContext = { type: "personal" };
+		jest.clearAllMocks();
+	});
 	it("exposes budget wallet management entry point in Reports without letting copy collide with the action", async () => {
 		renderReports();
 
@@ -203,6 +206,32 @@ describe("ReportsScreen visual parity", () => {
 		expect(incomeStyle.color).toBe("#65A30D");
 		expect(expenseStyle.color).not.toBe("#FF7B7B");
 		expect(savingsStyle.color).toBe("#0A0A0A");
+	});
+
+	it("queries deployed transaction schema columns and normalizes them for category visuals", async () => {
+		renderReports();
+
+		fireEvent.press(screen.getByText("Kategori"));
+		await screen.findByTestId("reports-category-fill-makan");
+
+		const chain = (globalThis as any).__reportsQueryChain;
+		expect(chain.select).toHaveBeenCalledWith(
+			"nominal, type, kategori, tanggal, catatan, merchant",
+		);
+		expect(chain.gte).toHaveBeenCalledWith("tanggal", expect.any(String));
+		expect(chain.lte).toHaveBeenCalledWith("tanggal", expect.any(String));
+		expect(screen.getByTestId("reports-category-fill-makan")).toBeTruthy();
+	});
+
+	it("does not additionally filter household report transactions by current user", async () => {
+		mockActiveContext = { type: "household", householdId: "hh-1", role: "admin" };
+		renderReports();
+
+		await waitFor(() => {
+			const eqCalls = (globalThis as any).__reportsQueryChain.eq.mock.calls;
+			expect(eqCalls).toContainEqual(["household_id", "hh-1"]);
+			expect(eqCalls).not.toContainEqual(["user_id", "user-1"]);
+		});
 	});
 
 	it("maps recorded category names to donut colors instead of falling back to a static neon palette", async () => {
@@ -407,11 +436,11 @@ describe("ReportsScreen visual parity", () => {
 
 		await waitFor(() => {
 			expect((globalThis as any).__reportsGteMock).toHaveBeenLastCalledWith(
-				"date",
+				"tanggal",
 				expect.stringMatching(/-15$/),
 			);
 			expect((globalThis as any).__reportsLteMock).toHaveBeenLastCalledWith(
-				"date",
+				"tanggal",
 				expect.stringMatching(/-20$/),
 			);
 		});

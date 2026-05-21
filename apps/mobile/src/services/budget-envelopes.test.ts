@@ -199,6 +199,7 @@ describe("budget envelope service query builders", () => {
 		});
 
 		expect(calls).toContain("eq:household_id:hh-1");
+		expect(calls).not.toContain("eq:user_id:user-1");
 	});
 
 	it("returns no allocations without querying when envelope id list is empty", async () => {

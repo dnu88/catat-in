@@ -11,29 +11,26 @@ import {
 const defaultContext: FinanceContext = { type: "personal" };
 
 export interface BudgetCreate {
-	category_id: string;
+	category: string;
 	limit_amount: number;
-	start_date: string; // ISO date string
+	period_start: string; // ISO date string
 	period?: string;
 	notify_at_percent?: number;
-	group_id?: string | null;
 }
 
 export interface Budget {
 	id: string;
 	user_id: string;
-	category_id: string;
+	category: string;
 	limit_amount: number;
 	period: string;
-	start_date: string;
+	period_start: string;
 	notify_at_percent: number;
 	is_active: boolean;
-	group_id: string | null;
+	household_id: string | null;
 	created_at: string;
 	// Derived client-side from transactions; not stored in deployed schema.
 	spent_amount?: number;
-	// Optional joined category info for display.
-	category?: { id: string; name: string; icon: string | null } | null;
 }
 
 export async function createBudget(
@@ -45,14 +42,13 @@ export async function createBudget(
 
 	const payload: Record<string, unknown> = {
 		...buildFinanceInsertAudit(context, userId),
-		category_id: budget.category_id,
+		category: budget.category,
 		limit_amount: budget.limit_amount,
-		start_date: budget.start_date,
+		period_start: budget.period_start,
 		period: budget.period ?? "monthly",
 		notify_at_percent: budget.notify_at_percent ?? 80,
 		is_active: true,
 	};
-	if (budget.group_id) payload.group_id = budget.group_id;
 
 	const { data, error } = await supabase
 		.from("budgets")
@@ -67,11 +63,13 @@ export async function createBudget(
 export async function listBudgets(
 	context: FinanceContext = defaultContext,
 ): Promise<Budget[]> {
-	let query = supabase
-		.from("budgets")
-		.select("*, category:categories(id, name, icon)");
+	const userId = await getCurrentUserId();
+	let query = supabase.from("budgets").select("*");
 	query = applyFinanceContextFilter(query as any, context) as typeof query;
-	const { data, error } = await query.order("start_date", { ascending: false });
+	if (context.type === "personal") {
+		query = query.eq("user_id", userId) as typeof query;
+	}
+	const { data, error } = await query.order("period_start", { ascending: false });
 
 	if (error) throw error;
 	return (data ?? []) as Budget[];
@@ -94,9 +92,10 @@ export async function updateBudget(
 }
 
 export async function deleteBudget(id: string): Promise<void> {
+	const userId = await getCurrentUserId();
 	const { error } = await supabase
 		.from("budgets")
-		.update({ is_active: false })
+		.update({ is_active: false, ...buildFinanceUpdateAudit(userId) })
 		.eq("id", id);
 
 	if (error) throw error;
