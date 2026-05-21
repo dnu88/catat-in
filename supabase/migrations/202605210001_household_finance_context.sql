@@ -868,7 +868,10 @@ create policy "transaction_envelope_allocations_insert_personal_or_household" on
           or (
             t.household_id is not null
             and e.household_id = t.household_id
-            and public.can_write_household(t.household_id)
+            and (
+              public.can_admin_household(t.household_id)
+              or (t.created_by = auth.uid() and public.household_role(t.household_id) = 'member')
+            )
           )
         )
     )
@@ -891,7 +894,10 @@ create policy "transaction_envelope_allocations_update_personal_or_household" on
           or (
             t.household_id is not null
             and e.household_id = t.household_id
-            and public.is_household_member(t.household_id)
+            and (
+              public.can_admin_household(t.household_id)
+              or (t.created_by = auth.uid() and public.household_role(t.household_id) = 'member')
+            )
           )
         )
     )
@@ -911,7 +917,10 @@ create policy "transaction_envelope_allocations_update_personal_or_household" on
           or (
             t.household_id is not null
             and e.household_id = t.household_id
-            and public.can_write_household(t.household_id)
+            and (
+              public.can_admin_household(t.household_id)
+              or (t.created_by = auth.uid() and public.household_role(t.household_id) = 'member')
+            )
           )
         )
     )
@@ -934,7 +943,10 @@ create policy "transaction_envelope_allocations_delete_personal_or_household" on
           or (
             t.household_id is not null
             and e.household_id = t.household_id
-            and public.can_write_household(t.household_id)
+            and (
+              public.can_admin_household(t.household_id)
+              or (t.created_by = auth.uid() and public.household_role(t.household_id) = 'member')
+            )
           )
         )
     )
