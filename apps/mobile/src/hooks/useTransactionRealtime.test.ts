@@ -27,7 +27,10 @@ const mockChannel: MockChannel = {
 	unsubscribe,
 };
 const mockMaybeSingle = jest.fn(
-	() => new Promise<{ data: unknown }>((resolve) => mockPendingFetches.push(resolve)),
+	() =>
+		new Promise<{ data: unknown }>((resolve) =>
+			mockPendingFetches.push(resolve),
+		),
 );
 const mockQuery: MockQuery = {
 	select: jest.fn(() => mockQuery),
@@ -97,7 +100,11 @@ describe("transaction realtime helpers", () => {
 		);
 		expect(mockPendingFetches).toHaveLength(1);
 
-		mockActiveContext = { type: "household", householdId: "hh-1", role: "admin" };
+		mockActiveContext = {
+			type: "household",
+			householdId: "hh-1",
+			role: "admin",
+		};
 		rerender({});
 		expect(mockPendingFetches).toHaveLength(2);
 
@@ -110,7 +117,9 @@ describe("transaction realtime helpers", () => {
 			data: { id: "tx-1", household_id: "hh-1", status: "done" },
 		});
 		await waitFor(() =>
-			expect(result.current.transaction).toMatchObject({ household_id: "hh-1" }),
+			expect(result.current.transaction).toMatchObject({
+				household_id: "hh-1",
+			}),
 		);
 	});
 

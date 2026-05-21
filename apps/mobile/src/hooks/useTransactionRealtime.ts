@@ -91,9 +91,11 @@ export function useTransactionRealtime(transactionId: string | null) {
 		}
 
 		const filter = transactionRealtimeFilter(activeContext);
-		const channel = (supabase.channel(
-			transactionChannelName(activeContext),
-		) as unknown as TransactionChannel)
+		const channel = (
+			supabase.channel(
+				transactionChannelName(activeContext),
+			) as unknown as TransactionChannel
+		)
 			.on(
 				"postgres_changes",
 				{
