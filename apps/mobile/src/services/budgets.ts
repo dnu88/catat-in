@@ -69,7 +69,9 @@ export async function listBudgets(
 	if (context.type === "personal") {
 		query = query.eq("user_id", userId) as typeof query;
 	}
-	const { data, error } = await query.order("period_start", { ascending: false });
+	const { data, error } = await query.order("period_start", {
+		ascending: false,
+	});
 
 	if (error) throw error;
 	return (data ?? []) as Budget[];

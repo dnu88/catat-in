@@ -104,7 +104,9 @@ describe("Budget Service", () => {
 
 		expect(supabase.from).toHaveBeenCalledWith("budgets");
 		expect(mockSelect).toHaveBeenCalledWith("*");
-		expect(mockOrder).toHaveBeenCalledWith("period_start", { ascending: false });
+		expect(mockOrder).toHaveBeenCalledWith("period_start", {
+			ascending: false,
+		});
 		expect(result).toHaveLength(2);
 	});
 

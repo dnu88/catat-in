@@ -121,7 +121,9 @@ type ReportTransactionRow = {
 	merchant?: string | null;
 };
 
-function normalizeReportTransaction(row: ReportTransactionRow): ReportTransaction {
+function normalizeReportTransaction(
+	row: ReportTransactionRow,
+): ReportTransaction {
 	return {
 		amount: Number(row.nominal ?? 0),
 		transaction_type: row.type === "income" ? "income" : "expense",
@@ -708,9 +710,9 @@ export default function ReportsScreen() {
 
 				if (error) throw error;
 
-				const loadedTransactions = ((transactions || []) as ReportTransactionRow[]).map(
-					normalizeReportTransaction,
-				);
+				const loadedTransactions = (
+					(transactions || []) as ReportTransactionRow[]
+				).map(normalizeReportTransaction);
 				setReportTransactions(loadedTransactions);
 				setRealTransactionCount(loadedTransactions.length);
 
@@ -764,9 +766,7 @@ export default function ReportsScreen() {
 					const prevEndDate = new Date(endDate);
 					prevEndDate.setMonth(prevEndDate.getMonth() - 1);
 
-					let prevQuery = supabase
-						.from("transactions")
-						.select("nominal, type");
+					let prevQuery = supabase.from("transactions").select("nominal, type");
 					prevQuery = applyFinanceContextFilter(
 						prevQuery as any,
 						activeContext,
@@ -774,23 +774,24 @@ export default function ReportsScreen() {
 					if (activeContext.type === "personal") {
 						prevQuery = prevQuery.eq("user_id", user.id) as typeof prevQuery;
 					}
-					const { data: prevTransactionsRows, error: prevError } = await prevQuery
-						.gte(
-							"tanggal",
-							dateKey(
-								prevStartDate.getFullYear(),
-								prevStartDate.getMonth() + 1,
-								prevStartDate.getDate(),
-							),
-						)
-						.lte(
-							"tanggal",
-							dateKey(
-								prevEndDate.getFullYear(),
-								prevEndDate.getMonth() + 1,
-								prevEndDate.getDate(),
-							),
-						);
+					const { data: prevTransactionsRows, error: prevError } =
+						await prevQuery
+							.gte(
+								"tanggal",
+								dateKey(
+									prevStartDate.getFullYear(),
+									prevStartDate.getMonth() + 1,
+									prevStartDate.getDate(),
+								),
+							)
+							.lte(
+								"tanggal",
+								dateKey(
+									prevEndDate.getFullYear(),
+									prevEndDate.getMonth() + 1,
+									prevEndDate.getDate(),
+								),
+							);
 
 					if (prevError)
 						console.error("Failed to load previous period:", prevError);

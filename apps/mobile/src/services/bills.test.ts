@@ -105,12 +105,21 @@ describe("Bill Service", () => {
 	});
 
 	test("updateBill fetches existing row, checks permission, updates with audit, and returns updated record", async () => {
-		const existing = { id: "bill-1", user_id: "user-123", household_id: null, created_by: "user-123" };
+		const existing = {
+			id: "bill-1",
+			user_id: "user-123",
+			household_id: null,
+			created_by: "user-123",
+		};
 		const updated = { id: "bill-1", is_paid: true };
-		const fetchSingle = jest.fn().mockResolvedValue({ data: existing, error: null });
+		const fetchSingle = jest
+			.fn()
+			.mockResolvedValue({ data: existing, error: null });
 		const fetchEq = jest.fn().mockReturnValue({ single: fetchSingle });
 		const fetchSelect = jest.fn().mockReturnValue({ eq: fetchEq });
-		const updateSingle = jest.fn().mockResolvedValue({ data: updated, error: null });
+		const updateSingle = jest
+			.fn()
+			.mockResolvedValue({ data: updated, error: null });
 		const updateSelect = jest.fn().mockReturnValue({ single: updateSingle });
 		const updateEq = jest.fn().mockReturnValue({ select: updateSelect });
 		const mockUpdate = jest.fn().mockReturnValue({ eq: updateEq });
@@ -120,7 +129,9 @@ describe("Bill Service", () => {
 
 		const result = await updateBill("bill-1", { is_paid: true });
 
-		expect(fetchSelect).toHaveBeenCalledWith("id,user_id,household_id,created_by");
+		expect(fetchSelect).toHaveBeenCalledWith(
+			"id,user_id,household_id,created_by",
+		);
 		expect(fetchEq).toHaveBeenCalledWith("id", "bill-1");
 		expect(mockUpdate).toHaveBeenCalledWith({
 			is_paid: true,
@@ -131,8 +142,15 @@ describe("Bill Service", () => {
 	});
 
 	test("deleteBill fetches existing row, checks permission, then hard-deletes the record", async () => {
-		const existing = { id: "bill-1", user_id: "user-123", household_id: null, created_by: "user-123" };
-		const fetchSingle = jest.fn().mockResolvedValue({ data: existing, error: null });
+		const existing = {
+			id: "bill-1",
+			user_id: "user-123",
+			household_id: null,
+			created_by: "user-123",
+		};
+		const fetchSingle = jest
+			.fn()
+			.mockResolvedValue({ data: existing, error: null });
 		const fetchEq = jest.fn().mockReturnValue({ single: fetchSingle });
 		const fetchSelect = jest.fn().mockReturnValue({ eq: fetchEq });
 		const deleteEq = jest.fn().mockResolvedValue({ error: null });
@@ -143,15 +161,24 @@ describe("Bill Service", () => {
 
 		await expect(deleteBill("bill-1")).resolves.toBeUndefined();
 
-		expect(fetchSelect).toHaveBeenCalledWith("id,user_id,household_id,created_by");
+		expect(fetchSelect).toHaveBeenCalledWith(
+			"id,user_id,household_id,created_by",
+		);
 		expect(fetchEq).toHaveBeenCalledWith("id", "bill-1");
 		expect(mockDelete).toHaveBeenCalled();
 		expect(deleteEq).toHaveBeenCalledWith("id", "bill-1");
 	});
 
 	test("updateBill rejects viewer context before updating", async () => {
-		const existing = { id: "bill-1", user_id: "user-456", household_id: "hh-1", created_by: "user-456" };
-		const fetchSingle = jest.fn().mockResolvedValue({ data: existing, error: null });
+		const existing = {
+			id: "bill-1",
+			user_id: "user-456",
+			household_id: "hh-1",
+			created_by: "user-456",
+		};
+		const fetchSingle = jest
+			.fn()
+			.mockResolvedValue({ data: existing, error: null });
 		const fetchEq = jest.fn().mockReturnValue({ single: fetchSingle });
 		const fetchSelect = jest.fn().mockReturnValue({ eq: fetchEq });
 		const mockUpdate = jest.fn();
@@ -160,33 +187,61 @@ describe("Bill Service", () => {
 			.mockReturnValueOnce({ update: mockUpdate });
 
 		await expect(
-			updateBill("bill-1", { is_paid: true }, { type: "household", householdId: "hh-1", role: "viewer" }),
+			updateBill(
+				"bill-1",
+				{ is_paid: true },
+				{ type: "household", householdId: "hh-1", role: "viewer" },
+			),
 		).rejects.toThrow("Akses lihat saja");
 		expect(mockUpdate).not.toHaveBeenCalled();
 	});
 
 	test("member cannot update or delete another member bill row", async () => {
-		const existing = { id: "bill-1", user_id: "user-456", household_id: "hh-1", created_by: "user-456" };
-		const fetchSingle = jest.fn().mockResolvedValue({ data: existing, error: null });
+		const existing = {
+			id: "bill-1",
+			user_id: "user-456",
+			household_id: "hh-1",
+			created_by: "user-456",
+		};
+		const fetchSingle = jest
+			.fn()
+			.mockResolvedValue({ data: existing, error: null });
 		const fetchEq = jest.fn().mockReturnValue({ single: fetchSingle });
 		const fetchSelect = jest.fn().mockReturnValue({ eq: fetchEq });
 		(supabase.from as jest.Mock).mockReturnValue({ select: fetchSelect });
 
 		await expect(
-			updateBill("bill-1", { is_paid: true }, { type: "household", householdId: "hh-1", role: "member" }),
+			updateBill(
+				"bill-1",
+				{ is_paid: true },
+				{ type: "household", householdId: "hh-1", role: "member" },
+			),
 		).rejects.toThrow("Tidak diizinkan");
 		await expect(
-			deleteBill("bill-1", { type: "household", householdId: "hh-1", role: "member" }),
+			deleteBill("bill-1", {
+				type: "household",
+				householdId: "hh-1",
+				role: "member",
+			}),
 		).rejects.toThrow("Tidak diizinkan");
 	});
 
 	test("member can update own household bill row", async () => {
-		const existing = { id: "bill-1", user_id: "user-123", household_id: "hh-1", created_by: "user-123" };
+		const existing = {
+			id: "bill-1",
+			user_id: "user-123",
+			household_id: "hh-1",
+			created_by: "user-123",
+		};
 		const updated = { id: "bill-1", is_paid: true };
-		const fetchSingle = jest.fn().mockResolvedValue({ data: existing, error: null });
+		const fetchSingle = jest
+			.fn()
+			.mockResolvedValue({ data: existing, error: null });
 		const fetchEq = jest.fn().mockReturnValue({ single: fetchSingle });
 		const fetchSelect = jest.fn().mockReturnValue({ eq: fetchEq });
-		const updateSingle = jest.fn().mockResolvedValue({ data: updated, error: null });
+		const updateSingle = jest
+			.fn()
+			.mockResolvedValue({ data: updated, error: null });
 		const updateSelect = jest.fn().mockReturnValue({ single: updateSingle });
 		const updateEq = jest.fn().mockReturnValue({ select: updateSelect });
 		const mockUpdate = jest.fn().mockReturnValue({ eq: updateEq });
@@ -195,9 +250,16 @@ describe("Bill Service", () => {
 			.mockReturnValueOnce({ update: mockUpdate });
 
 		await expect(
-			updateBill("bill-1", { is_paid: true }, { type: "household", householdId: "hh-1", role: "member" }),
+			updateBill(
+				"bill-1",
+				{ is_paid: true },
+				{ type: "household", householdId: "hh-1", role: "member" },
+			),
 		).resolves.toEqual(updated);
-		expect(mockUpdate).toHaveBeenCalledWith({ is_paid: true, updated_by: "user-123" });
+		expect(mockUpdate).toHaveBeenCalledWith({
+			is_paid: true,
+			updated_by: "user-123",
+		});
 	});
 
 	test("listBills filters personal rows to household_id null", async () => {

@@ -12,7 +12,11 @@ import { ThemeProvider } from "../src/theme/theme-context";
 import { SupabaseProvider } from "../src/lib/supabase";
 import { I18nProvider } from "../src/i18n/i18n-context";
 
-let mockActiveContext: { type: "personal" } | { type: "household"; householdId: string; role: "admin" | "viewer" } = { type: "personal" };
+let mockActiveContext:
+	| { type: "personal" }
+	| { type: "household"; householdId: string; role: "admin" | "viewer" } = {
+	type: "personal",
+};
 
 const mockTransactions = [
 	{
@@ -104,7 +108,9 @@ jest.mock("../src/components/ui", () => ({
 jest.mock("../src/state/finance-context", () => ({
 	useFinanceContext: () => ({
 		activeContext: mockActiveContext,
-		canCreate: mockActiveContext.type === "personal" || mockActiveContext.role !== "viewer",
+		canCreate:
+			mockActiveContext.type === "personal" ||
+			mockActiveContext.role !== "viewer",
 	}),
 }));
 
@@ -224,7 +230,11 @@ describe("ReportsScreen visual parity", () => {
 	});
 
 	it("does not additionally filter household report transactions by current user", async () => {
-		mockActiveContext = { type: "household", householdId: "hh-1", role: "admin" };
+		mockActiveContext = {
+			type: "household",
+			householdId: "hh-1",
+			role: "admin",
+		};
 		renderReports();
 
 		await waitFor(() => {
