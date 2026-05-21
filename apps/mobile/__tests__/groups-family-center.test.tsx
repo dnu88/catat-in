@@ -1,5 +1,10 @@
 import React from "react";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react-native";
+import {
+	fireEvent,
+	render,
+	screen,
+	waitFor,
+} from "@testing-library/react-native";
 
 import GroupsScreen from "../app/(tabs)/groups";
 import { ThemeProvider } from "../src/theme/theme-context";
@@ -87,7 +92,10 @@ describe("Family Center screen", () => {
 		renderGroupsScreen();
 
 		fireEvent.press(screen.getByText("Gabung"));
-		fireEvent.changeText(screen.getByPlaceholderText("Kode undangan"), "ABC123");
+		fireEvent.changeText(
+			screen.getByPlaceholderText("Kode undangan"),
+			"ABC123",
+		);
 		fireEvent.press(screen.getByText("Gabung keluarga"));
 
 		await waitFor(() =>
