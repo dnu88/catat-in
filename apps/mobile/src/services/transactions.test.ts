@@ -22,10 +22,11 @@ describe("Transaction Service", () => {
 		const mockData = {
 			id: "tx-123",
 			wallet_id: null,
-			transaction_type: "expense",
-			amount: 50000,
-			category: "Food",
-			description: "Lunch",
+			type: "expense",
+			nominal: 50000,
+			kategori: "Food",
+			catatan: "Lunch",
+			tanggal: "2026-05-21",
 		};
 		const mockSingle = jest
 			.fn()
@@ -47,17 +48,28 @@ describe("Transaction Service", () => {
 			user_id: "user-123",
 			household_id: null,
 			wallet_id: "w-1",
-			transaction_type: "expense",
-			amount: 50000,
-			category: "Food",
-			description: "Lunch",
+			type: "expense",
+			nominal: 50000,
+			kategori: "Food",
+			catatan: "Lunch",
 			created_by: "user-123",
 			updated_by: "user-123",
 		});
+		const insertedPayload = mockInsert.mock.calls[0][0];
+		expect(insertedPayload).not.toHaveProperty("transaction_type");
+		expect(insertedPayload).not.toHaveProperty("amount");
+		expect(insertedPayload).not.toHaveProperty("category");
+		expect(insertedPayload).not.toHaveProperty("description");
+		expect(insertedPayload).not.toHaveProperty("date");
+		expect(insertedPayload).not.toHaveProperty("note");
 		expect(mockSelect).toHaveBeenCalled();
 		expect(mockSingle).toHaveBeenCalled();
 		expect(result.id).toBe("tx-123");
 		expect(result.transaction_type).toBe("expense");
+		expect(result.amount).toBe(50000);
+		expect(result.category).toBe("Food");
+		expect(result.description).toBe("Lunch");
+		expect(result.date).toBe("2026-05-21");
 		expect(supabase.from).not.toHaveBeenCalledWith("wallets");
 	});
 
@@ -84,10 +96,13 @@ describe("Transaction Service", () => {
 		expect(mockInsert).toHaveBeenCalledWith(
 			expect.objectContaining({
 				merchant: "PT Acme",
-				date: "2026-05-10",
-				note: "gaji bulanan",
+				tanggal: "2026-05-10",
+				catatan: "gaji bulanan",
 			}),
 		);
+		const insertedPayload = mockInsert.mock.calls[0][0];
+		expect(insertedPayload).not.toHaveProperty("date");
+		expect(insertedPayload).not.toHaveProperty("note");
 	});
 
 	test("listTransactions should return all transactions ordered by date desc", async () => {
@@ -109,7 +124,7 @@ describe("Transaction Service", () => {
 
 		expect(supabase.from).toHaveBeenCalledWith("transactions");
 		expect(mockSelect).toHaveBeenCalledWith("*");
-		expect(query.order).toHaveBeenCalledWith("date", { ascending: false });
+		expect(query.order).toHaveBeenCalledWith("tanggal", { ascending: false });
 		expect(mockIs).toHaveBeenCalledWith("household_id", null);
 		expect(Array.isArray(result)).toBe(true);
 		expect(result).toHaveLength(2);
@@ -222,7 +237,7 @@ describe("Transaction Service", () => {
 
 		const result = await listTransactions({ transaction_type: "income" });
 
-		expect(query.eq).toHaveBeenCalledWith("transaction_type", "income");
+		expect(query.eq).toHaveBeenCalledWith("type", "income");
 		expect(Array.isArray(result)).toBe(true);
 	});
 
@@ -240,7 +255,7 @@ describe("Transaction Service", () => {
 
 		const result = await listTransactions({ category: "Food" });
 
-		expect(query.eq).toHaveBeenCalledWith("category", "Food");
+		expect(query.eq).toHaveBeenCalledWith("kategori", "Food");
 		expect(Array.isArray(result)).toBe(true);
 	});
 
@@ -267,12 +282,12 @@ describe("Transaction Service", () => {
 			household_id: null,
 			created_by: "user-123",
 			wallet_id: "w-1",
-			amount: 50000,
-			transaction_type: "expense",
+			nominal: 50000,
+			type: "expense",
 		};
 		const updated = {
 			...previous,
-			amount: 75000,
+			nominal: 75000,
 		};
 		const previousSingle = jest
 			.fn()
@@ -300,11 +315,91 @@ describe("Transaction Service", () => {
 			mockUpdate.mock.invocationCallOrder[0],
 		);
 		expect(mockUpdate).toHaveBeenCalledWith({
-			amount: 75000,
+			nominal: 75000,
 			updated_by: "user-123",
 		});
+		const updatePayload = mockUpdate.mock.calls[0][0];
+		expect(updatePayload).not.toHaveProperty("amount");
+		expect(updatePayload).not.toHaveProperty("transaction_type");
+		expect(updatePayload).not.toHaveProperty("category");
+		expect(updatePayload).not.toHaveProperty("description");
+		expect(updatePayload).not.toHaveProperty("date");
+		expect(updatePayload).not.toHaveProperty("note");
+		expect(result.amount).toBe(75000);
 		expect(supabase.from).not.toHaveBeenCalledWith("wallets");
 		expect(result.id).toBe("tx-1");
+	});
+
+	test("updateTransaction maps app update fields to database columns", async () => {
+		const previous = {
+			id: "tx-1",
+			user_id: "user-123",
+			household_id: null,
+			created_by: "user-123",
+			wallet_id: "w-1",
+			nominal: 50000,
+			type: "expense",
+		};
+		const updated = {
+			...previous,
+			type: "income",
+			nominal: 90000,
+			kategori: "Salary",
+			catatan: "Bonus",
+			tanggal: "2026-05-20",
+		};
+		const previousSingle = jest
+			.fn()
+			.mockResolvedValue({ data: previous, error: null });
+		const updateSingle = jest
+			.fn()
+			.mockResolvedValue({ data: updated, error: null });
+		const mockUpdate = jest.fn().mockReturnValue({
+			eq: jest.fn().mockReturnValue({
+				select: jest.fn().mockReturnValue({ single: updateSingle }),
+			}),
+		});
+		const transactionsSelect = jest.fn().mockReturnValue({
+			eq: jest.fn().mockReturnValue({ maybeSingle: previousSingle }),
+		});
+		(supabase.from as jest.Mock).mockReturnValue({
+			select: transactionsSelect,
+			update: mockUpdate,
+		});
+
+		const result = await updateTransaction("tx-1", {
+			transaction_type: "income",
+			amount: 90000,
+			category: "Salary",
+			description: "Bonus",
+			date: "2026-05-20",
+			note: "Bonus",
+		});
+
+		expect(mockUpdate).toHaveBeenCalledWith({
+			type: "income",
+			nominal: 90000,
+			kategori: "Salary",
+			catatan: "Bonus",
+			tanggal: "2026-05-20",
+			updated_by: "user-123",
+		});
+		const updatePayload = mockUpdate.mock.calls[0][0];
+		for (const oldKey of [
+			"transaction_type",
+			"amount",
+			"category",
+			"description",
+			"date",
+			"note",
+		]) {
+			expect(updatePayload).not.toHaveProperty(oldKey);
+		}
+		expect(result.transaction_type).toBe("income");
+		expect(result.amount).toBe(90000);
+		expect(result.category).toBe("Salary");
+		expect(result.description).toBe("Bonus");
+		expect(result.date).toBe("2026-05-20");
 	});
 
 	test("updateTransaction denies household member updating another member's transaction", async () => {
