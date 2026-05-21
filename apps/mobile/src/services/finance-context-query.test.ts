@@ -137,12 +137,12 @@ describe("finance context query helpers", () => {
 			created_by: "user-1",
 		} as unknown as FinancePermissionRow;
 
-		expect(
-			canUpdateInContext(personal, rowMissingHouseholdId, "user-1"),
-		).toBe(false);
-		expect(
-			canDeleteInContext(personal, rowMissingHouseholdId, "user-1"),
-		).toBe(false);
+		expect(canUpdateInContext(personal, rowMissingHouseholdId, "user-1")).toBe(
+			false,
+		);
+		expect(canDeleteInContext(personal, rowMissingHouseholdId, "user-1")).toBe(
+			false,
+		);
 	});
 
 	it("allows owner/admin update/delete only for matching household rows", () => {

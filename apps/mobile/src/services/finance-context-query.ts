@@ -71,7 +71,9 @@ export function canUpdateInContext(
 	}
 
 	if (context.role === "member") {
-		return row.household_id === context.householdId && row.created_by === userId;
+		return (
+			row.household_id === context.householdId && row.created_by === userId
+		);
 	}
 
 	return false;
