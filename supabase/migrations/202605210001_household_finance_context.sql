@@ -4,7 +4,10 @@ create table if not exists public.households (
   id uuid primary key default gen_random_uuid(),
   name text not null check (char_length(trim(name)) between 2 and 80),
   owner_id uuid not null references auth.users(id) on delete cascade,
-  invite_code text not null unique,
+  invite_code text not null unique constraint households_invite_code_normalized check (
+    invite_code = upper(btrim(invite_code))
+    and invite_code ~ '^[A-Z0-9]{6,12}$'
+  ),
   created_at timestamptz not null default timezone('utc'::text, now()),
   updated_at timestamptz not null default timezone('utc'::text, now())
 );
@@ -47,6 +50,16 @@ update public.bill_reminders set created_by = user_id where created_by is null;
 update public.bill_reminders set updated_by = user_id where updated_by is null;
 update public.budget_envelopes set created_by = user_id where created_by is null;
 update public.budget_envelopes set updated_by = user_id where updated_by is null;
+
+update public.households
+set invite_code = upper(btrim(invite_code))
+where invite_code is distinct from upper(btrim(invite_code));
+
+alter table public.households drop constraint if exists households_invite_code_normalized;
+alter table public.households add constraint households_invite_code_normalized check (
+  invite_code = upper(btrim(invite_code))
+  and invite_code ~ '^[A-Z0-9]{6,12}$'
+);
 
 create index if not exists idx_households_owner_id on public.households(owner_id);
 create index if not exists idx_households_invite_code on public.households(invite_code);
@@ -109,6 +122,54 @@ as $$
   select coalesce(public.household_role(target_household_id) in ('owner', 'admin'), false);
 $$;
 
+create or replace function public.transaction_wallet_matches_scope(
+  target_wallet_id uuid,
+  target_user_id uuid,
+  target_household_id uuid
+)
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select target_wallet_id is null
+    or exists (
+      select 1
+      from public.wallets w
+      where w.id = target_wallet_id
+        and (
+          (
+            target_household_id is null
+            and w.household_id is null
+            and w.user_id = target_user_id
+            and target_user_id = auth.uid()
+          )
+          or (
+            target_household_id is not null
+            and w.household_id = target_household_id
+          )
+        )
+    );
+$$;
+
+create or replace function public.set_financial_audit_fields()
+returns trigger
+language plpgsql
+set search_path = public
+as $$
+begin
+  if tg_op = 'INSERT' then
+    new.created_by = coalesce(new.created_by, auth.uid(), new.user_id);
+    new.updated_by = coalesce(new.updated_by, new.created_by, auth.uid(), new.user_id);
+  elsif tg_op = 'UPDATE' then
+    new.updated_by = coalesce(auth.uid(), new.updated_by);
+  end if;
+
+  return new;
+end;
+$$;
+
 create or replace function public.prevent_financial_scope_change()
 returns trigger
 language plpgsql
@@ -156,14 +217,19 @@ as $$
 declare
   target_household_id uuid;
   joining_user_id uuid := auth.uid();
+  normalized_invite_code text := upper(btrim(invite_code_input));
 begin
   if joining_user_id is null then
     raise exception 'Authentication required';
   end if;
 
+  if normalized_invite_code is null or normalized_invite_code !~ '^[A-Z0-9]{6,12}$' then
+    raise exception 'Invalid invite code';
+  end if;
+
   select h.id into target_household_id
   from public.households h
-  where h.invite_code = upper(trim(invite_code_input));
+  where h.invite_code = normalized_invite_code;
 
   if target_household_id is null then
     raise exception 'Invite code not found';
@@ -198,6 +264,31 @@ drop trigger if exists set_household_members_updated_at on public.household_memb
 create trigger set_household_members_updated_at
 before update on public.household_members
 for each row execute function public.set_updated_at();
+
+drop trigger if exists set_transactions_audit_fields on public.transactions;
+create trigger set_transactions_audit_fields
+before insert or update on public.transactions
+for each row execute function public.set_financial_audit_fields();
+
+drop trigger if exists set_wallets_audit_fields on public.wallets;
+create trigger set_wallets_audit_fields
+before insert or update on public.wallets
+for each row execute function public.set_financial_audit_fields();
+
+drop trigger if exists set_budgets_audit_fields on public.budgets;
+create trigger set_budgets_audit_fields
+before insert or update on public.budgets
+for each row execute function public.set_financial_audit_fields();
+
+drop trigger if exists set_bill_reminders_audit_fields on public.bill_reminders;
+create trigger set_bill_reminders_audit_fields
+before insert or update on public.bill_reminders
+for each row execute function public.set_financial_audit_fields();
+
+drop trigger if exists set_budget_envelopes_audit_fields on public.budget_envelopes;
+create trigger set_budget_envelopes_audit_fields
+before insert or update on public.budget_envelopes
+for each row execute function public.set_financial_audit_fields();
 
 drop trigger if exists prevent_transactions_scope_change on public.transactions;
 create trigger prevent_transactions_scope_change
@@ -317,12 +408,19 @@ create policy "transactions_select_personal_or_household" on public.transactions
 
 create policy "transactions_insert_personal_or_household" on public.transactions
   for insert with check (
-    (household_id is null and user_id = auth.uid())
-    or (
-      household_id is not null
-      and user_id = auth.uid()
-      and created_by = auth.uid()
-      and public.can_write_household(household_id)
+    public.transaction_wallet_matches_scope(wallet_id, user_id, household_id)
+    and (
+      (
+        household_id is null
+        and user_id = auth.uid()
+        and created_by = auth.uid()
+      )
+      or (
+        household_id is not null
+        and user_id = auth.uid()
+        and created_by = auth.uid()
+        and public.can_write_household(household_id)
+      )
     )
   );
 
@@ -337,13 +435,20 @@ create policy "transactions_update_personal_or_household" on public.transactions
       )
     )
   ) with check (
-    (household_id is null and user_id = auth.uid())
-    or (
-      household_id is not null
-      and updated_by = auth.uid()
-      and (
-        public.can_admin_household(household_id)
-        or (created_by = auth.uid() and public.household_role(household_id) = 'member')
+    public.transaction_wallet_matches_scope(wallet_id, user_id, household_id)
+    and (
+      (
+        household_id is null
+        and user_id = auth.uid()
+        and updated_by = auth.uid()
+      )
+      or (
+        household_id is not null
+        and updated_by = auth.uid()
+        and (
+          public.can_admin_household(household_id)
+          or (created_by = auth.uid() and public.household_role(household_id) = 'member')
+        )
       )
     )
   );
