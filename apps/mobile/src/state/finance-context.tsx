@@ -60,9 +60,18 @@ export function FinanceContextProvider({
 	const [memberships, setMemberships] = useState<HouseholdMember[]>([]);
 	const [loading, setLoading] = useState(true);
 
-	const loadRows = useCallback(async () => {
+	const resetToPersonal = useCallback(() => {
+		setMemberships([]);
+		setActiveContext({ type: "personal" });
+	}, []);
+
+	const loadRows = useCallback(async (): Promise<HouseholdMember[]> => {
 		if (loadMemberships) return loadMemberships();
-		return listMyHouseholds(supabase as any, await getCurrentUserId());
+		try {
+			return await listMyHouseholds(supabase, await getCurrentUserId());
+		} catch {
+			return [];
+		}
 	}, [loadMemberships]);
 
 	const refreshMemberships = useCallback(async () => {
@@ -73,12 +82,16 @@ export function FinanceContextProvider({
 
 			setActiveContext((current) => {
 				if (current.type !== "household") return current;
-				return contextForHousehold(current.householdId, rows) ?? { type: "personal" };
+				return (
+					contextForHousehold(current.householdId, rows) ?? { type: "personal" }
+				);
 			});
+		} catch {
+			resetToPersonal();
 		} finally {
 			setLoading(false);
 		}
-	}, [loadRows]);
+	}, [loadRows, resetToPersonal]);
 
 	useEffect(() => {
 		let cancelled = false;
@@ -88,30 +101,43 @@ export function FinanceContextProvider({
 			try {
 				const [rows, storedHouseholdId] = await Promise.all([
 					loadRows(),
-					AsyncStorage.getItem(ACTIVE_HOUSEHOLD_STORAGE_KEY),
+					AsyncStorage.getItem(ACTIVE_HOUSEHOLD_STORAGE_KEY).catch(() => null),
 				]);
 				if (cancelled) return;
 
 				setMemberships(rows);
 				setActiveContext(
 					storedHouseholdId
-						? contextForHousehold(storedHouseholdId, rows) ?? { type: "personal" }
+						? (contextForHousehold(storedHouseholdId, rows) ?? {
+								type: "personal",
+							})
 						: { type: "personal" },
 				);
+			} catch {
+				if (!cancelled) resetToPersonal();
 			} finally {
 				if (!cancelled) setLoading(false);
 			}
 		}
 
 		initialise();
+		const subscription = supabase.auth.onAuthStateChange((_event, session) => {
+			if (!session?.user) {
+				resetToPersonal();
+				return;
+			}
+			void refreshMemberships();
+		});
+
 		return () => {
 			cancelled = true;
+			subscription.data.subscription.unsubscribe();
 		};
-	}, [loadRows]);
+	}, [loadRows, refreshMemberships, resetToPersonal]);
 
 	const setPersonalContext = useCallback(() => {
 		setActiveContext({ type: "personal" });
-		void AsyncStorage.removeItem(ACTIVE_HOUSEHOLD_STORAGE_KEY);
+		void AsyncStorage.removeItem(ACTIVE_HOUSEHOLD_STORAGE_KEY).catch(() => undefined);
 	}, []);
 
 	const setActiveHousehold = useCallback(
@@ -120,7 +146,9 @@ export function FinanceContextProvider({
 			if (!context) return;
 
 			setActiveContext(context);
-			void AsyncStorage.setItem(ACTIVE_HOUSEHOLD_STORAGE_KEY, householdId);
+			void AsyncStorage.setItem(ACTIVE_HOUSEHOLD_STORAGE_KEY, householdId).catch(
+				() => undefined,
+			);
 		},
 		[memberships],
 	);
@@ -151,7 +179,9 @@ export function FinanceContextProvider({
 export function useFinanceContext() {
 	const value = useContext(Context);
 	if (!value) {
-		throw new Error("useFinanceContext must be used within FinanceContextProvider");
+		throw new Error(
+			"useFinanceContext must be used within FinanceContextProvider",
+		);
 	}
 	return value;
 }

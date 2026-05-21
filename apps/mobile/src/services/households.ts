@@ -21,12 +21,9 @@ export type HouseholdMember = {
 	households?: Household;
 };
 
-type SupabaseLike = {
+export type SupabaseLike = {
 	from(table: string): any;
-	rpc?(
-		name: string,
-		params?: Record<string, unknown>,
-	): Promise<{ data: unknown; error: unknown }>;
+	rpc?(name: string, params?: Record<string, unknown>): any;
 };
 
 function generateInviteCode() {
