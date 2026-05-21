@@ -33,6 +33,42 @@ class WalletBalanceTriggerMigrationTest(unittest.TestCase):
         self.assertRegex(body, r"update public\.wallets\s+set balance = balance \+ delta_amount")
         self.assertNotRegex(body, r"select .*balance.*from public\.wallets")
 
+    def test_wallet_balance_trigger_constrains_wallet_updates_to_transaction_scope(self):
+        function_match = re.search(
+            r"create or replace function public\.sync_wallet_balance_from_transaction\(\).*?\$\$\n(.*?)\n\$\$;",
+            SQL,
+            re.S,
+        )
+        if function_match is None:
+            raise AssertionError("sync_wallet_balance_from_transaction function not found")
+        body = function_match.group(1)
+
+        self.assertIn("wallet_matches_transaction_scope", SQL)
+        self.assertGreaterEqual(body.count("public.wallet_matches_transaction_scope"), 2)
+        self.assertRegex(body, r"where id = old\.wallet_id\s+and public\.wallet_matches_transaction_scope\(old\.wallet_id, old\.user_id, old\.household_id\)")
+        self.assertRegex(body, r"where id = target_wallet_id\s+and public\.wallet_matches_transaction_scope\(target_wallet_id, target_user_id, target_household_id\)")
+        self.assertIn("target_user_id := new.user_id", body)
+        self.assertIn("target_household_id := new.household_id", body)
+        self.assertIn("target_user_id := old.user_id", body)
+        self.assertIn("target_household_id := old.household_id", body)
+
+    def test_wallet_balance_scope_helper_requires_personal_or_household_match(self):
+        helper_match = re.search(
+            r"create or replace function public\.wallet_matches_transaction_scope\(.*?\).*?\$\$\n(.*?)\n\$\$;",
+            SQL,
+            re.S,
+        )
+        if helper_match is None:
+            raise AssertionError("wallet_matches_transaction_scope helper not found")
+        helper = helper_match.group(1)
+
+        self.assertIn("target_household_id is null", helper)
+        self.assertIn("w.household_id is null", helper)
+        self.assertIn("w.user_id = target_user_id", helper)
+        self.assertIn("target_household_id is not null", helper)
+        self.assertIn("w.household_id = target_household_id", helper)
+        self.assertNotIn("auth.uid()", helper)
+
     def test_wallet_balance_trigger_uses_base_transaction_schema_columns(self):
         function_match = re.search(
             r"create or replace function public\.sync_wallet_balance_from_transaction\(\).*?\$\$\n(.*?)\n\$\$;",
