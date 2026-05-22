@@ -10,7 +10,11 @@ let mockEnvelopes: any[] = [];
 let mockAllocations: any[] = [];
 let mockWallets: any[] = [];
 let mockTransactions: any[] = [];
-let mockActiveContext: { type: "personal" } | { type: "household"; householdId: string; role: "admin" } = { type: "personal" };
+let mockActiveContext:
+	| { type: "personal" }
+	| { type: "household"; householdId: string; role: "admin" } = {
+	type: "personal",
+};
 
 jest.mock("expo-router", () => ({
 	useRouter: () => ({ push: mockPush }),
@@ -46,7 +50,16 @@ jest.mock("../src/services/transactions", () => ({
 jest.mock("../src/state/finance-context", () => ({
 	useFinanceContext: () => ({
 		activeContext: mockActiveContext,
-		memberships: mockActiveContext.type === "household" ? [{ household_id: "hh-1", role: "admin", households: { name: "Smith Family" } }] : [],
+		memberships:
+			mockActiveContext.type === "household"
+				? [
+						{
+							household_id: "hh-1",
+							role: "admin",
+							households: { name: "Smith Family" },
+						},
+					]
+				: [],
 		setPersonalContext: jest.fn(),
 		setActiveHousehold: jest.fn(),
 	}),
@@ -281,16 +294,43 @@ describe("DashboardScreen dark luxury Home parity", () => {
 		const { listBudgetEnvelopes } = require("../src/services/budget-envelopes");
 		const { listWallets } = require("../src/services/wallets");
 		const { listTransactions } = require("../src/services/transactions");
-		mockActiveContext = { type: "household", householdId: "hh-1", role: "admin" };
-		mockWallets = [{ id: "wallet-family", name: "Family Wallet", balance: 1200000, is_active: true }];
-		mockTransactions = [{ id: "tx-family", merchant: "Family Mart", description: "Groceries", category: "Groceries", amount: 75000, transaction_type: "expense", date: "2026-05-20" }];
+		mockActiveContext = {
+			type: "household",
+			householdId: "hh-1",
+			role: "admin",
+		};
+		mockWallets = [
+			{
+				id: "wallet-family",
+				name: "Family Wallet",
+				balance: 1200000,
+				is_active: true,
+			},
+		];
+		mockTransactions = [
+			{
+				id: "tx-family",
+				merchant: "Family Mart",
+				description: "Groceries",
+				category: "Groceries",
+				amount: 75000,
+				transaction_type: "expense",
+				date: "2026-05-20",
+			},
+		];
 
 		const screen = renderDashboard();
 
 		await waitFor(() => expect(screen.getByText("Family Wallet")).toBeTruthy());
-		expect(screen.getByTestId("home-total-balance").props.children).toBe("Rp 1.200.000");
+		expect(screen.getByTestId("home-total-balance").props.children).toBe(
+			"Rp 1.200.000",
+		);
 		expect(screen.getByText("Family Mart")).toBeTruthy();
-		expect(listBudgetEnvelopes).toHaveBeenCalledWith(expect.anything(), "user-1", mockActiveContext);
+		expect(listBudgetEnvelopes).toHaveBeenCalledWith(
+			expect.anything(),
+			"user-1",
+			mockActiveContext,
+		);
 		expect(listWallets).toHaveBeenCalledWith(mockActiveContext);
 		expect(listTransactions).toHaveBeenCalledWith(undefined, mockActiveContext);
 	});

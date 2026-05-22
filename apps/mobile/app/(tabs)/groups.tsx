@@ -27,7 +27,12 @@ import { useTheme } from "../../src/theme/theme-context";
 type ActiveForm = "create" | "join" | null;
 
 const roleLabels = {
-	id: { owner: "Owner", admin: "Admin", member: "Member", viewer: "Akses lihat saja" },
+	id: {
+		owner: "Owner",
+		admin: "Admin",
+		member: "Member",
+		viewer: "Akses lihat saja",
+	},
 	en: { owner: "Owner", admin: "Admin", member: "Member", viewer: "View only" },
 } satisfies Record<"id" | "en", Record<HouseholdRole, string>>;
 
@@ -42,7 +47,8 @@ const copy = {
 		joinLabel: "Gabung keluarga",
 		joinHint: "Menampilkan atau menyembunyikan formulir kode undangan",
 		infoTitle: "Pusat Keluarga",
-		infoSub: "Buat ruang bersama, undang anggota, dan pantau akses dasar tiap keluarga.",
+		infoSub:
+			"Buat ruang bersama, undang anggota, dan pantau akses dasar tiap keluarga.",
 		createTitle: "Buat keluarga baru",
 		namePlaceholder: "Nama keluarga",
 		saveFamily: "Simpan keluarga",
@@ -72,7 +78,8 @@ const copy = {
 		joinLabel: "Join family",
 		joinHint: "Shows or hides the invite code form",
 		infoTitle: "Family Center",
-		infoSub: "Create a shared space, invite members, and manage basic access for each family.",
+		infoSub:
+			"Create a shared space, invite members, and manage basic access for each family.",
 		createTitle: "Create a new family",
 		namePlaceholder: "Family name",
 		saveFamily: "Save family",
@@ -145,7 +152,13 @@ export default function GroupsScreen() {
 		} finally {
 			setSubmitting(false);
 		}
-	}, [householdName, refreshHouseholds, refreshMemberships, supabase, tx.createError]);
+	}, [
+		householdName,
+		refreshHouseholds,
+		refreshMemberships,
+		supabase,
+		tx.createError,
+	]);
 
 	const handleJoin = useCallback(async () => {
 		if (!inviteCode.trim()) return;
@@ -161,7 +174,13 @@ export default function GroupsScreen() {
 		} finally {
 			setSubmitting(false);
 		}
-	}, [inviteCode, refreshHouseholds, refreshMemberships, supabase, tx.joinError]);
+	}, [
+		inviteCode,
+		refreshHouseholds,
+		refreshMemberships,
+		supabase,
+		tx.joinError,
+	]);
 
 	return (
 		<View style={styles.screen}>
@@ -190,7 +209,10 @@ export default function GroupsScreen() {
 								accessibilityRole="button"
 								accessibilityLabel={tx.joinLabel}
 								accessibilityHint={tx.joinHint}
-								style={[styles.secondaryButton, submitting && styles.disabledButton]}
+								style={[
+									styles.secondaryButton,
+									submitting && styles.disabledButton,
+								]}
 								onPress={() =>
 									setActiveForm(activeForm === "join" ? null : "join")
 								}
@@ -206,9 +228,7 @@ export default function GroupsScreen() {
 					<IconBubble name="groups" tone="info" size={48} />
 					<View style={styles.infoContent}>
 						<Text style={styles.infoTitle}>{tx.infoTitle}</Text>
-						<Text style={styles.infoSub}>
-							{tx.infoSub}
-						</Text>
+						<Text style={styles.infoSub}>{tx.infoSub}</Text>
 					</View>
 				</Card>
 
@@ -262,17 +282,13 @@ export default function GroupsScreen() {
 				) : null}
 
 				{error ? <Text style={styles.errorText}>{error}</Text> : null}
-				{loading ? (
-					<Text style={styles.emptyText}>{tx.loading}</Text>
-				) : null}
+				{loading ? <Text style={styles.emptyText}>{tx.loading}</Text> : null}
 
 				{!loading && memberships.length === 0 ? (
 					<Card variant="default" style={styles.emptyCard}>
 						<IconBubble name="groups" tone="accent" size={46} />
 						<Text style={styles.emptyTitle}>{tx.emptyTitle}</Text>
-						<Text style={styles.emptyText}>
-							{tx.emptyBody}
-						</Text>
+						<Text style={styles.emptyText}>{tx.emptyBody}</Text>
 					</Card>
 				) : null}
 
