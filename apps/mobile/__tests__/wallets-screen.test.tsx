@@ -1,5 +1,10 @@
 import React from "react";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react-native";
+import {
+	fireEvent,
+	render,
+	screen,
+	waitFor,
+} from "@testing-library/react-native";
 import { StyleSheet } from "react-native";
 import type { StyleProp, ViewStyle } from "react-native";
 
@@ -9,11 +14,19 @@ import { ThemeProvider } from "../src/theme/theme-context";
 
 const mockListWallets = jest.fn();
 const mockCreateWallet = jest.fn();
-let mockActiveContext: { type: "personal" } | { type: "household"; householdId: string; role: "admin" } = { type: "personal" };
+const mockUpdateWallet = jest.fn();
+const mockDeleteWallet = jest.fn();
+let mockActiveContext:
+	| { type: "personal" }
+	| { type: "household"; householdId: string; role: "admin" } = {
+	type: "personal",
+};
 
 jest.mock("../src/services/wallets", () => ({
 	listWallets: (...args: unknown[]) => mockListWallets(...args),
 	createWallet: (...args: unknown[]) => mockCreateWallet(...args),
+	updateWallet: (...args: unknown[]) => mockUpdateWallet(...args),
+	deleteWallet: (...args: unknown[]) => mockDeleteWallet(...args),
 }));
 
 jest.mock("../src/state/finance-context", () => ({
@@ -32,14 +45,21 @@ jest.mock("../src/state/finance-context", () => ({
 
 type StyleHostNode = {
 	props: {
-		style?: StyleProp<ViewStyle> | ((state: { pressed: boolean; hovered: boolean; focused: boolean }) => StyleProp<ViewStyle>);
+		style?:
+			| StyleProp<ViewStyle>
+			| ((state: {
+					pressed: boolean;
+					hovered: boolean;
+					focused: boolean;
+			  }) => StyleProp<ViewStyle>);
 	};
 };
 
 function getFlattenedStyle(node: StyleHostNode): ViewStyle {
-	const style = typeof node.props.style === "function"
-		? node.props.style({ pressed: false, hovered: false, focused: false })
-		: node.props.style;
+	const style =
+		typeof node.props.style === "function"
+			? node.props.style({ pressed: false, hovered: false, focused: false })
+			: node.props.style;
 
 	return StyleSheet.flatten(style) ?? {};
 }
@@ -68,14 +88,28 @@ describe("WalletsScreen", () => {
 		mockListWallets.mockImplementation(async (context) => {
 			if (context.type === "personal") {
 				return [
-					{ id: "wallet-personal", name: "BCA Pribadi", type: "bank", balance: 1000000, is_active: true },
+					{
+						id: "wallet-personal",
+						name: "BCA Pribadi",
+						type: "bank",
+						balance: 1000000,
+						is_active: true,
+					},
 				];
 			}
 			return [
-				{ id: "wallet-family", name: "Dompet Keluarga", type: "cash", balance: 2500000, is_active: true },
+				{
+					id: "wallet-family",
+					name: "Dompet Keluarga",
+					type: "cash",
+					balance: 2500000,
+					is_active: true,
+				},
 			];
 		});
 		mockCreateWallet.mockResolvedValue({ id: "wallet-new" });
+		mockUpdateWallet.mockResolvedValue({ id: "wallet-personal" });
+		mockDeleteWallet.mockResolvedValue(undefined);
 	});
 
 	it("uses the same card-based hero treatment as Home instead of a solid neon hero", async () => {
@@ -88,10 +122,9 @@ describe("WalletsScreen", () => {
 		expect(heroStyle.borderRadius).toBe(24);
 		expect(heroStyle.padding).toBe(18);
 		expect(heroStyle.borderWidth).toBe(1);
-		expect([
-			"rgba(255, 255, 255, 0.06)",
-			"rgba(10, 10, 10, 0.06)",
-		]).toContain(heroStyle.borderColor);
+		expect(["rgba(255, 255, 255, 0.06)", "rgba(10, 10, 10, 0.06)"]).toContain(
+			heroStyle.borderColor,
+		);
 	});
 
 	it("shows personal and family wallets together with scope badges", async () => {
@@ -102,21 +135,54 @@ describe("WalletsScreen", () => {
 		expect(screen.getByText("Pribadi")).toBeTruthy();
 		expect(screen.getByText("Keluarga Budi")).toBeTruthy();
 		expect(mockListWallets).toHaveBeenCalledWith({ type: "personal" });
-		expect(mockListWallets).toHaveBeenCalledWith({ type: "household", householdId: "hh-1", role: "admin" });
+		expect(mockListWallets).toHaveBeenCalledWith({
+			type: "household",
+			householdId: "hh-1",
+			role: "admin",
+		});
 	});
 
 	it("opens create wallet form and creates in the active context", async () => {
-		mockActiveContext = { type: "household", householdId: "hh-1", role: "admin" };
+		mockActiveContext = {
+			type: "household",
+			householdId: "hh-1",
+			role: "admin",
+		};
 		renderWallets();
 
 		fireEvent.press(await screen.findByTestId("wallets-create-toggle"));
-		fireEvent.changeText(screen.getByLabelText("Nama dompet"), "Dompet Liburan");
+		fireEvent.changeText(
+			screen.getByLabelText("Nama dompet"),
+			"Dompet Liburan",
+		);
 		fireEvent.changeText(screen.getByLabelText("Saldo awal"), "500000");
 		fireEvent.press(screen.getByTestId("wallet-type-ewallet"));
 		fireEvent.press(screen.getByTestId("wallet-create-submit"));
 
-		await waitFor(() => expect(mockCreateWallet).toHaveBeenCalledWith(
-			{ name: "Dompet Liburan", type: "ewallet", balance: 500000 },
+		await waitFor(() =>
+			expect(mockCreateWallet).toHaveBeenCalledWith(
+				{ name: "Dompet Liburan", type: "ewallet", balance: 500000 },
+				{ type: "household", householdId: "hh-1", role: "admin" },
+			),
+		);
+	});
+
+	it("edits and deletes wallets in their own scope", async () => {
+		renderWallets();
+
+		fireEvent.press(await screen.findByTestId("wallet-edit-wallet-family"));
+		fireEvent.changeText(screen.getByLabelText("Nama dompet"), "Dompet Rumah");
+		fireEvent.press(screen.getByTestId("wallet-update-submit"));
+
+		await waitFor(() => expect(mockUpdateWallet).toHaveBeenCalledWith(
+			"wallet-family",
+			{ name: "Dompet Rumah", type: "cash" },
+			{ type: "household", householdId: "hh-1", role: "admin" },
+		));
+
+		fireEvent.press(await screen.findByTestId("wallet-delete-wallet-family"));
+		await waitFor(() => expect(mockDeleteWallet).toHaveBeenCalledWith(
+			"wallet-family",
 			{ type: "household", householdId: "hh-1", role: "admin" },
 		));
 	});

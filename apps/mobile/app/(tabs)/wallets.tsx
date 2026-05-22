@@ -10,13 +10,23 @@ import {
 } from "react-native";
 
 import { useI18n } from "../../src/i18n/i18n-context";
-import { createWallet, listWallets, type Wallet } from "../../src/services/wallets";
+import {
+	createWallet,
+	deleteWallet,
+	listWallets,
+	updateWallet,
+	type Wallet,
+} from "../../src/services/wallets";
 import { useFinanceContext } from "../../src/state/finance-context";
 import { useTheme } from "../../src/theme/theme-context";
 
 type WalletType = "bank" | "ewallet" | "cash" | "investment";
 type FilterType = "all" | WalletType;
-type ScopedWallet = Wallet & { scopeLabel: string; scopeType: "personal" | "household" };
+type ScopedWallet = Wallet & {
+	household_id: string | null;
+	scopeLabel: string;
+	scopeType: "personal" | "household";
+};
 
 const walletTypes: WalletType[] = ["bank", "ewallet", "cash", "investment"];
 
@@ -39,7 +49,17 @@ const copy = {
 		empty: "Belum ada dompet untuk dikelola.",
 		error: "Gagal memuat dompet",
 		createError: "Gagal membuat dompet",
-		types: { bank: "Bank", ewallet: "E-Wallet", cash: "Tunai", investment: "Investasi" },
+		edit: "Edit",
+		delete: "Hapus",
+		update: "Simpan perubahan",
+		updateError: "Gagal mengubah dompet",
+		deleteError: "Gagal menghapus dompet",
+		types: {
+			bank: "Bank",
+			ewallet: "E-Wallet",
+			cash: "Tunai",
+			investment: "Investasi",
+		},
 	},
 	en: {
 		title: "Wallets",
@@ -59,7 +79,17 @@ const copy = {
 		empty: "No wallets to manage yet.",
 		error: "Failed to load wallets",
 		createError: "Failed to create wallet",
-		types: { bank: "Bank", ewallet: "E-Wallet", cash: "Cash", investment: "Investment" },
+		edit: "Edit",
+		delete: "Delete",
+		update: "Save changes",
+		updateError: "Failed to update wallet",
+		deleteError: "Failed to delete wallet",
+		types: {
+			bank: "Bank",
+			ewallet: "E-Wallet",
+			cash: "Cash",
+			investment: "Investment",
+		},
 	},
 } as const;
 
@@ -70,7 +100,10 @@ const typeIcons: Record<WalletType, string> = {
 	investment: "📈",
 };
 
-function getTypeColor(type: WalletType, theme: ReturnType<typeof useTheme>["theme"]): string {
+function getTypeColor(
+	type: WalletType,
+	theme: ReturnType<typeof useTheme>["theme"],
+): string {
 	const colorMap: Record<WalletType, string> = {
 		bank: theme.colors.info,
 		ewallet: theme.colors.brandPrimary,
@@ -99,10 +132,15 @@ export default function WalletsScreen() {
 	const [type, setType] = useState<WalletType>("bank");
 	const [balance, setBalance] = useState("");
 	const [submitting, setSubmitting] = useState(false);
+	const [editingWallet, setEditingWallet] = useState<ScopedWallet | null>(null);
+	const [editName, setEditName] = useState("");
+	const [editType, setEditType] = useState<WalletType>("bank");
 
 	const activeScopeLabel =
 		activeContext.type === "household"
-			? memberships.find((membership) => membership.household_id === activeContext.householdId)?.households?.name ?? tx.family
+			? (memberships.find(
+					(membership) => membership.household_id === activeContext.householdId,
+				)?.households?.name ?? tx.family)
 			: tx.personal;
 
 	const loadWallets = async () => {
@@ -119,15 +157,23 @@ export default function WalletsScreen() {
 					});
 					return rows.map((wallet) => ({
 						...wallet,
+						household_id: wallet.household_id ?? membership.household_id,
 						scopeLabel: membership.households?.name ?? tx.family,
 						scopeType: "household" as const,
 					}));
 				}),
 			);
-			setWallets([
-				...personalRows.map((wallet) => ({ ...wallet, scopeLabel: tx.personal, scopeType: "personal" as const })),
-				...householdRows.flat(),
-			].filter((wallet) => wallet.is_active !== false));
+			setWallets(
+				[
+					...personalRows.map((wallet) => ({
+						...wallet,
+						household_id: null,
+						scopeLabel: tx.personal,
+						scopeType: "personal" as const,
+					})),
+					...householdRows.flat(),
+				].filter((wallet) => wallet.is_active !== false),
+			);
 		} catch (err) {
 			console.error("Error loading wallets:", err);
 			setError(tx.error);
@@ -139,6 +185,52 @@ export default function WalletsScreen() {
 	useEffect(() => {
 		loadWallets();
 	}, [memberships, tx.error, tx.family, tx.personal]);
+
+	const contextForWallet = (wallet: ScopedWallet) =>
+		wallet.scopeType === "household"
+			? {
+					type: "household" as const,
+					householdId: wallet.household_id ?? "",
+					role: memberships.find((membership) => membership.household_id === wallet.household_id)?.role ?? "member",
+				}
+			: ({ type: "personal" as const });
+
+	const startEdit = (wallet: ScopedWallet) => {
+		setEditingWallet(wallet);
+		setEditName(wallet.name);
+		setEditType(wallet.type as WalletType);
+		setShowCreate(false);
+	};
+
+	const handleUpdate = async () => {
+		if (!editingWallet || !editName.trim()) return;
+		setSubmitting(true);
+		setError(null);
+		try {
+			await updateWallet(editingWallet.id, { name: editName.trim(), type: editType }, contextForWallet(editingWallet));
+			setEditingWallet(null);
+			await loadWallets();
+		} catch (err) {
+			console.error("Error updating wallet:", err);
+			setError(tx.updateError);
+		} finally {
+			setSubmitting(false);
+		}
+	};
+
+	const handleDelete = async (wallet: ScopedWallet) => {
+		setSubmitting(true);
+		setError(null);
+		try {
+			await deleteWallet(wallet.id, contextForWallet(wallet));
+			await loadWallets();
+		} catch (err) {
+			console.error("Error deleting wallet:", err);
+			setError(tx.deleteError);
+		} finally {
+			setSubmitting(false);
+		}
+	};
 
 	const handleCreate = async () => {
 		if (!name.trim() || !canCreate) return;
@@ -166,12 +258,21 @@ export default function WalletsScreen() {
 		}
 	};
 
-	const filtered = filter === "all" ? wallets : wallets.filter((wallet) => wallet.type === filter);
-	const totalBalance = wallets.reduce((sum, wallet) => sum + Number(wallet.balance ?? 0), 0);
+	const filtered =
+		filter === "all"
+			? wallets
+			: wallets.filter((wallet) => wallet.type === filter);
+	const totalBalance = wallets.reduce(
+		(sum, wallet) => sum + Number(wallet.balance ?? 0),
+		0,
+	);
 
 	return (
 		<View style={styles.screen}>
-			<ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+			<ScrollView
+				contentContainerStyle={styles.content}
+				showsVerticalScrollIndicator={false}
+			>
 				<View style={styles.headerRow}>
 					<View style={styles.headerCopy}>
 						<Text style={styles.title}>{tx.title}</Text>
@@ -185,13 +286,34 @@ export default function WalletsScreen() {
 						onPress={() => canCreate && setShowCreate((value) => !value)}
 						disabled={!canCreate}
 					>
-						<Text style={styles.addButtonText}>{showCreate ? tx.cancel : tx.new}</Text>
+						<Text style={styles.addButtonText}>
+							{showCreate ? tx.cancel : tx.new}
+						</Text>
 					</Pressable>
 				</View>
 
+				{editingWallet ? (
+					<View testID="wallet-edit-form" style={styles.formCard}>
+						<Text style={styles.formTitle}>{tx.edit} · {editingWallet.scopeLabel}</Text>
+						<TextInput accessibilityLabel={tx.name} placeholder={tx.name} placeholderTextColor={theme.colors.textMuted} value={editName} onChangeText={setEditName} style={styles.input} />
+						<View style={styles.typeGrid}>
+							{walletTypes.map((walletType) => (
+								<Pressable key={walletType} testID={`wallet-edit-type-${walletType}`} accessibilityRole="button" accessibilityState={{ selected: editType === walletType }} style={[styles.typeChoice, editType === walletType && styles.typeChoiceActive]} onPress={() => setEditType(walletType)}>
+									<Text style={[styles.typeChoiceText, editType === walletType && styles.typeChoiceTextActive]}>{tx.types[walletType]}</Text>
+								</Pressable>
+							))}
+						</View>
+						<Pressable testID="wallet-update-submit" accessibilityRole="button" accessibilityLabel={tx.update} style={[styles.submitButton, submitting && styles.disabledButton]} onPress={handleUpdate} disabled={submitting}>
+							<Text style={styles.submitButtonText}>{tx.update}</Text>
+						</Pressable>
+					</View>
+				) : null}
+
 				{showCreate ? (
 					<View testID="wallet-create-form" style={styles.formCard}>
-						<Text style={styles.formTitle}>{tx.formTitle} · {activeScopeLabel}</Text>
+						<Text style={styles.formTitle}>
+							{tx.formTitle} · {activeScopeLabel}
+						</Text>
 						<TextInput
 							accessibilityLabel={tx.name}
 							placeholder={tx.name}
@@ -216,10 +338,20 @@ export default function WalletsScreen() {
 									testID={`wallet-type-${walletType}`}
 									accessibilityRole="button"
 									accessibilityState={{ selected: type === walletType }}
-									style={[styles.typeChoice, type === walletType && styles.typeChoiceActive]}
+									style={[
+										styles.typeChoice,
+										type === walletType && styles.typeChoiceActive,
+									]}
 									onPress={() => setType(walletType)}
 								>
-									<Text style={[styles.typeChoiceText, type === walletType && styles.typeChoiceTextActive]}>{tx.types[walletType]}</Text>
+									<Text
+										style={[
+											styles.typeChoiceText,
+											type === walletType && styles.typeChoiceTextActive,
+										]}
+									>
+										{tx.types[walletType]}
+									</Text>
 								</Pressable>
 							))}
 						</View>
@@ -243,49 +375,121 @@ export default function WalletsScreen() {
 					<Text style={styles.totalValue}>{formatCurrency(totalBalance)}</Text>
 					<View style={styles.totalRow}>
 						<View style={styles.totalChip}>
-							<Text style={styles.totalChipText}>{wallets.length} {tx.active}</Text>
+							<Text style={styles.totalChipText}>
+								{wallets.length} {tx.active}
+							</Text>
 						</View>
 					</View>
 				</View>
 
-				<ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterRow}>
+				<ScrollView
+					horizontal
+					showsHorizontalScrollIndicator={false}
+					contentContainerStyle={styles.filterRow}
+				>
 					{(["all", ...walletTypes] as FilterType[]).map((filterValue) => (
 						<Pressable
 							key={filterValue}
 							onPress={() => setFilter(filterValue)}
-							style={[styles.filterChip, filter === filterValue && styles.filterChipActive]}
+							style={[
+								styles.filterChip,
+								filter === filterValue && styles.filterChipActive,
+							]}
 						>
-							<Text style={[styles.filterChipText, filter === filterValue && styles.filterChipTextActive]}>
+							<Text
+								style={[
+									styles.filterChipText,
+									filter === filterValue && styles.filterChipTextActive,
+								]}
+							>
 								{filterValue === "all" ? tx.all : tx.types[filterValue]}
 							</Text>
 						</Pressable>
 					))}
 				</ScrollView>
 
-				{loading ? <ActivityIndicator color={theme.colors.brandPrimary} /> : null}
+				{loading ? (
+					<ActivityIndicator color={theme.colors.brandPrimary} />
+				) : null}
 				{error ? <Text style={styles.errorText}>{error}</Text> : null}
-				{!loading && filtered.length === 0 ? <Text style={styles.emptyText}>{tx.empty}</Text> : null}
+				{!loading && filtered.length === 0 ? (
+					<Text style={styles.emptyText}>{tx.empty}</Text>
+				) : null}
 
 				{filtered.map((wallet) => (
-					<Pressable key={wallet.id} testID={`wallet-card-${wallet.id}`} accessibilityRole="button" style={styles.walletCard}>
+					<Pressable
+						key={wallet.id}
+						testID={`wallet-card-${wallet.id}`}
+						accessibilityRole="button"
+						style={styles.walletCard}
+					>
 						<View style={styles.walletTop}>
-							<View style={[styles.walletIcon, { backgroundColor: `${getTypeColor(wallet.type as WalletType, theme)}26` }]}>
-								<Text style={styles.walletIconText}>{typeIcons[wallet.type as WalletType]}</Text>
+							<View
+								style={[
+									styles.walletIcon,
+									{
+										backgroundColor: `${getTypeColor(wallet.type as WalletType, theme)}26`,
+									},
+								]}
+							>
+								<Text style={styles.walletIconText}>
+									{typeIcons[wallet.type as WalletType]}
+								</Text>
 							</View>
 							<View style={styles.walletInfo}>
 								<Text style={styles.walletName}>{wallet.name}</Text>
 								<View style={styles.walletMeta}>
-									<View style={[styles.typeBadge, { backgroundColor: `${getTypeColor(wallet.type as WalletType, theme)}26` }]}>
-										<Text style={[styles.typeBadgeText, { color: getTypeColor(wallet.type as WalletType, theme) }]}>{tx.types[wallet.type as WalletType]}</Text>
+									<View
+										style={[
+											styles.typeBadge,
+											{
+												backgroundColor: `${getTypeColor(wallet.type as WalletType, theme)}26`,
+											},
+										]}
+									>
+										<Text
+											style={[
+												styles.typeBadgeText,
+												{
+													color: getTypeColor(wallet.type as WalletType, theme),
+												},
+											]}
+										>
+											{tx.types[wallet.type as WalletType]}
+										</Text>
 									</View>
-									<View style={[styles.scopeBadge, wallet.scopeType === "household" && styles.scopeBadgeHousehold]}>
-										<Text style={[styles.scopeBadgeText, wallet.scopeType === "household" && styles.scopeBadgeTextHousehold]}>{wallet.scopeLabel}</Text>
+									<View
+										style={[
+											styles.scopeBadge,
+											wallet.scopeType === "household" &&
+												styles.scopeBadgeHousehold,
+										]}
+									>
+										<Text
+											style={[
+												styles.scopeBadgeText,
+												wallet.scopeType === "household" &&
+													styles.scopeBadgeTextHousehold,
+											]}
+										>
+											{wallet.scopeLabel}
+										</Text>
 									</View>
 								</View>
 							</View>
 						</View>
 						<View style={styles.walletBottom}>
-							<Text style={styles.walletBalance}>{formatCurrency(Number(wallet.balance ?? 0))}</Text>
+							<Text style={styles.walletBalance}>
+								{formatCurrency(Number(wallet.balance ?? 0))}
+							</Text>
+							<View style={styles.walletActions}>
+								<Pressable testID={`wallet-edit-${wallet.id}`} accessibilityRole="button" accessibilityLabel={`${tx.edit} ${wallet.name}`} style={styles.walletActionButton} onPress={() => startEdit(wallet)}>
+									<Text style={styles.walletActionText}>{tx.edit}</Text>
+								</Pressable>
+								<Pressable testID={`wallet-delete-${wallet.id}`} accessibilityRole="button" accessibilityLabel={`${tx.delete} ${wallet.name}`} style={[styles.walletActionButton, styles.walletDeleteButton]} onPress={() => handleDelete(wallet)}>
+									<Text style={[styles.walletActionText, styles.walletDeleteText]}>{tx.delete}</Text>
+								</Pressable>
+							</View>
 						</View>
 					</Pressable>
 				))}
@@ -300,52 +504,259 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 	return StyleSheet.create({
 		screen: { flex: 1, backgroundColor: theme.colors.background },
 		content: { padding: 20, gap: 10, paddingBottom: 26 },
-		headerRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", gap: 12 },
+		headerRow: {
+			flexDirection: "row",
+			justifyContent: "space-between",
+			alignItems: "flex-start",
+			gap: 12,
+		},
 		headerCopy: { flex: 1 },
-		title: { color: theme.colors.textPrimary, fontSize: theme.typography.fontSize["4xl"], fontWeight: theme.typography.fontWeight.extrabold, letterSpacing: theme.typography.letterSpacing.tight },
-		subtitle: { color: theme.colors.textSecondary, fontSize: theme.typography.fontSize.sm, marginTop: 2 },
-		addButton: { backgroundColor: theme.colors.brandPrimary, borderRadius: theme.radius.pill, paddingHorizontal: 14, paddingVertical: 8 },
+		title: {
+			color: theme.colors.textPrimary,
+			fontSize: theme.typography.fontSize["4xl"],
+			fontWeight: theme.typography.fontWeight.extrabold,
+			letterSpacing: theme.typography.letterSpacing.tight,
+		},
+		subtitle: {
+			color: theme.colors.textSecondary,
+			fontSize: theme.typography.fontSize.sm,
+			marginTop: 2,
+		},
+		addButton: {
+			backgroundColor: theme.colors.brandPrimary,
+			borderRadius: theme.radius.pill,
+			paddingHorizontal: 14,
+			paddingVertical: 8,
+		},
 		disabledButton: { opacity: 0.5 },
-		addButtonText: { color: theme.colors.textInverse, fontSize: theme.typography.fontSize.sm, fontWeight: theme.typography.fontWeight.bold },
-		formCard: { backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.borderSoft, borderRadius: 18, padding: 14, gap: 10 },
-		formTitle: { color: theme.colors.textPrimary, fontSize: 14, fontWeight: "800" },
-		input: { backgroundColor: theme.colors.card, borderColor: theme.colors.borderSoft, borderRadius: theme.radius.md, borderWidth: 1, color: theme.colors.textPrimary, fontSize: 14, paddingHorizontal: 12, paddingVertical: 10 },
+		addButtonText: {
+			color: theme.colors.textInverse,
+			fontSize: theme.typography.fontSize.sm,
+			fontWeight: theme.typography.fontWeight.bold,
+		},
+		formCard: {
+			backgroundColor: theme.colors.surface,
+			borderWidth: 1,
+			borderColor: theme.colors.borderSoft,
+			borderRadius: 18,
+			padding: 14,
+			gap: 10,
+		},
+		formTitle: {
+			color: theme.colors.textPrimary,
+			fontSize: 14,
+			fontWeight: "800",
+		},
+		input: {
+			backgroundColor: theme.colors.card,
+			borderColor: theme.colors.borderSoft,
+			borderRadius: theme.radius.md,
+			borderWidth: 1,
+			color: theme.colors.textPrimary,
+			fontSize: 14,
+			paddingHorizontal: 12,
+			paddingVertical: 10,
+		},
 		typeGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
-		typeChoice: { borderWidth: 1, borderColor: theme.colors.borderSoft, backgroundColor: theme.colors.mutedSurface, borderRadius: 999, paddingHorizontal: 12, paddingVertical: 8 },
-		typeChoiceActive: { backgroundColor: theme.colors.brandPrimary, borderColor: theme.colors.brandPrimary },
-		typeChoiceText: { color: theme.colors.textSecondary, fontSize: 12, fontWeight: "700" },
+		typeChoice: {
+			borderWidth: 1,
+			borderColor: theme.colors.borderSoft,
+			backgroundColor: theme.colors.mutedSurface,
+			borderRadius: 999,
+			paddingHorizontal: 12,
+			paddingVertical: 8,
+		},
+		typeChoiceActive: {
+			backgroundColor: theme.colors.brandPrimary,
+			borderColor: theme.colors.brandPrimary,
+		},
+		typeChoiceText: {
+			color: theme.colors.textSecondary,
+			fontSize: 12,
+			fontWeight: "700",
+		},
 		typeChoiceTextActive: { color: theme.colors.textInverse },
-		submitButton: { minHeight: 44, borderRadius: theme.radius.pill, backgroundColor: theme.colors.brandPrimary, alignItems: "center", justifyContent: "center" },
-		submitButtonText: { color: theme.colors.textInverse, fontSize: 14, fontWeight: "800" },
-		totalCard: { backgroundColor: theme.colors.card, borderRadius: 24, borderWidth: 1, borderColor: theme.colors.borderSoft, padding: 18, gap: 6, overflow: "hidden", ...(theme.mode === "light" ? theme.shadow.lg : {}) },
-		heroBloomOne: { position: "absolute", top: -60, right: -60, width: 180, height: 180, borderRadius: 90, backgroundColor: theme.mode === "light" ? "rgba(163, 255, 18, 0.22)" : "rgba(163, 255, 18, 0.14)", opacity: 0.55 },
-		heroBloomTwo: { position: "absolute", bottom: -80, left: -60, width: 180, height: 180, borderRadius: 90, backgroundColor: theme.mode === "light" ? "rgba(74, 128, 240, 0.08)" : "rgba(74, 128, 240, 0.10)", opacity: 0.6 },
-		totalLabel: { color: theme.colors.textMuted, fontSize: theme.typography.fontSize.sm, fontWeight: theme.typography.fontWeight.semibold },
-		totalValue: { color: theme.colors.textPrimary, fontSize: theme.typography.fontSize["4xl"], fontWeight: theme.typography.fontWeight.extrabold, letterSpacing: theme.typography.letterSpacing.tight },
+		submitButton: {
+			minHeight: 44,
+			borderRadius: theme.radius.pill,
+			backgroundColor: theme.colors.brandPrimary,
+			alignItems: "center",
+			justifyContent: "center",
+		},
+		submitButtonText: {
+			color: theme.colors.textInverse,
+			fontSize: 14,
+			fontWeight: "800",
+		},
+		totalCard: {
+			backgroundColor: theme.colors.card,
+			borderRadius: 24,
+			borderWidth: 1,
+			borderColor: theme.colors.borderSoft,
+			padding: 18,
+			gap: 6,
+			overflow: "hidden",
+			...(theme.mode === "light" ? theme.shadow.lg : {}),
+		},
+		heroBloomOne: {
+			position: "absolute",
+			top: -60,
+			right: -60,
+			width: 180,
+			height: 180,
+			borderRadius: 90,
+			backgroundColor:
+				theme.mode === "light"
+					? "rgba(163, 255, 18, 0.22)"
+					: "rgba(163, 255, 18, 0.14)",
+			opacity: 0.55,
+		},
+		heroBloomTwo: {
+			position: "absolute",
+			bottom: -80,
+			left: -60,
+			width: 180,
+			height: 180,
+			borderRadius: 90,
+			backgroundColor:
+				theme.mode === "light"
+					? "rgba(74, 128, 240, 0.08)"
+					: "rgba(74, 128, 240, 0.10)",
+			opacity: 0.6,
+		},
+		totalLabel: {
+			color: theme.colors.textMuted,
+			fontSize: theme.typography.fontSize.sm,
+			fontWeight: theme.typography.fontWeight.semibold,
+		},
+		totalValue: {
+			color: theme.colors.textPrimary,
+			fontSize: theme.typography.fontSize["4xl"],
+			fontWeight: theme.typography.fontWeight.extrabold,
+			letterSpacing: theme.typography.letterSpacing.tight,
+		},
 		totalRow: { marginTop: 6 },
-		totalChip: { backgroundColor: theme.colors.glass.background, borderWidth: 1, borderColor: theme.colors.glass.border, borderRadius: 999, paddingHorizontal: 12, paddingVertical: 5, alignSelf: "flex-start" },
-		totalChipText: { color: theme.colors.textSecondary, fontSize: theme.typography.fontSize.sm, fontWeight: theme.typography.fontWeight.semibold },
+		totalChip: {
+			backgroundColor: theme.colors.glass.background,
+			borderWidth: 1,
+			borderColor: theme.colors.glass.border,
+			borderRadius: 999,
+			paddingHorizontal: 12,
+			paddingVertical: 5,
+			alignSelf: "flex-start",
+		},
+		totalChipText: {
+			color: theme.colors.textSecondary,
+			fontSize: theme.typography.fontSize.sm,
+			fontWeight: theme.typography.fontWeight.semibold,
+		},
 		filterRow: { gap: 8, paddingVertical: 2 },
-		filterChip: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 999, borderWidth: 1, borderColor: theme.colors.borderSoft, backgroundColor: theme.colors.surface },
-		filterChipActive: { backgroundColor: theme.colors.brandPrimary, borderColor: theme.colors.brandPrimary },
-		filterChipText: { color: theme.colors.textSecondary, fontSize: 12, fontWeight: "700" },
+		filterChip: {
+			paddingHorizontal: 14,
+			paddingVertical: 8,
+			borderRadius: 999,
+			borderWidth: 1,
+			borderColor: theme.colors.borderSoft,
+			backgroundColor: theme.colors.surface,
+		},
+		filterChipActive: {
+			backgroundColor: theme.colors.brandPrimary,
+			borderColor: theme.colors.brandPrimary,
+		},
+		filterChipText: {
+			color: theme.colors.textSecondary,
+			fontSize: 12,
+			fontWeight: "700",
+		},
 		filterChipTextActive: { color: theme.colors.textInverse },
-		walletCard: { backgroundColor: theme.colors.surface, borderRadius: 18, borderWidth: 1, borderColor: theme.colors.borderSoft, padding: 14, gap: 12 },
+		walletCard: {
+			backgroundColor: theme.colors.surface,
+			borderRadius: 18,
+			borderWidth: 1,
+			borderColor: theme.colors.borderSoft,
+			padding: 14,
+			gap: 12,
+		},
 		walletTop: { flexDirection: "row", alignItems: "center", gap: 12 },
-		walletIcon: { width: 46, height: 46, borderRadius: theme.radius.md, alignItems: "center", justifyContent: "center" },
+		walletIcon: {
+			width: 46,
+			height: 46,
+			borderRadius: theme.radius.md,
+			alignItems: "center",
+			justifyContent: "center",
+		},
 		walletIconText: { fontSize: 22 },
 		walletInfo: { flex: 1, gap: 4 },
-		walletName: { color: theme.colors.textPrimary, fontSize: theme.typography.fontSize.lg, fontWeight: theme.typography.fontWeight.bold },
-		walletMeta: { flexDirection: "row", alignItems: "center", gap: 8, flexWrap: "wrap" },
-		typeBadge: { borderRadius: theme.radius.pill, paddingHorizontal: 8, paddingVertical: 2 },
-		typeBadgeText: { fontSize: 11, fontWeight: theme.typography.fontWeight.bold },
-		scopeBadge: { borderRadius: theme.radius.pill, paddingHorizontal: 8, paddingVertical: 2, backgroundColor: theme.colors.mutedSurface, borderWidth: 1, borderColor: theme.colors.borderSoft },
-		scopeBadgeHousehold: { backgroundColor: `${theme.colors.info}18`, borderColor: `${theme.colors.info}40` },
-		scopeBadgeText: { color: theme.colors.textMuted, fontSize: 11, fontWeight: "800" },
+		walletName: {
+			color: theme.colors.textPrimary,
+			fontSize: theme.typography.fontSize.lg,
+			fontWeight: theme.typography.fontWeight.bold,
+		},
+		walletMeta: {
+			flexDirection: "row",
+			alignItems: "center",
+			gap: 8,
+			flexWrap: "wrap",
+		},
+		typeBadge: {
+			borderRadius: theme.radius.pill,
+			paddingHorizontal: 8,
+			paddingVertical: 2,
+		},
+		typeBadgeText: {
+			fontSize: 11,
+			fontWeight: theme.typography.fontWeight.bold,
+		},
+		scopeBadge: {
+			borderRadius: theme.radius.pill,
+			paddingHorizontal: 8,
+			paddingVertical: 2,
+			backgroundColor: theme.colors.mutedSurface,
+			borderWidth: 1,
+			borderColor: theme.colors.borderSoft,
+		},
+		scopeBadgeHousehold: {
+			backgroundColor: `${theme.colors.info}18`,
+			borderColor: `${theme.colors.info}40`,
+		},
+		scopeBadgeText: {
+			color: theme.colors.textMuted,
+			fontSize: 11,
+			fontWeight: "800",
+		},
 		scopeBadgeTextHousehold: { color: theme.colors.info },
-		walletBottom: { borderTopWidth: 1, borderTopColor: theme.colors.borderSoft, paddingTop: 10 },
-		walletBalance: { color: theme.colors.textPrimary, fontSize: 18, fontWeight: "800" },
+		walletBottom: {
+			borderTopWidth: 1,
+			borderTopColor: theme.colors.borderSoft,
+			paddingTop: 10,
+			gap: 10,
+		},
+		walletBalance: {
+			color: theme.colors.textPrimary,
+			fontSize: 18,
+			fontWeight: "800",
+		},
+		walletActions: { flexDirection: "row", gap: 8 },
+		walletActionButton: {
+			borderRadius: 999,
+			borderWidth: 1,
+			borderColor: theme.colors.borderSoft,
+			paddingHorizontal: 12,
+			paddingVertical: 7,
+			backgroundColor: theme.colors.card,
+		},
+		walletDeleteButton: {
+			borderColor: `${theme.colors.danger}40`,
+			backgroundColor: `${theme.colors.danger}12`,
+		},
+		walletActionText: { color: theme.colors.textSecondary, fontSize: 12, fontWeight: "800" },
+		walletDeleteText: { color: theme.colors.danger },
 		errorText: { color: theme.colors.danger, fontSize: 12, fontWeight: "700" },
-		emptyText: { color: theme.colors.textMuted, fontSize: 13, textAlign: "center", paddingVertical: 20 },
+		emptyText: {
+			color: theme.colors.textMuted,
+			fontSize: 13,
+			textAlign: "center",
+			paddingVertical: 20,
+		},
 	});
 }

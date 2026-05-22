@@ -205,6 +205,7 @@ describe("DashboardScreen dark luxury Home parity", () => {
 
 		expect(screen.getByText("April 2026")).toBeTruthy();
 		expect(screen.getByText("DB")).toBeTruthy();
+		expect(screen.getByTestId("home-hero-card").findByProps({ testID: "finance-context-switcher" })).toBeTruthy();
 
 		expect(screen.getByText("Total saldo")).toBeTruthy();
 		expect(screen.getByText("Rp 4.250.000")).toBeTruthy();
@@ -365,6 +366,8 @@ describe("DashboardScreen dark luxury Home parity", () => {
 		expect(heroStyle.borderRadius).toBe(24);
 		expect(heroStyle.padding).toBe(18);
 		expect(heroStyle.shadowOpacity).toBeUndefined();
+
+		expect(screen.getAllByTestId("finance-context-switcher")).toHaveLength(1);
 
 		const walletPill = screen.getByTestId("home-wallet-pill");
 		expect(walletPill.props.accessibilityRole).toBe("button");

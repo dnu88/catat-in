@@ -210,7 +210,6 @@ export default function DashboardScreen() {
 						<Text style={styles.dateText}>April 2026</Text>
 					</View>
 					<View style={styles.headerActions}>
-						<FinanceContextSwitcher />
 						<View testID="home-avatar" style={styles.avatarWrap}>
 							<Text style={styles.avatarText}>DB</Text>
 						</View>
@@ -220,6 +219,10 @@ export default function DashboardScreen() {
 				<View testID="home-hero-card" style={styles.heroCard}>
 					<View style={styles.heroBloomOne} />
 					<View style={styles.heroBloomTwo} />
+
+					<View style={styles.heroContextRow}>
+						<FinanceContextSwitcher />
+					</View>
 
 					<View style={styles.heroControlRow}>
 						<Pressable
@@ -480,6 +483,12 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			borderRadius: 90,
 			backgroundColor: "rgba(74, 128, 240, 0.10)",
 			opacity: 0.6,
+		},
+		heroContextRow: {
+			position: "relative",
+			zIndex: 20,
+			alignSelf: "flex-start",
+			marginBottom: 12,
 		},
 		heroControlRow: {
 			position: "relative",
