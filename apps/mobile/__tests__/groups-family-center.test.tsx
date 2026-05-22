@@ -84,7 +84,7 @@ describe("Family Center screen", () => {
 		renderGroupsScreen();
 
 		expect(await screen.findByText("Keluarga")).toBeTruthy();
-		expect(screen.getByText("Keluarga Budi")).toBeTruthy();
+		expect(await screen.findByText("Keluarga Budi")).toBeTruthy();
 		expect(screen.getByText("Admin")).toBeTruthy();
 	});
 
@@ -93,8 +93,9 @@ describe("Family Center screen", () => {
 
 		expect(await screen.findByText("Family")).toBeTruthy();
 		expect(screen.getByText("Family Center")).toBeTruthy();
+		expect(await screen.findByText("Keluarga Budi")).toBeTruthy();
 		expect(screen.getAllByText("Members").length).toBeGreaterThan(0);
-		expect(screen.queryByText("Keluarga")).toBeNull();
+		expect(screen.queryByText("Belum ada keluarga")).toBeNull();
 	});
 
 	it("creates a household from the form with trimmed name and refreshes global memberships", async () => {
