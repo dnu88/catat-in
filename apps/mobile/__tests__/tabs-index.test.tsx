@@ -205,7 +205,11 @@ describe("DashboardScreen dark luxury Home parity", () => {
 
 		expect(screen.getByText("April 2026")).toBeTruthy();
 		expect(screen.getByText("DB")).toBeTruthy();
-		expect(screen.getByTestId("home-hero-card").findByProps({ testID: "finance-context-switcher" })).toBeTruthy();
+		expect(
+			screen
+				.getByTestId("home-hero-card")
+				.findByProps({ testID: "finance-context-switcher" }),
+		).toBeTruthy();
 
 		expect(screen.getByText("Total saldo")).toBeTruthy();
 		expect(screen.getByText("Rp 4.250.000")).toBeTruthy();
