@@ -216,7 +216,11 @@ export default function WalletsScreen() {
 		try {
 			await updateWallet(
 				editingWallet.id,
-				{ name: editName.trim(), type: editType, balance: Number(editBalance || 0) },
+				{
+					name: editName.trim(),
+					type: editType,
+					balance: Number(editBalance || 0),
+				},
 				contextForWallet(editingWallet),
 			);
 			setEditingWallet(null);
