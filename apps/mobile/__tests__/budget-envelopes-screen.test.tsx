@@ -10,6 +10,15 @@ import BudgetsScreen from "../app/(tabs)/budgets";
 import { I18nProvider, useI18n, type Language } from "../src/i18n/i18n-context";
 import { ThemeProvider } from "../src/theme/theme-context";
 
+const mockActiveContext = { type: "personal" };
+
+jest.mock("../src/state/finance-context", () => ({
+	useFinanceContext: () => ({
+		activeContext: mockActiveContext,
+		canCreate: true,
+	}),
+}));
+
 const mockCreateBudgetEnvelope = jest.fn(
 	async (_supabase: unknown, input: any) => ({
 		id: "env-new",

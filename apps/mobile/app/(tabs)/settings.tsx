@@ -52,6 +52,34 @@ export default function SettingsScreen() {
           </View>
         </View>
 
+        {/* Family Section */}
+        <View style={styles.sectionCard}>
+          <Text style={styles.sectionTitle}>{language === 'id' ? 'Keluarga' : 'Family'}</Text>
+          <Text style={styles.sectionSub}>
+            {language === 'id'
+              ? 'Kelola akses keluarga, undangan, dan mode keuangan bersama.'
+              : 'Manage household access, invites, and shared finance mode.'}
+          </Text>
+          <Pressable
+            testID="settings-family-center"
+            accessibilityRole="button"
+            accessibilityLabel={language === 'id' ? 'Buka pusat keluarga' : 'Open family center'}
+            style={styles.navigationRow}
+            onPress={() => router.push('/(tabs)/groups')}
+          >
+            <View style={styles.navigationCopy}>
+              <IconBubble name="groups" tone="primary" size={32} />
+              <View style={styles.navigationTextBlock}>
+                <Text style={styles.navigationTitle}>{language === 'id' ? 'Pusat Keluarga' : 'Family Center'}</Text>
+                <Text style={styles.navigationHelper}>
+                  {language === 'id' ? 'Buat keluarga atau gabung dengan kode undangan.' : 'Create a family or join with an invite code.'}
+                </Text>
+              </View>
+            </View>
+            <Text style={styles.navigationChevron}>›</Text>
+          </Pressable>
+        </View>
+
         {/* Theme Section */}
         <View style={styles.sectionCard}>
           <Text style={styles.sectionTitle}>{language === 'id' ? 'Tampilan' : 'Appearance'}</Text>
@@ -282,6 +310,21 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
       alignItems: 'center',
     },
     themeChipText: { color: theme.colors.textSecondary, fontSize: 12, fontWeight: '700' },
+    navigationRow: {
+      minHeight: 56,
+      borderTopWidth: 1,
+      borderTopColor: theme.colors.borderSoft,
+      paddingTop: 10,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: 12,
+    },
+    navigationCopy: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 12 },
+    navigationTextBlock: { flex: 1 },
+    navigationTitle: { color: theme.colors.textPrimary, fontSize: 13, fontWeight: '800' },
+    navigationHelper: { color: theme.colors.textMuted, fontSize: 11, marginTop: 1 },
+    navigationChevron: { color: theme.colors.textMuted, fontSize: 24, fontWeight: '700' },
     appInfo: { alignItems: 'center', paddingVertical: 10, gap: 4 },
     appName: { color: theme.colors.textMuted, fontSize: 13, fontWeight: '700' },
     appTagline: { color: theme.colors.textMuted, fontSize: 11 },

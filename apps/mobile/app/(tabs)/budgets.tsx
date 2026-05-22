@@ -31,6 +31,7 @@ import {
 	type EnvelopeProgress,
 } from "../../src/services/budget-envelopes";
 import { useI18n } from "../../src/i18n/i18n-context";
+import { useFinanceContext } from "../../src/state/finance-context";
 import { useTheme } from "../../src/theme/theme-context";
 
 type EnvelopeSummary = {
@@ -176,6 +177,7 @@ function EnvelopeRow({
 export default function BudgetsScreen() {
 	const { supabase } = useSupabase();
 	const { theme } = useTheme();
+	const { activeContext, canCreate } = useFinanceContext();
 	const { language } = useI18n();
 	const isEn = language === "en";
 	const tx = useMemo(
@@ -280,7 +282,7 @@ export default function BudgetsScreen() {
 
 	useEffect(() => {
 		loadEnvelopes();
-	}, []);
+	}, [activeContext]);
 
 	const loadEnvelopes = async () => {
 		try {
@@ -300,7 +302,11 @@ export default function BudgetsScreen() {
 				return;
 			}
 
-			const envelopes = await listBudgetEnvelopes(supabase, user.id);
+			const envelopes = await listBudgetEnvelopes(
+				supabase,
+				user.id,
+				activeContext,
+			);
 			const allocations = await listEnvelopeAllocations(
 				supabase,
 				envelopes.map((envelope) => envelope.id),
@@ -332,7 +338,7 @@ export default function BudgetsScreen() {
 	};
 
 	const saveEnvelope = async () => {
-		if (!userId || saving) return;
+		if (!userId || saving || !canCreate) return;
 		const trimmedName = name.trim();
 		const amount = Number(limitAmount.replace(/[^0-9]/g, ""));
 		if (!trimmedName || !amount || !startDate.trim() || !endDate.trim()) {
@@ -343,17 +349,21 @@ export default function BudgetsScreen() {
 		try {
 			setSaving(true);
 			setLoadError(null);
-			await createBudgetEnvelope(supabase, {
-				user_id: userId,
-				name: trimmedName,
-				parent_category_id: null,
-				limit_amount: amount,
-				start_date: startDate.trim(),
-				end_date: endDate.trim(),
-				icon,
-				color: selectedColor,
-				notes: notes.trim() || null,
-			});
+			await createBudgetEnvelope(
+				supabase,
+				{
+					user_id: userId,
+					name: trimmedName,
+					parent_category_id: null,
+					limit_amount: amount,
+					start_date: startDate.trim(),
+					end_date: endDate.trim(),
+					icon,
+					color: selectedColor,
+					notes: notes.trim() || null,
+				},
+				activeContext,
+			);
 			setShowCreateForm(false);
 			setName("");
 			setLimitAmount("");
@@ -408,14 +418,21 @@ export default function BudgetsScreen() {
 				title={tx.title}
 				subtitle={tx.subtitle}
 				action={
-					<Pressable
-						style={styles.addButton}
-						onPress={() => setShowCreateForm((value) => !value)}
-					>
-						<Text style={styles.addButtonText}>{tx.add}</Text>
-					</Pressable>
+					canCreate ? (
+						<Pressable
+							style={styles.addButton}
+							onPress={() => setShowCreateForm((value) => !value)}
+						>
+							<Text style={styles.addButtonText}>{tx.add}</Text>
+						</Pressable>
+					) : null
 				}
 			/>
+			<View testID="finance-context-badge" style={styles.contextBadge}>
+				<Text style={styles.contextBadgeText}>
+					{activeContext.type === "household" ? "Keluarga" : "Pribadi"}
+				</Text>
+			</View>
 
 			{loadError ? <StateMessage message={loadError} tone="error" /> : null}
 
@@ -667,6 +684,20 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 		},
 		addButtonText: {
 			color: theme.colors.textInverse,
+			fontSize: 12,
+			fontWeight: "700",
+		},
+		contextBadge: {
+			alignSelf: "flex-start",
+			backgroundColor: theme.colors.mutedSurface,
+			borderColor: theme.colors.borderSoft,
+			borderRadius: 999,
+			borderWidth: 1,
+			paddingHorizontal: 10,
+			paddingVertical: 5,
+		},
+		contextBadgeText: {
+			color: theme.colors.textSecondary,
 			fontSize: 12,
 			fontWeight: "700",
 		},

@@ -1,0 +1,170 @@
+import React from "react";
+import {
+	fireEvent,
+	render,
+	screen,
+	waitFor,
+} from "@testing-library/react-native";
+
+import GroupsScreen from "../app/(tabs)/groups";
+import { I18nProvider, useI18n, type Language } from "../src/i18n/i18n-context";
+import { ThemeProvider } from "../src/theme/theme-context";
+
+const mockCreateHousehold = jest.fn();
+const mockJoinHouseholdByInviteCode = jest.fn();
+const mockListMyHouseholds = jest.fn();
+const mockRefreshMemberships = jest.fn();
+const mockSupabase = { from: jest.fn(), rpc: jest.fn() };
+
+jest.mock("../src/lib/supabase", () => ({
+	useSupabase: () => ({ supabase: mockSupabase }),
+}));
+
+jest.mock("../src/services/currentUser", () => ({
+	getCurrentUserId: jest.fn(async () => "user-1"),
+}));
+
+jest.mock("../src/services/households", () => ({
+	createHousehold: (...args: unknown[]) => mockCreateHousehold(...args),
+	joinHouseholdByInviteCode: (...args: unknown[]) =>
+		mockJoinHouseholdByInviteCode(...args),
+	listMyHouseholds: (...args: unknown[]) => mockListMyHouseholds(...args),
+}));
+
+jest.mock("../src/state/finance-context", () => ({
+	useFinanceContext: () => ({
+		refreshMemberships: mockRefreshMemberships,
+	}),
+}));
+
+function LanguageSetter({ language }: { language: Language }) {
+	const { setLanguage } = useI18n();
+	React.useEffect(() => setLanguage(language), [language, setLanguage]);
+	return null;
+}
+
+function renderGroupsScreen(language: Language = "id") {
+	return render(
+		<I18nProvider>
+			<LanguageSetter language={language} />
+			<ThemeProvider>
+				<GroupsScreen />
+			</ThemeProvider>
+		</I18nProvider>,
+	);
+}
+
+describe("Family Center screen", () => {
+	beforeEach(() => {
+		jest.clearAllMocks();
+		mockListMyHouseholds.mockResolvedValue([
+			{
+				id: "member-1",
+				household_id: "hh-1",
+				user_id: "user-1",
+				role: "admin",
+				status: "active",
+				joined_at: "2026-05-21T00:00:00.000Z",
+				households: {
+					id: "hh-1",
+					name: "Keluarga Budi",
+					owner_id: "user-1",
+					invite_code: "ABC123",
+					created_at: "",
+					updated_at: "",
+				},
+			},
+		]);
+		mockCreateHousehold.mockResolvedValue({ id: "hh-new" });
+		mockJoinHouseholdByInviteCode.mockResolvedValue({ household_id: "hh-1" });
+		mockRefreshMemberships.mockResolvedValue(undefined);
+	});
+
+	it("renders family center copy and active household list", async () => {
+		renderGroupsScreen();
+
+		expect(await screen.findByText("Keluarga")).toBeTruthy();
+		expect(await screen.findByText("Keluarga Budi")).toBeTruthy();
+		expect(screen.getByText("Admin")).toBeTruthy();
+	});
+
+	it("uses the selected app language for Family Center copy", async () => {
+		renderGroupsScreen("en");
+
+		expect(await screen.findByText("Family")).toBeTruthy();
+		expect(screen.getByText("Family Center")).toBeTruthy();
+		expect(await screen.findByText("Keluarga Budi")).toBeTruthy();
+		expect(screen.getAllByText("Members").length).toBeGreaterThan(0);
+		expect(screen.queryByText("Belum ada keluarga")).toBeNull();
+	});
+
+	it("creates a household from the form with trimmed name and refreshes global memberships", async () => {
+		renderGroupsScreen();
+
+		fireEvent.press(screen.getByLabelText("Buat keluarga baru"));
+		fireEvent.changeText(
+			screen.getByLabelText("Nama keluarga"),
+			"  Keluarga Budi  ",
+		);
+		fireEvent.press(screen.getByLabelText("Simpan keluarga"));
+
+		await waitFor(() =>
+			expect(mockCreateHousehold).toHaveBeenCalledWith(expect.anything(), {
+				name: "Keluarga Budi",
+				ownerId: "user-1",
+			}),
+		);
+		expect(mockRefreshMemberships).toHaveBeenCalledTimes(1);
+	});
+
+	it("joins household by invite code and refreshes global memberships", async () => {
+		renderGroupsScreen();
+
+		fireEvent.press(screen.getByLabelText("Gabung keluarga"));
+		fireEvent.changeText(screen.getByLabelText("Kode undangan"), "ABC123");
+		fireEvent.press(
+			screen.getByLabelText("Gabung keluarga dengan kode undangan"),
+		);
+
+		await waitFor(() =>
+			expect(mockJoinHouseholdByInviteCode).toHaveBeenCalledWith(
+				expect.anything(),
+				"ABC123",
+			),
+		);
+		expect(mockRefreshMemberships).toHaveBeenCalledTimes(1);
+	});
+
+	it("locks family form controls while creating a household", async () => {
+		let resolveCreate: (value: { id: string }) => void = () => {};
+		mockCreateHousehold.mockImplementationOnce(
+			() =>
+				new Promise((resolve) => {
+					resolveCreate = resolve;
+				}),
+		);
+
+		renderGroupsScreen();
+
+		fireEvent.press(screen.getByLabelText("Buat keluarga baru"));
+		fireEvent.changeText(
+			screen.getByLabelText("Nama keluarga"),
+			"Keluarga Budi",
+		);
+		fireEvent.press(screen.getByLabelText("Simpan keluarga"));
+
+		await waitFor(() => expect(mockCreateHousehold).toHaveBeenCalledTimes(1));
+
+		fireEvent.press(screen.getByLabelText("Gabung keluarga"));
+		fireEvent.press(screen.getByLabelText("Simpan keluarga"));
+
+		expect(mockCreateHousehold).toHaveBeenCalledTimes(1);
+		expect(screen.getByLabelText("Nama keluarga")).toBeTruthy();
+		expect(screen.queryByLabelText("Kode undangan")).toBeNull();
+
+		resolveCreate({ id: "hh-new" });
+		await waitFor(() =>
+			expect(mockRefreshMemberships).toHaveBeenCalledTimes(1),
+		);
+	});
+});

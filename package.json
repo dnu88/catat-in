@@ -2,6 +2,7 @@
   "name": "kaswise",
   "version": "0.1.0",
   "private": true,
+  "packageManager": "pnpm@9.15.9",
   "scripts": {
     "dev": "pnpm dev:mobile",
     "dev:web": "pnpm --filter web dev",
@@ -12,7 +13,7 @@
     "test:web": "pnpm --filter web test",
     "test:mobile": "pnpm --filter mobile test",
     "test:backend": "cd backend && venv\\Scripts\\python.exe -m pytest",
-    "build": "pnpm --filter web build",
+    "build": "corepack pnpm --filter web build",
     "lint": "pnpm -r lint",
     "type-check": "pnpm -r type-check"
   },

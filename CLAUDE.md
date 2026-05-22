@@ -23,27 +23,30 @@ Package manager: **pnpm workspaces**. Selalu jalankan perintah dari root atau fo
 ## Tech Stack
 
 ### Active Stack (Kaswise v1.0 — Mobile-First)
-| Layer          | Teknologi                                                              |
-| -------------- | ---------------------------------------------------------------------- |
-| Mobile         | Expo SDK 51, React Native 0.74, Expo Router, NativeWind v4             |
-| Data Access    | Supabase Client SDK langsung dari mobile (CRUD via RLS policies)       |
-| Database       | Supabase PostgreSQL dengan RLS aktif di semua tabel                    |
-| Auth           | Supabase Auth (email/password + Google OAuth)                          |
+
+| Layer               | Teknologi                                                        |
+| ------------------- | ---------------------------------------------------------------- |
+| Mobile              | Expo SDK 51, React Native 0.74, Expo Router, NativeWind v4       |
+| Data Access         | Supabase Client SDK langsung dari mobile (CRUD via RLS policies) |
+| Database            | Supabase PostgreSQL dengan RLS aktif di semua tabel              |
+| Auth                | Supabase Auth (email/password + Google OAuth)                    |
 | Backend (Spesialis) | FastAPI (Python 3.12) — hanya AI, Import, Webhook                |
-| AI             | Anthropic Claude (Haiku/Sonnet), OpenAI Whisper                        |
-| State          | Zustand                                                                |
+| AI                  | Anthropic Claude (Haiku/Sonnet), OpenAI Whisper                  |
+| State               | Zustand                                                          |
 
 ### Legacy Stack (Maintenance-Only)
-| Layer    | Teknologi                                                            |
-| -------- | -------------------------------------------------------------------- |
-| Frontend | React 18, Vite, TypeScript, Zustand, Tailwind CSS                    |
-| Backend  | FastAPI (Python 3.12) — semua endpoint (deprecated)                  |
-| Database | Cloud Firestore                                                      |
-| Auth     | Firebase Auth                                                        |
+
+| Layer    | Teknologi                                           |
+| -------- | --------------------------------------------------- |
+| Frontend | React 18, Vite, TypeScript, Zustand, Tailwind CSS   |
+| Backend  | FastAPI (Python 3.12) — semua endpoint (deprecated) |
+| Database | Cloud Firestore                                     |
+| Auth     | Firebase Auth                                       |
 
 ## Arsitektur Data
 
 ### Active Stack (Supabase PostgreSQL)
+
 Semua data user disimpan di tabel dengan **RLS aktif** dan foreign key ke `auth.users`:
 
 ```
@@ -78,7 +81,12 @@ group_members
   id, group_id, user_id, role (admin|member), joined_at
 ```
 
+### Household finance context
+
+Mobile supports two finance contexts: personal rows with `household_id = null`, and household rows with `household_id` set. Household access is controlled by `households`, `household_members`, and RLS roles `owner/admin/member/viewer`. Mobile service functions must apply the active finance context to every financial query.
+
 ### Legacy Stack (Firestore — Maintenance-Only)
+
 Semua data user disimpan di sub-collection `users/{uid}/*`:
 
 ```
@@ -164,45 +172,52 @@ Store transaksi di dashboard hanya mengambil 5 transaksi terakhir (untuk list "t
 ## File-file Kunci
 
 ### Mobile (Active)
-| File                                              | Peran                                                        |
-| ------------------------------------------------- | ------------------------------------------------------------ |
-| `apps/mobile/src/lib/supabase.ts`                 | Inisialisasi Supabase client                                 |
-| `apps/mobile/src/services/wallets.ts`             | CRUD wallet via Supabase SDK                                 |
-| `apps/mobile/src/services/transactions.ts`        | CRUD transaksi via Supabase SDK                              |
-| `apps/mobile/src/services/budgets.ts`             | CRUD budget via Supabase SDK                                 |
-| `apps/mobile/src/services/bills.ts`               | CRUD tagihan berulang via Supabase SDK                       |
-| `apps/mobile/src/services/categories.ts`          | CRUD kategori via Supabase SDK                               |
+
+| File                                       | Peran                                  |
+| ------------------------------------------ | -------------------------------------- |
+| `apps/mobile/src/lib/supabase.ts`          | Inisialisasi Supabase client           |
+| `apps/mobile/src/services/wallets.ts`      | CRUD wallet via Supabase SDK           |
+| `apps/mobile/src/services/transactions.ts` | CRUD transaksi via Supabase SDK        |
+| `apps/mobile/src/services/budgets.ts`      | CRUD budget via Supabase SDK           |
+| `apps/mobile/src/services/bills.ts`        | CRUD tagihan berulang via Supabase SDK |
+| `apps/mobile/src/services/categories.ts`   | CRUD kategori via Supabase SDK         |
 
 ### Backend FastAPI (Spesialis)
-| File                                     | Peran                                                        |
-| ---------------------------------------- | ------------------------------------------------------------ |
-| `backend/app/api/v1/ai.py`               | Endpoint AI (chat extract, OCR, insights)                    |
-| `backend/app/api/v1/imports.py`          | Endpoint import CSV/Excel bank statement                     |
-| `backend/app/api/v1/webhooks.py`         | Endpoint webhook handler                                     |
-| `backend/app/core/auth.py`               | Verifikasi Supabase JWT                                      |
-| `backend/app/services/ai_service.py`     | Integrasi Claude API (chat extract, OCR, insights)           |
-| `backend/app/services/import_service.py` | Parser CSV/Excel bank statement                              |
+
+| File                                     | Peran                                              |
+| ---------------------------------------- | -------------------------------------------------- |
+| `backend/app/api/v1/ai.py`               | Endpoint AI (chat extract, OCR, insights)          |
+| `backend/app/api/v1/imports.py`          | Endpoint import CSV/Excel bank statement           |
+| `backend/app/api/v1/webhooks.py`         | Endpoint webhook handler                           |
+| `backend/app/core/auth.py`               | Verifikasi Supabase JWT                            |
+| `backend/app/services/ai_service.py`     | Integrasi Claude API (chat extract, OCR, insights) |
+| `backend/app/services/import_service.py` | Parser CSV/Excel bank statement                    |
 
 ### Shared
-| File                                     | Peran                                                        |
-| ---------------------------------------- | ------------------------------------------------------------ |
-| `packages/shared/types/index.ts`         | TypeScript types bersama (Transaction, Budget, Wallet, dll)  |
+
+| File                             | Peran                                                       |
+| -------------------------------- | ----------------------------------------------------------- |
+| `packages/shared/types/index.ts` | TypeScript types bersama (Transaction, Budget, Wallet, dll) |
 
 ### Legacy Web (Maintenance-Only)
-| File                                     | Peran                                                        |
-| ---------------------------------------- | ------------------------------------------------------------ |
-| `apps/web/src/lib/firestore.ts`          | Semua operasi Firestore — CRUD (legacy, tidak diubah)        |
-| `apps/web/src/lib/categories.ts`         | Daftar kategori default + helper label/emoji                 |
+
+| File                             | Peran                                                 |
+| -------------------------------- | ----------------------------------------------------- |
+| `apps/web/src/lib/firestore.ts`  | Semua operasi Firestore — CRUD (legacy, tidak diubah) |
+| `apps/web/src/lib/categories.ts` | Daftar kategori default + helper label/emoji          |
 
 ## Arsitektur API
 
 ### Mobile → Supabase Direct
+
 CRUD utama (transaksi, budget, wallet, bills, categories) langsung via **Supabase Client SDK** dari mobile. RLS policies mengatur akses per user — tidak ada backend layer untuk operasi ini.
 
 ### Backend FastAPI (Spesialis)
+
 Base URL: `/api/v1`
 
 Endpoint aktif (spesialis only):
+
 - `/ai/*` — AI processing (chat extract, OCR receipt, insights)
 - `/imports` — Parser CSV/Excel bank statement
 - `/webhooks` — Webhook handler (Midtrans payment, dll)

@@ -6,13 +6,15 @@ import { SupabaseProvider } from '../src/lib/supabase'
 import { ThemeProvider } from '../src/theme/theme-context'
 
 const mockReplace = jest.fn()
+const mockPush = jest.fn()
 const mockSignOut = jest.fn(async () => ({ error: null }))
 
 jest.mock('expo-router', () => ({
   router: {
     replace: (...args: unknown[]) => mockReplace(...args),
+    push: (...args: unknown[]) => mockPush(...args),
   },
-  useRouter: () => ({ push: jest.fn(), back: jest.fn() }),
+  useRouter: () => ({ push: mockPush, back: jest.fn() }),
 }))
 
 jest.mock('../src/lib/supabase', () => ({
@@ -41,6 +43,7 @@ function renderSettings() {
 describe('SettingsScreen honest controls', () => {
   beforeEach(() => {
     mockReplace.mockClear()
+    mockPush.mockClear()
     mockSignOut.mockClear()
   })
 
@@ -51,6 +54,8 @@ describe('SettingsScreen honest controls', () => {
     expect(screen.getByText('Tampilan')).toBeTruthy()
     expect(screen.getByText('Bahasa aplikasi')).toBeTruthy()
     expect(screen.getByText('Notifikasi')).toBeTruthy()
+    expect(screen.getByText('Keluarga')).toBeTruthy()
+    expect(screen.getByText('Pusat Keluarga')).toBeTruthy()
     expect(screen.getByText('kaswise v1.0.0')).toBeTruthy()
     expect(screen.getByText('Keluar dari Akun')).toBeTruthy()
 
@@ -64,6 +69,14 @@ describe('SettingsScreen honest controls', () => {
     expect(screen.queryByText('Akun & Keamanan')).toBeNull()
     expect(screen.queryByText('Ubah Password')).toBeNull()
     expect(screen.queryByText('Kebijakan Privasi')).toBeNull()
+  })
+
+  it('opens family center from settings', () => {
+    const screen = renderSettings()
+
+    fireEvent.press(screen.getByTestId('settings-family-center'))
+
+    expect(mockPush).toHaveBeenCalledWith('/(tabs)/groups')
   })
 
   it('still lets language and logout controls work', async () => {
