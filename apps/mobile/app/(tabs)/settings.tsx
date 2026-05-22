@@ -1,6 +1,7 @@
 import { router } from 'expo-router'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
+import AsyncStorage from '@react-native-async-storage/async-storage'
 
 import { useSupabase } from '../../src/lib/supabase'
 import type { KaswiseIconName } from '../../src/components/icons/kaswise-icons'
@@ -8,6 +9,242 @@ import { KaswiseLogoMark } from '../../src/components/brand/KaswiseLogoMark'
 import { IconBubble } from '../../src/components/ui'
 import { useTheme } from '../../src/theme/theme-context'
 import { useI18n } from '../../src/i18n/i18n-context'
+
+const NOTIFICATION_KEYS = {
+  dailyReminder: '@kaswise/notifications/dailyReminder',
+  billReminder: '@kaswise/notifications/billReminder',
+  budgetAlert: '@kaswise/notifications/budgetAlert',
+} as const
+
+const EXPENSE_CATEGORY_CONFIG = {
+  Makanan: {
+    min: 20_000,
+    max: 150_000,
+    merchants: ['RM Sederhana', 'Warteg Bu Tini', 'KFC', "McDonald's", 'GoFood', 'GrabFood'],
+  },
+  Transportasi: {
+    min: 10_000,
+    max: 100_000,
+    merchants: ['Grab', 'Gojek', 'Pertamina', 'TransJakarta'],
+  },
+  Belanja: {
+    min: 50_000,
+    max: 500_000,
+    merchants: ['Tokopedia', 'Shopee', 'Indomaret', 'Alfamart', 'ACE Hardware'],
+  },
+  Tagihan: {
+    min: 100_000,
+    max: 2_000_000,
+    merchants: ['PLN', 'PDAM', 'IndiHome', 'Telkomsel', 'XL Axiata'],
+  },
+  Hiburan: {
+    min: 30_000,
+    max: 300_000,
+    merchants: ['Cinema XXI', 'Netflix', 'Spotify', 'Timezone', 'Steam'],
+  },
+  Kesehatan: {
+    min: 50_000,
+    max: 500_000,
+    merchants: ['Kimia Farma', 'Halodoc', 'Guardian', 'RS Hermina'],
+  },
+  Pendidikan: {
+    min: 100_000,
+    max: 1_000_000,
+    merchants: ['Gramedia', 'Ruangguru', 'Coursera', 'Udemy'],
+  },
+} as const
+
+const INCOME_SOURCES = ['Gaji', 'Freelance', 'Bonus'] as const
+const BUDGET_LIMITS = {
+  Makanan: 3_000_000,
+  Transportasi: 1_500_000,
+  Belanja: 2_000_000,
+  Tagihan: 2_500_000,
+  Hiburan: 1_000_000,
+} as const
+
+type SeedResultState = {
+  type: 'success' | 'error'
+  message: string
+}
+
+type WalletRow = {
+  id: string
+  name: string
+  type: string
+}
+
+type HouseholdRow = {
+  id: string
+  name?: string | null
+}
+
+type HouseholdMembershipRow = {
+  household_id: string
+  households: HouseholdRow | HouseholdRow[] | null
+}
+
+type TransactionInsert = {
+  user_id: string
+  wallet_id: string
+  type: 'income' | 'expense'
+  nominal: number
+  kategori: string
+  tanggal: string
+  catatan: string
+  merchant: string | null
+  input_type: 'manual'
+  status: 'done'
+  created_by: string
+  household_id: string | null
+}
+
+type BudgetInsert = {
+  user_id: string
+  category: string
+  limit_amount: number
+  period: 'monthly'
+  period_start: string
+  notify_at_percent: number
+  is_active: boolean
+  created_by: string
+  household_id: string | null
+}
+
+function seededRandom(seed: number) {
+  const raw = Math.sin(seed) * 10000
+  return raw - Math.floor(raw)
+}
+
+function randomInt(seed: number, min: number, max: number) {
+  return Math.floor(seededRandom(seed) * (max - min + 1)) + min
+}
+
+function chooseOne<T>(items: readonly T[], seed: number) {
+  return items[Math.floor(seededRandom(seed) * items.length)]
+}
+
+function clampDay(year: number, monthIndex: number, day: number) {
+  return Math.min(day, new Date(year, monthIndex + 1, 0).getDate())
+}
+
+function formatDate(date: Date) {
+  return date.toISOString().slice(0, 10)
+}
+
+function createSampleTransactions({
+  userId,
+  walletId,
+  householdId,
+  seedOffset,
+}: {
+  userId: string
+  walletId: string
+  householdId: string | null
+  seedOffset: number
+}): TransactionInsert[] {
+  const now = new Date()
+  const transactions: TransactionInsert[] = []
+  const expenseCategories = Object.keys(EXPENSE_CATEGORY_CONFIG) as Array<keyof typeof EXPENSE_CATEGORY_CONFIG>
+
+  for (let monthOffset = 0; monthOffset < 12; monthOffset += 1) {
+    const baseDate = new Date(now.getFullYear(), now.getMonth() - monthOffset, 1)
+    const year = baseDate.getFullYear()
+    const monthIndex = baseDate.getMonth()
+    const baseSeed = seedOffset + monthOffset * 97
+
+    const salaryDate = new Date(year, monthIndex, clampDay(year, monthIndex, randomInt(baseSeed + 1, 1, 3)))
+    transactions.push({
+      user_id: userId,
+      wallet_id: walletId,
+      type: 'income',
+      nominal: randomInt(baseSeed + 2, 8_000_000, 15_000_000),
+      kategori: 'Gaji',
+      tanggal: formatDate(salaryDate),
+      catatan: 'Penerimaan gaji bulanan',
+      merchant: 'Perusahaan',
+      input_type: 'manual',
+      status: 'done',
+      created_by: userId,
+      household_id: householdId,
+    })
+
+    const freelanceCount = seededRandom(baseSeed + 3) > 0.45 ? 1 : 0
+    for (let incomeIndex = 0; incomeIndex < freelanceCount; incomeIndex += 1) {
+      const incomeDate = new Date(year, monthIndex, clampDay(year, monthIndex, randomInt(baseSeed + 10 + incomeIndex, 8, 24)))
+      transactions.push({
+        user_id: userId,
+        wallet_id: walletId,
+        type: 'income',
+        nominal: randomInt(baseSeed + 11 + incomeIndex, 1_000_000, 5_000_000),
+        kategori: 'Freelance',
+        tanggal: formatDate(incomeDate),
+        catatan: 'Pembayaran proyek freelance',
+        merchant: 'Klien Freelance',
+        input_type: 'manual',
+        status: 'done',
+        created_by: userId,
+        household_id: householdId,
+      })
+    }
+
+    if (monthOffset % 3 === 0) {
+      const bonusDate = new Date(year, monthIndex, clampDay(year, monthIndex, randomInt(baseSeed + 20, 20, 28)))
+      transactions.push({
+        user_id: userId,
+        wallet_id: walletId,
+        type: 'income',
+        nominal: randomInt(baseSeed + 21, 2_000_000, 10_000_000),
+        kategori: 'Bonus',
+        tanggal: formatDate(bonusDate),
+        catatan: 'Bonus kinerja kuartalan',
+        merchant: 'Perusahaan',
+        input_type: 'manual',
+        status: 'done',
+        created_by: userId,
+        household_id: householdId,
+      })
+    }
+
+    for (let expenseIndex = 0; expenseIndex < 20; expenseIndex += 1) {
+      const category = chooseOne(expenseCategories, baseSeed + 30 + expenseIndex)
+      const config = EXPENSE_CATEGORY_CONFIG[category]
+      const merchant = chooseOne(config.merchants, baseSeed + 60 + expenseIndex)
+      const day = randomInt(baseSeed + 90 + expenseIndex, 1, 28)
+      const transactionDate = new Date(year, monthIndex, clampDay(year, monthIndex, day))
+      transactions.push({
+        user_id: userId,
+        wallet_id: walletId,
+        type: 'expense',
+        nominal: randomInt(baseSeed + 120 + expenseIndex, config.min, config.max),
+        kategori: category,
+        tanggal: formatDate(transactionDate),
+        catatan: `Pengeluaran ${category.toLowerCase()} rutin`,
+        merchant,
+        input_type: 'manual',
+        status: 'done',
+        created_by: userId,
+        household_id: householdId,
+      })
+    }
+  }
+
+  return transactions.sort((left, right) => left.tanggal.localeCompare(right.tanggal))
+}
+
+function createBudgets({ userId, householdId, periodStart }: { userId: string; householdId: string | null; periodStart: string }): BudgetInsert[] {
+  return Object.entries(BUDGET_LIMITS).map(([category, limitAmount]) => ({
+    user_id: userId,
+    category,
+    limit_amount: limitAmount,
+    period: 'monthly',
+    period_start: periodStart,
+    notify_at_percent: 80,
+    is_active: true,
+    created_by: userId,
+    household_id: householdId,
+  }))
+}
 
 export default function SettingsScreen() {
   const { supabase } = useSupabase()
@@ -17,6 +254,207 @@ export default function SettingsScreen() {
   const [dailyReminder, setDailyReminder] = useState(true)
   const [billReminder, setBillReminder] = useState(true)
   const [budgetAlert, setBudgetAlert] = useState(true)
+  const [profileLoading, setProfileLoading] = useState(true)
+  const [profileName, setProfileName] = useState('')
+  const [profileEmail, setProfileEmail] = useState('')
+  const [seedLoading, setSeedLoading] = useState(false)
+  const [seedResult, setSeedResult] = useState<SeedResultState | null>(null)
+
+  useEffect(() => {
+    let active = true
+    const loadProfile = async () => {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
+      if (!active) return
+      const email = user?.email ?? ''
+      const metadata = (user?.user_metadata ?? {}) as Record<string, unknown>
+      const name =
+        (typeof metadata.full_name === 'string' && metadata.full_name) ||
+        (typeof metadata.name === 'string' && metadata.name) ||
+        ''
+      setProfileEmail(email)
+      setProfileName(name)
+      setProfileLoading(false)
+    }
+    loadProfile()
+    return () => {
+      active = false
+    }
+  }, [supabase])
+
+  useEffect(() => {
+    let active = true
+    const loadNotifications = async () => {
+      const [daily, bill, budget] = await AsyncStorage.multiGet([
+        NOTIFICATION_KEYS.dailyReminder,
+        NOTIFICATION_KEYS.billReminder,
+        NOTIFICATION_KEYS.budgetAlert,
+      ])
+      if (!active) return
+      if (daily[1] !== null) setDailyReminder(daily[1] === 'true')
+      if (bill[1] !== null) setBillReminder(bill[1] === 'true')
+      if (budget[1] !== null) setBudgetAlert(budget[1] === 'true')
+    }
+    loadNotifications()
+    return () => {
+      active = false
+    }
+  }, [])
+
+  const placeholderName = language === 'id' ? 'Memuat...' : 'Loading...'
+  const fallbackName = profileEmail ? profileEmail.split('@')[0] : language === 'id' ? 'Pengguna' : 'User'
+  const displayName = profileLoading ? placeholderName : profileName || fallbackName
+  const displayEmail = profileLoading ? '' : profileEmail
+  const avatarInitials = profileLoading
+    ? ''
+    : (profileName || fallbackName)
+        .trim()
+        .split(/\s+/)
+        .filter(Boolean)
+        .slice(0, 2)
+        .map((part) => part.charAt(0).toUpperCase())
+        .join('') || '?'
+
+  const toggleDailyReminder = () => {
+    setDailyReminder((v) => {
+      const next = !v
+      AsyncStorage.setItem(NOTIFICATION_KEYS.dailyReminder, String(next))
+      return next
+    })
+  }
+
+  const toggleBillReminder = () => {
+    setBillReminder((v) => {
+      const next = !v
+      AsyncStorage.setItem(NOTIFICATION_KEYS.billReminder, String(next))
+      return next
+    })
+  }
+
+  const toggleBudgetAlert = () => {
+    setBudgetAlert((v) => {
+      const next = !v
+      AsyncStorage.setItem(NOTIFICATION_KEYS.budgetAlert, String(next))
+      return next
+    })
+  }
+
+  const onSeedSampleData = async () => {
+    setSeedLoading(true)
+    setSeedResult(null)
+
+    try {
+      const {
+        data: { user },
+        error: userError,
+      } = await supabase.auth.getUser()
+
+      if (userError) throw userError
+      if (!user) throw new Error(language === 'id' ? 'Pengguna tidak ditemukan.' : 'User not found.')
+
+      const { data: existingWallets, error: walletQueryError } = await supabase
+        .from('wallets')
+        .select('id, name, type')
+        .eq('user_id', user.id)
+        .eq('is_active', true)
+
+      if (walletQueryError) throw walletQueryError
+
+      let personalWallet = (existingWallets as WalletRow[] | null)?.find((wallet) => wallet.type === 'bank')
+
+      if (!personalWallet) {
+        const { data: createdWallet, error: walletInsertError } = await supabase
+          .from('wallets')
+          .insert({
+            user_id: user.id,
+            name: 'Dompet Utama',
+            type: 'bank',
+            balance: 0,
+            currency: 'IDR',
+            is_active: true,
+            created_by: user.id,
+          })
+          .select('id, name, type')
+          .single()
+
+        if (walletInsertError) throw walletInsertError
+        personalWallet = createdWallet as WalletRow
+      }
+
+      if (!personalWallet) {
+        throw new Error(language === 'id' ? 'Gagal membuat dompet pribadi.' : 'Failed to create a personal wallet.')
+      }
+
+      const { data: membershipRows, error: membershipError } = await supabase
+        .from('household_members')
+        .select('household_id, households(*)')
+        .eq('user_id', user.id)
+        .eq('status', 'active')
+
+      if (membershipError) throw membershipError
+
+      const contexts: Array<{ householdId: string | null; seedOffset: number }> = [{ householdId: null, seedOffset: 101 }]
+
+      ;(membershipRows as HouseholdMembershipRow[] | null)?.forEach((row, index) => {
+        if (row.household_id) {
+          contexts.push({ householdId: row.household_id, seedOffset: 1001 + index * 211 })
+        }
+      })
+
+      const totalMemberships = contexts.length - 1
+      const householdContextCount = contexts.filter((context) => context.householdId !== null).length
+      const periodStart = formatDate(new Date(new Date().getFullYear(), new Date().getMonth(), 1))
+
+      let createdTransactions = 0
+      let createdBudgets = 0
+
+      for (const [contextIndex, context] of contexts.entries()) {
+        const transactions = createSampleTransactions({
+          userId: user.id,
+          walletId: personalWallet.id,
+          householdId: context.householdId,
+          seedOffset: context.seedOffset + totalMemberships * 19 + householdContextCount * 23 + contextIndex,
+        })
+
+        if (transactions.length > 0) {
+          const { error: transactionInsertError } = await supabase.from('transactions').insert(transactions)
+          if (transactionInsertError) throw transactionInsertError
+          createdTransactions += transactions.length
+        }
+
+        const budgets = createBudgets({
+          userId: user.id,
+          householdId: context.householdId,
+          periodStart,
+        })
+
+        if (budgets.length > 0) {
+          const { error: budgetInsertError } = await supabase.from('budgets').insert(budgets)
+          if (budgetInsertError) throw budgetInsertError
+          createdBudgets += budgets.length
+        }
+      }
+
+      const successMessage =
+        language === 'id'
+          ? `Selesai! ${createdTransactions} transaksi dibuat, ${createdBudgets} anggaran ditambahkan.`
+          : `Done! ${createdTransactions} transactions created, ${createdBudgets} budgets added.`
+
+      setSeedResult({ type: 'success', message: successMessage })
+      setTimeout(() => {
+        setSeedResult((current) => (current?.message === successMessage ? null : current))
+      }, 4000)
+    } catch (error) {
+      const message = error instanceof Error ? error.message : language === 'id' ? 'Terjadi kesalahan.' : 'Something went wrong.'
+      setSeedResult({
+        type: 'error',
+        message: language === 'id' ? `Gagal mengisi data contoh: ${message}` : `Failed to seed sample data: ${message}`,
+      })
+    } finally {
+      setSeedLoading(false)
+    }
+  }
 
   const onLogout = async () => {
     await supabase.auth.signOut()
@@ -44,11 +482,11 @@ export default function SettingsScreen() {
         {/* Profile Card */}
         <View style={styles.profileCard}>
           <View style={styles.profileAvatar}>
-            <Text style={styles.profileAvatarText}>DB</Text>
+            <Text style={styles.profileAvatarText}>{avatarInitials}</Text>
           </View>
           <View style={styles.profileInfo}>
-            <Text style={styles.profileName}>Danu Baskara</Text>
-            <Text style={styles.profileEmail}>danu@example.com</Text>
+            <Text style={styles.profileName}>{displayName}</Text>
+            {displayEmail ? <Text style={styles.profileEmail}>{displayEmail}</Text> : null}
           </View>
         </View>
 
@@ -155,7 +593,7 @@ export default function SettingsScreen() {
             title={language === 'id' ? 'Ringkasan Harian' : 'Daily Summary'}
             helper={language === 'id' ? 'Notifikasi kondisi keuangan setiap malam' : 'Nightly financial condition notification'}
             value={dailyReminder}
-            onToggle={() => setDailyReminder((v) => !v)}
+            onToggle={toggleDailyReminder}
             theme={theme}
           />
           <ToggleRow
@@ -164,7 +602,7 @@ export default function SettingsScreen() {
             title={language === 'id' ? 'Pengingat Tagihan' : 'Bill Reminder'}
             helper={language === 'id' ? 'Notifikasi sebelum jatuh tempo' : 'Notification before due date'}
             value={billReminder}
-            onToggle={() => setBillReminder((v) => !v)}
+            onToggle={toggleBillReminder}
             theme={theme}
           />
           <ToggleRow
@@ -173,7 +611,7 @@ export default function SettingsScreen() {
             title={language === 'id' ? 'Alert Anggaran' : 'Budget Alert'}
             helper={language === 'id' ? 'Notifikasi saat budget hampir habis' : 'Notification when budget is nearly depleted'}
             value={budgetAlert}
-            onToggle={() => setBudgetAlert((v) => !v)}
+            onToggle={toggleBudgetAlert}
             theme={theme}
           />
         </View>
@@ -183,6 +621,37 @@ export default function SettingsScreen() {
         <View style={styles.appInfo}>
           <Text style={styles.appName}>kaswise v1.0.0</Text>
           <Text style={styles.appTagline}>{language === 'id' ? 'Catat Keuangan, Bijak Setiap Hari' : 'Track Finances, Wise Every Day'}</Text>
+        </View>
+
+        {/* Dev Tools */}
+        <View style={styles.sectionCard}>
+          <Text style={styles.sectionTitle}>{language === 'id' ? 'Alat Pengembang' : 'Dev Tools'}</Text>
+          <Text style={styles.sectionSub}>
+            {language === 'id'
+              ? 'Isi transaksi dan anggaran contoh untuk demo aplikasi.'
+              : 'Fill sample transactions and budgets for app demos.'}
+          </Text>
+          <Pressable
+            testID="settings-seed-sample-data"
+            accessibilityRole="button"
+            accessibilityLabel={language === 'id' ? 'Isi Data Contoh' : 'Seed Sample Data'}
+            disabled={seedLoading}
+            onPress={onSeedSampleData}
+            style={[styles.seedButton, seedLoading && styles.seedButtonDisabled]}
+          >
+            <Text style={styles.seedButtonText}>
+              {seedLoading
+                ? language === 'id'
+                  ? 'Mengisi...'
+                  : 'Seeding...'
+                : language === 'id'
+                  ? 'Isi Data Contoh'
+                  : 'Seed Sample Data'}
+            </Text>
+          </Pressable>
+          {seedResult ? (
+            <Text style={[styles.seedResult, seedResult.type === 'error' && styles.seedResultError]}>{seedResult.message}</Text>
+          ) : null}
         </View>
 
         {/* Logout */}
@@ -216,6 +685,9 @@ function ToggleRow({
   return (
     <Pressable
       onPress={onToggle}
+      accessibilityRole="switch"
+      accessibilityState={{ checked: value }}
+      accessibilityLabel={title}
       style={{
         flexDirection: 'row',
         justifyContent: 'space-between',
@@ -258,8 +730,6 @@ function ToggleRow({
 }
 
 function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
-  const lightBrand = theme.mode === 'light' ? theme.colors.brandPrimaryDeep : theme.colors.brandPrimary
-
   return StyleSheet.create({
     screen: { flex: 1, backgroundColor: theme.colors.background },
     content: { padding: 20, gap: 10, paddingBottom: 26 },
@@ -281,11 +751,11 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
       width: 50,
       height: 50,
       borderRadius: 25,
-      backgroundColor: lightBrand,
+      backgroundColor: theme.colors.mutedSurface,
       alignItems: 'center',
       justifyContent: 'center',
     },
-    profileAvatarText: { color: theme.colors.textInverse, fontSize: 16, fontWeight: '800' },
+    profileAvatarText: { color: theme.colors.textPrimary, fontSize: 16, fontWeight: '800' },
     profileInfo: { flex: 1 },
     profileName: { color: theme.colors.textPrimary, fontSize: theme.typography.fontSize.lg, fontWeight: theme.typography.fontWeight.extrabold },
     profileEmail: { color: theme.colors.textMuted, fontSize: theme.typography.fontSize.sm, marginTop: 2 },
@@ -303,6 +773,8 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
     themeChip: {
       flex: 1,
       paddingVertical: 10,
+      minHeight: 44,
+      justifyContent: 'center',
       borderRadius: 12,
       borderWidth: 1,
       borderColor: theme.colors.borderSoft,
@@ -328,6 +800,19 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
     appInfo: { alignItems: 'center', paddingVertical: 10, gap: 4 },
     appName: { color: theme.colors.textMuted, fontSize: 13, fontWeight: '700' },
     appTagline: { color: theme.colors.textMuted, fontSize: 11 },
+    seedButton: {
+      backgroundColor: theme.mode === 'light' ? theme.colors.brandPrimaryDeep : theme.colors.brandPrimary,
+      borderRadius: 14,
+      minHeight: 46,
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingVertical: 12,
+      paddingHorizontal: 14,
+    },
+    seedButtonDisabled: { opacity: 0.65 },
+    seedButtonText: { color: theme.colors.textInverse, fontSize: 14, fontWeight: '800' },
+    seedResult: { color: theme.colors.success, fontSize: 12, fontWeight: '700' },
+    seedResultError: { color: theme.colors.danger },
     logoutBtn: {
       backgroundColor: `${theme.colors.danger}12`,
       borderWidth: 1,

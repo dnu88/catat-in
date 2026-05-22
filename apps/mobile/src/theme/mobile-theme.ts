@@ -26,6 +26,8 @@ export function toMobileTheme(mode: ThemeMode) {
       brandSecondary: token.color.brand.secondary,
       brandPrimaryDeep: token.color.brand.primaryDeep,
       brandAccent: token.color.brand.secondary,
+      buttonPrimaryBg: mode === 'dark' ? '#A3FF12' : '#3F6212',
+      buttonPrimaryText: mode === 'dark' ? '#0A0A0A' : '#FFFFFF',
       success: token.color.status.success,
       danger: token.color.status.danger,
       warning: token.color.status.warning,

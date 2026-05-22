@@ -127,6 +127,32 @@ jest.mock("../src/components/ui", () => ({
 		const { Text } = require("react-native");
 		return <Text>{`${name}-${tone}-${size}`}</Text>;
 	},
+	InputField: ({
+		label,
+		placeholder,
+		value,
+		onChangeText,
+		keyboardType,
+	}: {
+		label: string;
+		placeholder?: string;
+		value: string;
+		onChangeText: (next: string) => void;
+		keyboardType?: string;
+	}) => {
+		const { Text, TextInput, View } = require("react-native");
+		return (
+			<View>
+				<Text>{label}</Text>
+				<TextInput
+					placeholder={placeholder}
+					value={value}
+					onChangeText={onChangeText}
+					keyboardType={keyboardType}
+				/>
+			</View>
+		);
+	},
 	ScreenHeader: ({
 		title,
 		subtitle,

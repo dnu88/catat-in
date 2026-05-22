@@ -22,6 +22,7 @@ jest.mock('../src/lib/supabase', () => ({
     supabase: {
       auth: {
         signOut: mockSignOut,
+        getUser: jest.fn(async () => ({ data: { user: null } })),
       },
     },
   }),

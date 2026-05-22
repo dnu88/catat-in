@@ -11,6 +11,17 @@ import { listTransactions, type Transaction } from '../../src/services/transacti
 type Filter = 'all' | 'income' | 'expense'
 type Period = 'week' | 'month' | 'year'
 
+function formatCompactRupiah(value: number) {
+  const amount = Math.abs(value)
+  if (amount >= 1_000_000) {
+    return `Rp ${(amount / 1_000_000).toLocaleString('id-ID', { maximumFractionDigits: 1 })} jt`
+  }
+  if (amount >= 1_000) {
+    return `Rp ${(amount / 1_000).toLocaleString('id-ID', { maximumFractionDigits: 1 })} rb`
+  }
+  return `Rp ${amount.toLocaleString('id-ID', { maximumFractionDigits: 0 })}`
+}
+
 type TransactionListItem = {
   item: Transaction
   index: number
@@ -180,8 +191,8 @@ export default function TransactionsScreen() {
       </View>
 
       <View style={styles.statRow}>
-        <StatCard label={isEn ? 'Income' : 'Pemasukan'} value={`Rp ${(totalIncome / 1000000).toFixed(1)} Jt`} icon="chart" tone="success" />
-        <StatCard label={isEn ? 'Expense' : 'Pengeluaran'} value={`Rp ${(totalExpense / 1000000).toFixed(1)} Jt`} icon="transactions" tone="danger" />
+        <StatCard label={isEn ? 'Income' : 'Pemasukan'} value={formatCompactRupiah(totalIncome)} icon="chart" tone="success" />
+        <StatCard label={isEn ? 'Expense' : 'Pengeluaran'} value={formatCompactRupiah(totalExpense)} icon="transactions" tone="danger" />
       </View>
 
       <View style={styles.filterRow}>
@@ -255,11 +266,13 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
     periodChip: {
       flex: 1,
       paddingVertical: theme.spacing.sm + 2,
+      minHeight: 44,
       borderRadius: theme.radius.sm + 2,
       borderWidth: 1,
       borderColor: theme.colors.borderSoft,
       backgroundColor: theme.colors.surface,
       alignItems: 'center',
+      justifyContent: 'center',
     },
     periodChipText: { color: theme.colors.textSecondary, fontSize: 13, fontWeight: theme.typography.fontWeight.bold },
     statRow: { flexDirection: 'row', gap: theme.spacing.sm + theme.spacing.xs - 2 },
@@ -268,7 +281,8 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
       flexDirection: 'row',
       alignItems: 'center',
       gap: theme.spacing.md,
-      paddingVertical: theme.radius.md,
+      paddingVertical: theme.spacing.md,
+      minHeight: 44,
     },
     rowIcon: {
       width: 40,

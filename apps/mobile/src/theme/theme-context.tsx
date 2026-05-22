@@ -1,5 +1,6 @@
-import { createContext, useContext, useMemo, useState } from 'react'
+import { createContext, useContext, useEffect, useMemo, useState } from 'react'
 import { Appearance } from 'react-native'
+import AsyncStorage from '@react-native-async-storage/async-storage'
 import { toMobileTheme, type MobileTheme } from './mobile-theme'
 
 export type ThemePreference = 'light' | 'dark' | 'system'
@@ -13,26 +14,63 @@ type ThemeContextValue = {
 
 const ThemeContext = createContext<ThemeContextValue | null>(null)
 
-function resolveMode(preference: ThemePreference): 'light' | 'dark' {
+const STORAGE_KEY = 'kaswise:theme-preference'
+
+function resolveMode(preference: ThemePreference, systemScheme: 'light' | 'dark'): 'light' | 'dark' {
   if (preference !== 'system') return preference
-  return Appearance.getColorScheme() === 'dark' ? 'dark' : 'light'
+  return systemScheme
+}
+
+function isThemePreference(value: unknown): value is ThemePreference {
+  return value === 'light' || value === 'dark' || value === 'system'
 }
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [preference, setPreference] = useState<ThemePreference>('system')
+  const [preference, setPreferenceState] = useState<ThemePreference>('system')
+  const [systemScheme, setSystemScheme] = useState<'light' | 'dark'>(
+    Appearance.getColorScheme() === 'dark' ? 'dark' : 'light',
+  )
 
-  const mode = resolveMode(preference)
+  useEffect(() => {
+    let active = true
+
+    AsyncStorage.getItem(STORAGE_KEY)
+      .then((stored) => {
+        if (active && isThemePreference(stored)) {
+          setPreferenceState(stored)
+        }
+      })
+      .catch(() => {})
+
+    return () => {
+      active = false
+    }
+  }, [])
+
+  useEffect(() => {
+    const subscription = Appearance.addChangeListener(({ colorScheme }) => {
+      setSystemScheme(colorScheme === 'dark' ? 'dark' : 'light')
+    })
+
+    return () => subscription.remove()
+  }, [])
+
+  const mode = resolveMode(preference, systemScheme)
   const theme = useMemo(() => toMobileTheme(mode), [mode])
 
-  const value = useMemo<ThemeContextValue>(
-    () => ({
+  const value = useMemo<ThemeContextValue>(() => {
+    const setPreference = (next: ThemePreference) => {
+      setPreferenceState(next)
+      AsyncStorage.setItem(STORAGE_KEY, next).catch(() => {})
+    }
+
+    return {
       preference,
       theme,
       setPreference,
       toggleTheme: () => setPreference(mode === 'dark' ? 'light' : 'dark'),
-    }),
-    [mode, preference, theme],
-  )
+    }
+  }, [mode, preference, theme])
 
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>
 }

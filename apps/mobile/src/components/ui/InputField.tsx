@@ -36,18 +36,18 @@ export function InputField({
     ? {
         backgroundColor: theme.iconBubbles.danger.background,
         borderColor: theme.colors.danger,
-        boxShadow: `0 0 0 3px ${theme.iconBubbles.danger.border}`,
+        borderWidth: 2,
       }
     : focused
       ? {
           backgroundColor: theme.colors.card,
           borderColor: theme.colors.brandPrimary,
-          boxShadow: theme.mode === 'light' ? `0 0 0 3px rgba(101, 163, 13, 0.30)` : `0 0 0 3px rgba(163, 255, 18, 0.25)`,
+          borderWidth: 2,
         }
       : {
           backgroundColor: theme.colors.card,
           borderColor: theme.colors.borderBase,
-          boxShadow: undefined,
+          borderWidth: 1,
         }
 
   return (
@@ -83,8 +83,8 @@ export function InputField({
         onFocus={() => setFocused(true)}
         onBlur={() => setFocused(false)}
         style={{
-          borderWidth: 1,
           borderRadius: theme.radius.md,
+          minHeight: 44,
           color: theme.colors.textPrimary,
           fontSize: theme.typography.fontSize.md,
           fontFamily: theme.typography.fontFamily,

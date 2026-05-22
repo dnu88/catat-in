@@ -13,7 +13,14 @@ jest.mock('expo-router', () => ({
 }))
 
 jest.mock('../src/lib/supabase', () => ({
-  useSupabase: () => ({ supabase: { auth: { signOut: jest.fn(async () => undefined) } } }),
+  useSupabase: () => ({
+    supabase: {
+      auth: {
+        signOut: jest.fn(async () => undefined),
+        getUser: jest.fn(async () => ({ data: { user: null } })),
+      },
+    },
+  }),
 }))
 
 jest.mock('../src/services/transactions', () => ({
@@ -35,7 +42,7 @@ describe('light accent regressions', () => {
     fireEvent.press(lightChip)
 
     const flattened = StyleSheet.flatten(lightChip.props.style as object) as ViewStyle
-    expect(flattened.backgroundColor).toBe('#65A30D')
+    expect(flattened.backgroundColor).toBe('#3F6212')
     expect(flattened.backgroundColor).not.toBe('#A3FF12')
   })
 
@@ -54,12 +61,12 @@ describe('light accent regressions', () => {
     fireEvent.press(monthChip)
 
     const monthStyle = StyleSheet.flatten(monthChip.props.style as object) as ViewStyle
-    expect(monthStyle.backgroundColor).toBe('#65A30D')
+    expect(monthStyle.backgroundColor).toBe('#3F6212')
     expect(monthStyle.backgroundColor).not.toBe('#A3FF12')
 
     const fab = screen.getByTestId('transactions-fab')
     const fabStyle = StyleSheet.flatten(fab.props.style as object) as ViewStyle
-    expect(fabStyle.backgroundColor).toBe('#65A30D')
+    expect(fabStyle.backgroundColor).toBe('#3F6212')
     expect(fabStyle.backgroundColor).not.toBe('#A3FF12')
   })
 })

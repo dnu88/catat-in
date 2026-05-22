@@ -216,6 +216,11 @@ export default function CaptureScreen() {
 							value={textInput}
 							onChangeText={setTextInput}
 							multiline
+							accessibilityLabel={
+								isEn
+									? "Transaction text input"
+									: "Input teks transaksi"
+							}
 							placeholder="Contoh: Beli kopi 35rb di Kopi Kenangan pakai QRIS"
 							placeholderTextColor={theme.colors.textMuted}
 						/>
@@ -306,7 +311,10 @@ export default function CaptureScreen() {
 						>
 							<Text style={styles.secondaryButtonText}>Lihat & Review</Text>
 						</Pressable>
-						<Pressable onPress={() => resetCapture(true)}>
+						<Pressable
+							style={styles.textLinkButton}
+							onPress={() => resetCapture(true)}
+						>
 							<Text style={styles.textLink}>Langsung simpan</Text>
 						</Pressable>
 					</View>
@@ -398,16 +406,16 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			fontWeight: theme.typography.fontWeight.bold,
 		},
 		comingSoonText: {
-			color: "#6B7280",
+			color: theme.colors.textMuted,
 			fontSize: 12,
 			textAlign: "center",
 			marginTop: 8,
 		},
 		feedbackCard: {
-			backgroundColor: "#1E1E1A",
+			backgroundColor: theme.colors.card,
 			borderRadius: 14,
 			borderWidth: 1,
-			borderColor: "rgba(255,255,255,0.06)",
+			borderColor: theme.colors.borderSoft,
 			padding: 20,
 			gap: 10,
 			alignItems: "center",
@@ -464,9 +472,11 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			fontWeight: theme.typography.fontWeight.bold,
 		},
 		secondaryButton: {
-			backgroundColor: `${theme.colors.brandPrimary}15`,
+			backgroundColor: theme.iconBubbles.primary.background,
 			borderRadius: 999,
 			paddingVertical: 10,
+			minHeight: 44,
+			justifyContent: "center",
 			alignItems: "center",
 			marginTop: 4,
 		},
@@ -474,6 +484,11 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			color: theme.colors.brandPrimary,
 			fontSize: 13,
 			fontWeight: "700",
+		},
+		textLinkButton: {
+			minHeight: 44,
+			justifyContent: "center",
+			alignItems: "center",
 		},
 		textLink: {
 			color: theme.colors.textMuted,

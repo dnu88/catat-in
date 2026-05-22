@@ -20,6 +20,9 @@ jest.mock('@react-native-async-storage/async-storage', () => ({
   getItem: jest.fn(() => Promise.resolve(null)),
   removeItem: jest.fn(() => Promise.resolve()),
   clear: jest.fn(() => Promise.resolve()),
+  multiGet: jest.fn((keys) => Promise.resolve(keys.map((key) => [key, null]))),
+  multiSet: jest.fn(() => Promise.resolve()),
+  multiRemove: jest.fn(() => Promise.resolve()),
 }));
 
 // Mock expo-constants

@@ -3,6 +3,8 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useRouter } from "expo-router";
 
 import { FinanceContextSwitcher } from "../../src/components/FinanceContextSwitcher";
+import { KaswiseIcon } from "../../src/components/icons/kaswise-icons";
+import { EmptyState } from "../../src/components/ui";
 import { useI18n } from "../../src/i18n/i18n-context";
 import { useSupabase } from "../../src/lib/supabase";
 import {
@@ -24,41 +26,17 @@ import { useTheme } from "../../src/theme/theme-context";
 const quickActions = [
 	{
 		id: "manual",
-		label: "Manual",
-		glyph: "✎",
+		label: "Input AI",
+		icon: "capture",
 		route: "/(tabs)/capture",
 		tone: "primary",
 	},
 	{
 		id: "import",
 		label: "Import",
-		glyph: "↓",
+		icon: "imports",
 		route: "/(tabs)/imports",
 		tone: "info",
-	},
-] as const;
-
-const fallbackTransactions = [
-	{
-		id: "indomaret",
-		title: "Indomaret",
-		meta: "Hari ini · GoPay",
-		amount: "-45rb",
-		tone: "primary" as const,
-	},
-	{
-		id: "fore",
-		title: "Fore Coffee",
-		meta: "Hari ini · GoPay",
-		amount: "-38rb",
-		tone: "warning" as const,
-	},
-	{
-		id: "grab",
-		title: "Grab Car",
-		meta: "Kemarin · GoPay",
-		amount: "-22rb",
-		tone: "primary" as const,
 	},
 ] as const;
 
@@ -72,6 +50,21 @@ function formatCompactAmount(
 ) {
 	const sign = type === "income" ? "+" : "-";
 	return `${sign}${formatCurrency(value).replace("Rp ", "")}`;
+}
+
+function getFirstName(fullName: string) {
+	return fullName.trim().split(/\s+/)[0] ?? "";
+}
+
+function getInitials(fullName: string) {
+	const parts = fullName.trim().split(/\s+/).filter(Boolean);
+	if (parts.length === 0) {
+		return "";
+	}
+	if (parts.length === 1) {
+		return parts[0].slice(0, 2).toUpperCase();
+	}
+	return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
 }
 
 export default function DashboardScreen() {
@@ -114,6 +107,8 @@ export default function DashboardScreen() {
 	const [recentTransactions, setRecentTransactions] = useState<Transaction[]>(
 		[],
 	);
+	const [userName, setUserName] = useState("");
+	const [userEmail, setUserEmail] = useState("");
 
 	useEffect(() => {
 		let mounted = true;
@@ -124,8 +119,22 @@ export default function DashboardScreen() {
 					data: { user },
 				} = await supabase.auth.getUser();
 				if (!user) {
-					if (mounted) setEnvelopeAlerts([]);
+					if (mounted) {
+						setEnvelopeAlerts([]);
+						setUserName("");
+						setUserEmail("");
+					}
 					return;
+				}
+
+				if (mounted) {
+					const metadata = user.user_metadata ?? {};
+					const resolvedName =
+						(typeof metadata.full_name === "string" && metadata.full_name) ||
+						(typeof metadata.name === "string" && metadata.name) ||
+						"";
+					setUserName(resolvedName);
+					setUserEmail(user.email ?? "");
 				}
 
 				const [envelopes, scopedWallets, scopedTransactions] =
@@ -175,27 +184,41 @@ export default function DashboardScreen() {
 		(sum, wallet) => sum + Number(wallet.balance ?? 0),
 		0,
 	);
-	const activeWalletName =
-		wallets[0]?.name ??
-		(activeContext.type === "household" ? "Dompet Keluarga" : "Main Wallet");
-	const displayedTransactions = recentTransactions.length
-		? recentTransactions.map((transaction) => ({
-				id: transaction.id,
-				title:
-					transaction.merchant ??
-					transaction.description ??
-					transaction.category,
-				meta: `${transaction.date ?? ""} · ${transaction.category}`,
-				amount: formatCompactAmount(
-					transaction.amount,
-					transaction.transaction_type,
-				),
-				tone:
-					transaction.transaction_type === "income"
-						? ("info" as const)
-						: ("primary" as const),
-			}))
-		: fallbackTransactions;
+	const displayedTransactions = recentTransactions.map((transaction) => ({
+		id: transaction.id,
+		title:
+			transaction.merchant ??
+			transaction.description ??
+			transaction.category,
+		meta: `${transaction.date ?? ""} · ${transaction.category}`,
+		amount: formatCompactAmount(
+			transaction.amount,
+			transaction.transaction_type,
+		),
+		tone:
+			transaction.transaction_type === "income"
+				? ("info" as const)
+				: ("primary" as const),
+	}));
+
+	const firstName = userName ? getFirstName(userName) : "";
+	const greeting = firstName
+		? isEn
+			? `Hi, ${firstName}`
+			: `Halo, ${firstName}`
+		: isEn
+			? "Hi"
+			: "Halo";
+	const avatarInitials = userName
+		? getInitials(userName)
+		: userEmail
+			? userEmail.slice(0, 1).toUpperCase()
+			: "?";
+	const now = new Date();
+	const dateText = now.toLocaleDateString(isEn ? "en-US" : "id-ID", {
+		month: "long",
+		year: "numeric",
+	});
 
 	return (
 		<View style={styles.screen}>
@@ -206,12 +229,12 @@ export default function DashboardScreen() {
 			>
 				<View style={styles.headerRow}>
 					<View style={styles.headerCopy}>
-						<Text style={styles.greeting}>Halo, Danu</Text>
-						<Text style={styles.dateText}>April 2026</Text>
+						<Text style={styles.greeting}>{greeting}</Text>
+						<Text style={styles.dateText}>{dateText}</Text>
 					</View>
 					<View style={styles.headerActions}>
 						<View testID="home-avatar" style={styles.avatarWrap}>
-							<Text style={styles.avatarText}>DB</Text>
+							<Text style={styles.avatarText}>{avatarInitials}</Text>
 						</View>
 					</View>
 				</View>
@@ -226,21 +249,9 @@ export default function DashboardScreen() {
 
 					<View style={styles.heroControlRow}>
 						<Pressable
-							testID="home-wallet-pill"
-							accessibilityRole="button"
-							accessibilityLabel="Buka daftar dompet, dompet aktif Main Wallet"
-							style={styles.walletPill}
-							onPress={() => router.push("/(tabs)/wallets" as never)}
-						>
-							<Text style={styles.walletIcon}>▱</Text>
-							<Text style={styles.walletName} numberOfLines={1}>
-								{activeWalletName}
-							</Text>
-							<Text style={styles.walletCaret}>⌄</Text>
-						</Pressable>
-						<Pressable
 							accessibilityRole="button"
 							accessibilityLabel="Kelola dompet"
+							hitSlop={12}
 							onPress={() => router.push("/(tabs)/wallets" as never)}
 						>
 							<Text style={styles.manageText}>Manage</Text>
@@ -251,11 +262,8 @@ export default function DashboardScreen() {
 						<Text style={styles.heroLabel}>Total saldo</Text>
 						<View style={styles.amountRow}>
 							<Text testID="home-total-balance" style={styles.heroAmount}>
-								{formatCurrency(totalBalance || 4_250_000)}
+								{formatCurrency(totalBalance)}
 							</Text>
-							<View style={styles.deltaPill}>
-								<Text style={styles.deltaText}>↗ 15%</Text>
-							</View>
 						</View>
 					</View>
 				</View>
@@ -274,14 +282,16 @@ export default function DashboardScreen() {
 								testID={`home-quick-bubble-${action.id}`}
 								style={[styles.iconBubble, styles[`${action.tone}Bubble`]]}
 							>
-								<Text
-									style={[
-										styles.iconBubbleText,
-										styles[`${action.tone}BubbleText`],
-									]}
-								>
-									{action.glyph}
-								</Text>
+								<KaswiseIcon
+									name={action.icon}
+									size={16}
+									weight="bold"
+									color={
+										action.tone === "primary"
+											? theme.iconBubbles.primary.color
+											: theme.iconBubbles.info.color
+									}
+								/>
 							</View>
 							<Text style={styles.quickActionLabel}>{action.label}</Text>
 						</Pressable>
@@ -295,6 +305,7 @@ export default function DashboardScreen() {
 							testID="home-budget-action"
 							accessibilityRole="button"
 							accessibilityLabel="Lihat semua budget"
+							hitSlop={12}
 							onPress={() => router.push("/(tabs)/budgets" as never)}
 						>
 							<Text style={styles.sectionAction}>{tx.view}</Text>
@@ -351,49 +362,52 @@ export default function DashboardScreen() {
 						<Pressable
 							accessibilityRole="button"
 							accessibilityLabel="Lihat semua transaksi"
+							hitSlop={12}
 							onPress={() => router.push("/(tabs)/transactions" as never)}
 						>
 							<Text style={styles.sectionAction}>Semua →</Text>
 						</Pressable>
 					</View>
-					{displayedTransactions.map((item, index) => (
-						<View
-							key={item.id}
-							style={[
-								styles.txRow,
-								index === displayedTransactions.length - 1 && styles.txRowLast,
-							]}
-						>
-							<View style={[styles.txBubble, styles[`${item.tone}Bubble`]]}>
-								<Text
-									style={[
-										styles.txBubbleText,
-										styles[`${item.tone}BubbleText`],
-									]}
-								>
-									{item.title.slice(0, 1)}
-								</Text>
+					{displayedTransactions.length ? (
+						displayedTransactions.map((item, index) => (
+							<View
+								key={item.id}
+								style={[
+									styles.txRow,
+									index === displayedTransactions.length - 1 &&
+										styles.txRowLast,
+								]}
+							>
+								<View style={[styles.txBubble, styles[`${item.tone}Bubble`]]}>
+									<Text
+										style={[
+											styles.txBubbleText,
+											styles[`${item.tone}BubbleText`],
+										]}
+									>
+										{item.title.slice(0, 1)}
+									</Text>
+								</View>
+								<View style={styles.txInfo}>
+									<Text style={styles.txTitle}>{item.title}</Text>
+									<Text style={styles.txMeta}>{item.meta}</Text>
+								</View>
+								<Text style={styles.txAmount}>{item.amount}</Text>
 							</View>
-							<View style={styles.txInfo}>
-								<Text style={styles.txTitle}>{item.title}</Text>
-								<Text style={styles.txMeta}>{item.meta}</Text>
-							</View>
-							<Text style={styles.txAmount}>{item.amount}</Text>
-						</View>
-					))}
-				</View>
-
-				<View style={styles.insightCard}>
-					<View style={[styles.txBubble, styles.infoBubble]}>
-						<Text style={[styles.txBubbleText, styles.infoBubbleText]}>i</Text>
-					</View>
-					<View style={styles.insightTextBlock}>
-						<Text style={styles.insightTitle}>Insight harian</Text>
-						<Text style={styles.insightBody}>
-							Pengeluaran kategori Belanja melebihi 10% bulan ini. Mungkin
-							saatnya rem sebentar?
-						</Text>
-					</View>
+						))
+					) : (
+						<EmptyState
+							icon="transactions"
+							title={
+								isEn ? "No transactions yet" : "Belum ada transaksi"
+							}
+							description={
+								isEn
+									? "Record your first transaction from the Capture tab to see it here."
+									: "Catat transaksi pertamamu dari tab Catat untuk melihatnya di sini."
+							}
+						/>
+					)}
 				</View>
 			</ScrollView>
 		</View>
@@ -452,7 +466,7 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			justifyContent: "center",
 		},
 		avatarText: {
-			color: "#FFFFFF",
+			color: theme.colors.textInverse,
 			fontSize: 12,
 			fontWeight: theme.typography.fontWeight.bold,
 		},
@@ -493,39 +507,9 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 		heroControlRow: {
 			position: "relative",
 			flexDirection: "row",
-			justifyContent: "space-between",
+			justifyContent: "flex-end",
 			alignItems: "center",
 			marginBottom: 16,
-		},
-		walletPill: {
-			flexShrink: 1,
-			minWidth: 0,
-			flexDirection: "row",
-			alignItems: "center",
-			gap: 8,
-			backgroundColor: theme.colors.glass.background,
-			borderWidth: 1,
-			borderColor: theme.colors.glass.border,
-			borderRadius: 999,
-			paddingVertical: 7,
-			paddingHorizontal: 12,
-		},
-		walletIcon: {
-			color: theme.colors.textMuted,
-			fontSize: 13,
-			fontWeight: theme.typography.fontWeight.bold,
-		},
-		walletName: {
-			flexShrink: 1,
-			minWidth: 0,
-			color: theme.colors.textPrimary,
-			fontSize: 12,
-			fontWeight: theme.typography.fontWeight.bold,
-		},
-		walletCaret: {
-			color: theme.colors.textDim,
-			fontSize: 10,
-			fontWeight: theme.typography.fontWeight.bold,
 		},
 		manageText: {
 			color: theme.colors.textMuted,
@@ -553,17 +537,6 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			fontWeight: theme.typography.fontWeight.extrabold,
 			letterSpacing: -0.6,
 		},
-		deltaPill: {
-			backgroundColor: "rgba(163, 255, 18, 0.14)",
-			borderRadius: 6,
-			paddingVertical: 3,
-			paddingHorizontal: 8,
-		},
-		deltaText: {
-			color: theme.colors.brandPrimary,
-			fontSize: 10,
-			fontWeight: theme.typography.fontWeight.extrabold,
-		},
 		quickActionRow: {
 			flexDirection: "row",
 			gap: 8,
@@ -587,27 +560,23 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			alignItems: "center",
 			justifyContent: "center",
 		},
-		iconBubbleText: {
-			fontSize: 12,
-			fontWeight: theme.typography.fontWeight.extrabold,
-		},
 		primaryBubble: {
-			backgroundColor: "rgba(163, 255, 18, 0.14)",
-			borderColor: "rgba(163, 255, 18, 0.25)",
+			backgroundColor: theme.iconBubbles.primary.background,
+			borderColor: theme.iconBubbles.primary.border,
 		},
 		primaryBubbleText: {
 			color: theme.colors.brandPrimary,
 		},
 		warningBubble: {
-			backgroundColor: "rgba(255, 192, 109, 0.14)",
-			borderColor: "rgba(255, 192, 109, 0.30)",
+			backgroundColor: theme.iconBubbles.warning.background,
+			borderColor: theme.iconBubbles.warning.border,
 		},
 		warningBubbleText: {
 			color: theme.colors.warning,
 		},
 		infoBubble: {
-			backgroundColor: "rgba(56, 189, 248, 0.14)",
-			borderColor: "rgba(56, 189, 248, 0.30)",
+			backgroundColor: theme.iconBubbles.info.background,
+			borderColor: theme.iconBubbles.info.border,
 		},
 		infoBubbleText: {
 			color: theme.colors.info,
@@ -668,7 +637,7 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 		},
 		progressTrack: {
 			height: 6,
-			backgroundColor: "rgba(255,255,255,0.05)",
+			backgroundColor: theme.colors.borderBase,
 			borderRadius: 999,
 			overflow: "hidden",
 		},
@@ -724,30 +693,6 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			color: theme.colors.danger,
 			fontSize: 13,
 			fontWeight: theme.typography.fontWeight.extrabold,
-		},
-		insightCard: {
-			backgroundColor: theme.colors.mutedSurface,
-			borderWidth: 1,
-			borderColor: theme.colors.borderSoft,
-			borderRadius: 16,
-			padding: 14,
-			flexDirection: "row",
-			gap: 12,
-			alignItems: "flex-start",
-		},
-		insightTextBlock: {
-			flex: 1,
-		},
-		insightTitle: {
-			color: theme.colors.textPrimary,
-			fontSize: 13,
-			fontWeight: theme.typography.fontWeight.extrabold,
-		},
-		insightBody: {
-			color: theme.colors.textSecondary,
-			fontSize: 12,
-			lineHeight: 18,
-			marginTop: 4,
 		},
 	});
 }

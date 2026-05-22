@@ -294,7 +294,7 @@ describe("ReportsScreen visual parity", () => {
 		expect(getFlattenedStyle(foodFill).backgroundColor).not.toBe("#A3FF12");
 	});
 
-	it("renders the six month trend with continuous proportional svg lines and visible points", () => {
+	it("renders the period trend with continuous proportional svg lines and visible points", () => {
 		const screen = renderReports();
 
 		const chartSvg = screen.getByTestId("reports-line-chart-svg");

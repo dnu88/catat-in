@@ -30,7 +30,7 @@ describe('toMobileTheme', () => {
     expect(theme.colors.textPrimary).toBe('#0A0A0A')
     expect(theme.colors.textSecondary).toBe('#4B5563')
     expect(theme.colors.textMuted).toBe('#6B7280')
-    expect(theme.colors.brandPrimary).toBe('#65A30D')
+    expect(theme.colors.brandPrimary).toBe('#3F6212')
     expect(theme.colors.brandPrimary).toBe(theme.colors.brandPrimaryDeep)
     expect(theme.colors.brandSecondary).toBe('#4A80F0')
     expect(theme.colors.success).toBe('#65A30D')

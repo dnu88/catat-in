@@ -19,10 +19,6 @@ import { useI18n } from "../../src/i18n/i18n-context";
 import { useFinanceContext } from "../../src/state/finance-context";
 import { applyFinanceContextFilter } from "../../src/services/finance-context-query";
 
-const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun"];
-const incomeData = [4.2, 5.1, 6.8, 7.2, 8.5, 18.65];
-const expenseData = [3.1, 3.8, 4.2, 5.0, 4.8, 6.4];
-
 const categories = [
 	{
 		id: "food",
@@ -358,18 +354,17 @@ export default function ReportsScreen() {
 				errorLogin: "Not logged in",
 				errorLoad: "Failed to load transaction data",
 				txFound: (n: number) => `${n} transaction${n !== 1 ? "s" : ""} found`,
-				trendTitle: "6-Month Trend",
+				trendTitle: "Period Trend",
 				trendSub: "Income vs expense (in millions Rp)",
 				income: "Income",
 				expense: "Expense",
 				savings: "Savings",
 				transactions: "Transactions",
 				thisMonth: "this month",
-				savingRate: "65.7% saving rate",
-				tooltipIncome: "Income",
+								tooltipIncome: "Income",
 				tooltipExpense: "Expense",
 				breakdownTitle: "Expense Breakdown",
-				breakdownSub: `By category ${new Date().toLocaleString("en-US", { month: "long" })} ${new Date().getFullYear()}`,
+				breakdownSub: "By category",
 				ringLabel: "Total",
 				compareTitle: "Last Month Comparison",
 				compareSub: "Compare with previous period",
@@ -410,18 +405,17 @@ export default function ReportsScreen() {
 				errorLogin: "Belum login",
 				errorLoad: "Gagal memuat data transaksi",
 				txFound: (n: number) => `${n} transaksi ditemukan`,
-				trendTitle: "Tren 6 Bulan",
+				trendTitle: "Tren Periode",
 				trendSub: "Pemasukan vs pengeluaran (dalam jutaan Rp)",
 				income: "Pemasukan",
 				expense: "Pengeluaran",
 				savings: "Tabungan",
 				transactions: "Transaksi",
 				thisMonth: "bulan ini",
-				savingRate: "65.7% saving rate",
-				tooltipIncome: "Pemasukan",
+								tooltipIncome: "Pemasukan",
 				tooltipExpense: "Pengeluaran",
 				breakdownTitle: "Breakdown Pengeluaran",
-				breakdownSub: `Per kategori bulan ${new Date().toLocaleString("id-ID", { month: "long" })} ${new Date().getFullYear()}`,
+				breakdownSub: "Per kategori",
 				ringLabel: "Total",
 				compareTitle: "Perbandingan Bulan Lalu",
 				compareSub: "Bandingkan dengan periode sebelumnya",
@@ -449,122 +443,133 @@ export default function ReportsScreen() {
 				budgetWalletManage: "Kelola",
 			};
 
-	const maxVal = Math.max(...incomeData, ...expenseData);
-	const lineChartWidth = 340;
-	const lineChartHeight = 168;
-	const lineChartPaddingX = 18;
-	const lineChartPlotTop = 18;
-	const lineChartPlotHeight = 126;
-	const linePointFor = (value: number, idx: number) => {
-		const usableWidth = lineChartWidth - lineChartPaddingX * 2;
-		const x = lineChartPaddingX + (idx / (months.length - 1)) * usableWidth;
-		const y = lineChartPlotTop + (1 - value / maxVal) * lineChartPlotHeight;
-		return `${Math.round(x)},${Math.round(y)}`;
-	};
-	const incomeLinePoints = incomeData.map(linePointFor).join(" ");
-	const expenseLinePoints = expenseData.map(linePointFor).join(" ");
-	const donutSize = 180;
-	const donutCenter = donutSize / 2;
-	const donutRadius = 64;
-	const donutStrokeWidth = 18;
-	const donutGlowStrokeWidth = 21;
-	const donutCircumference = 2 * Math.PI * donutRadius;
-	const donutSegmentGap = 6;
-	const incomeAccent = theme.mode === "light" ? "#65A30D" : "#A3FF12";
-	const expenseAccent =
-		theme.mode === "light" ? theme.colors.textPrimary : "#FF7B7B";
-
-	const formatRupiah = (valueInJuta: number) =>
-		`Rp ${(valueInJuta * 1_000_000).toLocaleString("id-ID")}`;
-	const formatCompactRupiah = (value: number) => {
-		if (value >= 1_000_000) {
-			return `Rp ${(value / 1_000_000).toLocaleString("id-ID", { maximumFractionDigits: 1 })} jt`;
-		}
-		if (value >= 1_000) {
-			return `Rp ${(value / 1_000).toLocaleString("id-ID", { maximumFractionDigits: 0 })} rb`;
-		}
-		return `Rp ${value.toLocaleString("id-ID")}`;
-	};
-
-	const totalIncomeJuta = incomeData[incomeData.length - 1] ?? 0;
-	const totalExpenseJuta = expenseData[expenseData.length - 1] ?? 0;
-	const netJuta = totalIncomeJuta - totalExpenseJuta;
-	const reportExpenseTotal = reportTransactions
-		.filter((transaction) => transaction.transaction_type === "expense")
-		.reduce((sum, transaction) => sum + (transaction.amount || 0), 0);
-	const donutTotalLabel = formatCompactRupiah(
-		reportExpenseTotal || totalExpenseJuta * 1_000_000,
-	);
-	const categoryValueTotal = dynamicCategories.reduce(
-		(sum, cat) => sum + Math.max(0, cat.value ?? 0),
-		0,
-	);
-	const categoryPercentTotal =
-		dynamicCategories.reduce((sum, cat) => sum + Math.max(0, cat.percent), 0) ||
-		100;
-	const donutSegments = dynamicCategories
-		.map((cat) => {
-			const normalizedRatio =
-				categoryValueTotal > 0
-					? Math.max(0, cat.value ?? 0) / categoryValueTotal
-					: Math.max(0, cat.percent) / categoryPercentTotal;
-			const rawDashLength = normalizedRatio * donutCircumference;
-			const segmentGap = Math.min(donutSegmentGap, rawDashLength * 0.32);
-			return {
-				...cat,
-				dashLength: Math.max(0, rawDashLength - segmentGap),
-				gapLength: donutCircumference - Math.max(0, rawDashLength - segmentGap),
-				sweepLength: rawDashLength,
-				offsetLength: 0,
-			};
-		})
-		.map((cat, index, items) => {
-			const previousLength = items
-				.slice(0, index)
-				.reduce((sum, item) => sum + item.sweepLength, 0);
-			return { ...cat, offsetLength: previousLength };
-		});
-
 	const monthName = (month: number) =>
 		(language === "en"
-			? [
-					"Jan",
-					"Feb",
-					"Mar",
-					"Apr",
-					"May",
-					"Jun",
-					"Jul",
-					"Aug",
-					"Sep",
-					"Oct",
-					"Nov",
-					"Dec",
-				]
-			: [
-					"Jan",
-					"Feb",
-					"Mar",
-					"Apr",
-					"Mei",
-					"Jun",
-					"Jul",
-					"Agu",
-					"Sep",
-					"Okt",
-					"Nov",
-					"Des",
-				])[month - 1];
+			? ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+			: ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"])[month - 1];
 
-	const pad2 = (value: number) => String(value).padStart(2, "0");
-	const dateKey = (year: number, month: number, day: number) =>
-		`${year}-${pad2(month)}-${pad2(day)}`;
-	const daysInMonth = (year: number, month: number) =>
-		new Date(year, month, 0).getDate();
-	const dayNumbers = (year: number, month: number) =>
-		Array.from({ length: daysInMonth(year, month) }, (_, index) => index + 1);
-	const customRangeLabel = `${customStartDay} ${monthName(customStartMonth)} ${customStartYear} - ${customEndDay} ${monthName(customEndMonth)} ${customEndYear}`;
-	const selectedCategory =
+		const pad2 = (value: number) => String(value).padStart(2, "0");
+		const dateKey = (year: number, month: number, day: number) =>
+			`${year}-${pad2(month)}-${pad2(day)}`;
+		const daysInMonth = (year: number, month: number) =>
+			new Date(year, month, 0).getDate();
+		const dayNumbers = (year: number, month: number) =>
+			Array.from({ length: daysInMonth(year, month) }, (_, index) => index + 1);
+		const customRangeLabel = `${customStartDay} ${monthName(customStartMonth)} ${customStartYear} - ${customEndDay} ${monthName(customEndMonth)} ${customEndYear}`;
+		const periodDisplayLabel =
+			periodFilter === "custom"
+				? customRangeLabel
+				: periodFilter === "month"
+					? `${monthName(new Date().getMonth() + 1)} ${new Date().getFullYear()}`
+					: periodLabels[periodFilter];
+		const formatRupiah = (valueInJuta: number) =>
+			`Rp ${(valueInJuta * 1_000_000).toLocaleString("id-ID")}`;
+		const formatCompactRupiah = (value: number) => {
+			if (value >= 1_000_000) {
+				return `Rp ${(value / 1_000_000).toLocaleString("id-ID", { maximumFractionDigits: 1 })} jt`;
+			}
+			if (value >= 1_000) {
+				return `Rp ${(value / 1_000).toLocaleString("id-ID", { maximumFractionDigits: 0 })} rb`;
+			}
+			return `Rp ${value.toLocaleString("id-ID")}`;
+		};
+		const summaryIncome = useMemo(
+			() => reportTransactions.filter((transaction) => transaction.transaction_type === "income").reduce((sum, transaction) => sum + (transaction.amount || 0), 0),
+			[reportTransactions],
+		);
+		const summaryExpense = useMemo(
+			() => reportTransactions.filter((transaction) => transaction.transaction_type === "expense").reduce((sum, transaction) => sum + (transaction.amount || 0), 0),
+			[reportTransactions],
+		);
+		const summaryNet = summaryIncome - summaryExpense;
+		const savingRate = summaryIncome > 0 ? `${((summaryNet / summaryIncome) * 100).toLocaleString(isEn ? "en-US" : "id-ID", { maximumFractionDigits: 1 })}% ${isEn ? "saving rate" : "rasio tabungan"}` : `0% ${isEn ? "saving rate" : "rasio tabungan"}`;
+		const chartData = useMemo(() => {
+			const monthLabels = isEn ? ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"] : ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"];
+			const grouped = new Map<string, { income: number; expense: number; year: number; month: number }>();
+			for (const transaction of reportTransactions) {
+				if (!transaction.date) continue;
+				const txDate = new Date(transaction.date);
+				if (Number.isNaN(txDate.getTime())) continue;
+				const year = txDate.getFullYear();
+				const month = txDate.getMonth() + 1;
+				const key = `${year}-${pad2(month)}`;
+				const bucket = grouped.get(key) ?? { income: 0, expense: 0, year, month };
+				if (transaction.transaction_type === "income") bucket.income += transaction.amount || 0;
+				else bucket.expense += transaction.amount || 0;
+				grouped.set(key, bucket);
+			}
+			if (grouped.size === 0) {
+				const now = new Date();
+				return Array.from({ length: 6 }, (_, index) => new Date(now.getFullYear(), now.getMonth() - (5 - index), 1)).reduce(
+					(acc, date) => {
+						acc.labels.push(monthLabels[date.getMonth()]);
+						acc.years.push(date.getFullYear());
+						acc.income.push(0);
+						acc.expense.push(0);
+						return acc;
+					},
+					{ labels: [] as string[], years: [] as number[], income: [] as number[], expense: [] as number[] },
+				);
+			}
+			const sorted = Array.from(grouped.values()).sort((a, b) => a.year - b.year || a.month - b.month);
+			return {
+				labels: sorted.map((bucket) => monthLabels[bucket.month - 1]),
+				years: sorted.map((bucket) => bucket.year),
+				income: sorted.map((bucket) => bucket.income / 1_000_000),
+				expense: sorted.map((bucket) => bucket.expense / 1_000_000),
+			};
+		}, [isEn, reportTransactions]);
+		const top5Expenses = useMemo(() => {
+			const grouped = new Map<string, number>();
+			for (const transaction of reportTransactions) {
+				if (transaction.transaction_type !== "expense") continue;
+				const category = (transaction.category || "").toString().trim() || (isEn ? "Other" : "Lainnya");
+				grouped.set(category, (grouped.get(category) || 0) + (transaction.amount || 0));
+			}
+			return Array.from(grouped.entries()).map(([category, amount]) => ({ category, amount })).sort((a, b) => b.amount - a.amount).slice(0, 5);
+		}, [isEn, reportTransactions]);
+		const maxVal = Math.max(1, ...chartData.income, ...chartData.expense);
+		const lineChartWidth = 340;
+		const lineChartHeight = 168;
+		const lineChartPaddingX = 18;
+		const lineChartPlotTop = 28;
+		const lineChartPlotHeight = 126;
+		const linePointFor = (value: number, idx: number) => {
+			const usableWidth = lineChartWidth - lineChartPaddingX * 2;
+			const x = lineChartPaddingX + (idx / Math.max(1, chartData.labels.length - 1)) * usableWidth;
+			const y = lineChartPlotTop + (1 - value / maxVal) * lineChartPlotHeight;
+			return `${Math.round(x)},${Math.round(y)}`;
+		};
+		const incomeLinePoints = chartData.income.map(linePointFor).join(" ");
+		const expenseLinePoints = chartData.expense.map(linePointFor).join(" ");
+		const donutSize = 180;
+		const donutCenter = donutSize / 2;
+		const donutRadius = 64;
+		const donutStrokeWidth = 18;
+		const donutGlowStrokeWidth = 21;
+		const donutCircumference = 2 * Math.PI * donutRadius;
+		const donutSegmentGap = 6;
+		const incomeAccent = theme.mode === "light" ? "#65A30D" : "#A3FF12";
+		const expenseAccent = theme.mode === "light" ? theme.colors.textPrimary : "#FF7B7B";
+		const totalIncomeJuta = summaryIncome / 1_000_000;
+		const totalExpenseJuta = summaryExpense / 1_000_000;
+		const netJuta = summaryNet / 1_000_000;
+		const donutTotalLabel = formatCompactRupiah(summaryExpense);
+		const categoryValueTotal = dynamicCategories.reduce((sum, cat) => sum + Math.max(0, cat.value ?? 0), 0);
+		const categoryPercentTotal = dynamicCategories.reduce((sum, cat) => sum + Math.max(0, cat.percent), 0) || 100;
+		const donutSegments = dynamicCategories
+			.map((cat) => {
+				const normalizedRatio = categoryValueTotal > 0 ? Math.max(0, cat.value ?? 0) / categoryValueTotal : Math.max(0, cat.percent) / categoryPercentTotal;
+				const rawDashLength = normalizedRatio * donutCircumference;
+				const segmentGap = Math.min(donutSegmentGap, rawDashLength * 0.32);
+				return { ...cat, dashLength: Math.max(0, rawDashLength - segmentGap), gapLength: donutCircumference - Math.max(0, rawDashLength - segmentGap), sweepLength: rawDashLength, offsetLength: 0 };
+			})
+			.map((cat, index, items) => {
+				const previousLength = items.slice(0, index).reduce((sum, item) => sum + item.sweepLength, 0);
+				return { ...cat, offsetLength: previousLength };
+			});
+
+		const selectedCategory =
 		dynamicCategories.find((cat) => cat.id === selectedCategoryId) ?? null;
 	const selectedCategoryTransactions = selectedCategoryId
 		? reportTransactions
@@ -902,10 +907,7 @@ export default function ReportsScreen() {
 								testID="reports-summary-income-value"
 								style={[styles.summaryValue, { color: incomeAccent }]}
 							>
-								Rp 18,65 Jt
-							</Text>
-							<Text style={[styles.summaryTrend, { color: incomeAccent }]}>
-								▲ 12.5%
+								{formatCompactRupiah(summaryIncome)}
 							</Text>
 						</View>
 						<View style={styles.summaryDivider} />
@@ -915,10 +917,7 @@ export default function ReportsScreen() {
 								testID="reports-summary-expense-value"
 								style={[styles.summaryValue, { color: expenseAccent }]}
 							>
-								Rp 6,40 Jt
-							</Text>
-							<Text style={[styles.summaryTrend, { color: expenseAccent }]}>
-								▲ 5.2%
+								{formatCompactRupiah(summaryExpense)}
 							</Text>
 						</View>
 					</View>
@@ -928,9 +927,9 @@ export default function ReportsScreen() {
 							testID="reports-summary-savings-value"
 							style={[styles.summaryValue, { color: theme.colors.textPrimary }]}
 						>
-							Rp 12,25 Jt
+							{formatCompactRupiah(summaryNet)}
 						</Text>
-						<Text style={styles.summarySavingRate}>{tx.savingRate}</Text>
+						<Text style={styles.summarySavingRate}>{savingRate}</Text>
 					</View>
 				</View>
 
@@ -1126,16 +1125,16 @@ export default function ReportsScreen() {
 											strokeLinejoin="round"
 										/>
 									</Svg>
-									{months.map((month, idx) => {
+									{chartData.labels.map((label, idx) => {
 										const incomeTop =
 											lineChartPlotTop +
-											(1 - incomeData[idx] / maxVal) * lineChartPlotHeight;
+											(1 - (chartData.income[idx] ?? 0) / maxVal) * lineChartPlotHeight;
 										const expenseTop =
 											lineChartPlotTop +
-											(1 - expenseData[idx] / maxVal) * lineChartPlotHeight;
+											(1 - (chartData.expense[idx] ?? 0) / maxVal) * lineChartPlotHeight;
 										return (
 											<Pressable
-												key={month}
+												key={`${label}-${chartData.years[idx]}`}
 												style={styles.lineColumn}
 												onPress={() =>
 													setSelectedBar(selectedBar === idx ? null : idx)
@@ -1157,12 +1156,12 @@ export default function ReportsScreen() {
 														{ top: expenseTop },
 													]}
 												/>
-												<Text style={styles.chartLabel}>{month}</Text>
+												<Text style={styles.chartLabel}>{label}</Text>
 
 												{selectedBar === idx && (
 													<View style={styles.chartTooltip}>
 														<Text style={styles.tooltipTitle}>
-															{month} 2026
+															{label} {chartData.years[idx]}
 														</Text>
 														<Text
 															style={[
@@ -1170,7 +1169,7 @@ export default function ReportsScreen() {
 																{ color: theme.colors.success },
 															]}
 														>
-															{tx.tooltipIncome}: Rp {incomeData[idx]} Jt
+															{tx.tooltipIncome}: {formatCompactRupiah((chartData.income[idx] ?? 0) * 1_000_000)}
 														</Text>
 														<Text
 															style={[
@@ -1178,7 +1177,7 @@ export default function ReportsScreen() {
 																{ color: theme.colors.danger },
 															]}
 														>
-															{tx.tooltipExpense}: Rp {expenseData[idx]} Jt
+															{tx.tooltipExpense}: {formatCompactRupiah((chartData.expense[idx] ?? 0) * 1_000_000)}
 														</Text>
 													</View>
 												)}
@@ -1209,6 +1208,25 @@ export default function ReportsScreen() {
 								</View>
 							</View>
 						</View>
+					<View style={styles.top5Card}>
+						<Text style={styles.top5Title}>5 Pengeluaran Terbanyak</Text>
+						<Text style={styles.top5Sub}>{periodDisplayLabel}</Text>
+						{top5Expenses.length === 0 ? (
+							<Text style={styles.infoText}>{tx.noCategoryTransactions}</Text>
+						) : (
+							top5Expenses.map((item, index) => (
+								<View key={`${item.category}-${index}`} style={styles.top5Row}>
+									<View style={styles.top5Left}>
+										<View style={styles.top5Rank}>
+											<Text style={styles.top5RankText}>{index + 1}</Text>
+										</View>
+										<Text style={styles.top5Label}>{item.category}</Text>
+									</View>
+									<Text style={styles.top5Amount}>{formatCompactRupiah(item.amount)}</Text>
+								</View>
+							))
+						)}
+					</View>
 					</>
 				)}
 				{activeTab === "category" && (
@@ -1216,7 +1234,7 @@ export default function ReportsScreen() {
 						{/* Category Breakdown */}
 						<View style={styles.categoryCard}>
 							<Text style={styles.categoryCardTitle}>{tx.breakdownTitle}</Text>
-							<Text style={styles.categoryCardSub}>{tx.breakdownSub}</Text>
+							<Text style={styles.categoryCardSub}>{`${tx.breakdownSub} ${periodDisplayLabel}`}</Text>
 
 							<View style={styles.ringArea}>
 								<View style={styles.donutChart}>
@@ -2013,8 +2031,7 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			fontWeight: "600",
 		},
 		summaryValue: { fontSize: 18, fontWeight: "800", marginTop: 2 },
-		summaryTrend: { fontSize: 11, fontWeight: "700" },
-		summarySavingRate: {
+				summarySavingRate: {
 			color: theme.colors.textMuted,
 			fontSize: 11,
 			marginTop: 2,
@@ -2102,7 +2119,7 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 		},
 		chartTooltip: {
 			position: "absolute",
-			top: -74,
+			top: 8,
 			left: "50%",
 			marginLeft: -62,
 			width: 124,
@@ -2149,6 +2166,56 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			fontWeight: "800",
 		},
 		categoryCardSub: { color: theme.colors.textSecondary, fontSize: 12 },
+		top5Card: {
+			backgroundColor: theme.colors.surface,
+			borderRadius: 20,
+			borderWidth: 1,
+			borderColor: theme.colors.borderSoft,
+			padding: 16,
+			gap: 12,
+		},
+		top5Title: {
+			color: theme.colors.textPrimary,
+			fontSize: 16,
+			fontWeight: "800",
+		},
+		top5Sub: { color: theme.colors.textSecondary, fontSize: 12 },
+		top5Row: {
+			flexDirection: "row",
+			alignItems: "center",
+			justifyContent: "space-between",
+			paddingTop: 12,
+			borderTopWidth: 1,
+			borderTopColor: theme.colors.borderSoft,
+		},
+		top5Left: {
+			flexDirection: "row",
+			alignItems: "center",
+			gap: 10,
+			flex: 1,
+		},
+		top5Rank: {
+			width: 28,
+			height: 28,
+			borderRadius: 14,
+			alignItems: "center",
+			justifyContent: "center",
+			backgroundColor: brandSoftBg,
+			borderWidth: 1,
+			borderColor: brandSoftBorder,
+		},
+		top5RankText: { color: brandText, fontSize: 12, fontWeight: "800" },
+		top5Label: {
+			color: theme.colors.textPrimary,
+			fontSize: 14,
+			fontWeight: "700",
+			flexShrink: 1,
+		},
+		top5Amount: {
+			color: theme.colors.textSecondary,
+			fontSize: 13,
+			fontWeight: "700",
+		},
 		ringArea: {
 			alignItems: "center",
 			paddingTop: 24,

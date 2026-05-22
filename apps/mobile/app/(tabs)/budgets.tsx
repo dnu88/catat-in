@@ -16,6 +16,7 @@ import {
 import {
 	EmptyState,
 	IconBubble,
+	InputField,
 	ScreenHeader,
 	StateMessage,
 } from "../../src/components/ui";
@@ -44,6 +45,8 @@ type EnvelopeRowProps = {
 	theme: ReturnType<typeof useTheme>["theme"];
 	styles: ReturnType<typeof createStyles>;
 	noCategoryLabel: string;
+	overLabel: string;
+	remainingLabel: string;
 };
 
 const iconOptions: {
@@ -98,6 +101,8 @@ function EnvelopeRow({
 	theme,
 	styles,
 	noCategoryLabel,
+	overLabel,
+	remainingLabel,
 }: EnvelopeRowProps) {
 	const { envelope, progress } = item;
 	const toneColor = progress.is_over_budget
@@ -167,8 +172,8 @@ function EnvelopeRow({
 
 			<Text style={styles.budgetFooter}>
 				{progress.is_over_budget
-					? `Lewat ${formatRupiah(progress.over_budget_amount)}`
-					: `Sisa ${formatRupiah(Math.max(progress.remaining_amount, 0))}`}
+					? `${overLabel} ${formatRupiah(progress.over_budget_amount)}`
+					: `${remainingLabel} ${formatRupiah(Math.max(progress.remaining_amount, 0))}`}
 			</Text>
 		</Pressable>
 	);
@@ -188,13 +193,26 @@ export default function BudgetsScreen() {
 						subtitle: "Manage personal budget wallets under report categories.",
 						add: "+ New",
 						createTitle: "Create budget wallet",
+						nameLabel: "Wallet name",
 						namePlaceholder: "Wallet name",
+						limitLabel: "Limit",
 						limitPlaceholder: "Limit",
+						startLabel: "Start date",
 						startPlaceholder: "Start date",
+						endLabel: "End date",
 						endPlaceholder: "End date",
 						iconLabel: "Icon",
 						colorLabel: "Color",
+						notesLabel: "Notes",
 						notesPlaceholder: "Notes",
+						iconDropdownLabel: "Select wallet icon",
+						colorDropdownLabel: "Select wallet color",
+						iconOptionLabel: "Choose icon",
+						colorOptionLabel: "Choose color",
+						over: "Over",
+						remaining: "Remaining",
+						contextHousehold: "Family",
+						contextPersonal: "Personal",
 						saving: "Saving...",
 						save: "Save budget wallet",
 						activeLabel: "Active wallets",
@@ -224,13 +242,26 @@ export default function BudgetsScreen() {
 							"Kelola dompet budget personal di bawah kategori laporan.",
 						add: "+ Baru",
 						createTitle: "Buat dompet budget",
+						nameLabel: "Nama dompet",
 						namePlaceholder: "Nama dompet",
+						limitLabel: "Limit",
 						limitPlaceholder: "Limit",
+						startLabel: "Tanggal mulai",
 						startPlaceholder: "Tanggal mulai",
+						endLabel: "Tanggal akhir",
 						endPlaceholder: "Tanggal akhir",
 						iconLabel: "Ikon",
 						colorLabel: "Warna",
+						notesLabel: "Catatan",
 						notesPlaceholder: "Catatan",
+						iconDropdownLabel: "Pilih ikon dompet",
+						colorDropdownLabel: "Pilih warna dompet",
+						iconOptionLabel: "Pilih ikon",
+						colorOptionLabel: "Pilih warna",
+						over: "Lewat",
+						remaining: "Sisa",
+						contextHousehold: "Keluarga",
+						contextPersonal: "Pribadi",
 						saving: "Menyimpan...",
 						save: "Simpan dompet",
 						activeLabel: "Dompet aktif",
@@ -409,6 +440,8 @@ export default function BudgetsScreen() {
 			theme={theme}
 			styles={styles}
 			noCategoryLabel={tx.noCategory}
+			overLabel={tx.over}
+			remainingLabel={tx.remaining}
 		/>
 	);
 
@@ -430,7 +463,9 @@ export default function BudgetsScreen() {
 			/>
 			<View testID="finance-context-badge" style={styles.contextBadge}>
 				<Text style={styles.contextBadgeText}>
-					{activeContext.type === "household" ? "Keluarga" : "Pribadi"}
+					{activeContext.type === "household"
+						? tx.contextHousehold
+						: tx.contextPersonal}
 				</Text>
 			</View>
 
@@ -439,36 +474,42 @@ export default function BudgetsScreen() {
 			{showCreateForm ? (
 				<View testID="envelope-create-form" style={styles.createCard}>
 					<Text style={styles.createTitle}>{tx.createTitle}</Text>
-					<TextInput
-						style={styles.input}
+					<InputField
+						label={tx.nameLabel}
 						placeholder={tx.namePlaceholder}
-						placeholderTextColor={theme.colors.textMuted}
 						value={name}
 						onChangeText={setName}
 					/>
-					<TextInput
-						style={styles.input}
+					<InputField
+						label={tx.limitLabel}
 						placeholder={tx.limitPlaceholder}
-						placeholderTextColor={theme.colors.textMuted}
 						value={limitAmount}
 						onChangeText={setLimitAmount}
 						keyboardType="numeric"
 					/>
 					<View style={styles.inputRow}>
-						<TextInput
-							style={[styles.input, styles.inputHalf]}
-							placeholder={tx.startPlaceholder}
-							placeholderTextColor={theme.colors.textMuted}
-							value={startDate}
-							onChangeText={setStartDate}
-						/>
-						<TextInput
-							style={[styles.input, styles.inputHalf]}
-							placeholder={tx.endPlaceholder}
-							placeholderTextColor={theme.colors.textMuted}
-							value={endDate}
-							onChangeText={setEndDate}
-						/>
+						<View style={styles.inputHalf}>
+							<Text style={styles.fieldLabel}>{tx.startLabel}</Text>
+							<TextInput
+								style={styles.input}
+								placeholder={tx.startPlaceholder}
+								placeholderTextColor={theme.colors.textMuted}
+								accessibilityLabel={tx.startLabel}
+								value={startDate}
+								onChangeText={setStartDate}
+							/>
+						</View>
+						<View style={styles.inputHalf}>
+							<Text style={styles.fieldLabel}>{tx.endLabel}</Text>
+							<TextInput
+								style={styles.input}
+								placeholder={tx.endPlaceholder}
+								placeholderTextColor={theme.colors.textMuted}
+								accessibilityLabel={tx.endLabel}
+								value={endDate}
+								onChangeText={setEndDate}
+							/>
+						</View>
 					</View>
 					<View style={styles.dropdownRow}>
 						<View style={styles.dropdownWrap}>
@@ -476,6 +517,9 @@ export default function BudgetsScreen() {
 							<Pressable
 								testID="budget-wallet-icon-dropdown"
 								style={styles.selectButton}
+								accessibilityRole="button"
+								accessibilityLabel={tx.iconDropdownLabel}
+								accessibilityState={{ expanded: showIconOptions }}
 								onPress={() => setShowIconOptions((value) => !value)}
 							>
 								<View style={styles.selectLeft}>
@@ -502,6 +546,10 @@ export default function BudgetsScreen() {
 										<Pressable
 											key={option.value}
 											style={styles.optionRow}
+											accessibilityRole="button"
+											accessibilityLabel={`${tx.iconOptionLabel}: ${
+												isEn ? option.labelEn : option.labelId
+											}`}
 											onPress={() => {
 												setIcon(option.value);
 												setShowIconOptions(false);
@@ -526,6 +574,9 @@ export default function BudgetsScreen() {
 							<Pressable
 								testID="budget-wallet-color-dropdown"
 								style={styles.selectButton}
+								accessibilityRole="button"
+								accessibilityLabel={tx.colorDropdownLabel}
+								accessibilityState={{ expanded: showColorOptions }}
 								onPress={() => setShowColorOptions((value) => !value)}
 							>
 								<View style={styles.selectLeft}>
@@ -552,6 +603,8 @@ export default function BudgetsScreen() {
 												styles.colorOption,
 												selectedColor === option && styles.colorOptionActive,
 											]}
+											accessibilityRole="button"
+											accessibilityLabel={`${tx.colorOptionLabel}: ${option}`}
 											onPress={() => {
 												setColor(option);
 												setShowColorOptions(false);
@@ -569,14 +622,18 @@ export default function BudgetsScreen() {
 							) : null}
 						</View>
 					</View>
-					<TextInput
-						style={[styles.input, styles.notesInput]}
-						placeholder={tx.notesPlaceholder}
-						placeholderTextColor={theme.colors.textMuted}
-						value={notes}
-						onChangeText={setNotes}
-						multiline
-					/>
+					<View style={styles.notesWrap}>
+						<Text style={styles.fieldLabel}>{tx.notesLabel}</Text>
+						<TextInput
+							style={[styles.input, styles.notesInput]}
+							placeholder={tx.notesPlaceholder}
+							placeholderTextColor={theme.colors.textMuted}
+							accessibilityLabel={tx.notesLabel}
+							value={notes}
+							onChangeText={setNotes}
+							multiline
+						/>
+					</View>
 					<Pressable
 						style={[styles.saveButton, saving && { opacity: 0.7 }]}
 						onPress={saveEnvelope}
@@ -681,6 +738,9 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			borderRadius: 999,
 			paddingHorizontal: 14,
 			paddingVertical: 8,
+			minHeight: 44,
+			alignItems: "center",
+			justifyContent: "center",
 		},
 		addButtonText: {
 			color: theme.colors.textInverse,
@@ -725,7 +785,8 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			fontSize: 13,
 		},
 		inputRow: { flexDirection: "row", gap: 8 },
-		inputHalf: { flex: 1 },
+		inputHalf: { flex: 1, gap: 6 },
+		notesWrap: { gap: 6 },
 		dropdownRow: { gap: 10 },
 		dropdownWrap: { gap: 6 },
 		fieldLabel: {
@@ -740,6 +801,7 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			borderColor: theme.colors.borderSoft,
 			paddingHorizontal: 12,
 			paddingVertical: 10,
+			minHeight: 44,
 			flexDirection: "row",
 			alignItems: "center",
 			justifyContent: "space-between",
@@ -769,6 +831,7 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			gap: 10,
 			paddingHorizontal: 12,
 			paddingVertical: 10,
+			minHeight: 44,
 		},
 		optionText: {
 			color: theme.colors.textPrimary,
@@ -784,8 +847,8 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 		},
 		colorOptionList: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
 		colorOption: {
-			width: 40,
-			height: 40,
+			width: 44,
+			height: 44,
 			borderRadius: 14,
 			borderWidth: 1,
 			borderColor: theme.colors.borderSoft,

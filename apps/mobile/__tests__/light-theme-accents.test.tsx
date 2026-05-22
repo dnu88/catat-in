@@ -44,7 +44,7 @@ describe('light theme softened brand accents', () => {
     const button = screen.getByTestId('auth-primary-button')
     const buttonStyle = getFlattenedStyle(button)
 
-    expect(buttonStyle.backgroundColor).toBe('#65A30D')
+    expect(buttonStyle.backgroundColor).toBe('#3F6212')
     expect(buttonStyle.backgroundColor).not.toBe('#A3FF12')
   })
 })

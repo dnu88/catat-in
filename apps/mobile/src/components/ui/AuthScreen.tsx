@@ -120,7 +120,7 @@ export function AuthButton({ label, onPress, loading, disabled }: AuthButtonProp
       disabled={loading || disabled}
     >
       {loading ? (
-        <ActivityIndicator color={theme.colors.textInverse} />
+        <ActivityIndicator color={theme.colors.buttonPrimaryText} />
       ) : (
         <Text style={styles.primaryButtonText}>{label}</Text>
       )}
@@ -301,11 +301,9 @@ function createCardStyles(theme: ReturnType<typeof useTheme>['theme']) {
 }
 
 function createButtonStyles(theme: ReturnType<typeof useTheme>['theme']) {
-  const primaryButtonBg = theme.mode === 'light' ? theme.colors.brandPrimaryDeep : theme.colors.brandPrimary
-
   return StyleSheet.create({
     primaryButton: {
-      backgroundColor: primaryButtonBg,
+      backgroundColor: theme.colors.buttonPrimaryBg,
       borderRadius: theme.radius.pill,
       minHeight: 52,
       alignItems: 'center',
@@ -317,7 +315,7 @@ function createButtonStyles(theme: ReturnType<typeof useTheme>['theme']) {
       opacity: 0.5,
     },
     primaryButtonText: {
-      color: theme.colors.textInverse,
+      color: theme.colors.buttonPrimaryText,
       fontSize: 15,
       fontWeight: '800',
       letterSpacing: 0.2,

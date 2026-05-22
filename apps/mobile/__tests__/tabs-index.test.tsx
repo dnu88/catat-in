@@ -143,6 +143,7 @@ const SOFT_GREEN_BACKGROUNDS = [
 	"rgba(163, 255, 18, 0.12)",
 	"rgba(163, 255, 18, 0.13)",
 	"rgba(163, 255, 18, 0.14)",
+	"rgba(101, 163, 13, 0.16)",
 ];
 
 const SOFT_GREEN_BORDERS = [
@@ -154,6 +155,7 @@ const SOFT_GREEN_BORDERS = [
 	"rgba(163, 255, 18, 0.23)",
 	"rgba(163, 255, 18, 0.24)",
 	"rgba(163, 255, 18, 0.25)",
+	"rgba(101, 163, 13, 0.28)",
 ];
 
 describe("DashboardScreen dark luxury Home parity", () => {
@@ -196,15 +198,18 @@ describe("DashboardScreen dark luxury Home parity", () => {
 		];
 	});
 
-	it("renders the Screens.jsx Home section order and labels", async () => {
+	it("renders the honest Home section order and labels", async () => {
 		const screen = renderDashboard();
 
 		await waitFor(() => {
-			expect(screen.getByText("Halo, Danu")).toBeTruthy();
+			expect(screen.getByText("Halo")).toBeTruthy();
 		});
 
-		expect(screen.getByText("April 2026")).toBeTruthy();
-		expect(screen.getByText("DB")).toBeTruthy();
+		const expectedDate = new Date().toLocaleDateString("id-ID", {
+			month: "long",
+			year: "numeric",
+		});
+		expect(screen.getByText(expectedDate)).toBeTruthy();
 		expect(
 			screen
 				.getByTestId("home-hero-card")
@@ -212,20 +217,14 @@ describe("DashboardScreen dark luxury Home parity", () => {
 		).toBeTruthy();
 
 		expect(screen.getByText("Total saldo")).toBeTruthy();
-		expect(screen.getByText("Rp 4.250.000")).toBeTruthy();
-		expect(screen.getByText("Main Wallet")).toBeTruthy();
+		expect(screen.getByTestId("home-total-balance").props.children).toBe(
+			"Rp 0",
+		);
+		expect(screen.queryByTestId("home-wallet-pill")).toBeNull();
 		expect(screen.getByText("Manage")).toBeTruthy();
-		expect(screen.getByText("↗ 15%")).toBeTruthy();
-		expect(screen.queryByText("Pemasukan")).toBeNull();
-		expect(screen.queryByText("8,00 Jt")).toBeNull();
-		expect(screen.queryByText("Pengeluaran")).toBeNull();
-		expect(screen.queryByText("3,75 Jt")).toBeNull();
-		expect(screen.queryByText("Tabungan")).toBeNull();
-		expect(screen.queryByText("53%")).toBeNull();
+		expect(screen.queryByText("↗ 15%")).toBeNull();
 
-		expect(screen.getByText("Manual")).toBeTruthy();
-		expect(screen.queryByText("AI Chat")).toBeNull();
-		expect(screen.queryByText("Struk")).toBeNull();
+		expect(screen.getByText("Input AI")).toBeTruthy();
 		expect(screen.getByText("Import")).toBeTruthy();
 
 		expect(screen.getByText("Anggaran")).toBeTruthy();
@@ -239,23 +238,20 @@ describe("DashboardScreen dark luxury Home parity", () => {
 
 		expect(screen.getByText("Terakhir")).toBeTruthy();
 		expect(screen.getByText("Semua →")).toBeTruthy();
-		expect(screen.getByText("Indomaret")).toBeTruthy();
-		expect(screen.getByText("Fore Coffee")).toBeTruthy();
-		expect(screen.getByText("Grab Car")).toBeTruthy();
-
-		expect(screen.getByText("Insight harian")).toBeTruthy();
-		expect(screen.getByText(/Pengeluaran kategori/)).toBeTruthy();
+		expect(screen.getByText("Belum ada transaksi")).toBeTruthy();
+		expect(screen.queryByText("Indomaret")).toBeNull();
+		expect(screen.queryByText("Insight harian")).toBeNull();
 
 		expectTextOrder(getRenderedTextNodes(screen), [
-			"Halo, Danu",
-			"April 2026",
+			"Halo",
+			expectedDate,
 			"Total saldo",
-			"Rp 4.250.000",
-			"Manual",
+			"Rp 0",
+			"Input AI",
 			"Import",
 			"Anggaran",
 			"Terakhir",
-			"Insight harian",
+			"Belum ada transaksi",
 		]);
 	});
 
@@ -326,10 +322,12 @@ describe("DashboardScreen dark luxury Home parity", () => {
 
 		const screen = renderDashboard();
 
-		await waitFor(() => expect(screen.getByText("Family Wallet")).toBeTruthy());
-		expect(screen.getByTestId("home-total-balance").props.children).toBe(
-			"Rp 1.200.000",
+		await waitFor(() =>
+			expect(screen.getByTestId("home-total-balance").props.children).toBe(
+				"Rp 1.200.000",
+			),
 		);
+		expect(screen.queryByText("Family Wallet")).toBeNull();
 		expect(screen.getByText("Family Mart")).toBeTruthy();
 		expect(listBudgetEnvelopes).toHaveBeenCalledWith(
 			expect.anything(),
@@ -343,7 +341,7 @@ describe("DashboardScreen dark luxury Home parity", () => {
 	it("routes primary Home actions to the expected tabs", async () => {
 		const screen = renderDashboard();
 
-		fireEvent.press(screen.getByText("Manual"));
+		fireEvent.press(screen.getByText("Input AI"));
 		expect(mockPush).toHaveBeenLastCalledWith("/(tabs)/capture");
 
 		fireEvent.press(screen.getByText("Import"));
@@ -363,7 +361,7 @@ describe("DashboardScreen dark luxury Home parity", () => {
 		const avatarStyle = getFlattenedStyle(avatar);
 		expect(avatarStyle.width).toBe(36);
 		expect(avatarStyle.height).toBe(36);
-		expect(avatarStyle.backgroundColor).toBe("#65A30D");
+		expect(avatarStyle.backgroundColor).toBe("#3F6212");
 
 		const hero = screen.getByTestId("home-hero-card");
 		const heroStyle = getFlattenedStyle(hero);
@@ -372,20 +370,11 @@ describe("DashboardScreen dark luxury Home parity", () => {
 		expect(heroStyle.shadowOpacity).toBeUndefined();
 
 		expect(screen.getAllByTestId("finance-context-switcher")).toHaveLength(1);
-
-		const walletPill = screen.getByTestId("home-wallet-pill");
-		expect(walletPill.props.accessibilityRole).toBe("button");
-		expect(walletPill.props.accessibilityLabel).toBe(
-			"Buka daftar dompet, dompet aktif Main Wallet",
-		);
-		const walletPillStyle = getFlattenedStyle(walletPill);
-		expect(walletPillStyle.borderRadius).toBe(999);
-		expect(walletPillStyle.paddingVertical).toBe(7);
-		expect(walletPillStyle.paddingHorizontal).toBe(12);
+		expect(screen.queryByTestId("home-wallet-pill")).toBeNull();
 
 		const quickAction = screen.getByTestId("home-quick-action-manual");
 		expect(quickAction.props.accessibilityRole).toBe("button");
-		expect(quickAction.props.accessibilityLabel).toBe("Aksi cepat Manual");
+		expect(quickAction.props.accessibilityLabel).toBe("Aksi cepat Input AI");
 		const quickActionStyle = getFlattenedStyle(quickAction);
 		expect(quickActionStyle.borderRadius).toBe(16);
 		expect(quickActionStyle.paddingVertical).toBe(12);

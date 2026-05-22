@@ -98,7 +98,7 @@ export const kaswiseTokens = {
         primary:   '#FFFFFF',
         secondary: '#E5E7EB',
         muted:     '#9CA3AF',
-        dim:       '#6B7280',
+        dim:       '#9CA3AF',
         inverse:   '#0A0A0A',
       },
       border: {
@@ -166,7 +166,7 @@ export const kaswiseTokens = {
         primary:   '#0A0A0A',
         secondary: '#4B5563',
         muted:     '#6B7280',
-        dim:       '#9CA3AF',
+        dim:       '#6B7280',
         inverse:   '#FFFFFF',
       },
       border: {
@@ -175,8 +175,8 @@ export const kaswiseTokens = {
         strong: 'rgba(10, 10, 10, 0.16)',
       },
       brand: {
-        primary:        '#65A30D',
-        primaryDeep:    '#65A30D',
+        primary:        '#3F6212',
+        primaryDeep:    '#3F6212',
         secondary:      '#4A80F0',
         secondaryDeep:  '#2A5DD0',
       },

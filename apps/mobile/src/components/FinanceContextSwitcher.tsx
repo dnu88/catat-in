@@ -49,7 +49,7 @@ export function FinanceContextSwitcher({ variant = "compact" }: { variant?: "com
 					</Text>
 				</View>
 				<View style={styles.labelBlock}>
-					<Text style={styles.caption}>{isEn ? "Context" : "Konteks"}</Text>
+					<Text style={styles.caption}>Profile</Text>
 					<Text style={styles.label} numberOfLines={1}>
 						{activeLabel}
 					</Text>
