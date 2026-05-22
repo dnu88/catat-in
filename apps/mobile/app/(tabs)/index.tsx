@@ -221,7 +221,7 @@ export default function DashboardScreen() {
 					<View style={styles.heroBloomTwo} />
 
 					<View style={styles.heroContextRow}>
-						<FinanceContextSwitcher />
+						<FinanceContextSwitcher variant="hero" />
 					</View>
 
 					<View style={styles.heroControlRow}>

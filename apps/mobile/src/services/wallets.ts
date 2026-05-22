@@ -21,7 +21,7 @@ export interface WalletCreate {
 	account_number?: string;
 }
 
-export type WalletUpdate = Omit<Partial<WalletCreate>, "balance">;
+export type WalletUpdate = Partial<WalletCreate>;
 
 export interface Wallet extends WalletCreate {
 	id: string;
@@ -95,9 +95,7 @@ export async function updateWallet(
 	if (!canUpdateInContext(context, existing, userId))
 		throw new Error("Akses lihat saja");
 
-	const { balance: _balance, ...safeUpdates } =
-		updates as Partial<WalletCreate>;
-	const payload = { ...safeUpdates, ...buildFinanceUpdateAudit(userId) };
+	const payload = { ...updates, ...buildFinanceUpdateAudit(userId) };
 
 	const { data, error } = await supabase
 		.from("wallets")

@@ -39,6 +39,7 @@ const copy = {
 		formTitle: "Dompet baru",
 		name: "Nama dompet",
 		balance: "Saldo awal",
+		editBalance: "Saldo",
 		save: "Simpan dompet",
 		total: "Total Saldo Semua Akun",
 		active: "akun aktif",
@@ -69,6 +70,7 @@ const copy = {
 		formTitle: "New wallet",
 		name: "Wallet name",
 		balance: "Starting balance",
+		editBalance: "Balance",
 		save: "Save wallet",
 		total: "Total Balance Across Accounts",
 		active: "active accounts",
@@ -135,6 +137,7 @@ export default function WalletsScreen() {
 	const [editingWallet, setEditingWallet] = useState<ScopedWallet | null>(null);
 	const [editName, setEditName] = useState("");
 	const [editType, setEditType] = useState<WalletType>("bank");
+	const [editBalance, setEditBalance] = useState("");
 
 	const activeScopeLabel =
 		activeContext.type === "household"
@@ -191,14 +194,18 @@ export default function WalletsScreen() {
 			? {
 					type: "household" as const,
 					householdId: wallet.household_id ?? "",
-					role: memberships.find((membership) => membership.household_id === wallet.household_id)?.role ?? "member",
+					role:
+						memberships.find(
+							(membership) => membership.household_id === wallet.household_id,
+						)?.role ?? "member",
 				}
-			: ({ type: "personal" as const });
+			: { type: "personal" as const };
 
 	const startEdit = (wallet: ScopedWallet) => {
 		setEditingWallet(wallet);
 		setEditName(wallet.name);
 		setEditType(wallet.type as WalletType);
+		setEditBalance(String(Number(wallet.balance ?? 0)));
 		setShowCreate(false);
 	};
 
@@ -207,7 +214,11 @@ export default function WalletsScreen() {
 		setSubmitting(true);
 		setError(null);
 		try {
-			await updateWallet(editingWallet.id, { name: editName.trim(), type: editType }, contextForWallet(editingWallet));
+			await updateWallet(
+				editingWallet.id,
+				{ name: editName.trim(), type: editType, balance: Number(editBalance || 0) },
+				contextForWallet(editingWallet),
+			);
 			setEditingWallet(null);
 			await loadWallets();
 		} catch (err) {
@@ -294,16 +305,58 @@ export default function WalletsScreen() {
 
 				{editingWallet ? (
 					<View testID="wallet-edit-form" style={styles.formCard}>
-						<Text style={styles.formTitle}>{tx.edit} · {editingWallet.scopeLabel}</Text>
-						<TextInput accessibilityLabel={tx.name} placeholder={tx.name} placeholderTextColor={theme.colors.textMuted} value={editName} onChangeText={setEditName} style={styles.input} />
+						<Text style={styles.formTitle}>
+							{tx.edit} · {editingWallet.scopeLabel}
+						</Text>
+						<TextInput
+							accessibilityLabel={tx.name}
+							placeholder={tx.name}
+							placeholderTextColor={theme.colors.textMuted}
+							value={editName}
+							onChangeText={setEditName}
+							style={styles.input}
+						/>
+						<TextInput
+							accessibilityLabel={tx.editBalance}
+							placeholder={tx.editBalance}
+							placeholderTextColor={theme.colors.textMuted}
+							value={editBalance}
+							onChangeText={setEditBalance}
+							keyboardType="numeric"
+							style={styles.input}
+						/>
 						<View style={styles.typeGrid}>
 							{walletTypes.map((walletType) => (
-								<Pressable key={walletType} testID={`wallet-edit-type-${walletType}`} accessibilityRole="button" accessibilityState={{ selected: editType === walletType }} style={[styles.typeChoice, editType === walletType && styles.typeChoiceActive]} onPress={() => setEditType(walletType)}>
-									<Text style={[styles.typeChoiceText, editType === walletType && styles.typeChoiceTextActive]}>{tx.types[walletType]}</Text>
+								<Pressable
+									key={walletType}
+									testID={`wallet-edit-type-${walletType}`}
+									accessibilityRole="button"
+									accessibilityState={{ selected: editType === walletType }}
+									style={[
+										styles.typeChoice,
+										editType === walletType && styles.typeChoiceActive,
+									]}
+									onPress={() => setEditType(walletType)}
+								>
+									<Text
+										style={[
+											styles.typeChoiceText,
+											editType === walletType && styles.typeChoiceTextActive,
+										]}
+									>
+										{tx.types[walletType]}
+									</Text>
 								</Pressable>
 							))}
 						</View>
-						<Pressable testID="wallet-update-submit" accessibilityRole="button" accessibilityLabel={tx.update} style={[styles.submitButton, submitting && styles.disabledButton]} onPress={handleUpdate} disabled={submitting}>
+						<Pressable
+							testID="wallet-update-submit"
+							accessibilityRole="button"
+							accessibilityLabel={tx.update}
+							style={[styles.submitButton, submitting && styles.disabledButton]}
+							onPress={handleUpdate}
+							disabled={submitting}
+						>
 							<Text style={styles.submitButtonText}>{tx.update}</Text>
 						</Pressable>
 					</View>
@@ -483,11 +536,27 @@ export default function WalletsScreen() {
 								{formatCurrency(Number(wallet.balance ?? 0))}
 							</Text>
 							<View style={styles.walletActions}>
-								<Pressable testID={`wallet-edit-${wallet.id}`} accessibilityRole="button" accessibilityLabel={`${tx.edit} ${wallet.name}`} style={styles.walletActionButton} onPress={() => startEdit(wallet)}>
+								<Pressable
+									testID={`wallet-edit-${wallet.id}`}
+									accessibilityRole="button"
+									accessibilityLabel={`${tx.edit} ${wallet.name}`}
+									style={styles.walletActionButton}
+									onPress={() => startEdit(wallet)}
+								>
 									<Text style={styles.walletActionText}>{tx.edit}</Text>
 								</Pressable>
-								<Pressable testID={`wallet-delete-${wallet.id}`} accessibilityRole="button" accessibilityLabel={`${tx.delete} ${wallet.name}`} style={[styles.walletActionButton, styles.walletDeleteButton]} onPress={() => handleDelete(wallet)}>
-									<Text style={[styles.walletActionText, styles.walletDeleteText]}>{tx.delete}</Text>
+								<Pressable
+									testID={`wallet-delete-${wallet.id}`}
+									accessibilityRole="button"
+									accessibilityLabel={`${tx.delete} ${wallet.name}`}
+									style={[styles.walletActionButton, styles.walletDeleteButton]}
+									onPress={() => handleDelete(wallet)}
+								>
+									<Text
+										style={[styles.walletActionText, styles.walletDeleteText]}
+									>
+										{tx.delete}
+									</Text>
 								</Pressable>
 							</View>
 						</View>
@@ -749,7 +818,11 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			borderColor: `${theme.colors.danger}40`,
 			backgroundColor: `${theme.colors.danger}12`,
 		},
-		walletActionText: { color: theme.colors.textSecondary, fontSize: 12, fontWeight: "800" },
+		walletActionText: {
+			color: theme.colors.textSecondary,
+			fontSize: 12,
+			fontWeight: "800",
+		},
 		walletDeleteText: { color: theme.colors.danger },
 		errorText: { color: theme.colors.danger, fontSize: 12, fontWeight: "700" },
 		emptyText: {

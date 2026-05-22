@@ -5,14 +5,14 @@ import { useI18n } from "../i18n/i18n-context";
 import { useFinanceContext } from "../state/finance-context";
 import { useTheme } from "../theme/theme-context";
 
-export function FinanceContextSwitcher() {
+export function FinanceContextSwitcher({ variant = "compact" }: { variant?: "compact" | "hero" }) {
 	const { theme } = useTheme();
 	const { language } = useI18n();
 	const isEn = language === "en";
 	const { activeContext, memberships, setPersonalContext, setActiveHousehold } =
 		useFinanceContext();
 	const [open, setOpen] = useState(false);
-	const styles = useMemo(() => createStyles(theme), [theme]);
+	const styles = useMemo(() => createStyles(theme, variant), [theme, variant]);
 
 	const activeMembership =
 		activeContext.type === "household"
@@ -99,7 +99,8 @@ export function FinanceContextSwitcher() {
 	);
 }
 
-function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
+function createStyles(theme: ReturnType<typeof useTheme>["theme"], variant: "compact" | "hero") {
+	const isHero = variant === "hero";
 	return StyleSheet.create({
 		container: {
 			position: "relative",
@@ -108,23 +109,23 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			minWidth: 0,
 		},
 		trigger: {
-			minWidth: 0,
-			maxWidth: 132,
+			minWidth: isHero ? 168 : 0,
+			maxWidth: isHero ? 220 : 132,
 			minHeight: 44,
-			borderRadius: theme.radius.md,
+			borderRadius: isHero ? theme.radius.pill : theme.radius.md,
 			borderWidth: 1,
-			borderColor: theme.colors.borderSoft,
-			backgroundColor: theme.colors.card,
-			paddingHorizontal: 6,
-			paddingVertical: 4,
+			borderColor: isHero ? `${theme.colors.brandPrimary}40` : theme.colors.borderSoft,
+			backgroundColor: isHero ? `${theme.colors.brandPrimary}12` : theme.colors.card,
+			paddingHorizontal: isHero ? theme.spacing.md : 6,
+			paddingVertical: isHero ? theme.spacing.sm : 4,
 			flexDirection: "row",
 			alignItems: "center",
-			gap: 6,
+			gap: isHero ? theme.spacing.sm : 6,
 			...theme.shadow.sm,
 		},
 		iconBubble: {
-			width: 20,
-			height: 20,
+			width: isHero ? 26 : 20,
+			height: isHero ? 26 : 20,
 			borderRadius: theme.radius.pill,
 			alignItems: "center",
 			justifyContent: "center",
@@ -139,13 +140,13 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			minWidth: 0,
 		},
 		caption: {
-			color: theme.colors.textMuted,
-			fontSize: 9,
+			color: isHero ? theme.colors.brandPrimary : theme.colors.textMuted,
+			fontSize: isHero ? theme.typography.fontSize.xs : 9,
 			fontWeight: theme.typography.fontWeight.semibold,
 		},
 		label: {
 			color: theme.colors.textPrimary,
-			fontSize: 12,
+			fontSize: isHero ? theme.typography.fontSize.md : 12,
 			fontWeight: theme.typography.fontWeight.extrabold,
 		},
 		caret: {
@@ -155,9 +156,10 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 		},
 		menu: {
 			position: "absolute",
-			top: 48,
-			right: 0,
-			width: 220,
+			top: isHero ? 54 : 48,
+			left: isHero ? 0 : undefined,
+			right: isHero ? undefined : 0,
+			width: isHero ? 240 : 220,
 			borderRadius: theme.radius.lg,
 			borderWidth: 1,
 			borderColor: theme.colors.borderSoft,

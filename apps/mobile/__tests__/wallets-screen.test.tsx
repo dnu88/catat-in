@@ -172,19 +172,25 @@ describe("WalletsScreen", () => {
 
 		fireEvent.press(await screen.findByTestId("wallet-edit-wallet-family"));
 		fireEvent.changeText(screen.getByLabelText("Nama dompet"), "Dompet Rumah");
+		fireEvent.changeText(screen.getByLabelText("Saldo"), "3000000");
 		fireEvent.press(screen.getByTestId("wallet-update-submit"));
 
-		await waitFor(() => expect(mockUpdateWallet).toHaveBeenCalledWith(
-			"wallet-family",
-			{ name: "Dompet Rumah", type: "cash" },
-			{ type: "household", householdId: "hh-1", role: "admin" },
-		));
+		await waitFor(() =>
+			expect(mockUpdateWallet).toHaveBeenCalledWith(
+				"wallet-family",
+				{ name: "Dompet Rumah", type: "cash", balance: 3000000 },
+				{ type: "household", householdId: "hh-1", role: "admin" },
+			),
+		);
 
 		fireEvent.press(await screen.findByTestId("wallet-delete-wallet-family"));
-		await waitFor(() => expect(mockDeleteWallet).toHaveBeenCalledWith(
-			"wallet-family",
-			{ type: "household", householdId: "hh-1", role: "admin" },
-		));
+		await waitFor(() =>
+			expect(mockDeleteWallet).toHaveBeenCalledWith("wallet-family", {
+				type: "household",
+				householdId: "hh-1",
+				role: "admin",
+			}),
+		);
 	});
 
 	it("uses the selected App language", async () => {

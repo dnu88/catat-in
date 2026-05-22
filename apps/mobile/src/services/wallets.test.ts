@@ -192,7 +192,7 @@ describe("Wallet Service", () => {
 		expect(result.name).toBe("Updated Cash");
 	});
 
-	test("updateWallet strips balance from update payload", async () => {
+	test("updateWallet includes balance in update payload", async () => {
 		const existingWallet = {
 			id: "w-1",
 			user_id: "user-123",
@@ -228,9 +228,9 @@ describe("Wallet Service", () => {
 
 		expect(mockUpdate).toHaveBeenCalledWith({
 			name: "Updated Cash",
+			balance: 999999,
 			updated_by: "user-123",
 		});
-		expect(mockUpdate.mock.calls[0][0]).not.toHaveProperty("balance");
 	});
 
 	test("updateWallet denies household member updating another member's wallet", async () => {
