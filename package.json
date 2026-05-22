@@ -13,7 +13,7 @@
     "test:web": "pnpm --filter web test",
     "test:mobile": "pnpm --filter mobile test",
     "test:backend": "cd backend && venv\\Scripts\\python.exe -m pytest",
-    "build": "pnpm --filter web build",
+    "build": "corepack pnpm --filter web build",
     "lint": "pnpm -r lint",
     "type-check": "pnpm -r type-check"
   },

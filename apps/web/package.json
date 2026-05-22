@@ -5,8 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc && vite build",
-    "build:static": "tsc && vite build && node scripts/generate-spa-fallbacks.mjs",
+    "build": "vite build",
+    "build:static": "vite build && node scripts/generate-spa-fallbacks.mjs",
     "preview": "vite preview",
     "lint": "eslint src --ext ts,tsx",
     "type-check": "tsc --noEmit",
