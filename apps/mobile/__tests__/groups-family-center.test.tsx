@@ -1,3 +1,4 @@
+import React from "react";
 import {
 	fireEvent,
 	render,
@@ -6,6 +7,7 @@ import {
 } from "@testing-library/react-native";
 
 import GroupsScreen from "../app/(tabs)/groups";
+import { I18nProvider, useI18n, type Language } from "../src/i18n/i18n-context";
 import { ThemeProvider } from "../src/theme/theme-context";
 
 const mockCreateHousehold = jest.fn();
@@ -35,11 +37,20 @@ jest.mock("../src/state/finance-context", () => ({
 	}),
 }));
 
-function renderGroupsScreen() {
+function LanguageSetter({ language }: { language: Language }) {
+	const { setLanguage } = useI18n();
+	React.useEffect(() => setLanguage(language), [language, setLanguage]);
+	return null;
+}
+
+function renderGroupsScreen(language: Language = "id") {
 	return render(
-		<ThemeProvider>
-			<GroupsScreen />
-		</ThemeProvider>,
+		<I18nProvider>
+			<LanguageSetter language={language} />
+			<ThemeProvider>
+				<GroupsScreen />
+			</ThemeProvider>
+		</I18nProvider>,
 	);
 }
 
@@ -75,6 +86,15 @@ describe("Family Center screen", () => {
 		expect(await screen.findByText("Keluarga")).toBeTruthy();
 		expect(screen.getByText("Keluarga Budi")).toBeTruthy();
 		expect(screen.getByText("Admin")).toBeTruthy();
+	});
+
+	it("uses the selected app language for Family Center copy", async () => {
+		renderGroupsScreen("en");
+
+		expect(await screen.findByText("Family")).toBeTruthy();
+		expect(screen.getByText("Family Center")).toBeTruthy();
+		expect(screen.getAllByText("Members").length).toBeGreaterThan(0);
+		expect(screen.queryByText("Keluarga")).toBeNull();
 	});
 
 	it("creates a household from the form with trimmed name and refreshes global memberships", async () => {

@@ -13,6 +13,12 @@ import {
 	listEnvelopeAllocations,
 	type EnvelopeSummary,
 } from "../../src/services/budget-envelopes";
+import {
+	listTransactions,
+	type Transaction,
+} from "../../src/services/transactions";
+import { listWallets, type Wallet } from "../../src/services/wallets";
+import { useFinanceContext } from "../../src/state/finance-context";
 import { useTheme } from "../../src/theme/theme-context";
 
 const quickActions = [
@@ -32,34 +38,47 @@ const quickActions = [
 	},
 ] as const;
 
-const transactions = [
+const fallbackTransactions = [
 	{
 		id: "indomaret",
 		title: "Indomaret",
 		meta: "Hari ini · GoPay",
 		amount: "-45rb",
-		tone: "primary",
+		tone: "primary" as const,
 	},
 	{
 		id: "fore",
 		title: "Fore Coffee",
 		meta: "Hari ini · GoPay",
 		amount: "-38rb",
-		tone: "warning",
+		tone: "warning" as const,
 	},
 	{
 		id: "grab",
 		title: "Grab Car",
 		meta: "Kemarin · GoPay",
 		amount: "-22rb",
-		tone: "primary",
+		tone: "primary" as const,
 	},
 ] as const;
+
+function formatCurrency(value: number) {
+	return `Rp ${Math.abs(value).toLocaleString("id-ID", { maximumFractionDigits: 0 })}`;
+}
+
+function formatCompactAmount(
+	value: number,
+	type: Transaction["transaction_type"],
+) {
+	const sign = type === "income" ? "+" : "-";
+	return `${sign}${formatCurrency(value).replace("Rp ", "")}`;
+}
 
 export default function DashboardScreen() {
 	const { supabase } = useSupabase();
 	const { theme } = useTheme();
 	const { language } = useI18n();
+	const { activeContext } = useFinanceContext();
 	const router = useRouter();
 	const isEn = language === "en";
 	const tx = useMemo(
@@ -91,6 +110,10 @@ export default function DashboardScreen() {
 	);
 	const styles = useMemo(() => createStyles(theme), [theme]);
 	const [envelopeAlerts, setEnvelopeAlerts] = useState<EnvelopeSummary[]>([]);
+	const [wallets, setWallets] = useState<Wallet[]>([]);
+	const [recentTransactions, setRecentTransactions] = useState<Transaction[]>(
+		[],
+	);
 
 	useEffect(() => {
 		let mounted = true;
@@ -105,7 +128,18 @@ export default function DashboardScreen() {
 					return;
 				}
 
-				const envelopes = await listBudgetEnvelopes(supabase, user.id);
+				const [envelopes, scopedWallets, scopedTransactions] =
+					await Promise.all([
+						listBudgetEnvelopes(supabase, user.id, activeContext),
+						listWallets(activeContext),
+						listTransactions(undefined, activeContext),
+					]);
+				if (mounted) {
+					setWallets(
+						scopedWallets.filter((wallet) => wallet.is_active !== false),
+					);
+					setRecentTransactions(scopedTransactions.slice(0, 3));
+				}
 				const activeEnvelopes = envelopes.filter(
 					(envelope) => getEnvelopeStatus(envelope) === "active",
 				);
@@ -134,9 +168,34 @@ export default function DashboardScreen() {
 		return () => {
 			mounted = false;
 		};
-	}, [supabase]);
+	}, [supabase, activeContext]);
 
 	const primaryEnvelopeAlert = envelopeAlerts[0];
+	const totalBalance = wallets.reduce(
+		(sum, wallet) => sum + Number(wallet.balance ?? 0),
+		0,
+	);
+	const activeWalletName =
+		wallets[0]?.name ??
+		(activeContext.type === "household" ? "Dompet Keluarga" : "Main Wallet");
+	const displayedTransactions = recentTransactions.length
+		? recentTransactions.map((transaction) => ({
+				id: transaction.id,
+				title:
+					transaction.merchant ??
+					transaction.description ??
+					transaction.category,
+				meta: `${transaction.date ?? ""} · ${transaction.category}`,
+				amount: formatCompactAmount(
+					transaction.amount,
+					transaction.transaction_type,
+				),
+				tone:
+					transaction.transaction_type === "income"
+						? ("info" as const)
+						: ("primary" as const),
+			}))
+		: fallbackTransactions;
 
 	return (
 		<View style={styles.screen}>
@@ -172,7 +231,7 @@ export default function DashboardScreen() {
 						>
 							<Text style={styles.walletIcon}>▱</Text>
 							<Text style={styles.walletName} numberOfLines={1}>
-								Main Wallet
+								{activeWalletName}
 							</Text>
 							<Text style={styles.walletCaret}>⌄</Text>
 						</Pressable>
@@ -188,7 +247,9 @@ export default function DashboardScreen() {
 					<View style={styles.balanceBlock}>
 						<Text style={styles.heroLabel}>Total saldo</Text>
 						<View style={styles.amountRow}>
-							<Text style={styles.heroAmount}>Rp 4.250.000</Text>
+							<Text testID="home-total-balance" style={styles.heroAmount}>
+								{formatCurrency(totalBalance || 4_250_000)}
+							</Text>
 							<View style={styles.deltaPill}>
 								<Text style={styles.deltaText}>↗ 15%</Text>
 							</View>
@@ -292,12 +353,12 @@ export default function DashboardScreen() {
 							<Text style={styles.sectionAction}>Semua →</Text>
 						</Pressable>
 					</View>
-					{transactions.map((item, index) => (
+					{displayedTransactions.map((item, index) => (
 						<View
 							key={item.id}
 							style={[
 								styles.txRow,
-								index === transactions.length - 1 && styles.txRowLast,
+								index === displayedTransactions.length - 1 && styles.txRowLast,
 							]}
 						>
 							<View style={[styles.txBubble, styles[`${item.tone}Bubble`]]}>

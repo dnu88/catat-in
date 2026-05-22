@@ -1,11 +1,14 @@
 import { useMemo, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
+import { useI18n } from "../i18n/i18n-context";
 import { useFinanceContext } from "../state/finance-context";
 import { useTheme } from "../theme/theme-context";
 
 export function FinanceContextSwitcher() {
 	const { theme } = useTheme();
+	const { language } = useI18n();
+	const isEn = language === "en";
 	const { activeContext, memberships, setPersonalContext, setActiveHousehold } =
 		useFinanceContext();
 	const [open, setOpen] = useState(false);
@@ -17,7 +20,8 @@ export function FinanceContextSwitcher() {
 					(membership) => membership.household_id === activeContext.householdId,
 				)
 			: undefined;
-	const activeLabel = activeMembership?.households?.name ?? "Pribadi";
+	const personalLabel = isEn ? "Personal" : "Pribadi";
+	const activeLabel = activeMembership?.households?.name ?? personalLabel;
 
 	const choosePersonal = () => {
 		setPersonalContext();
@@ -34,7 +38,7 @@ export function FinanceContextSwitcher() {
 			<Pressable
 				testID="finance-context-switcher"
 				accessibilityRole="button"
-				accessibilityLabel={`Pilih konteks keuangan, saat ini ${activeLabel}`}
+				accessibilityLabel={`${isEn ? "Choose finance context" : "Pilih konteks keuangan"}, ${isEn ? "currently" : "saat ini"} ${activeLabel}`}
 				accessibilityState={{ expanded: open }}
 				style={styles.trigger}
 				onPress={() => setOpen((current) => !current)}
@@ -45,7 +49,7 @@ export function FinanceContextSwitcher() {
 					</Text>
 				</View>
 				<View style={styles.labelBlock}>
-					<Text style={styles.caption}>Konteks</Text>
+					<Text style={styles.caption}>{isEn ? "Context" : "Konteks"}</Text>
 					<Text style={styles.label} numberOfLines={1}>
 						{activeLabel}
 					</Text>
@@ -65,12 +69,12 @@ export function FinanceContextSwitcher() {
 						]}
 						onPress={choosePersonal}
 					>
-						<Text style={styles.optionTitle}>Pribadi</Text>
-						<Text style={styles.optionMeta}>Keuangan pribadi</Text>
+						<Text style={styles.optionTitle}>{personalLabel}</Text>
+						<Text style={styles.optionMeta}>{isEn ? "Personal finance" : "Keuangan pribadi"}</Text>
 					</Pressable>
 
 					{memberships.map((membership) => {
-						const householdName = membership.households?.name ?? "Keluarga";
+						const householdName = membership.households?.name ?? (isEn ? "Family" : "Keluarga");
 						const isActive =
 							activeContext.type === "household" &&
 							activeContext.householdId === membership.household_id;
@@ -105,22 +109,22 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 		},
 		trigger: {
 			minWidth: 0,
-			maxWidth: 164,
-			minHeight: 52,
+			maxWidth: 150,
+			minHeight: 44,
 			borderRadius: theme.radius.lg,
 			borderWidth: 1,
 			borderColor: theme.colors.borderSoft,
 			backgroundColor: theme.colors.card,
-			paddingHorizontal: theme.spacing.md,
-			paddingVertical: theme.spacing.sm,
+			paddingHorizontal: theme.spacing.sm,
+			paddingVertical: 6,
 			flexDirection: "row",
 			alignItems: "center",
 			gap: theme.spacing.sm,
 			...theme.shadow.sm,
 		},
 		iconBubble: {
-			width: 28,
-			height: 28,
+			width: 24,
+			height: 24,
 			borderRadius: theme.radius.pill,
 			alignItems: "center",
 			justifyContent: "center",
@@ -141,17 +145,17 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 		},
 		label: {
 			color: theme.colors.textPrimary,
-			fontSize: theme.typography.fontSize.md,
+			fontSize: theme.typography.fontSize.sm,
 			fontWeight: theme.typography.fontWeight.extrabold,
 		},
 		caret: {
 			color: theme.colors.textSecondary,
-			fontSize: 16,
+			fontSize: 14,
 			fontWeight: "800",
 		},
 		menu: {
 			position: "absolute",
-			top: 58,
+			top: 50,
 			right: 0,
 			width: 220,
 			borderRadius: theme.radius.lg,

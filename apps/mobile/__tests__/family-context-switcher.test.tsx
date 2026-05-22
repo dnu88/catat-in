@@ -1,7 +1,7 @@
-import React from "react";
 import { fireEvent, render, screen } from "@testing-library/react-native";
 
 import { FinanceContextSwitcher } from "../src/components/FinanceContextSwitcher";
+import { I18nProvider } from "../src/i18n/i18n-context";
 import { ThemeProvider } from "../src/theme/theme-context";
 
 const mockSetPersonalContext = jest.fn();
@@ -30,12 +30,17 @@ describe("FinanceContextSwitcher", () => {
 
 	it("shows personal and household choices", () => {
 		render(
-			<ThemeProvider>
-				<FinanceContextSwitcher />
-			</ThemeProvider>,
+			<I18nProvider>
+				<ThemeProvider>
+					<FinanceContextSwitcher />
+				</ThemeProvider>
+			</I18nProvider>,
 		);
 
 		expect(screen.getByText("Pribadi")).toBeTruthy();
+		expect(screen.getByTestId("finance-context-switcher").props.style).toEqual(
+			expect.objectContaining({ minHeight: 44, maxWidth: 150 }),
+		);
 		fireEvent.press(screen.getByTestId("finance-context-switcher"));
 		expect(screen.getByTestId("finance-context-option-personal")).toBeTruthy();
 		expect(
