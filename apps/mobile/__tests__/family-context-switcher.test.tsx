@@ -39,7 +39,7 @@ describe("FinanceContextSwitcher", () => {
 
 		expect(screen.getByText("Pribadi")).toBeTruthy();
 		expect(screen.getByTestId("finance-context-switcher").props.style).toEqual(
-			expect.objectContaining({ minHeight: 44, maxWidth: 150 }),
+			expect.objectContaining({ minHeight: 44, maxWidth: 132, paddingHorizontal: 6 }),
 		);
 		fireEvent.press(screen.getByTestId("finance-context-switcher"));
 		expect(screen.getByTestId("finance-context-option-personal")).toBeTruthy();
