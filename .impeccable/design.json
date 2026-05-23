@@ -1,116 +1,187 @@
 {
-  "meta": {
-    "name": "Kaswise",
-    "register": "product",
-    "creativeNorthStar": "The Practical Companion"
-  },
-  "color": {
-    "strategy": "restrained",
-    "primary": "#1E3A8A",
-    "accent": "#1E40AF",
-    "success": "#4CAF50",
-    "danger": "#FF7B7B",
-    "warning": "#FFC06D",
-    "info": "#38BDF8",
-    "light": {
-      "bgBase": "#FFFFFF",
-      "bgSurface": "#F5F5F5",
-      "bgCard": "#FFFFFF",
-      "bgMuted": "#F8FAFD",
-      "textPrimary": "#28303F",
-      "textSecondary": "#4C5A78",
-      "textMuted": "#8A95AD",
-      "borderSoft": "#E2E7F2",
-      "borderStrong": "#CBD5E3"
+  "schemaVersion": 2,
+  "generatedAt": "2026-05-22T00:00:00.000Z",
+  "title": "Design System: Kaswise",
+  "extensions": {
+    "colorMeta": {
+      "brand-emerald-dark": {
+        "role": "primary",
+        "displayName": "Night Ledger Emerald",
+        "canonical": "#A3FF12",
+        "tonalRamp": ["#172600", "#294000", "#3F6200", "#65A30D", "#8FE600", "#A3FF12", "#C8FF70", "#EBFFD1"]
+      },
+      "brand-emerald-light": {
+        "role": "primary",
+        "displayName": "Daylight Forest Emerald",
+        "canonical": "#3F6212",
+        "tonalRamp": ["#102005", "#1C3308", "#2A470B", "#3F6212", "#5B8422", "#7AA63B", "#A9CC79", "#E3F2CE"]
+      },
+      "brand-navy": {
+        "role": "secondary",
+        "displayName": "Soft Bank Navy",
+        "canonical": "#4A80F0",
+        "tonalRamp": ["#07152F", "#10285A", "#1B3F85", "#2A5DD0", "#4A80F0", "#7EA7F7", "#B6CDFB", "#E7EFFD"]
+      },
+      "dark-bg-base": {
+        "role": "neutral",
+        "displayName": "Matte Ledger Black",
+        "canonical": "#141414",
+        "tonalRamp": ["#0A0A0A", "#141414", "#18181A", "#1E1E1A", "#242427", "#3A3A3D", "#6B7280", "#E5E7EB"]
+      },
+      "light-bg-base": {
+        "role": "neutral",
+        "displayName": "Warm Bone",
+        "canonical": "#F5F5F0",
+        "tonalRamp": ["#202018", "#4A4A3B", "#777763", "#A8A891", "#D8D8C7", "#F5F5F0", "#FAFAF5", "#FFFFFF"]
+      },
+      "status-danger-dark": {
+        "role": "tertiary",
+        "displayName": "Receipt Danger Red",
+        "canonical": "#FF7B7B",
+        "tonalRamp": ["#330707", "#5F1111", "#911F1F", "#DC2626", "#FF7B7B", "#FFA8A8", "#FFD0D0", "#FFF0F0"]
+      },
+      "status-warning-dark": {
+        "role": "tertiary",
+        "displayName": "Budget Warning Amber",
+        "canonical": "#FFC06D",
+        "tonalRamp": ["#351A00", "#613100", "#8A4B00", "#B45309", "#FFC06D", "#FFD49B", "#FFE8C9", "#FFF6E9"]
+      },
+      "status-info-dark": {
+        "role": "tertiary",
+        "displayName": "Realtime Info Blue",
+        "canonical": "#38BDF8",
+        "tonalRamp": ["#022033", "#063C59", "#075985", "#0284C7", "#38BDF8", "#7DD3FC", "#BAE6FD", "#EFF9FF"]
+      }
     },
-    "dark": {
-      "bgBase": "#1A1A2E",
-      "bgSurface": "#252538",
-      "bgCard": "#252538",
-      "bgMuted": "#2E2E42",
-      "textPrimary": "#F5F7FF",
-      "textSecondary": "#C7CEE0",
-      "textMuted": "#99A3BA",
-      "borderSoft": "#34344A",
-      "borderStrong": "#4A4A64"
+    "typographyMeta": {
+      "display": { "displayName": "Display", "purpose": "Rare splash, auth, and empty-state emphasis only." },
+      "headline": { "displayName": "Headline", "purpose": "Screen titles and major headers." },
+      "title": { "displayName": "Title", "purpose": "Card titles, section titles, and inline panel headings." },
+      "body": { "displayName": "Body", "purpose": "Readable Indonesian copy and field content." },
+      "label": { "displayName": "Label", "purpose": "Buttons, chips, nav items, and compact UI labels." },
+      "support": { "displayName": "Support", "purpose": "Metadata, badges, helper text, and stat labels." }
+    },
+    "shadows": [
+      { "name": "dark-sm", "value": "shadowColor #000, y 1, opacity 0.30, radius 2, elevation 2", "purpose": "Small dark card separation." },
+      { "name": "dark-md", "value": "shadowColor #000, y 4, opacity 0.30, radius 12, elevation 6", "purpose": "Raised dark panels." },
+      { "name": "dark-lg", "value": "shadowColor #000, y 10, opacity 0.45, radius 30, elevation 12", "purpose": "Floating dark drawers and important panels." },
+      { "name": "dark-neon", "value": "shadowColor #A3FF12, y 8, opacity 0.45, radius 22, elevation 16", "purpose": "Pressed primary actions, FABs, and signature CTAs." },
+      { "name": "light-sm", "value": "shadowColor #0A0A0A, y 1, opacity 0.04, radius 2, elevation 1", "purpose": "Small light card separation." },
+      { "name": "light-md", "value": "shadowColor #0A0A0A, y 4, opacity 0.08, radius 12, elevation 3", "purpose": "Raised light panels." },
+      { "name": "light-lg", "value": "shadowColor #0A0A0A, y 12, opacity 0.10, radius 30, elevation 8", "purpose": "Floating light drawers and important panels." },
+      { "name": "light-neon", "value": "shadowColor #65A30D, y 8, opacity 0.35, radius 22, elevation 12", "purpose": "Light theme primary action glow." }
+    ],
+    "motion": [
+      { "name": "state-fast", "value": "150ms ease-out", "purpose": "Pressed, focus, and selected state feedback." },
+      { "name": "state-standard", "value": "200ms ease-out", "purpose": "Inline reveal and non-blocking AI state changes." },
+      { "name": "reduced-motion", "value": "respect platform reduced motion", "purpose": "Accessibility for motion-sensitive users." }
+    ],
+    "breakpoints": [
+      { "name": "mobile-first", "value": "native phone viewport" },
+      { "name": "tablet-review", "value": "expanded review layouts only when space allows" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button Dark",
+      "kind": "button",
+      "refersTo": "button-primary-dark",
+      "description": "Canonical dark-mode action button with neon emerald fill and near-black text.",
+      "html": "<button class=\"ds-btn-primary-dark\">Catat transaksi</button>",
+      "css": ".ds-btn-primary-dark { min-height: 44px; padding: 12px 16px; border-radius: 10px; border: 1px solid #A3FF12; background: #A3FF12; color: #0A0A0A; font-family: Inter, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif; font-size: 14px; font-weight: 700; box-shadow: 0 8px 22px rgba(163, 255, 18, 0.45); transition: opacity 150ms ease-out, transform 150ms ease-out; } .ds-btn-primary-dark:hover { opacity: 0.9; transform: translateY(-1px); } .ds-btn-primary-dark:active { opacity: 0.85; transform: translateY(0); } .ds-btn-primary-dark:focus-visible { outline: 2px solid #A3FF12; outline-offset: 3px; }"
+    },
+    {
+      "name": "Primary Button Light",
+      "kind": "button",
+      "refersTo": "button-primary-light",
+      "description": "Light-mode action button uses forest emerald so white text remains readable.",
+      "html": "<button class=\"ds-btn-primary-light\">Simpan</button>",
+      "css": ".ds-btn-primary-light { min-height: 44px; padding: 12px 16px; border-radius: 10px; border: 1px solid #3F6212; background: #3F6212; color: #FFFFFF; font-family: Inter, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif; font-size: 14px; font-weight: 700; box-shadow: 0 8px 22px rgba(101, 163, 13, 0.35); transition: opacity 150ms ease-out, transform 150ms ease-out; } .ds-btn-primary-light:hover { opacity: 0.92; transform: translateY(-1px); } .ds-btn-primary-light:active { opacity: 0.86; transform: translateY(0); } .ds-btn-primary-light:focus-visible { outline: 2px solid #3F6212; outline-offset: 3px; }"
+    },
+    {
+      "name": "Input Field Dark",
+      "kind": "input",
+      "refersTo": "input-default-dark",
+      "description": "Compact mobile input with uppercase label and emerald focus state.",
+      "html": "<label class=\"ds-field-dark\"><span>Jumlah</span><input placeholder=\"Rp 45.000\" /></label>",
+      "css": ".ds-field-dark { display: grid; gap: 6px; font-family: Inter, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif; } .ds-field-dark span { color: #9CA3AF; font-size: 10px; font-weight: 800; letter-spacing: 0.6px; text-transform: uppercase; } .ds-field-dark input { min-height: 44px; border-radius: 14px; border: 1px solid rgba(255, 255, 255, 0.10); background: #18181A; color: #FFFFFF; padding: 12px; font-size: 14px; font-family: inherit; transition: border-color 150ms ease-out, box-shadow 150ms ease-out; } .ds-field-dark input:focus { outline: none; border: 2px solid #A3FF12; box-shadow: 0 0 0 3px rgba(163, 255, 18, 0.14); } .ds-field-dark:focus-within span { color: #A3FF12; }"
+    },
+    {
+      "name": "Filter Chip Selected",
+      "kind": "chip",
+      "refersTo": "chip-selected-dark",
+      "description": "Selected filter pill for quick category and period toggles.",
+      "html": "<button class=\"ds-chip-selected\">Minggu ini</button>",
+      "css": ".ds-chip-selected { min-height: 44px; padding: 8px 14px; border-radius: 999px; border: 1px solid #A3FF12; background: #A3FF12; color: #0A0A0A; font-family: Inter, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif; font-size: 12px; font-weight: 700; transition: opacity 150ms ease-out; } .ds-chip-selected:hover { opacity: 0.9; } .ds-chip-selected:focus-visible { outline: 2px solid #A3FF12; outline-offset: 3px; }"
+    },
+    {
+      "name": "Default Card Dark",
+      "kind": "card",
+      "refersTo": "card-default-dark",
+      "description": "Default card for transaction summaries, budget rows, and wallet sections.",
+      "html": "<article class=\"ds-card-dark\"><p class=\"ds-card-label\">Saldo bulan ini</p><strong>Rp 2.450.000</strong><p class=\"ds-card-helper\">Aman sampai akhir bulan</p></article>",
+      "css": ".ds-card-dark { display: grid; gap: 8px; padding: 16px; border-radius: 18px; border: 1px solid rgba(255, 255, 255, 0.06); background: #18181A; color: #FFFFFF; font-family: Inter, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.30); } .ds-card-dark strong { font-size: 20px; font-weight: 800; } .ds-card-label, .ds-card-helper { margin: 0; color: #9CA3AF; font-size: 11px; font-weight: 800; }"
+    },
+    {
+      "name": "Icon Bubble Success",
+      "kind": "custom",
+      "refersTo": "icon-bubble-success",
+      "description": "Circular semantic anchor for success, income, and completed AI actions.",
+      "html": "<span class=\"ds-icon-bubble-success\" aria-label=\"Berhasil\"><svg viewBox=\"0 0 24 24\" width=\"21\" height=\"21\" aria-hidden=\"true\"><path fill=\"currentColor\" d=\"M9.2 16.6 4.9 12.3l1.4-1.4 2.9 2.9 8.5-8.5 1.4 1.4z\"/></svg></span>",
+      "css": ".ds-icon-bubble-success { width: 42px; height: 42px; border-radius: 999px; display: inline-grid; place-items: center; color: #A3FF12; background: rgba(163, 255, 18, 0.10); border: 1px solid rgba(163, 255, 18, 0.20); }"
+    },
+    {
+      "name": "State Message Warning",
+      "kind": "custom",
+      "refersTo": "state-message-warning",
+      "description": "Inline warning message for budget and AI review states.",
+      "html": "<p class=\"ds-state-warning\">Budget makan hampir habis. Cek transaksi terakhir?</p>",
+      "css": ".ds-state-warning { margin: 0; padding: 10px 12px; border-radius: 14px; border: 1px solid #FFC06D; background: rgba(255, 192, 109, 0.14); color: #FFC06D; font-family: Inter, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif; font-size: 11px; font-weight: 700; line-height: 18px; }"
     }
-  },
-  "typography": {
-    "stack": "Inter, Poppins, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif",
-    "display": { "size": "32px", "weight": 700, "lineHeight": 1.2, "letterSpacing": "-0.5px" },
-    "headline": { "size": "24px", "weight": 700, "lineHeight": 1.3, "letterSpacing": "-0.3px" },
-    "title": { "size": "18px", "weight": 700, "lineHeight": 1.4, "letterSpacing": "-0.2px" },
-    "body": { "size": "16px", "weight": 400, "lineHeight": 1.6, "letterSpacing": "normal" },
-    "label": { "size": "13px", "weight": 600, "lineHeight": 1.4, "letterSpacing": "0.02em" },
-    "small": { "size": "11px", "weight": 400, "lineHeight": 1.4, "letterSpacing": "0.03em" }
-  },
-  "radius": {
-    "sm": "10px",
-    "md": "14px",
-    "lg": "18px",
-    "pill": "999px"
-  },
-  "spacing": {
-    "xs": "4px",
-    "sm": "8px",
-    "md": "12px",
-    "lg": "16px",
-    "xl": "20px",
-    "2xl": "24px",
-    "3xl": "32px"
-  },
-  "shadow": {
-    "ambient": "0 1px 3px rgba(15, 21, 35, 0.06), 0 4px 16px rgba(15, 21, 35, 0.08)",
-    "accentGlow": "0 4px 20px color-mix(in srgb, var(--ks-brand-primary) 36%, transparent)",
-    "focusRing": "0 0 0 3px color-mix(in srgb, var(--ks-brand-primary) 22%, transparent)"
-  },
-  "motion": {
-    "buttonHoverTransform": "translateY(-1px)",
-    "allowedAnimatedProps": ["transform", "opacity"],
-    "durationFast": "160ms",
-    "easing": "cubic-bezier(0.22, 1, 0.36, 1)"
-  },
-  "rules": {
-    "restrainedAccentMaxSurfacePercent": 10,
-    "gradientOnlyForLogo": true,
-    "noSerif": true,
-    "noInnerShadow": true,
-    "maxPrimaryFlowTapsMobile": 3,
-    "autosaveMinConfidence": 0.85,
-    "autosaveUndoSeconds": 5
-  },
-  "components": {
-    "buttonPrimary": {
-      "background": "#1E3A8A",
-      "text": "#FFFFFF",
-      "radius": "10px",
-      "padding": "9px 16px"
-    },
-    "buttonSecondary": {
-      "background": "#FFFFFF",
-      "text": "#4C5A78",
-      "radius": "10px",
-      "padding": "9px 16px"
-    },
-    "card": {
-      "background": "#FFFFFF",
-      "text": "#28303F",
-      "radius": "14px",
-      "padding": "18px"
-    },
-    "input": {
-      "background": "#FFFFFF",
-      "text": "#28303F",
-      "radius": "10px",
-      "padding": "10px 14px",
-      "focusBorder": "#1E3A8A"
-    },
-    "logo": {
-      "viewBox": "0 0 512 512",
-      "sizes": [32, 36, 72],
-      "variants": ["light", "dark"],
-      "indigoGradient": ["#818CF8", "#4F46E5"],
-      "emeraldGradient": ["#6EE7B7", "#10B981"]
-    }
+  ],
+  "narrative": {
+    "northStar": "The Midnight Ledger Companion",
+    "overview": "Kaswise feels like a quiet, capable finance companion in the user's pocket: matte, direct, and fast enough for a transaction logged between classes, commuting, or closing a monthly review. The interface is product-first. It should disappear into the task, finish primary flows in three taps or fewer, and make AI assistance feel reliable rather than theatrical.",
+    "keyCharacteristics": [
+      "Mobile-first, primary flows complete in 3 taps or fewer.",
+      "Confidence-based AI, auto-save only when confidence is at least 0.85, with \"Batalkan\" available for 5 seconds.",
+      "Async feel, AI work never blocks the screen or turns into client polling theater.",
+      "Bahasa Indonesia natural, every label and error should be understood in 2 seconds.",
+      "Show, don't tell, charts are used only when they clarify a decision."
+    ],
+    "rules": [
+      { "name": "The Scene-Based Theme Rule", "body": "Dark mode is canonical only because the mobile finance scene supports it. Do not use dark mode as decoration.", "section": "colors" },
+      { "name": "The One Action Voice Rule", "body": "Emerald marks the next action, current selection, or positive state. It is not decorative confetti.", "section": "colors" },
+      { "name": "The Contrast Split Rule", "body": "Dark mode uses bright emerald for action. Light mode uses forest emerald for action text contrast. Never force the neon value into light-mode button backgrounds with white text.", "section": "colors" },
+      { "name": "The One-Family Rule", "body": "Use one sans family everywhere. Do not add display fonts, serif accents, or novelty labels.", "section": "typography" },
+      { "name": "The Dense-But-Legible Rule", "body": "Small mobile text must earn its size with weight and spacing. Support text is 11px, extra-bold, and never low-contrast.", "section": "typography" },
+      { "name": "The Copy-Speed Rule", "body": "Bahasa Indonesia UI copy must be understood in 2 seconds. If a label requires rereading, rewrite it.", "section": "typography" },
+      { "name": "The Tonal-First Rule", "body": "Reach for background and border tokens before shadow. Cards should not look like paper floating above a website.", "section": "elevation" },
+      { "name": "The Glow-Is-State Rule", "body": "Emerald glow belongs to primary action feedback, FABs, and committed CTAs. It is forbidden as ambient decoration.", "section": "elevation" },
+      { "name": "The No-Nesting Rule", "body": "Nested cards are a product smell. Use spacing, section headers, or one muted surface instead.", "section": "elevation" }
+    ],
+    "dos": [
+      "Do keep the main transaction capture flow within 3 taps on mobile.",
+      "Do use emerald for primary action, selected state, success, and high-confidence AI moments.",
+      "Do use forest emerald for light-mode primary buttons so white text stays readable.",
+      "Do use icon bubbles to make finance states scannable without adding chart clutter.",
+      "Do prefer inline review cards over modals when AI confidence is low.",
+      "Do show \"Batalkan\" for 5 seconds after high-confidence auto-save.",
+      "Do use skeletons or inline progress for async AI, not blocking spinners in the middle of content.",
+      "Do make error messages helpful, natural, and written in Bahasa Indonesia.",
+      "Do maintain 44px minimum touch targets for buttons, chips, inputs, and navigation."
+    ],
+    "donts": [
+      "Don't build aplikasi keuangan yang terlalu kompleks dengan puluhan chart di dashboard.",
+      "Don't overload UI dengan sidebars, modals, dan nested cards.",
+      "Don't create form panjang dengan 10+ field wajib untuk satu transaksi.",
+      "Don't use dark mode \"karena keren\" without a concrete scene.",
+      "Don't use gradient text, glassmorphism, or side-stripe borders as defaults.",
+      "Don't use the hero-metric template, big number plus small label plus gradient accent.",
+      "Don't repeat identical card grids with icon, heading, and text when a list or compact summary would be clearer.",
+      "Don't animate layout properties. Use opacity and transform for state changes only.",
+      "Don't invent custom scrollbars, strange form controls, or non-standard affordances for flavor.",
+      "Don't rely on color alone for budget, danger, success, selected, or disabled states."
+    ]
   }
 }

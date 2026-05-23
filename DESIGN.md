@@ -1,53 +1,36 @@
 ---
 name: Kaswise
-description: Aplikasi pencatatan keuangan personal berbahasa Indonesia dengan pendekatan mobile-first
+description: Aplikasi pencatatan keuangan personal berbahasa Indonesia, mobile-first, cepat, hangat, dan dibantu AI.
 colors:
-  brand-primary: "#A3FF12"
-  brand-primary-deep: "#65A30D"
-  brand-secondary: "#4A80F0"
-  brand-secondary-deep: "#2A5DD0"
-  success-dark: "#A3FF12"
-  success-light: "#65A30D"
-  danger-dark: "#FF7B7B"
-  danger-light: "#DC2626"
-  warning-dark: "#FFC06D"
-  warning-light: "#B45309"
-  info-dark: "#38BDF8"
-  info-light: "#0284C7"
-  bg-base-dark: "#141414"
-  bg-surface-dark: "#1E1E1A"
-  bg-card-dark: "#18181A"
-  bg-muted-dark: "#242427"
-  bg-elevated-dark: "#242427"
-  bg-tabbar-dark: "#18181A"
-  bg-header-dark: "#0A0A0A"
-  text-primary-dark: "#FFFFFF"
-  text-secondary-dark: "#E5E7EB"
-  text-muted-dark: "#9CA3AF"
-  text-dim-dark: "#6B7280"
-  text-inverse-dark: "#0A0A0A"
-  border-soft-dark: "rgba(255, 255, 255, 0.06)"
-  border-base-dark: "rgba(255, 255, 255, 0.10)"
-  border-strong-dark: "rgba(255, 255, 255, 0.18)"
-  glass-bg-dark: "rgba(255, 255, 255, 0.06)"
-  glass-border-dark: "rgba(255, 255, 255, 0.12)"
-  bg-base-light: "#F5F5F0"
-  bg-surface-light: "#FFFFFF"
-  bg-card-light: "#FFFFFF"
-  bg-muted-light: "#FAFAF5"
-  bg-elevated-light: "#FFFFFF"
-  bg-tabbar-light: "#FFFFFF"
-  bg-header-light: "#FFFFFF"
-  text-primary-light: "#0A0A0A"
-  text-secondary-light: "#4B5563"
-  text-muted-light: "#6B7280"
-  text-dim-light: "#9CA3AF"
-  text-inverse-light: "#FFFFFF"
-  border-soft-light: "rgba(10, 10, 10, 0.06)"
-  border-base-light: "rgba(10, 10, 10, 0.10)"
-  border-strong-light: "rgba(10, 10, 10, 0.16)"
-  glass-bg-light: "rgba(255, 255, 255, 0.60)"
-  glass-border-light: "rgba(10, 10, 10, 0.08)"
+  brand-emerald-dark: "#A3FF12"
+  brand-emerald-light: "#3F6212"
+  brand-emerald-deep: "#65A30D"
+  brand-navy: "#4A80F0"
+  brand-navy-deep: "#2A5DD0"
+  status-success-dark: "#A3FF12"
+  status-success-light: "#65A30D"
+  status-danger-dark: "#FF7B7B"
+  status-danger-light: "#DC2626"
+  status-warning-dark: "#FFC06D"
+  status-warning-light: "#B45309"
+  status-info-dark: "#38BDF8"
+  status-info-light: "#0284C7"
+  dark-bg-base: "#141414"
+  dark-bg-surface: "#1E1E1A"
+  dark-bg-card: "#18181A"
+  dark-bg-muted: "#242427"
+  dark-bg-header: "#0A0A0A"
+  dark-text-primary: "#FFFFFF"
+  dark-text-secondary: "#E5E7EB"
+  dark-text-muted: "#9CA3AF"
+  dark-text-inverse: "#0A0A0A"
+  light-bg-base: "#F5F5F0"
+  light-bg-surface: "#FFFFFF"
+  light-bg-muted: "#FAFAF5"
+  light-text-primary: "#0A0A0A"
+  light-text-secondary: "#4B5563"
+  light-text-muted: "#6B7280"
+  light-text-inverse: "#FFFFFF"
 typography:
   display:
     fontFamily: "Inter, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif"
@@ -57,40 +40,40 @@ typography:
     letterSpacing: "-0.5px"
   headline:
     fontFamily: "Inter, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif"
-    fontSize: "24px"
+    fontSize: "22px"
     fontWeight: 800
-    lineHeight: 1.3
-    letterSpacing: "-0.3px"
+    lineHeight: 1.2
+    letterSpacing: "-0.5px"
   title:
     fontFamily: "Inter, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif"
     fontSize: "18px"
     fontWeight: 700
     lineHeight: 1.4
-    letterSpacing: "-0.2px"
+    letterSpacing: "-0.5px"
   body:
     fontFamily: "Inter, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif"
     fontSize: "16px"
     fontWeight: 400
     lineHeight: 1.6
-    letterSpacing: "normal"
+    letterSpacing: "0px"
   label:
     fontFamily: "Inter, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif"
-    fontSize: "13px"
-    fontWeight: 600
+    fontSize: "12px"
+    fontWeight: 700
     lineHeight: 1.4
-    letterSpacing: "0.02em"
-  small:
+    letterSpacing: "0.4px"
+  support:
     fontFamily: "Inter, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif"
     fontSize: "11px"
     fontWeight: 800
     lineHeight: 1.4
-    letterSpacing: "0.03em"
+    letterSpacing: "0.4px"
 rounded:
   sm: "10px"
   md: "14px"
   lg: "18px"
   xl: "20px"
-  "2xl": "24px"
+  2xl: "24px"
   pill: "999px"
 spacing:
   xs: "4px"
@@ -98,294 +81,221 @@ spacing:
   md: "12px"
   lg: "16px"
   xl: "20px"
-  "2xl": "24px"
-  "3xl": "32px"
-shadow:
-  sm-dark: "shadowColor: #000, shadowOffset: {width: 0, height: 1}, shadowOpacity: 0.30, shadowRadius: 2, elevation: 2"
-  md-dark: "shadowColor: #000, shadowOffset: {width: 0, height: 4}, shadowOpacity: 0.30, shadowRadius: 12, elevation: 6"
-  lg-dark: "shadowColor: #000, shadowOffset: {width: 0, height: 10}, shadowOpacity: 0.45, shadowRadius: 30, elevation: 12"
-  neon-dark: "shadowColor: #A3FF12, shadowOffset: {width: 0, height: 8}, shadowOpacity: 0.45, shadowRadius: 22, elevation: 16"
-  sm-light: "shadowColor: #0A0A0A, shadowOffset: {width: 0, height: 1}, shadowOpacity: 0.04, shadowRadius: 2, elevation: 1"
-  md-light: "shadowColor: #0A0A0A, shadowOffset: {width: 0, height: 4}, shadowOpacity: 0.08, shadowRadius: 12, elevation: 3"
-  lg-light: "shadowColor: #0A0A0A, shadowOffset: {width: 0, height: 12}, shadowOpacity: 0.10, shadowRadius: 30, elevation: 8"
-  neon-light: "shadowColor: #A3FF12, shadowOffset: {width: 0, height: 8}, shadowOpacity: 0.35, shadowRadius: 22, elevation: 12"
+  2xl: "24px"
+  3xl: "32px"
 components:
-  icon-bubble-primary-dark:
-    background: "rgba(163, 255, 18, 0.14)"
-    border: "rgba(163, 255, 18, 0.25)"
-    color: "#A3FF12"
-  icon-bubble-navy-dark:
-    background: "rgba(74, 128, 240, 0.14)"
-    border: "rgba(74, 128, 240, 0.30)"
-    color: "#4A80F0"
-  icon-bubble-success-dark:
-    background: "rgba(163, 255, 18, 0.10)"
-    border: "rgba(163, 255, 18, 0.20)"
-    color: "#A3FF12"
-  icon-bubble-warning-dark:
-    background: "rgba(255, 192, 109, 0.14)"
-    border: "rgba(255, 192, 109, 0.30)"
-    color: "#FFC06D"
-  icon-bubble-danger-dark:
-    background: "rgba(255, 123, 123, 0.14)"
-    border: "rgba(255, 123, 123, 0.30)"
-    color: "#FF7B7B"
-  icon-bubble-info-dark:
-    background: "rgba(56, 189, 248, 0.14)"
-    border: "rgba(56, 189, 248, 0.30)"
-    color: "#38BDF8"
-  icon-bubble-primary-light:
-    background: "rgba(163, 255, 18, 0.18)"
-    border: "rgba(101, 163, 13, 0.28)"
-    color: "#65A30D"
-  icon-bubble-navy-light:
-    background: "rgba(74, 128, 240, 0.12)"
-    border: "rgba(42, 93, 208, 0.25)"
-    color: "#2A5DD0"
-  icon-bubble-success-light:
-    background: "rgba(163, 255, 18, 0.18)"
-    border: "rgba(101, 163, 13, 0.28)"
-    color: "#65A30D"
-  icon-bubble-warning-light:
-    background: "rgba(245, 158, 11, 0.14)"
-    border: "rgba(245, 158, 11, 0.30)"
-    color: "#B45309"
-  icon-bubble-danger-light:
-    background: "rgba(239, 68, 68, 0.10)"
-    border: "rgba(239, 68, 68, 0.25)"
-    color: "#DC2626"
-  icon-bubble-info-light:
-    background: "rgba(14, 165, 233, 0.10)"
-    border: "rgba(14, 165, 233, 0.25)"
-    color: "#0284C7"
   button-primary-dark:
-    backgroundColor: "#A3FF12"
-    textColor: "#0A0A0A"
-    rounded: "10px"
-    padding: "12px 20px"
-    shadow: "neon-dark"
+    backgroundColor: "{colors.brand-emerald-dark}"
+    textColor: "{colors.dark-text-inverse}"
+    rounded: "{rounded.sm}"
+    padding: "12px 16px"
+    height: "44px"
   button-primary-light:
-    backgroundColor: "#A3FF12"
-    textColor: "#0A0A0A"
-    rounded: "10px"
-    padding: "12px 20px"
-    shadow: "neon-light"
+    backgroundColor: "{colors.brand-emerald-light}"
+    textColor: "{colors.light-text-inverse}"
+    rounded: "{rounded.sm}"
+    padding: "12px 16px"
+    height: "44px"
   button-secondary-dark:
-    backgroundColor: "rgba(255, 255, 255, 0.06)"
-    textColor: "#E5E7EB"
-    border: "rgba(255, 255, 255, 0.12)"
-    rounded: "10px"
-    padding: "12px 20px"
-  button-secondary-light:
-    backgroundColor: "rgba(255, 255, 255, 0.60)"
-    textColor: "#4B5563"
-    border: "rgba(10, 10, 10, 0.08)"
-    rounded: "10px"
-    padding: "12px 20px"
-  card-dark:
-    backgroundColor: "#1E1E1A"
-    border: "rgba(255, 255, 255, 0.06)"
-    rounded: "14px"
+    backgroundColor: "{colors.dark-bg-muted}"
+    textColor: "{colors.dark-text-primary}"
+    rounded: "{rounded.sm}"
+    padding: "12px 16px"
+    height: "44px"
+  card-default-dark:
+    backgroundColor: "{colors.dark-bg-card}"
+    textColor: "{colors.dark-text-primary}"
+    rounded: "{rounded.lg}"
     padding: "16px"
-    shadow: "sm-dark"
-  card-light:
-    backgroundColor: "#FFFFFF"
-    border: "rgba(10, 10, 10, 0.06)"
-    rounded: "14px"
+  card-default-light:
+    backgroundColor: "{colors.light-bg-surface}"
+    textColor: "{colors.light-text-primary}"
+    rounded: "{rounded.lg}"
     padding: "16px"
-    shadow: "sm-light"
-  input-dark:
-    backgroundColor: "#18181A"
-    textColor: "#FFFFFF"
-    border: "rgba(255, 255, 255, 0.10)"
-    rounded: "10px"
-    padding: "12px 14px"
-  input-light:
-    backgroundColor: "#FFFFFF"
-    textColor: "#0A0A0A"
-    border: "rgba(10, 10, 10, 0.10)"
-    rounded: "10px"
-    padding: "12px 14px"
+  input-default-dark:
+    backgroundColor: "{colors.dark-bg-card}"
+    textColor: "{colors.dark-text-primary}"
+    rounded: "{rounded.md}"
+    padding: "12px"
+    height: "44px"
+  input-default-light:
+    backgroundColor: "{colors.light-bg-surface}"
+    textColor: "{colors.light-text-primary}"
+    rounded: "{rounded.md}"
+    padding: "12px"
+    height: "44px"
+  chip-selected-dark:
+    backgroundColor: "{colors.brand-emerald-dark}"
+    textColor: "{colors.dark-text-inverse}"
+    rounded: "{rounded.pill}"
+    padding: "8px 14px"
+    height: "44px"
 ---
 
-# Design System: Kaswise Dark Luxury
+# Design System: Kaswise
 
 ## 1. Overview
 
-**Creative North Star: "Dark Luxury Companion"**
+**Creative North Star: "The Midnight Ledger Companion"**
 
-Sistem visual Kaswise adalah companion yang praktis, hangat, dan cerdas — membantu tanpa membebani. Matte black (#141414) sebagai kanvas utama, neon emerald (#A3FF12) sebagai aksen brand yang confident, soft navy (#4A80F0) sebagai aksen sekunder yang tenang. UI langsung ke inti, tidak ada dekorasi berlebihan, setiap tap ada tujuannya.
+Kaswise feels like a quiet, capable finance companion in the user's pocket: matte, direct, and fast enough for a transaction logged between classes, commuting, or closing a monthly review. The interface is product-first. It should disappear into the task, finish primary flows in three taps or fewer, and make AI assistance feel reliable rather than theatrical.
 
-Sistem ini secara eksplisit menolak: aplikasi keuangan yang terlalu kompleks dengan puluhan chart di dashboard, UI overload dengan sidebars, modals, dan nested cards, form panjang dengan 10+ field wajib untuk satu transaksi, dark mode "karena keren" tanpa alasan scene yang konkret, gradient text, glassmorphism, side-stripe borders sebagai default, hero-metric template (big number + small label + gradient accent) — SaaS cliché.
+The brand-canonical scene is night-time mobile finance: Rafi checks spending in a dim room, Dania logs a small purchase before forgetting it, and neither has patience for a dashboard pretending to be an analytics suite. Dark mode is justified by that scene, not by cool-factor aesthetics. Light mode exists as a warm bone counterpart for bright environments.
+
+Kaswise explicitly rejects aplikasi keuangan yang terlalu kompleks dengan puluhan chart di dashboard, UI overload dengan sidebars, modals, dan nested cards, form panjang dengan 10+ field wajib untuk satu transaksi, dark mode "karena keren" tanpa alasan scene yang konkret, gradient text, glassmorphism, side-stripe borders sebagai default, and the hero-metric template.
 
 **Key Characteristics:**
-- Mobile-first ≤3 tap — flow utama selesai dalam ≤3 tap di smartphone
-- Confidence-based AI — auto-save hanya jika confidence ≥0.85; selalu ada opsi "Batalkan" 5 detik
-- Async feel — AI processing tidak block UI, Edge Function + Supabase Realtime memberikan feel "magic"
-- Bahasa Indonesia natural — copy setiap layar diuji: apakah pengguna paham dalam 2 detik?
-- Show, don't tell — data keuangan ditampilkan visual sederhana, breakdown kategori jelas, tren mudah dibaca
+- Mobile-first, primary flows complete in 3 taps or fewer.
+- Confidence-based AI, auto-save only when confidence is at least 0.85, with "Batalkan" available for 5 seconds.
+- Async feel, AI work never blocks the screen or turns into client polling theater.
+- Bahasa Indonesia natural, every label and error should be understood in 2 seconds.
+- Show, don't tell, charts are used only when they clarify a decision.
 
-## 2. Colors: Dark Luxury Palette
+## 2. Colors
 
-Palet committed: matte black ground + neon emerald primary (30–60% surface) + soft navy secondary untuk balance.
+The palette is restrained product UI with one signature exception: the dark theme earns a sharp neon emerald action color because the app's night-time scene can carry it. In light mode, the primary action darkens to forest emerald for contrast and maturity.
 
-### Brand
-- **Neon Emerald** (#A3FF12): Primary brand color untuk CTAs, active states, success indicators. Confident, energetic, premium.
-- **Neon Emerald Deep** (#65A30D): Darker variant untuk text-on-light contrast di light mode.
-- **Soft Navy** (#4A80F0): Secondary brand color untuk info, secondary actions, calm accents.
-- **Navy Deep** (#2A5DD0): Darker variant untuk text-on-light contrast di light mode.
+### Primary
+- **Night Ledger Emerald**: The dark-mode primary action color. Use for primary buttons, selected chips, active navigation, success moments, and signature AI confidence moments.
+- **Daylight Forest Emerald**: The light-mode primary action color. Use anywhere text must sit on the action color in light mode.
+- **Deep Ledger Emerald**: The supporting green for light-mode icon bubbles, status, and subtle selected states.
 
-### Status
-- **Success Dark** (#A3FF12): Income, positive trends, completed actions (dark mode)
-- **Success Light** (#65A30D): Income, positive trends, completed actions (light mode)
-- **Danger Dark** (#FF7B7B): Expense, errors, warnings (dark mode)
-- **Danger Light** (#DC2626): Expense, errors, warnings (light mode)
-- **Warning Dark** (#FFC06D): Budget alerts, pending reviews (dark mode)
-- **Warning Light** (#B45309): Budget alerts, pending reviews (light mode)
-- **Info Dark** (#38BDF8): Neutral information, tooltips (dark mode)
-- **Info Light** (#0284C7): Neutral information, tooltips (light mode)
+### Secondary
+- **Soft Bank Navy**: The calm secondary accent for information, group context, and non-destructive supporting actions.
+- **Deep Bank Navy**: The light-mode navy variant when contrast needs to harden.
 
-### Neutral (Dark Mode — Brand Canonical)
-- **Matte Black** (#141414): App background, the brand surface
-- **Surface Grey** (#1E1E1A): Cards, UI elements, elevated surfaces
-- **Component Card** (#18181A): Card foreground, tab bar, form backgrounds
-- **Elevated** (#242427): Pills, modals, nested cards, muted backgrounds
-- **Deep Black** (#0A0A0A): Hero sections, footer, nav, splash screens
-- **Primary Text** (#FFFFFF): Body text, headings, main content
-- **Secondary Text** (#E5E7EB): Labels, helper text, less important content
-- **Muted Text** (#9CA3AF): Placeholders, disabled text, metadata
-- **Dim Text** (#6B7280): Fifth grey step for ultra-subtle text
-- **Inverse Text** (#0A0A0A): Text on neon emerald buttons
-- **Soft Border** (rgba(255, 255, 255, 0.06)): Default borders, dividers
-- **Base Border** (rgba(255, 255, 255, 0.10)): Input borders, card outlines
-- **Strong Border** (rgba(255, 255, 255, 0.18)): Focus borders, active dividers
-- **Glass Background** (rgba(255, 255, 255, 0.06)): Floating bars, pills
-- **Glass Border** (rgba(255, 255, 255, 0.12)): Glass surface outlines
+### Tertiary
+- **Receipt Danger Red**: Expense, destructive action, and error states.
+- **Budget Warning Amber**: Budget alerts, pending review, and attention states.
+- **Realtime Info Blue**: Neutral info, realtime feedback, and assistant status.
 
-### Neutral (Light Mode — Light Luxury)
-- **Warm Bone** (#F5F5F0): App background, warm ground
-- **White Surface** (#FFFFFF): Cards, UI elements, elevated surfaces
-- **White Card** (#FFFFFF): Card foreground, tab bar, form backgrounds
-- **Muted** (#FAFAF5): Subtle backgrounds, disabled states
-- **Primary Text** (#0A0A0A): Body text, headings, main content
-- **Secondary Text** (#4B5563): Labels, helper text, less important content
-- **Muted Text** (#6B7280): Placeholders, disabled text, metadata
-- **Dim Text** (#9CA3AF): Fifth grey step for ultra-subtle text
-- **Inverse Text** (#FFFFFF): Text on dark surfaces
-- **Soft Border** (rgba(10, 10, 10, 0.06)): Default borders, dividers
-- **Base Border** (rgba(10, 10, 10, 0.10)): Input borders, card outlines
-- **Strong Border** (rgba(10, 10, 10, 0.16)): Focus borders, active dividers
-- **Glass Background** (rgba(255, 255, 255, 0.60)): Floating bars, pills
-- **Glass Border** (rgba(10, 10, 10, 0.08)): Glass surface outlines
+### Neutral
+- **Matte Ledger Black**: The dark app background, used as the brand-canonical canvas.
+- **Soft Charcoal Surface**: Primary dark surfaces, cards, and panels.
+- **Compact Charcoal Card**: Form controls, tab bars, and tighter dark components.
+- **Raised Graphite**: Pills, muted sections, and elevated dark surfaces.
+- **Warm Bone**: The light app background, warm enough to avoid sterile finance-app white.
+- **Paper Surface**: Cards and controls in light mode.
+- **Ink Text**: Primary light text and inverse text on dark-action areas.
+- **Mist Text**: Secondary and muted text layers across dark and light modes.
 
 ### Named Rules
-**The Committed Accent Rule.** Neon emerald (#A3FF12) digunakan pada 30–60% surface untuk brand identity yang kuat. Ini bukan restrained accent — ini adalah committed color strategy.
+**The Scene-Based Theme Rule.** Dark mode is canonical only because the mobile finance scene supports it. Do not use dark mode as decoration.
 
-**The No-Gradient-Text Rule.** Gradient text (`background-clip: text`) banned. Gunakan solid colors untuk semua text.
+**The One Action Voice Rule.** Emerald marks the next action, current selection, or positive state. It is not decorative confetti.
 
-**The Scene-Based Theme Rule.** Dark mode adalah default karena scene: personal finance users checking transactions di malam hari, di kamar dengan ambient light rendah. Light mode untuk siang hari di outdoor/bright environments.
+**The Contrast Split Rule.** Dark mode uses bright emerald for action. Light mode uses forest emerald for action text contrast. Never force the neon value into light-mode button backgrounds with white text.
 
 ## 3. Typography
 
-**Display Font:** Inter (with -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif fallback)
-**Body Font:** Inter (same stack)
-**Label/Mono Font:** Inter (same stack, dengan weight 600–800 untuk emphasis)
+**Display Font:** Inter with native system fallbacks.
+**Body Font:** Inter with native system fallbacks.
+**Label/Mono Font:** Inter, using heavier weights for support text instead of a separate mono.
 
-**Character:** Clean, readable, dengan warmth melalui letter-spacing yang tepat dan scale hierarchy yang jelas. Tidak terlalu technical, tidak terlalu decorative — tepat untuk companion yang praktis.
+**Character:** Practical, compact, and mobile-native. The typography should feel like a trusted app, not a fintech campaign poster.
 
 ### Hierarchy
-- **Display** (800, 32px, 1.2, -0.5px): Hero headlines di splash/auth pages. Jarang digunakan.
-- **Headline** (800, 24px, 1.3, -0.3px): Screen titles, major section headers.
-- **Title** (700, 18px, 1.4, -0.2px): Card titles, modal headers, subsection headers.
-- **Body** (400, 16px, 1.6, normal): Semua body text, paragraf, form labels.
-- **Label** (600, 13px, 1.4, 0.02em): Form labels, button text, navigation items, metadata.
-- **Small** (800, 11px, 1.4, 0.03em): Captions, timestamps, helper text, chips, support text.
+- **Display** (800, 32px, 1.2): Rare splash, auth, and empty-state emphasis only.
+- **Headline** (800, 22px, 1.2): Screen titles via `screenTitle`, with tight tracking.
+- **Title** (700, 18px, 1.4): Section headers, card titles, and modal-equivalent inline panels.
+- **Body** (400, 16px, 1.6): Long-form guidance, explanations, and readable copy. Cap prose around 65 to 75 characters when layout permits.
+- **Label** (700, 12px, 1.4): Buttons, chips, navigation items, and compact UI labels.
+- **Support** (800, 11px, 1.4): Metadata, helper copy, stat labels, small badges, and dense mobile affordances.
 
 ### Named Rules
-**The No-Serif Rule.** Tidak ada serif fonts di UI. Inter memberikan warmth melalui humanist proportions tanpa decorative serifs.
+**The One-Family Rule.** Use one sans family everywhere. Do not add display fonts, serif accents, or novelty labels.
 
-**The Consistent-Stack Rule.** Font stack sama di semua elements — tidak mixing typefaces untuk simplicity dan performance.
+**The Dense-But-Legible Rule.** Small mobile text must earn its size with weight and spacing. Support text is 11px, extra-bold, and never low-contrast.
 
-**The Bold-Small-Text Rule.** Small text (11px) menggunakan weight 800 untuk legibility di mobile screens.
+**The Copy-Speed Rule.** Bahasa Indonesia UI copy must be understood in 2 seconds. If a label requires rereading, rewrite it.
 
 ## 4. Elevation
 
-Sistem menggunakan hybrid: flat surfaces dengan subtle shadows untuk elevation, dan tonal layering untuk depth dalam dark mode.
+Kaswise uses a hybrid of tonal layering and light shadows. Dark surfaces separate mostly through color steps and soft borders; shadows exist to clarify stacked UI, not to decorate it. Light mode uses gentler shadow opacity because the warm bone surface already provides separation.
 
-### Shadow Vocabulary (Dark Mode)
-- **sm** (shadowColor: #000, shadowOpacity: 0.30, shadowRadius: 2, elevation: 2): Subtle card separation
-- **md** (shadowColor: #000, shadowOpacity: 0.30, shadowRadius: 12, elevation: 6): Elevated cards, modals
-- **lg** (shadowColor: #000, shadowOpacity: 0.45, shadowRadius: 30, elevation: 12): Floating panels, drawers
-- **neon** (shadowColor: #A3FF12, shadowOpacity: 0.45, shadowRadius: 22, elevation: 16): FAB, primary buttons on press, CTAs
-
-### Shadow Vocabulary (Light Mode)
-- **sm** (shadowColor: #0A0A0A, shadowOpacity: 0.04, shadowRadius: 2, elevation: 1): Subtle card separation
-- **md** (shadowColor: #0A0A0A, shadowOpacity: 0.08, shadowRadius: 12, elevation: 3): Elevated cards, modals
-- **lg** (shadowColor: #0A0A0A, shadowOpacity: 0.10, shadowRadius: 30, elevation: 8): Floating panels, drawers
-- **neon** (shadowColor: #A3FF12, shadowOpacity: 0.35, shadowRadius: 22, elevation: 12): FAB, primary buttons on press, CTAs
+### Shadow Vocabulary
+- **Dark sm**: Small card separation, `shadowOpacity 0.30`, `shadowRadius 2`, `elevation 2`.
+- **Dark md**: Raised panels, `shadowOpacity 0.30`, `shadowRadius 12`, `elevation 6`.
+- **Dark lg**: Floating drawers and important panels, `shadowOpacity 0.45`, `shadowRadius 30`, `elevation 12`.
+- **Dark neon**: Pressed primary action and signature CTA glow, emerald shadow with `shadowOpacity 0.45`, `shadowRadius 22`, `elevation 16`.
+- **Light sm**: Subtle card separation, `shadowOpacity 0.04`, `shadowRadius 2`, `elevation 1`.
+- **Light md**: Raised panels, `shadowOpacity 0.08`, `shadowRadius 12`, `elevation 3`.
+- **Light lg**: Floating drawers and important panels, `shadowOpacity 0.10`, `shadowRadius 30`, `elevation 8`.
+- **Light neon**: Primary action glow, forest emerald shadow with `shadowOpacity 0.35`, `shadowRadius 22`, `elevation 12`.
 
 ### Named Rules
-**The Flat-By-Default Rule.** Surfaces flat at rest. Shadows appear hanya sebagai response to state (hover, elevation, focus).
+**The Tonal-First Rule.** Reach for background and border tokens before shadow. Cards should not look like paper floating above a website.
 
-**The No-Inner-Shadows Rule.** Tidak ada inner shadows untuk depth — menggunakan border color dan background tonal shifts sebagai ganti.
+**The Glow-Is-State Rule.** Emerald glow belongs to primary action feedback, FABs, and committed CTAs. It is forbidden as ambient decoration.
 
-**The Neon-Glow Rule.** Neon shadow (#A3FF12) adalah signature brand — apply to FAB, primary buttons on press, dan hero CTAs.
+**The No-Nesting Rule.** Nested cards are a product smell. Use spacing, section headers, or one muted surface instead.
 
 ## 5. Components
 
-### Icon Bubbles
-- **Shape:** Circular, 40–48px diameter, centered icon
-- **Primary Dark:** rgba(163, 255, 18, 0.14) background, rgba(163, 255, 18, 0.25) border, #A3FF12 icon
-- **Navy Dark:** rgba(74, 128, 240, 0.14) background, rgba(74, 128, 240, 0.30) border, #4A80F0 icon
-- **Success/Warning/Danger/Info Dark:** Matching tinted backgrounds dengan 10–14% opacity, 20–30% border opacity
-- **Light Mode:** Same pattern, slightly higher opacity untuk contrast on white
-
 ### Buttons
-- **Shape:** Gently curved edges (10px radius)
-- **Primary Dark:** #A3FF12 background, #0A0A0A text, 12px 20px padding, neon glow shadow
-- **Primary Light:** #A3FF12 background, #0A0A0A text, 12px 20px padding, neon glow shadow (lighter opacity)
-- **Secondary Dark:** Glass background (rgba(255,255,255,0.06)), #E5E7EB text, glass border
-- **Secondary Light:** Glass background (rgba(255,255,255,0.60)), #4B5563 text, glass border
+- **Shape:** Gently curved rectangle (10px radius), minimum height 44px.
+- **Primary:** Dark mode uses Night Ledger Emerald with Ink Text. Light mode uses Daylight Forest Emerald with white text.
+- **Secondary:** Glass-tinted surface with a soft border, used for non-primary alternatives.
+- **Ghost:** Transparent with primary text color, reserved for quiet inline actions.
+- **Danger:** Tinted danger bubble background, danger text, never full red unless the action is destructive and final.
+- **Loading / Disabled:** Loading replaces text with an activity indicator. Disabled and loading states lower opacity to 60%.
+
+### Chips
+- **Style:** Pill shape (999px radius), minimum height 44px, bold 12px label.
+- **Selected:** Emerald background with inverse text.
+- **Unselected:** Glass background with secondary text and glass border.
+- **Usage:** Filters and quick toggles only. Do not use chips as decorative tags in dense finance flows.
 
 ### Cards / Containers
-- **Corner Style:** 14px radius (medium)
-- **Dark:** #1E1E1A background, rgba(255,255,255,0.06) border, sm shadow, 16px padding
-- **Light:** #FFFFFF background, rgba(10,10,10,0.06) border, sm shadow, 16px padding
-- **Hero Cards:** Neon emerald background, inverse text, neon glow shadow, decorative elements
+- **Corner Style:** Rounded but not bubbly (18px radius).
+- **Default:** Card surface, soft border, small shadow, 16px internal padding.
+- **Elevated:** Raised surface with medium shadow, no extra border by default.
+- **Muted:** Muted surface with soft border for grouped supporting content.
+- **Empty State:** Dashed border, 24px padding, centered icon bubble, title, and short explanation.
 
 ### Inputs / Fields
-- **Dark:** #18181A background, #FFFFFF text, rgba(255,255,255,0.10) border, 10px radius, 12px 14px padding
-- **Light:** #FFFFFF background, #0A0A0A text, rgba(10,10,10,0.10) border, 10px radius, 12px 14px padding
-- **Focus:** Border shifts to brand primary, subtle glow ring
-- **Error:** Border shifts to danger color, background dengan 8% danger color mix
+- **Style:** Card background, 14px radius, minimum height 44px, 12px padding.
+- **Label:** Uppercase 10px, extra-bold, 0.6px tracking.
+- **Focus:** Border becomes brand primary at 2px, label shifts to brand primary.
+- **Error:** Border becomes danger at 2px, background uses the danger icon-bubble tint, helper text appears in danger color.
 
-### Glass Surfaces
-- **Dark:** rgba(255,255,255,0.06) background, rgba(255,255,255,0.12) border, backdrop blur
-- **Light:** rgba(255,255,255,0.60) background, rgba(10,10,10,0.08) border, backdrop blur
-- **Usage:** Floating action bars, pills, bottom sheets, overlays
+### Navigation
+- **Style:** Mobile-native app structure with tab bar and screen headers, not desktop sidebars.
+- **Screen Header:** Row layout with title and optional action. Title uses 22px extra-bold with tight tracking; subtitle uses 12px secondary text.
+- **Active State:** Emerald marks current selection. Inactive items stay neutral.
+- **Mobile Treatment:** All navigation targets must remain at least 44px high.
+
+### Icon Bubbles
+- **Shape:** Circular, usually 36px to 56px, with 1px border and centered bold icon.
+- **Tone:** Primary, navy, success, warning, danger, info, or neutral.
+- **Usage:** Scannable anchors for finance concepts, not decoration. Every bubble should explain a row, action, state, or empty state.
+
+### Status and State Messages
+- **Status Badge:** Pill with 1px border, status tint background, 11px extra-bold label.
+- **State Message:** Rounded 14px block with status-colored text, tint background, 1px border, and concise Indonesian copy.
+- **Rule:** Never communicate status by color alone. Pair color with text, icon, or position.
 
 ## 6. Do's and Don'ts
 
 ### Do:
-- **Do** gunakan neon emerald (#A3FF12) sebagai committed accent (30–60% surface) untuk brand identity
-- **Do** apply neon glow shadow ke FAB, primary buttons on press, dan hero CTAs
-- **Do** gunakan glass surfaces (rgba backgrounds + borders) untuk floating elements
-- **Do** gunakan icon bubbles dengan tinted backgrounds untuk visual hierarchy
-- **Do** implement dark mode sebagai default (scene: personal finance users di malam hari)
-- **Do** gunakan weight 800 untuk small text (11px) agar legible di mobile
-- **Do** test setiap copy: apakah pengguna paham dalam 2 detik?
-- **Do** cap flow utama dalam ≤3 tap di mobile
-- **Do** auto-save hanya jika confidence ≥0.85, selalu sediakan opsi "Batalkan" 5 detik
+- **Do** keep the main transaction capture flow within 3 taps on mobile.
+- **Do** use emerald for primary action, selected state, success, and high-confidence AI moments.
+- **Do** use forest emerald for light-mode primary buttons so white text stays readable.
+- **Do** use icon bubbles to make finance states scannable without adding chart clutter.
+- **Do** prefer inline review cards over modals when AI confidence is low.
+- **Do** show "Batalkan" for 5 seconds after high-confidence auto-save.
+- **Do** use skeletons or inline progress for async AI, not blocking spinners in the middle of content.
+- **Do** make error messages helpful, natural, and written in Bahasa Indonesia.
+- **Do** maintain 44px minimum touch targets for buttons, chips, inputs, and navigation.
 
 ### Don't:
-- **Don't** gunakan gradient text (`background-clip: text`) — banned
-- **Don't** gunakan glassmorphism sebagai default — hanya untuk floating elements
-- **Don't** gunakan side-stripe borders (colored `border-left`/`border-right` >1px) — banned
-- **Don't** gunakan hero-metric template (big number + small label + gradient accent) — SaaS cliché
-- **Don't** buat identical card grids dengan icon + heading + text, repeated endlessly
-- **Don't** gunakan modal sebagai first thought — exhaust inline / progressive alternatives first
-- **Don't** animasi CSS layout properties — gunakan transform dan opacity
-- **Don't** gunakan em dashes — pakai commas, colons, semicolons, periods, atau parentheses
-- **Don't** buat aplikasi keuangan yang terlalu kompleks dengan puluhan chart di dashboard
-- **Don't** overload UI dengan sidebars, modals, dan nested cards
-- **Don't** buat form panjang dengan 10+ field wajib untuk satu transaksi
+- **Don't** build aplikasi keuangan yang terlalu kompleks dengan puluhan chart di dashboard.
+- **Don't** overload UI dengan sidebars, modals, dan nested cards.
+- **Don't** create form panjang dengan 10+ field wajib untuk satu transaksi.
+- **Don't** use dark mode "karena keren" without a concrete scene.
+- **Don't** use gradient text, glassmorphism, or side-stripe borders as defaults.
+- **Don't** use the hero-metric template, big number plus small label plus gradient accent.
+- **Don't** repeat identical card grids with icon, heading, and text when a list or compact summary would be clearer.
+- **Don't** animate layout properties. Use opacity and transform for state changes only.
+- **Don't** invent custom scrollbars, strange form controls, or non-standard affordances for flavor.
+- **Don't** rely on color alone for budget, danger, success, selected, or disabled states.
