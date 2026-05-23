@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import { FlatList, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
+import { FlatList, ScrollView, StyleSheet, Text, View } from 'react-native'
 
 import { KaswiseIcon } from '../../src/components/icons/kaswise-icons'
 import { Card, IconBubble, SectionHeader } from '../../src/components/ui'
@@ -37,7 +37,7 @@ export default function ImportsScreen() {
       <SectionHeader
         title="Import Mutasi"
         subtitle="Import otomatis dari bank, e-wallet, dan struk."
-        action={<Pressable style={styles.badge}><Text style={styles.badgeText}>Beta</Text></Pressable>}
+        action={<View style={styles.badge}><Text style={styles.badgeText}>Beta</Text></View>}
       />
 
       <Card variant="elevated" style={styles.heroCard}>

@@ -279,18 +279,10 @@ describe("ReportsScreen visual parity", () => {
 			/^#[0-9A-F]{6}$/,
 		);
 		expect(getFlattenedStyle(customFill).backgroundColor).not.toBe("#A3FF12");
-		expect(foodSegment.props.accessibilityLabel).toBe(
-			getFlattenedStyle(foodFill).backgroundColor,
-		);
-		expect(shoppingSegment.props.accessibilityLabel).toBe(
-			getFlattenedStyle(shoppingFill).backgroundColor,
-		);
-		expect(transportSegment.props.accessibilityLabel).toBe(
-			getFlattenedStyle(transportFill).backgroundColor,
-		);
-		expect(customSegment.props.accessibilityLabel).toBe(
-			getFlattenedStyle(customFill).backgroundColor,
-		);
+		expect(foodSegment.props.accessibilityLabel).toBeUndefined();
+		expect(shoppingSegment.props.accessibilityLabel).toBeUndefined();
+		expect(transportSegment.props.accessibilityLabel).toBeUndefined();
+		expect(customSegment.props.accessibilityLabel).toBeUndefined();
 		expect(getFlattenedStyle(foodFill).backgroundColor).not.toBe("#A3FF12");
 	});
 
@@ -298,18 +290,13 @@ describe("ReportsScreen visual parity", () => {
 		const screen = renderReports();
 
 		const chartSvg = screen.getByTestId("reports-line-chart-svg");
-		expect(chartSvg.props.accessibilityLabel).toBe("0 0 340 168");
+		expect(chartSvg.props.accessibilityRole).toBe("image");
+		expect(chartSvg.props.accessibilityLabel).toBe(
+			"Tren pemasukan dan pengeluaran 6 bulan terakhir",
+		);
 		expect(screen.getAllByTestId(/reports-line-guide-/)).toHaveLength(3);
-		expect(
-			screen
-				.getByTestId("reports-line-path-income")
-				.props.accessibilityLabel.split(" "),
-		).toHaveLength(6);
-		expect(
-			screen
-				.getByTestId("reports-line-path-expense")
-				.props.accessibilityLabel.split(" "),
-		).toHaveLength(6);
+		expect(screen.queryByLabelText(/18,154/)).toBeNull();
+		expect(screen.queryByLabelText(/322,154/)).toBeNull();
 		expect(screen.getAllByTestId(/reports-line-dot-income-/)).toHaveLength(6);
 		expect(screen.getAllByTestId(/reports-line-dot-expense-/)).toHaveLength(6);
 		expect(screen.queryByTestId("reports-bar-chart")).toBeNull();
@@ -340,7 +327,6 @@ describe("ReportsScreen visual parity", () => {
 
 		fireEvent.press(screen.getByText("Kategori"));
 
-		const foodFill = await screen.findByTestId("reports-category-fill-makan");
 		const foodSegment = await screen.findByTestId(
 			"reports-donut-segment-makan",
 		);
@@ -356,13 +342,9 @@ describe("ReportsScreen visual parity", () => {
 		expect(
 			Math.abs(Number(foodSegment.props.strokeDasharray[0]) + 6 - foodRawDash),
 		).toBeLessThan(0.001);
-		expect(foodGlow.props.accessibilityLabel).toBe(
-			getFlattenedStyle(foodFill).backgroundColor,
-		);
+		expect(foodGlow.props.accessibilityLabel).toBeUndefined();
 		expect(foodGlow.props.opacity).toBeLessThan(0.4);
-		expect(foodSegment.props.accessibilityLabel).toBe(
-			getFlattenedStyle(foodFill).backgroundColor,
-		);
+		expect(foodSegment.props.accessibilityLabel).toBeUndefined();
 	});
 
 	it("uses precise amount-based donut proportions instead of rounded display percentages", async () => {
@@ -407,8 +389,7 @@ describe("ReportsScreen visual parity", () => {
 			screen.findByTestId("reports-donut-segment-kesehatan"),
 		]);
 		const colors = segments.map(
-			(segment: { props: { accessibilityLabel: string } }) =>
-				segment.props.accessibilityLabel,
+			(segment: { props: { stroke: string } }) => segment.props.stroke,
 		);
 
 		expect(new Set(colors).size).toBe(colors.length);
@@ -426,8 +407,9 @@ describe("ReportsScreen visual parity", () => {
 			Number(foodGlow.props.r) + Number(foodGlow.props.strokeWidth) / 2;
 
 		expect(Number(donutSvg.props.width)).toBe(Number(donutSvg.props.height));
+		expect(donutSvg.props.accessibilityRole).toBe("image");
 		expect(donutSvg.props.accessibilityLabel).toBe(
-			`0 0 ${Number(donutSvg.props.width)} ${Number(donutSvg.props.height)}`,
+			"Komposisi pengeluaran berdasarkan kategori",
 		);
 		expect(center - outerEdge).toBeGreaterThanOrEqual(8);
 		expect(
@@ -440,9 +422,13 @@ describe("ReportsScreen visual parity", () => {
 		const screen = renderReports();
 
 		fireEvent.press(screen.getByText("Kustom"));
+		expect(screen.getByLabelText("Kurangi tahun mulai")).toBeTruthy();
+		expect(screen.getByLabelText("Tambah tahun mulai")).toBeTruthy();
+		expect(screen.getByLabelText("Pilih tanggal mulai 15")).toBeTruthy();
+		expect(screen.getByLabelText("Pilih tanggal selesai 20")).toBeTruthy();
 		fireEvent.press(await screen.findByTestId("reports-start-day-15"));
 		fireEvent.press(await screen.findByTestId("reports-end-day-20"));
-		fireEvent.press(screen.getByText("Terapkan"));
+		fireEvent.press(screen.getByLabelText("Terapkan rentang tanggal"));
 
 		await waitFor(() => {
 			expect((globalThis as any).__reportsGteMock).toHaveBeenLastCalledWith(

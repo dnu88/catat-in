@@ -18,6 +18,7 @@ import type { KaswiseIconName } from "../../src/components/icons/kaswise-icons";
 import { useI18n } from "../../src/i18n/i18n-context";
 import { useFinanceContext } from "../../src/state/finance-context";
 import { applyFinanceContextFilter } from "../../src/services/finance-context-query";
+import { reportCategoryPalette } from "../../src/theme/report-palettes";
 
 const categories = [
 	{
@@ -131,28 +132,7 @@ function normalizeReportTransaction(
 	};
 }
 
-const fallbackCategoryColors = {
-	light: [
-		"#65A30D",
-		"#2A5DD0",
-		"#B45309",
-		"#DC2626",
-		"#0284C7",
-		"#7C3AED",
-		"#DB2777",
-		"#0F766E",
-	],
-	dark: [
-		"#A3FF12",
-		"#4A80F0",
-		"#F59E0B",
-		"#FF7B7B",
-		"#38BDF8",
-		"#A78BFA",
-		"#F472B6",
-		"#2DD4BF",
-	],
-};
+const fallbackCategoryColors = reportCategoryPalette;
 
 function stableCategoryIndex(categoryName: string, paletteLength: number) {
 	const normalized = categoryName.trim().toLowerCase() || "other";
@@ -361,7 +341,7 @@ export default function ReportsScreen() {
 				savings: "Savings",
 				transactions: "Transactions",
 				thisMonth: "this month",
-								tooltipIncome: "Income",
+				tooltipIncome: "Income",
 				tooltipExpense: "Expense",
 				breakdownTitle: "Expense Breakdown",
 				breakdownSub: "By category",
@@ -412,7 +392,7 @@ export default function ReportsScreen() {
 				savings: "Tabungan",
 				transactions: "Transaksi",
 				thisMonth: "bulan ini",
-								tooltipIncome: "Pemasukan",
+				tooltipIncome: "Pemasukan",
 				tooltipExpense: "Pengeluaran",
 				breakdownTitle: "Breakdown Pengeluaran",
 				breakdownSub: "Per kategori",
@@ -445,131 +425,236 @@ export default function ReportsScreen() {
 
 	const monthName = (month: number) =>
 		(language === "en"
-			? ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
-			: ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"])[month - 1];
+			? [
+					"Jan",
+					"Feb",
+					"Mar",
+					"Apr",
+					"May",
+					"Jun",
+					"Jul",
+					"Aug",
+					"Sep",
+					"Oct",
+					"Nov",
+					"Dec",
+				]
+			: [
+					"Jan",
+					"Feb",
+					"Mar",
+					"Apr",
+					"Mei",
+					"Jun",
+					"Jul",
+					"Agu",
+					"Sep",
+					"Okt",
+					"Nov",
+					"Des",
+				])[month - 1];
 
-		const pad2 = (value: number) => String(value).padStart(2, "0");
-		const dateKey = (year: number, month: number, day: number) =>
-			`${year}-${pad2(month)}-${pad2(day)}`;
-		const daysInMonth = (year: number, month: number) =>
-			new Date(year, month, 0).getDate();
-		const dayNumbers = (year: number, month: number) =>
-			Array.from({ length: daysInMonth(year, month) }, (_, index) => index + 1);
-		const customRangeLabel = `${customStartDay} ${monthName(customStartMonth)} ${customStartYear} - ${customEndDay} ${monthName(customEndMonth)} ${customEndYear}`;
-		const periodDisplayLabel =
-			periodFilter === "custom"
-				? customRangeLabel
-				: periodFilter === "month"
-					? `${monthName(new Date().getMonth() + 1)} ${new Date().getFullYear()}`
-					: periodLabels[periodFilter];
-		const formatRupiah = (valueInJuta: number) =>
-			`Rp ${(valueInJuta * 1_000_000).toLocaleString("id-ID")}`;
-		const formatCompactRupiah = (value: number) => {
-			if (value >= 1_000_000) {
-				return `Rp ${(value / 1_000_000).toLocaleString("id-ID", { maximumFractionDigits: 1 })} jt`;
-			}
-			if (value >= 1_000) {
-				return `Rp ${(value / 1_000).toLocaleString("id-ID", { maximumFractionDigits: 0 })} rb`;
-			}
-			return `Rp ${value.toLocaleString("id-ID")}`;
+	const pad2 = (value: number) => String(value).padStart(2, "0");
+	const dateKey = (year: number, month: number, day: number) =>
+		`${year}-${pad2(month)}-${pad2(day)}`;
+	const daysInMonth = (year: number, month: number) =>
+		new Date(year, month, 0).getDate();
+	const dayNumbers = (year: number, month: number) =>
+		Array.from({ length: daysInMonth(year, month) }, (_, index) => index + 1);
+	const customRangeLabel = `${customStartDay} ${monthName(customStartMonth)} ${customStartYear} - ${customEndDay} ${monthName(customEndMonth)} ${customEndYear}`;
+	const periodDisplayLabel =
+		periodFilter === "custom"
+			? customRangeLabel
+			: periodFilter === "month"
+				? `${monthName(new Date().getMonth() + 1)} ${new Date().getFullYear()}`
+				: periodLabels[periodFilter];
+	const formatRupiah = (valueInJuta: number) =>
+		`Rp ${(valueInJuta * 1_000_000).toLocaleString("id-ID")}`;
+	const formatCompactRupiah = (value: number) => {
+		if (value >= 1_000_000) {
+			return `Rp ${(value / 1_000_000).toLocaleString("id-ID", { maximumFractionDigits: 1 })} jt`;
+		}
+		if (value >= 1_000) {
+			return `Rp ${(value / 1_000).toLocaleString("id-ID", { maximumFractionDigits: 0 })} rb`;
+		}
+		return `Rp ${value.toLocaleString("id-ID")}`;
+	};
+	const summaryIncome = useMemo(
+		() =>
+			reportTransactions
+				.filter((transaction) => transaction.transaction_type === "income")
+				.reduce((sum, transaction) => sum + (transaction.amount || 0), 0),
+		[reportTransactions],
+	);
+	const summaryExpense = useMemo(
+		() =>
+			reportTransactions
+				.filter((transaction) => transaction.transaction_type === "expense")
+				.reduce((sum, transaction) => sum + (transaction.amount || 0), 0),
+		[reportTransactions],
+	);
+	const summaryNet = summaryIncome - summaryExpense;
+	const savingRate =
+		summaryIncome > 0
+			? `${((summaryNet / summaryIncome) * 100).toLocaleString(isEn ? "en-US" : "id-ID", { maximumFractionDigits: 1 })}% ${isEn ? "saving rate" : "rasio tabungan"}`
+			: `0% ${isEn ? "saving rate" : "rasio tabungan"}`;
+	const chartData = useMemo(() => {
+		const monthLabels = isEn
+			? [
+					"Jan",
+					"Feb",
+					"Mar",
+					"Apr",
+					"May",
+					"Jun",
+					"Jul",
+					"Aug",
+					"Sep",
+					"Oct",
+					"Nov",
+					"Dec",
+				]
+			: [
+					"Jan",
+					"Feb",
+					"Mar",
+					"Apr",
+					"Mei",
+					"Jun",
+					"Jul",
+					"Agu",
+					"Sep",
+					"Okt",
+					"Nov",
+					"Des",
+				];
+		const grouped = new Map<
+			string,
+			{ income: number; expense: number; year: number; month: number }
+		>();
+		for (const transaction of reportTransactions) {
+			if (!transaction.date) continue;
+			const txDate = new Date(transaction.date);
+			if (Number.isNaN(txDate.getTime())) continue;
+			const year = txDate.getFullYear();
+			const month = txDate.getMonth() + 1;
+			const key = `${year}-${pad2(month)}`;
+			const bucket = grouped.get(key) ?? { income: 0, expense: 0, year, month };
+			if (transaction.transaction_type === "income")
+				bucket.income += transaction.amount || 0;
+			else bucket.expense += transaction.amount || 0;
+			grouped.set(key, bucket);
+		}
+		if (grouped.size === 0) {
+			const now = new Date();
+			return Array.from(
+				{ length: 6 },
+				(_, index) =>
+					new Date(now.getFullYear(), now.getMonth() - (5 - index), 1),
+			).reduce(
+				(acc, date) => {
+					acc.labels.push(monthLabels[date.getMonth()]);
+					acc.years.push(date.getFullYear());
+					acc.income.push(0);
+					acc.expense.push(0);
+					return acc;
+				},
+				{
+					labels: [] as string[],
+					years: [] as number[],
+					income: [] as number[],
+					expense: [] as number[],
+				},
+			);
+		}
+		const sorted = Array.from(grouped.values()).sort(
+			(a, b) => a.year - b.year || a.month - b.month,
+		);
+		return {
+			labels: sorted.map((bucket) => monthLabels[bucket.month - 1]),
+			years: sorted.map((bucket) => bucket.year),
+			income: sorted.map((bucket) => bucket.income / 1_000_000),
+			expense: sorted.map((bucket) => bucket.expense / 1_000_000),
 		};
-		const summaryIncome = useMemo(
-			() => reportTransactions.filter((transaction) => transaction.transaction_type === "income").reduce((sum, transaction) => sum + (transaction.amount || 0), 0),
-			[reportTransactions],
-		);
-		const summaryExpense = useMemo(
-			() => reportTransactions.filter((transaction) => transaction.transaction_type === "expense").reduce((sum, transaction) => sum + (transaction.amount || 0), 0),
-			[reportTransactions],
-		);
-		const summaryNet = summaryIncome - summaryExpense;
-		const savingRate = summaryIncome > 0 ? `${((summaryNet / summaryIncome) * 100).toLocaleString(isEn ? "en-US" : "id-ID", { maximumFractionDigits: 1 })}% ${isEn ? "saving rate" : "rasio tabungan"}` : `0% ${isEn ? "saving rate" : "rasio tabungan"}`;
-		const chartData = useMemo(() => {
-			const monthLabels = isEn ? ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"] : ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"];
-			const grouped = new Map<string, { income: number; expense: number; year: number; month: number }>();
-			for (const transaction of reportTransactions) {
-				if (!transaction.date) continue;
-				const txDate = new Date(transaction.date);
-				if (Number.isNaN(txDate.getTime())) continue;
-				const year = txDate.getFullYear();
-				const month = txDate.getMonth() + 1;
-				const key = `${year}-${pad2(month)}`;
-				const bucket = grouped.get(key) ?? { income: 0, expense: 0, year, month };
-				if (transaction.transaction_type === "income") bucket.income += transaction.amount || 0;
-				else bucket.expense += transaction.amount || 0;
-				grouped.set(key, bucket);
-			}
-			if (grouped.size === 0) {
-				const now = new Date();
-				return Array.from({ length: 6 }, (_, index) => new Date(now.getFullYear(), now.getMonth() - (5 - index), 1)).reduce(
-					(acc, date) => {
-						acc.labels.push(monthLabels[date.getMonth()]);
-						acc.years.push(date.getFullYear());
-						acc.income.push(0);
-						acc.expense.push(0);
-						return acc;
-					},
-					{ labels: [] as string[], years: [] as number[], income: [] as number[], expense: [] as number[] },
-				);
-			}
-			const sorted = Array.from(grouped.values()).sort((a, b) => a.year - b.year || a.month - b.month);
+	}, [isEn, reportTransactions]);
+	const top5Expenses = useMemo(() => {
+		const grouped = new Map<string, number>();
+		for (const transaction of reportTransactions) {
+			if (transaction.transaction_type !== "expense") continue;
+			const category =
+				(transaction.category || "").toString().trim() ||
+				(isEn ? "Other" : "Lainnya");
+			grouped.set(
+				category,
+				(grouped.get(category) || 0) + (transaction.amount || 0),
+			);
+		}
+		return Array.from(grouped.entries())
+			.map(([category, amount]) => ({ category, amount }))
+			.sort((a, b) => b.amount - a.amount)
+			.slice(0, 5);
+	}, [isEn, reportTransactions]);
+	const maxVal = Math.max(1, ...chartData.income, ...chartData.expense);
+	const lineChartWidth = 340;
+	const lineChartHeight = 168;
+	const lineChartPaddingX = 18;
+	const lineChartPlotTop = 28;
+	const lineChartPlotHeight = 126;
+	const linePointFor = (value: number, idx: number) => {
+		const usableWidth = lineChartWidth - lineChartPaddingX * 2;
+		const x =
+			lineChartPaddingX +
+			(idx / Math.max(1, chartData.labels.length - 1)) * usableWidth;
+		const y = lineChartPlotTop + (1 - value / maxVal) * lineChartPlotHeight;
+		return `${Math.round(x)},${Math.round(y)}`;
+	};
+	const incomeLinePoints = chartData.income.map(linePointFor).join(" ");
+	const expenseLinePoints = chartData.expense.map(linePointFor).join(" ");
+	const donutSize = 180;
+	const donutCenter = donutSize / 2;
+	const donutRadius = 64;
+	const donutStrokeWidth = 18;
+	const donutGlowStrokeWidth = 21;
+	const donutCircumference = 2 * Math.PI * donutRadius;
+	const donutSegmentGap = 6;
+	const incomeAccent = theme.mode === "light" ? "#65A30D" : "#A3FF12";
+	const expenseAccent =
+		theme.mode === "light" ? theme.colors.textPrimary : "#FF7B7B";
+	const totalIncomeJuta = summaryIncome / 1_000_000;
+	const totalExpenseJuta = summaryExpense / 1_000_000;
+	const netJuta = summaryNet / 1_000_000;
+	const donutTotalLabel = formatCompactRupiah(summaryExpense);
+	const categoryValueTotal = dynamicCategories.reduce(
+		(sum, cat) => sum + Math.max(0, cat.value ?? 0),
+		0,
+	);
+	const categoryPercentTotal =
+		dynamicCategories.reduce((sum, cat) => sum + Math.max(0, cat.percent), 0) ||
+		100;
+	const donutSegments = dynamicCategories
+		.map((cat) => {
+			const normalizedRatio =
+				categoryValueTotal > 0
+					? Math.max(0, cat.value ?? 0) / categoryValueTotal
+					: Math.max(0, cat.percent) / categoryPercentTotal;
+			const rawDashLength = normalizedRatio * donutCircumference;
+			const segmentGap = Math.min(donutSegmentGap, rawDashLength * 0.32);
 			return {
-				labels: sorted.map((bucket) => monthLabels[bucket.month - 1]),
-				years: sorted.map((bucket) => bucket.year),
-				income: sorted.map((bucket) => bucket.income / 1_000_000),
-				expense: sorted.map((bucket) => bucket.expense / 1_000_000),
+				...cat,
+				dashLength: Math.max(0, rawDashLength - segmentGap),
+				gapLength: donutCircumference - Math.max(0, rawDashLength - segmentGap),
+				sweepLength: rawDashLength,
+				offsetLength: 0,
 			};
-		}, [isEn, reportTransactions]);
-		const top5Expenses = useMemo(() => {
-			const grouped = new Map<string, number>();
-			for (const transaction of reportTransactions) {
-				if (transaction.transaction_type !== "expense") continue;
-				const category = (transaction.category || "").toString().trim() || (isEn ? "Other" : "Lainnya");
-				grouped.set(category, (grouped.get(category) || 0) + (transaction.amount || 0));
-			}
-			return Array.from(grouped.entries()).map(([category, amount]) => ({ category, amount })).sort((a, b) => b.amount - a.amount).slice(0, 5);
-		}, [isEn, reportTransactions]);
-		const maxVal = Math.max(1, ...chartData.income, ...chartData.expense);
-		const lineChartWidth = 340;
-		const lineChartHeight = 168;
-		const lineChartPaddingX = 18;
-		const lineChartPlotTop = 28;
-		const lineChartPlotHeight = 126;
-		const linePointFor = (value: number, idx: number) => {
-			const usableWidth = lineChartWidth - lineChartPaddingX * 2;
-			const x = lineChartPaddingX + (idx / Math.max(1, chartData.labels.length - 1)) * usableWidth;
-			const y = lineChartPlotTop + (1 - value / maxVal) * lineChartPlotHeight;
-			return `${Math.round(x)},${Math.round(y)}`;
-		};
-		const incomeLinePoints = chartData.income.map(linePointFor).join(" ");
-		const expenseLinePoints = chartData.expense.map(linePointFor).join(" ");
-		const donutSize = 180;
-		const donutCenter = donutSize / 2;
-		const donutRadius = 64;
-		const donutStrokeWidth = 18;
-		const donutGlowStrokeWidth = 21;
-		const donutCircumference = 2 * Math.PI * donutRadius;
-		const donutSegmentGap = 6;
-		const incomeAccent = theme.mode === "light" ? "#65A30D" : "#A3FF12";
-		const expenseAccent = theme.mode === "light" ? theme.colors.textPrimary : "#FF7B7B";
-		const totalIncomeJuta = summaryIncome / 1_000_000;
-		const totalExpenseJuta = summaryExpense / 1_000_000;
-		const netJuta = summaryNet / 1_000_000;
-		const donutTotalLabel = formatCompactRupiah(summaryExpense);
-		const categoryValueTotal = dynamicCategories.reduce((sum, cat) => sum + Math.max(0, cat.value ?? 0), 0);
-		const categoryPercentTotal = dynamicCategories.reduce((sum, cat) => sum + Math.max(0, cat.percent), 0) || 100;
-		const donutSegments = dynamicCategories
-			.map((cat) => {
-				const normalizedRatio = categoryValueTotal > 0 ? Math.max(0, cat.value ?? 0) / categoryValueTotal : Math.max(0, cat.percent) / categoryPercentTotal;
-				const rawDashLength = normalizedRatio * donutCircumference;
-				const segmentGap = Math.min(donutSegmentGap, rawDashLength * 0.32);
-				return { ...cat, dashLength: Math.max(0, rawDashLength - segmentGap), gapLength: donutCircumference - Math.max(0, rawDashLength - segmentGap), sweepLength: rawDashLength, offsetLength: 0 };
-			})
-			.map((cat, index, items) => {
-				const previousLength = items.slice(0, index).reduce((sum, item) => sum + item.sweepLength, 0);
-				return { ...cat, offsetLength: previousLength };
-			});
+		})
+		.map((cat, index, items) => {
+			const previousLength = items
+				.slice(0, index)
+				.reduce((sum, item) => sum + item.sweepLength, 0);
+			return { ...cat, offsetLength: previousLength };
+		});
 
-		const selectedCategory =
+	const selectedCategory =
 		dynamicCategories.find((cat) => cat.id === selectedCategoryId) ?? null;
 	const selectedCategoryTransactions = selectedCategoryId
 		? reportTransactions
@@ -885,6 +970,8 @@ export default function ReportsScreen() {
 							<Text style={styles.monthBadgeText}>{tx.monthBadge}</Text>
 						</View>
 						<Pressable
+							accessibilityRole="button"
+							accessibilityLabel="Bagikan laporan"
 							style={({ pressed }) => [
 								styles.shareButton,
 								pressed && { opacity: 0.7 },
@@ -898,8 +985,6 @@ export default function ReportsScreen() {
 
 				{/* Summary Row — shown before controls */}
 				<View testID="reports-summary-card" style={styles.summaryCard}>
-					<View style={styles.heroBloomOne} />
-					<View style={styles.heroBloomTwo} />
 					<View style={styles.summaryTopRow}>
 						<View style={styles.summaryHalf}>
 							<Text style={styles.summaryLabel}>{tx.income}</Text>
@@ -955,6 +1040,8 @@ export default function ReportsScreen() {
 						</View>
 						<Pressable
 							testID="reports-envelope-manage"
+							accessibilityRole="button"
+							accessibilityLabel="Kelola dompet budget"
 							style={styles.envelopeManageButton}
 							onPress={() => router.push("/(tabs)/budgets" as never)}
 						>
@@ -973,6 +1060,9 @@ export default function ReportsScreen() {
 					contentContainerStyle={styles.tabRow}
 				>
 					<Pressable
+						accessibilityRole="button"
+						accessibilityLabel="Tampilkan ringkasan laporan"
+						accessibilityState={{ selected: activeTab === "overview" }}
 						style={[
 							styles.tabChip,
 							activeTab === "overview" && styles.tabChipActive,
@@ -989,6 +1079,9 @@ export default function ReportsScreen() {
 						</Text>
 					</Pressable>
 					<Pressable
+						accessibilityRole="button"
+						accessibilityLabel="Tampilkan kategori laporan"
+						accessibilityState={{ selected: activeTab === "category" }}
 						style={[
 							styles.tabChip,
 							activeTab === "category" && styles.tabChipActive,
@@ -1005,6 +1098,9 @@ export default function ReportsScreen() {
 						</Text>
 					</Pressable>
 					<Pressable
+						accessibilityRole="button"
+						accessibilityLabel="Tampilkan perbandingan laporan"
+						accessibilityState={{ selected: activeTab === "compare" }}
 						style={[
 							styles.tabChip,
 							activeTab === "compare" && styles.tabChipActive,
@@ -1032,6 +1128,9 @@ export default function ReportsScreen() {
 					{(Object.keys(periodLabels) as PeriodFilter[]).map((key) => (
 						<Pressable
 							key={key}
+							accessibilityRole="button"
+							accessibilityLabel={`Pilih periode ${periodLabels[key]}`}
+							accessibilityState={{ selected: periodFilter === key }}
 							style={[
 								styles.periodChip,
 								periodFilter === key && styles.periodChipActive,
@@ -1056,6 +1155,8 @@ export default function ReportsScreen() {
 				</ScrollView>
 				{periodFilter === "custom" && (
 					<Pressable
+						accessibilityRole="button"
+						accessibilityLabel="Ubah rentang tanggal kustom"
 						style={styles.customRangeBadge}
 						onPress={openCustomDateModal}
 					>
@@ -1101,12 +1202,12 @@ export default function ReportsScreen() {
 										width="100%"
 										height={lineChartHeight}
 										viewBox={`0 0 ${lineChartWidth} ${lineChartHeight}`}
-										accessibilityLabel={`0 0 ${lineChartWidth} ${lineChartHeight}`}
+										accessibilityRole="image"
+										accessibilityLabel="Tren pemasukan dan pengeluaran 6 bulan terakhir"
 										style={styles.lineSvgLayer}
 									>
 										<Polyline
 											testID="reports-line-path-income"
-											accessibilityLabel={incomeLinePoints}
 											points={incomeLinePoints}
 											fill="none"
 											stroke={theme.colors.success}
@@ -1116,7 +1217,6 @@ export default function ReportsScreen() {
 										/>
 										<Polyline
 											testID="reports-line-path-expense"
-											accessibilityLabel={expenseLinePoints}
 											points={expenseLinePoints}
 											fill="none"
 											stroke={theme.colors.danger}
@@ -1128,13 +1228,18 @@ export default function ReportsScreen() {
 									{chartData.labels.map((label, idx) => {
 										const incomeTop =
 											lineChartPlotTop +
-											(1 - (chartData.income[idx] ?? 0) / maxVal) * lineChartPlotHeight;
+											(1 - (chartData.income[idx] ?? 0) / maxVal) *
+												lineChartPlotHeight;
 										const expenseTop =
 											lineChartPlotTop +
-											(1 - (chartData.expense[idx] ?? 0) / maxVal) * lineChartPlotHeight;
+											(1 - (chartData.expense[idx] ?? 0) / maxVal) *
+												lineChartPlotHeight;
 										return (
 											<Pressable
 												key={`${label}-${chartData.years[idx]}`}
+												accessibilityRole="button"
+												accessibilityLabel={`Lihat tren ${label} ${chartData.years[idx]}`}
+												accessibilityState={{ selected: selectedBar === idx }}
 												style={styles.lineColumn}
 												onPress={() =>
 													setSelectedBar(selectedBar === idx ? null : idx)
@@ -1169,7 +1274,10 @@ export default function ReportsScreen() {
 																{ color: theme.colors.success },
 															]}
 														>
-															{tx.tooltipIncome}: {formatCompactRupiah((chartData.income[idx] ?? 0) * 1_000_000)}
+															{tx.tooltipIncome}:{" "}
+															{formatCompactRupiah(
+																(chartData.income[idx] ?? 0) * 1_000_000,
+															)}
 														</Text>
 														<Text
 															style={[
@@ -1177,7 +1285,10 @@ export default function ReportsScreen() {
 																{ color: theme.colors.danger },
 															]}
 														>
-															{tx.tooltipExpense}: {formatCompactRupiah((chartData.expense[idx] ?? 0) * 1_000_000)}
+															{tx.tooltipExpense}:{" "}
+															{formatCompactRupiah(
+																(chartData.expense[idx] ?? 0) * 1_000_000,
+															)}
 														</Text>
 													</View>
 												)}
@@ -1208,25 +1319,30 @@ export default function ReportsScreen() {
 								</View>
 							</View>
 						</View>
-					<View style={styles.top5Card}>
-						<Text style={styles.top5Title}>5 Pengeluaran Terbanyak</Text>
-						<Text style={styles.top5Sub}>{periodDisplayLabel}</Text>
-						{top5Expenses.length === 0 ? (
-							<Text style={styles.infoText}>{tx.noCategoryTransactions}</Text>
-						) : (
-							top5Expenses.map((item, index) => (
-								<View key={`${item.category}-${index}`} style={styles.top5Row}>
-									<View style={styles.top5Left}>
-										<View style={styles.top5Rank}>
-											<Text style={styles.top5RankText}>{index + 1}</Text>
+						<View style={styles.top5Card}>
+							<Text style={styles.top5Title}>5 Pengeluaran Terbanyak</Text>
+							<Text style={styles.top5Sub}>{periodDisplayLabel}</Text>
+							{top5Expenses.length === 0 ? (
+								<Text style={styles.infoText}>{tx.noCategoryTransactions}</Text>
+							) : (
+								top5Expenses.map((item, index) => (
+									<View
+										key={`${item.category}-${index}`}
+										style={styles.top5Row}
+									>
+										<View style={styles.top5Left}>
+											<View style={styles.top5Rank}>
+												<Text style={styles.top5RankText}>{index + 1}</Text>
+											</View>
+											<Text style={styles.top5Label}>{item.category}</Text>
 										</View>
-										<Text style={styles.top5Label}>{item.category}</Text>
+										<Text style={styles.top5Amount}>
+											{formatCompactRupiah(item.amount)}
+										</Text>
 									</View>
-									<Text style={styles.top5Amount}>{formatCompactRupiah(item.amount)}</Text>
-								</View>
-							))
-						)}
-					</View>
+								))
+							)}
+						</View>
 					</>
 				)}
 				{activeTab === "category" && (
@@ -1234,7 +1350,9 @@ export default function ReportsScreen() {
 						{/* Category Breakdown */}
 						<View style={styles.categoryCard}>
 							<Text style={styles.categoryCardTitle}>{tx.breakdownTitle}</Text>
-							<Text style={styles.categoryCardSub}>{`${tx.breakdownSub} ${periodDisplayLabel}`}</Text>
+							<Text
+								style={styles.categoryCardSub}
+							>{`${tx.breakdownSub} ${periodDisplayLabel}`}</Text>
 
 							<View style={styles.ringArea}>
 								<View style={styles.donutChart}>
@@ -1243,7 +1361,8 @@ export default function ReportsScreen() {
 										width={donutSize}
 										height={donutSize}
 										viewBox={`0 0 ${donutSize} ${donutSize}`}
-										accessibilityLabel={`0 0 ${donutSize} ${donutSize}`}
+										accessibilityRole="image"
+										accessibilityLabel="Komposisi pengeluaran berdasarkan kategori"
 										style={styles.donutSvg}
 									>
 										<Circle
@@ -1283,7 +1402,6 @@ export default function ReportsScreen() {
 												cx={donutCenter}
 												cy={donutCenter}
 												r={donutRadius}
-												accessibilityLabel={cat.color}
 												fill="none"
 												stroke={cat.color}
 												strokeWidth={donutGlowStrokeWidth}
@@ -1301,7 +1419,6 @@ export default function ReportsScreen() {
 												cx={donutCenter}
 												cy={donutCenter}
 												r={donutRadius}
-												accessibilityLabel={cat.color}
 												fill="none"
 												stroke={cat.color}
 												strokeWidth={donutStrokeWidth}
@@ -1324,6 +1441,8 @@ export default function ReportsScreen() {
 								<Pressable
 									key={cat.label}
 									testID={`reports-category-row-${cat.id}`}
+									accessibilityRole="button"
+									accessibilityLabel={`Buka detail kategori ${cat.label}`}
 									style={({ pressed }) => [
 										styles.catRow,
 										idx === 0 && { borderTopWidth: 0 },
@@ -1512,6 +1631,8 @@ export default function ReportsScreen() {
 							<Text style={styles.modalSectionTitle}>{tx.modalStart}</Text>
 							<View style={styles.modalRow}>
 								<Pressable
+									accessibilityRole="button"
+									accessibilityLabel="Kurangi tahun mulai"
 									style={styles.modalButton}
 									onPress={() => setTempStartYear(tempStartYear - 1)}
 								>
@@ -1519,6 +1640,8 @@ export default function ReportsScreen() {
 								</Pressable>
 								<Text style={styles.modalValue}>{tempStartYear}</Text>
 								<Pressable
+									accessibilityRole="button"
+									accessibilityLabel="Tambah tahun mulai"
 									style={styles.modalButton}
 									onPress={() => setTempStartYear(tempStartYear + 1)}
 								>
@@ -1533,6 +1656,9 @@ export default function ReportsScreen() {
 								{[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((m) => (
 									<Pressable
 										key={m}
+										accessibilityRole="button"
+										accessibilityLabel={`Pilih bulan mulai ${monthName(m)}`}
+										accessibilityState={{ selected: tempStartMonth === m }}
 										style={[
 											styles.monthChip,
 											tempStartMonth === m && styles.monthChipActive,
@@ -1565,6 +1691,9 @@ export default function ReportsScreen() {
 									<Pressable
 										key={day}
 										testID={`reports-start-day-${day}`}
+										accessibilityRole="button"
+										accessibilityLabel={`Pilih tanggal mulai ${day}`}
+										accessibilityState={{ selected: tempStartDay === day }}
 										style={[
 											styles.dayChip,
 											tempStartDay === day && styles.monthChipActive,
@@ -1588,6 +1717,8 @@ export default function ReportsScreen() {
 							<Text style={styles.modalSectionTitle}>{tx.modalEnd}</Text>
 							<View style={styles.modalRow}>
 								<Pressable
+									accessibilityRole="button"
+									accessibilityLabel="Kurangi tahun selesai"
 									style={styles.modalButton}
 									onPress={() => setTempEndYear(tempEndYear - 1)}
 								>
@@ -1595,6 +1726,8 @@ export default function ReportsScreen() {
 								</Pressable>
 								<Text style={styles.modalValue}>{tempEndYear}</Text>
 								<Pressable
+									accessibilityRole="button"
+									accessibilityLabel="Tambah tahun selesai"
 									style={styles.modalButton}
 									onPress={() => setTempEndYear(tempEndYear + 1)}
 								>
@@ -1609,6 +1742,9 @@ export default function ReportsScreen() {
 								{[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((m) => (
 									<Pressable
 										key={m}
+										accessibilityRole="button"
+										accessibilityLabel={`Pilih bulan selesai ${monthName(m)}`}
+										accessibilityState={{ selected: tempEndMonth === m }}
 										style={[
 											styles.monthChip,
 											tempEndMonth === m && styles.monthChipActive,
@@ -1641,6 +1777,9 @@ export default function ReportsScreen() {
 									<Pressable
 										key={day}
 										testID={`reports-end-day-${day}`}
+										accessibilityRole="button"
+										accessibilityLabel={`Pilih tanggal selesai ${day}`}
+										accessibilityState={{ selected: tempEndDay === day }}
 										style={[
 											styles.dayChip,
 											tempEndDay === day && styles.monthChipActive,
@@ -1662,6 +1801,8 @@ export default function ReportsScreen() {
 
 						<View style={styles.modalActions}>
 							<Pressable
+								accessibilityRole="button"
+								accessibilityLabel="Batalkan rentang tanggal"
 								style={[styles.modalActionButton, styles.modalActionCancel]}
 								onPress={() => setShowDateModal(false)}
 							>
@@ -1670,6 +1811,8 @@ export default function ReportsScreen() {
 								</Text>
 							</Pressable>
 							<Pressable
+								accessibilityRole="button"
+								accessibilityLabel="Terapkan rentang tanggal"
 								style={[styles.modalActionButton, styles.modalActionConfirm]}
 								onPress={confirmCustomDateRange}
 							>
@@ -1696,6 +1839,8 @@ export default function ReportsScreen() {
 						<View style={styles.detailHeaderRow}>
 							<Pressable
 								testID="reports-category-detail-back"
+								accessibilityRole="button"
+								accessibilityLabel="Tutup detail kategori"
 								style={({ pressed }) => [
 									styles.detailBackButton,
 									pressed && { opacity: 0.72 },
@@ -1945,7 +2090,7 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			paddingHorizontal: 12,
 			paddingVertical: 7,
 			flexShrink: 0,
-			minHeight: 34,
+			minHeight: 44,
 			justifyContent: "center",
 		},
 		envelopeManageText: {
@@ -2031,7 +2176,7 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			fontWeight: "600",
 		},
 		summaryValue: { fontSize: 18, fontWeight: "800", marginTop: 2 },
-				summarySavingRate: {
+		summarySavingRate: {
 			color: theme.colors.textMuted,
 			fontSize: 11,
 			marginTop: 2,
@@ -2368,9 +2513,9 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			marginBottom: 12,
 		},
 		modalButton: {
-			width: 40,
-			height: 40,
-			borderRadius: 20,
+			width: 44,
+			height: 44,
+			borderRadius: 22,
 			backgroundColor: theme.colors.mutedSurface,
 			alignItems: "center",
 			justifyContent: "center",
@@ -2431,6 +2576,7 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 		modalActionButton: {
 			flex: 1,
 			paddingVertical: 14,
+			minHeight: 44,
 			borderRadius: 12,
 			alignItems: "center",
 		},
@@ -2491,7 +2637,7 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			marginBottom: 8,
 		},
 		detailBackButton: {
-			minHeight: 40,
+			minHeight: 44,
 			flexDirection: "row",
 			alignItems: "center",
 			gap: 4,

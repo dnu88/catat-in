@@ -34,6 +34,7 @@ import {
 import { useI18n } from "../../src/i18n/i18n-context";
 import { useFinanceContext } from "../../src/state/finance-context";
 import { useTheme } from "../../src/theme/theme-context";
+import { budgetEnvelopePalette } from "../../src/theme/report-palettes";
 
 type EnvelopeSummary = {
 	envelope: BudgetEnvelope;
@@ -69,28 +70,8 @@ const iconOptions: {
 	},
 ];
 
-const lightColorOptions = [
-	"#65A30D",
-	"#4A80F0",
-	"#854D0E",
-	"#DC2626",
-	"#7C3AED",
-	"#0F766E",
-	"#DB2777",
-	"#EA580C",
-	"#475569",
-];
-const darkColorOptions = [
-	"#A3FF12",
-	"#4A80F0",
-	"#F59E0B",
-	"#FF7B7B",
-	"#A78BFA",
-	"#2DD4BF",
-	"#F472B6",
-	"#FDBA74",
-	"#94A3B8",
-];
+const lightColorOptions = budgetEnvelopePalette.light;
+const darkColorOptions = budgetEnvelopePalette.dark;
 
 function formatRupiah(value: number) {
 	return `Rp ${Math.abs(value).toLocaleString("id-ID", { maximumFractionDigits: 0 })}`;
