@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
 	ActivityIndicator,
 	Alert,
@@ -16,6 +16,7 @@ import type { KaswiseIconName } from "../../src/components/icons/kaswise-icons";
 import { IconBubble } from "../../src/components/ui";
 import { LoadingState } from "../../src/components/ui/LoadingState";
 import { useTheme } from "../../src/theme/theme-context";
+import { useFinanceContext } from "../../src/state/finance-context";
 import {
 	createTransaction,
 	getTransaction,
@@ -68,6 +69,7 @@ function formatAmount(value: number): string {
 
 export default function TransactionNewScreen() {
 	const { theme } = useTheme();
+	const { activeContext, canCreate } = useFinanceContext();
 	const router = ExpoRouter.useRouter();
 	const rawParams = (ExpoRouter as any).useLocalSearchParams?.() ?? {};
 	const transactionId = Array.isArray(rawParams.transactionId)
@@ -76,6 +78,10 @@ export default function TransactionNewScreen() {
 	const isEditMode =
 		typeof transactionId === "string" && transactionId.length > 0;
 	const styles = useMemo(() => createStyles(theme), [theme]);
+	const activeContextKey =
+		activeContext.type === "household"
+			? `household:${activeContext.householdId}:${activeContext.role}`
+			: "personal";
 
 	const [wallets, setWallets] = useState<Wallet[]>([]);
 	const [categories, setCategories] =
@@ -94,20 +100,22 @@ export default function TransactionNewScreen() {
 	const [merchant, setMerchant] = useState("");
 	const [note, setNote] = useState("");
 
-	useEffect(() => {
-		loadInitialData();
-	}, [transactionId]);
+	const loadRequestRef = useRef(0);
 
-	const loadInitialData = async () => {
+	const loadInitialData = useCallback(async () => {
+		const requestId = ++loadRequestRef.current;
+		const isCurrentRequest = () => loadRequestRef.current === requestId;
+
+		setLoading(true);
+		setError(null);
 		try {
 			const [walletData, categoryData] = await Promise.all([
-				listWallets(),
+				listWallets(activeContext),
 				listCategories().catch(() => [] as Category[]),
 			]);
-			const activeWallets = walletData.filter((w) => w.is_active !== false);
-			setWallets(activeWallets);
-			if (activeWallets[0]) setWalletId(activeWallets[0].id);
+			if (!isCurrentRequest()) return;
 
+			const activeWallets = walletData.filter((w) => w.is_active !== false);
 			let categoryOptions = fallbackCategories;
 			if (categoryData.length > 0) {
 				const merged = categoryData.map((c) => ({
@@ -123,16 +131,26 @@ export default function TransactionNewScreen() {
 					}
 				}
 				categoryOptions = merger;
-				setCategories(merger);
 			}
 
+			let transaction: Awaited<ReturnType<typeof getTransaction>> = null;
 			if (isEditMode) {
-				const transaction = await getTransaction(transactionId);
+				transaction = await getTransaction(transactionId);
+				if (!isCurrentRequest()) return;
 				if (!transaction) {
+					setWallets(activeWallets);
+					setWalletId(activeWallets[0]?.id ?? null);
+					setCategories(categoryOptions);
 					setError("Transaksi tidak ditemukan");
 					return;
 				}
+			}
 
+			if (!isCurrentRequest()) return;
+			setWallets(activeWallets);
+			setCategories(categoryOptions);
+
+			if (transaction) {
 				const nextCategory = transaction.category || transaction.kategori || "";
 				setTxType(
 					transaction.transaction_type || transaction.type || "expense",
@@ -143,6 +161,7 @@ export default function TransactionNewScreen() {
 				setWalletId(transaction.wallet_id ?? null);
 				if (categoryOptions.some((option) => option.name === nextCategory)) {
 					setCategory(nextCategory);
+					setCustomCategory("");
 				} else if (nextCategory) {
 					setCategory("__custom__");
 					setCustomCategory(nextCategory);
@@ -151,32 +170,58 @@ export default function TransactionNewScreen() {
 				setDate(transaction.date || transaction.tanggal || todayIso());
 				setMerchant(transaction.merchant || "");
 				setNote(transaction.note || "");
+			} else {
+				setWalletId((currentWalletId) =>
+					activeWallets.some((wallet) => wallet.id === currentWalletId)
+						? currentWalletId
+						: (activeWallets[0]?.id ?? null),
+				);
 			}
 		} catch (e) {
+			if (!isCurrentRequest()) return;
 			console.error("Failed to load form data:", e);
+			setError("Gagal memuat form transaksi");
 		} finally {
-			setLoading(false);
+			if (isCurrentRequest()) setLoading(false);
 		}
-	};
+	}, [activeContext, activeContextKey, isEditMode, transactionId]);
+
+	useEffect(() => {
+		void loadInitialData();
+		return () => {
+			loadRequestRef.current += 1;
+		};
+	}, [loadInitialData]);
 
 	const amountValue = parseAmount(amountInput);
 	const resolvedCategory = (
 		category === "__custom__" ? customCategory : category
 	).trim();
 	const resolvedDescription = description.trim();
+	const selectedWalletIsValid =
+		walletId == null || wallets.some((wallet) => wallet.id === walletId);
 	const canSubmit =
+		canCreate &&
 		amountValue > 0 &&
 		resolvedCategory.length > 0 &&
 		resolvedDescription.length > 0 &&
 		!submitting;
 
 	const onSubmit = async () => {
+		if (!canCreate) {
+			setError("Akses lihat saja. Kamu tidak bisa mengubah transaksi di konteks ini.");
+			return;
+		}
 		if (!canSubmit) {
 			setError("Lengkapi nominal, kategori, dan deskripsi dulu");
 			return;
 		}
 		if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
 			setError("Format tanggal harus YYYY-MM-DD");
+			return;
+		}
+		if (!selectedWalletIsValid) {
+			setError("Pilih dompet yang valid untuk konteks aktif.");
 			return;
 		}
 
@@ -194,14 +239,14 @@ export default function TransactionNewScreen() {
 		};
 		try {
 			if (isEditMode) {
-				await updateTransaction(transactionId, payload);
+				await updateTransaction(transactionId, payload, activeContext);
 				Alert.alert("Berhasil", "Transaksi diperbarui.", [
 					{ text: "OK", onPress: () => router.replace("/(tabs)/transactions") },
 				]);
 				return;
 			}
 
-			await createTransaction(payload);
+			await createTransaction(payload, activeContext);
 			Alert.alert("Berhasil", "Transaksi tersimpan.", [
 				{ text: "OK", onPress: () => router.replace("/(tabs)/transactions") },
 			]);
@@ -257,6 +302,14 @@ export default function TransactionNewScreen() {
 						/>
 					</Pressable>
 				</View>
+
+				{!canCreate && (
+					<View style={styles.warningCard}>
+						<Text style={styles.warningText}>
+							Mode lihat saja aktif. Transaksi tidak bisa dibuat atau diubah.
+						</Text>
+					</View>
+				)}
 
 				{/* Type Toggle */}
 				<View style={styles.typeRow}>

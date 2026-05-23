@@ -8,6 +8,8 @@ import TransactionNewScreen from "../app/(tabs)/transaction-new";
 import { I18nProvider } from "../src/i18n/i18n-context";
 import { ThemeProvider } from "../src/theme/theme-context";
 
+const mockFinanceContext = { type: "personal" as const };
+
 jest.mock("expo-router", () => ({
 	router: { replace: jest.fn() },
 	useRouter: () => ({ push: jest.fn(), back: jest.fn() }),
@@ -35,6 +37,13 @@ jest.mock("../src/services/wallets", () => ({
 
 jest.mock("../src/services/categories", () => ({
 	listCategories: jest.fn(async () => []),
+}));
+
+jest.mock("../src/state/finance-context", () => ({
+	useFinanceContext: () => ({
+		activeContext: mockFinanceContext,
+		canCreate: true,
+	}),
 }));
 
 describe("light accent regressions", () => {

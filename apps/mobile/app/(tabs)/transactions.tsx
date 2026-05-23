@@ -23,6 +23,7 @@ import {
 import { LoadingState } from "../../src/components/ui/LoadingState";
 import { useTheme } from "../../src/theme/theme-context";
 import { useI18n } from "../../src/i18n/i18n-context";
+import { useFinanceContext } from "../../src/state/finance-context";
 import {
 	deleteTransaction,
 	listTransactions,
@@ -32,9 +33,44 @@ import {
 type Filter = "all" | "income" | "expense";
 type Period = "week" | "month" | "year";
 
-const SWIPE_ACTION_WIDTH = 82;
-const SWIPE_REVEAL_WIDTH = SWIPE_ACTION_WIDTH * 2;
-const SWIPE_TRIGGER_DISTANCE = 58;
+const DATE_ONLY_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/;
+
+export const SWIPE_GESTURE_CONFIG = {
+	actionWidth: 80,
+	maxRevealWidth: 160,
+	activationDistance: 3,
+	verticalIntentRatio: 1.2,
+	openDistance: 10,
+	openVelocity: 0.18,
+	overdragResistance: 0.4,
+} as const;
+
+export const SWIPE_SNAP_SPRING_CONFIG = {
+	damping: 26,
+	stiffness: 250,
+	mass: 0.9,
+	overshootClamping: true,
+	restDisplacementThreshold: 0.5,
+	restSpeedThreshold: 0.5,
+} as const;
+
+const SWIPE_ACTION_WIDTH = SWIPE_GESTURE_CONFIG.actionWidth;
+const SWIPE_REVEAL_WIDTH = SWIPE_GESTURE_CONFIG.maxRevealWidth;
+
+export function getSwipeTranslateX(dx: number): number {
+	if (dx >= 0) return 0;
+
+	const leftDistance = Math.abs(dx);
+	if (leftDistance <= SWIPE_GESTURE_CONFIG.maxRevealWidth) {
+		return -leftDistance;
+	}
+
+	const overdragDistance = leftDistance - SWIPE_GESTURE_CONFIG.maxRevealWidth;
+	return -(
+		SWIPE_GESTURE_CONFIG.maxRevealWidth +
+		overdragDistance * SWIPE_GESTURE_CONFIG.overdragResistance
+	);
+}
 
 function formatCompactRupiah(value: number) {
 	const amount = Math.abs(value);
@@ -45,6 +81,62 @@ function formatCompactRupiah(value: number) {
 		return `Rp ${(amount / 1_000).toLocaleString("id-ID", { maximumFractionDigits: 1 })} rb`;
 	}
 	return `Rp ${amount.toLocaleString("id-ID", { maximumFractionDigits: 0 })}`;
+}
+
+export function getTransactionDateValue(item: Transaction): number | null {
+	const rawDate = item.date || item.tanggal || item.created_at;
+	if (!rawDate) return null;
+
+	const dateText = String(rawDate);
+	const dateOnlyMatch = DATE_ONLY_PATTERN.exec(dateText);
+	if (dateOnlyMatch) {
+		const [, year, month, day] = dateOnlyMatch;
+		const localDateValue = new Date(
+			Number(year),
+			Number(month) - 1,
+			Number(day),
+		).getTime();
+		return Number.isNaN(localDateValue) ? null : localDateValue;
+	}
+
+	const value = new Date(dateText).getTime();
+	return Number.isNaN(value) ? null : value;
+}
+
+function getPeriodBounds(period: Period) {
+	const start = new Date();
+	start.setHours(0, 0, 0, 0);
+
+	if (period === "week") {
+		const dayFromMonday = (start.getDay() + 6) % 7;
+		start.setDate(start.getDate() - dayFromMonday);
+		const end = new Date(start);
+		end.setDate(start.getDate() + 7);
+		return { start: start.getTime(), end: end.getTime() };
+	}
+
+	if (period === "month") {
+		start.setDate(1);
+		const end = new Date(start);
+		end.setMonth(start.getMonth() + 1);
+		return { start: start.getTime(), end: end.getTime() };
+	}
+
+	start.setMonth(0, 1);
+	const end = new Date(start);
+	end.setFullYear(start.getFullYear() + 1);
+	return { start: start.getTime(), end: end.getTime() };
+}
+
+export function filterTransactionsByPeriod(
+	items: Transaction[],
+	period: Period,
+): Transaction[] {
+	const { start, end } = getPeriodBounds(period);
+	return items.filter((item) => {
+		const value = getTransactionDateValue(item);
+		return value !== null && value >= start && value < end;
+	});
 }
 
 type TransactionListItem = {
@@ -88,10 +180,7 @@ function TransactionRow({
 			Animated.spring(translateX, {
 				toValue,
 				useNativeDriver: true,
-				speed: 22,
-				bounciness: 0,
-				restDisplacementThreshold: 0.5,
-				restSpeedThreshold: 0.5,
+				...SWIPE_SNAP_SPRING_CONFIG,
 			}).start(({ finished }) => {
 				if (finished) after?.();
 			});
@@ -102,20 +191,22 @@ function TransactionRow({
 	const panResponder = useMemo(
 		() =>
 			PanResponder.create({
-				onMoveShouldSetPanResponder: (_, gestureState) =>
-					Math.abs(gestureState.dx) > 8 &&
-					Math.abs(gestureState.dx) > Math.abs(gestureState.dy) * 1.15,
-				onPanResponderMove: (_, gestureState) => {
-					const easedDrag =
-						gestureState.dx > 0 ? gestureState.dx * 0.18 : gestureState.dx;
-					translateX.setValue(
-						Math.max(-SWIPE_REVEAL_WIDTH, Math.min(0, easedDrag)),
+				onMoveShouldSetPanResponder: (_, gestureState) => {
+					const horizontalDistance = Math.abs(gestureState.dx);
+					const verticalDistance = Math.abs(gestureState.dy);
+					return (
+						horizontalDistance > SWIPE_GESTURE_CONFIG.activationDistance &&
+						horizontalDistance >
+							verticalDistance * SWIPE_GESTURE_CONFIG.verticalIntentRatio
 					);
+				},
+				onPanResponderMove: (_, gestureState) => {
+					translateX.setValue(getSwipeTranslateX(gestureState.dx));
 				},
 				onPanResponderRelease: (_, gestureState) => {
 					const shouldOpen =
-						gestureState.dx < -SWIPE_TRIGGER_DISTANCE ||
-						gestureState.vx < -0.45;
+						gestureState.dx < -SWIPE_GESTURE_CONFIG.openDistance ||
+						gestureState.vx < -SWIPE_GESTURE_CONFIG.openVelocity;
 					snapTo(shouldOpen ? -SWIPE_REVEAL_WIDTH : 0);
 				},
 				onPanResponderTerminate: () => snapTo(0),
@@ -214,8 +305,13 @@ function TransactionRow({
 export default function TransactionsScreen() {
 	const { theme } = useTheme();
 	const { language } = useI18n();
+	const { activeContext, canCreate } = useFinanceContext();
 	const router = useRouter();
 	const styles = useMemo(() => createStyles(theme), [theme]);
+	const activeContextKey =
+		activeContext.type === "household"
+			? `household:${activeContext.householdId}:${activeContext.role}`
+			: "personal";
 
 	const isEn = language === "en";
 	const [activeFilter, setActiveFilter] = useState<Filter>("all");
@@ -223,17 +319,18 @@ export default function TransactionsScreen() {
 	const [transactions, setTransactions] = useState<Transaction[]>([]);
 	const [loading, setLoading] = useState(true);
 	const [loadError, setLoadError] = useState<string | null>(null);
+	const loadRequestRef = useRef(0);
 
-	useEffect(() => {
-		loadTransactions();
-	}, []);
-
-	const loadTransactions = async () => {
+	const loadTransactions = useCallback(async () => {
+		const requestId = ++loadRequestRef.current;
+		setLoading(true);
 		try {
 			setLoadError(null);
-			const data = await listTransactions();
+			const data = await listTransactions(undefined, activeContext);
+			if (loadRequestRef.current !== requestId) return;
 			setTransactions(data);
 		} catch (error) {
+			if (loadRequestRef.current !== requestId) return;
 			console.error("Error loading transactions:", error);
 			setLoadError(
 				isEn
@@ -241,32 +338,46 @@ export default function TransactionsScreen() {
 					: "Gagal memuat transaksi. Coba lagi sebentar.",
 			);
 		} finally {
-			setLoading(false);
+			if (loadRequestRef.current === requestId) setLoading(false);
 		}
-	};
+	}, [activeContext, activeContextKey, isEn]);
+
+	useEffect(() => {
+		void loadTransactions();
+		return () => {
+			loadRequestRef.current += 1;
+		};
+	}, [loadTransactions]);
+
+	const periodTransactions = useMemo(
+		() => filterTransactionsByPeriod(transactions, activePeriod),
+		[activePeriod, transactions],
+	);
 
 	const list = useMemo(
 		() =>
 			activeFilter === "all"
-				? transactions
-				: transactions.filter((item) => item.transaction_type === activeFilter),
-		[activeFilter, transactions],
+				? periodTransactions
+				: periodTransactions.filter(
+						(item) => item.transaction_type === activeFilter,
+					),
+		[activeFilter, periodTransactions],
 	);
 
 	const totalIncome = useMemo(
 		() =>
-			transactions
+			periodTransactions
 				.filter((t) => t.transaction_type === "income")
 				.reduce((acc, t) => acc + Number(t.amount ?? 0), 0),
-		[transactions],
+		[periodTransactions],
 	);
 
 	const totalExpense = useMemo(
 		() =>
-			transactions
+			periodTransactions
 				.filter((t) => t.transaction_type === "expense")
 				.reduce((acc, t) => acc + Number(t.amount ?? 0), 0),
-		[transactions],
+		[periodTransactions],
 	);
 
 	const handleEditTransaction = (item: Transaction) => {
@@ -293,7 +404,7 @@ export default function TransactionsScreen() {
 					style: "destructive",
 					onPress: async () => {
 						try {
-							await deleteTransaction(item.id);
+							await deleteTransaction(item.id, activeContext);
 							await loadTransactions();
 						} catch (error) {
 							console.error("Error deleting transaction:", error);
@@ -462,8 +573,8 @@ export default function TransactionsScreen() {
 			title={isEn ? "No transactions yet" : "Belum ada transaksi"}
 			description={
 				isEn
-					? "Try changing the filter or add a new transaction from the Capture tab."
-					: "Coba ubah filter atau tambahkan transaksi baru dari tab Capture."
+					? "Try changing the filter or period, or add a new transaction from the Capture tab."
+					: "Coba ubah filter atau periode, atau tambahkan transaksi baru dari tab Capture."
 			}
 		/>
 	);
@@ -491,7 +602,9 @@ export default function TransactionsScreen() {
 				accessibilityLabel={
 					isEn ? "Add manual transaction" : "Tambah transaksi manual"
 				}
-				style={styles.fab}
+				accessibilityState={{ disabled: !canCreate }}
+				disabled={!canCreate}
+				style={[styles.fab, !canCreate && styles.fabDisabled]}
 				onPress={() => router.push("/(tabs)/transaction-new")}
 			>
 				<KaswiseIcon
@@ -638,6 +751,7 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			justifyContent: "center",
 			...theme.shadow.lg,
 		},
+		fabDisabled: { opacity: 0.45 },
 		fabIcon: {
 			color: theme.colors.textInverse,
 			fontSize: 26,

@@ -423,7 +423,7 @@ export default function BudgetsScreen() {
 		/>
 	);
 
-	const ListHeader = () => (
+	const listHeaderElement = (
 		<>
 			<ScreenHeader
 				title={tx.title}
@@ -697,9 +697,10 @@ export default function BudgetsScreen() {
 		<View style={styles.screen}>
 			<FlatList
 				data={activeSummaries}
+				keyboardShouldPersistTaps="handled"
 				renderItem={renderEnvelope}
 				keyExtractor={(item) => item.envelope.id}
-				ListHeaderComponent={ListHeader}
+				ListHeaderComponent={listHeaderElement}
 				ListEmptyComponent={ListEmpty}
 				ListFooterComponent={ListFooter}
 				contentContainerStyle={styles.content}
@@ -707,7 +708,7 @@ export default function BudgetsScreen() {
 				initialNumToRender={10}
 				maxToRenderPerBatch={10}
 				windowSize={5}
-				removeClippedSubviews
+				removeClippedSubviews={!showCreateForm}
 			/>
 		</View>
 	);

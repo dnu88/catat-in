@@ -5,6 +5,7 @@ import {
 	screen,
 	waitFor,
 } from "@testing-library/react-native";
+import { FlatList } from "react-native";
 
 import BudgetsScreen from "../app/(tabs)/budgets";
 import { I18nProvider, useI18n, type Language } from "../src/i18n/i18n-context";
@@ -228,6 +229,23 @@ describe("Budget envelopes screen", () => {
 		);
 		expect(screen.getByText("Needs review")).toBeTruthy();
 		expect(screen.queryByText(/Amplop/i)).toBeNull();
+	});
+
+
+	it("keeps the create form mounted while typing so the keyboard stays open", async () => {
+		const rendered = renderScreen();
+
+		await waitFor(() => expect(screen.getByText("+ Baru")).toBeTruthy());
+		fireEvent.press(screen.getByText("+ Baru"));
+
+		const list = rendered.UNSAFE_getByType(FlatList);
+		expect(list.props.keyboardShouldPersistTaps).toBe("handled");
+		expect(list.props.removeClippedSubviews).toBe(false);
+		expect(typeof list.props.ListHeaderComponent).not.toBe("function");
+
+		fireEvent.changeText(screen.getByPlaceholderText("Nama dompet"), "K");
+		expect(screen.getByPlaceholderText("Nama dompet").props.value).toBe("K");
+		expect(rendered.UNSAFE_getByType(FlatList).props.removeClippedSubviews).toBe(false);
 	});
 
 	it("opens the create form with icon and color dropdowns, then saves a Kopi envelope", async () => {
