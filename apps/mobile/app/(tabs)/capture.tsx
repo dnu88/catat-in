@@ -217,15 +217,20 @@ export default function CaptureScreen() {
 							onChangeText={setTextInput}
 							multiline
 							accessibilityLabel={
-								isEn
-									? "Transaction text input"
-									: "Input teks transaksi"
+								isEn ? "Transaction text input" : "Input teks transaksi"
 							}
 							placeholder="Contoh: Beli kopi 35rb di Kopi Kenangan pakai QRIS"
 							placeholderTextColor={theme.colors.textMuted}
 						/>
 
 						<Pressable
+							accessibilityRole="button"
+							accessibilityLabel={
+								isEn
+									? "Process transaction with AI"
+									: "Proses transaksi dengan AI"
+							}
+							accessibilityState={{ disabled: submitting, busy: submitting }}
 							style={[styles.submitButton, submitting && { opacity: 0.7 }]}
 							onPress={submitText}
 							disabled={submitting}
@@ -306,12 +311,24 @@ export default function CaptureScreen() {
 							</View>
 						) : null}
 						<Pressable
+							accessibilityRole="button"
+							accessibilityLabel={
+								isEn
+									? "View and review transaction"
+									: "Lihat dan review transaksi"
+							}
 							style={styles.secondaryButton}
 							onPress={() => router.push("/(tabs)/transactions")}
 						>
 							<Text style={styles.secondaryButtonText}>Lihat & Review</Text>
 						</Pressable>
 						<Pressable
+							accessibilityRole="button"
+							accessibilityLabel={
+								isEn
+									? "Save transaction immediately"
+									: "Langsung simpan transaksi"
+							}
 							style={styles.textLinkButton}
 							onPress={() => resetCapture(true)}
 						>
@@ -336,6 +353,10 @@ export default function CaptureScreen() {
 								"Transaksi belum berhasil diproses. Coba lagi sebentar."}
 						</Text>
 						<Pressable
+							accessibilityRole="button"
+							accessibilityLabel={
+								isEn ? "Try processing again" : "Coba proses lagi"
+							}
 							style={styles.secondaryButton}
 							onPress={() => resetCapture(false)}
 						>

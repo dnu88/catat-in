@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
 import {
-	ActivityIndicator,
 	FlatList,
 	Pressable,
 	ScrollView,
@@ -18,6 +17,7 @@ import {
 	StateMessage,
 	StatusBadge,
 } from "../../src/components/ui";
+import { LoadingState } from "../../src/components/ui/LoadingState";
 import { useTheme } from "../../src/theme/theme-context";
 import { useFinanceContext } from "../../src/state/finance-context";
 import { listBills, updateBill, type Bill } from "../../src/services/bills";
@@ -81,7 +81,7 @@ function BillRow({
 	const icon = billIcons[iconKey] || "bills";
 
 	return (
-		<Pressable style={styles.billCard}>
+		<View style={styles.billCard}>
 			<View style={styles.billTop}>
 				<View style={styles.billLeft}>
 					<IconBubble
@@ -119,6 +119,12 @@ function BillRow({
 				</Text>
 				{canUpdate && bill.status === "upcoming" && (
 					<Pressable
+						accessibilityRole="button"
+						accessibilityLabel={`Tandai tagihan ${bill.name} lunas`}
+						accessibilityState={{
+							disabled: payingId === bill.id,
+							busy: payingId === bill.id,
+						}}
 						style={[styles.payButton, payingId === bill.id && { opacity: 0.7 }]}
 						onPress={() => onMarkPaid(bill.id)}
 						disabled={payingId === bill.id}
@@ -129,7 +135,7 @@ function BillRow({
 					</Pressable>
 				)}
 			</View>
-		</Pressable>
+		</View>
 	);
 }
 
@@ -216,13 +222,8 @@ export default function BillsScreen() {
 
 	if (loading) {
 		return (
-			<View
-				style={[
-					styles.screen,
-					{ justifyContent: "center", alignItems: "center" },
-				]}
-			>
-				<ActivityIndicator size="large" color={theme.colors.brandPrimary} />
+			<View style={styles.screen}>
+				<LoadingState label="Memuat tagihan..." />
 			</View>
 		);
 	}
@@ -247,9 +248,9 @@ export default function BillsScreen() {
 				subtitle="Kelola pengingat tagihan rutin."
 				action={
 					canCreate ? (
-						<Pressable style={styles.addButton}>
+						<View style={styles.addButton}>
 							<Text style={styles.addButtonText}>+ Baru</Text>
-						</Pressable>
+						</View>
 					) : null
 				}
 			/>
@@ -357,6 +358,8 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 		},
 		subtitle: { color: theme.colors.textSecondary, fontSize: 13, marginTop: 2 },
 		addButton: {
+			minHeight: 44,
+			justifyContent: "center",
 			backgroundColor: theme.colors.brandPrimary,
 			borderRadius: 999,
 			paddingHorizontal: 14,

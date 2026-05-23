@@ -18,7 +18,11 @@ import type { KaswiseIconName } from "../../src/components/icons/kaswise-icons";
 import { useI18n } from "../../src/i18n/i18n-context";
 import { useFinanceContext } from "../../src/state/finance-context";
 import { applyFinanceContextFilter } from "../../src/services/finance-context-query";
-import { reportCategoryPalette } from "../../src/theme/report-palettes";
+import {
+	reportCategoryPalette,
+	reportCategoryRoleColors,
+	reportDefaultCategoryColors,
+} from "../../src/theme/report-palettes";
 
 const categories = [
 	{
@@ -28,7 +32,7 @@ const categories = [
 		value: 2_050_000,
 		amount: "Rp 2.050.000",
 		icon: "bills" as KaswiseIconName,
-		color: "#65A30D",
+		color: reportDefaultCategoryColors.food,
 		tone: "success" as const,
 	},
 	{
@@ -38,7 +42,7 @@ const categories = [
 		value: 1_408_000,
 		amount: "Rp 1.408.000",
 		icon: "card" as KaswiseIconName,
-		color: "#2A5DD0",
+		color: reportDefaultCategoryColors.transport,
 		tone: "navy" as const,
 	},
 	{
@@ -48,7 +52,7 @@ const categories = [
 		value: 1_152_000,
 		amount: "Rp 1.152.000",
 		icon: "wallets" as KaswiseIconName,
-		color: "#B45309",
+		color: reportDefaultCategoryColors.shopping,
 		tone: "warning" as const,
 	},
 	{
@@ -58,7 +62,7 @@ const categories = [
 		value: 960_000,
 		amount: "Rp 960.000",
 		icon: "file" as KaswiseIconName,
-		color: "#DC2626",
+		color: reportDefaultCategoryColors.bills,
 		tone: "danger" as const,
 	},
 	{
@@ -68,7 +72,7 @@ const categories = [
 		value: 512_000,
 		amount: "Rp 512.000",
 		icon: "insight" as KaswiseIconName,
-		color: "#0284C7",
+		color: reportDefaultCategoryColors.entertainment,
 		tone: "info" as const,
 	},
 	{
@@ -78,7 +82,7 @@ const categories = [
 		value: 320_000,
 		amount: "Rp 320.000",
 		icon: "chart" as KaswiseIconName,
-		color: "#6B7280",
+		color: reportDefaultCategoryColors.other,
 		tone: "neutral" as const,
 	},
 ];
@@ -206,7 +210,19 @@ export default function ReportsScreen() {
 			count: number;
 		} | null;
 	} | null>(null);
-	const [dynamicCategories, setDynamicCategories] = useState(categories);
+	const [dynamicCategories, setDynamicCategories] =
+		useState<
+			Array<{
+				id: string;
+				label: string;
+				percent: number;
+				value: number;
+				amount: string;
+				icon: KaswiseIconName;
+				color: string;
+				tone: CategoryTone;
+			}>
+		>(categories);
 	const [reportTransactions, setReportTransactions] = useState<
 		ReportTransaction[]
 	>([]);
@@ -214,60 +230,61 @@ export default function ReportsScreen() {
 		null,
 	);
 
-	const neutralCategoryColor = theme.mode === "light" ? "#6B7280" : "#9CA3AF";
+	const categoryRoleColors = reportCategoryRoleColors[theme.mode];
+	const neutralCategoryColor = categoryRoleColors.neutral;
 	const categoryColorByName: Record<string, CategoryVisualMeta> = {
 		food: {
-			color: theme.mode === "light" ? "#65A30D" : "#A3FF12",
+			color: categoryRoleColors.success,
 			icon: "bills",
 			tone: "success",
 		},
 		makan: {
-			color: theme.mode === "light" ? "#65A30D" : "#A3FF12",
+			color: categoryRoleColors.success,
 			icon: "bills",
 			tone: "success",
 		},
 		"makan & minum": {
-			color: theme.mode === "light" ? "#65A30D" : "#A3FF12",
+			color: categoryRoleColors.success,
 			icon: "bills",
 			tone: "success",
 		},
 		transport: {
-			color: theme.mode === "light" ? "#2A5DD0" : "#4A80F0",
+			color: categoryRoleColors.navy,
 			icon: "card",
 			tone: "navy",
 		},
 		transportasi: {
-			color: theme.mode === "light" ? "#2A5DD0" : "#4A80F0",
+			color: categoryRoleColors.navy,
 			icon: "card",
 			tone: "navy",
 		},
 		shopping: {
-			color: theme.mode === "light" ? "#B45309" : "#F59E0B",
+			color: categoryRoleColors.warning,
 			icon: "wallets",
 			tone: "warning",
 		},
 		belanja: {
-			color: theme.mode === "light" ? "#B45309" : "#F59E0B",
+			color: categoryRoleColors.warning,
 			icon: "wallets",
 			tone: "warning",
 		},
 		bills: {
-			color: theme.mode === "light" ? "#DC2626" : "#FF7B7B",
+			color: categoryRoleColors.danger,
 			icon: "file",
 			tone: "danger",
 		},
 		tagihan: {
-			color: theme.mode === "light" ? "#DC2626" : "#FF7B7B",
+			color: categoryRoleColors.danger,
 			icon: "file",
 			tone: "danger",
 		},
 		entertainment: {
-			color: theme.mode === "light" ? "#0284C7" : "#38BDF8",
+			color: categoryRoleColors.info,
 			icon: "insight",
 			tone: "info",
 		},
 		hiburan: {
-			color: theme.mode === "light" ? "#0284C7" : "#38BDF8",
+			color: categoryRoleColors.info,
 			icon: "insight",
 			tone: "info",
 		},
@@ -617,9 +634,11 @@ export default function ReportsScreen() {
 	const donutGlowStrokeWidth = 21;
 	const donutCircumference = 2 * Math.PI * donutRadius;
 	const donutSegmentGap = 6;
-	const incomeAccent = theme.mode === "light" ? "#65A30D" : "#A3FF12";
+	const incomeAccent = categoryRoleColors.success;
 	const expenseAccent =
-		theme.mode === "light" ? theme.colors.textPrimary : "#FF7B7B";
+		theme.mode === "light"
+			? theme.colors.textPrimary
+			: categoryRoleColors.danger;
 	const totalIncomeJuta = summaryIncome / 1_000_000;
 	const totalExpenseJuta = summaryExpense / 1_000_000;
 	const netJuta = summaryNet / 1_000_000;
@@ -2131,26 +2150,6 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			gap: 14,
 			overflow: "hidden",
 		},
-		heroBloomOne: {
-			position: "absolute",
-			top: -60,
-			right: -60,
-			width: 180,
-			height: 180,
-			borderRadius: 90,
-			backgroundColor: "rgba(163, 255, 18, 0.14)",
-			opacity: 0.55,
-		},
-		heroBloomTwo: {
-			position: "absolute",
-			bottom: -80,
-			left: -60,
-			width: 180,
-			height: 180,
-			borderRadius: 90,
-			backgroundColor: "rgba(74, 128, 240, 0.10)",
-			opacity: 0.6,
-		},
 		summaryTopRow: {
 			flexDirection: "row",
 			alignItems: "stretch",
@@ -2375,13 +2374,15 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			overflow: "visible",
 			position: "relative",
 			backgroundColor:
-				theme.mode === "light" ? "#FBFAF7" : "rgba(255,255,255,0.035)",
+				theme.mode === "light"
+					? theme.colors.mutedSurface
+					: theme.colors.surface,
 			borderWidth: 1,
 			borderColor:
 				theme.mode === "light"
 					? "rgba(15,23,42,0.08)"
 					: "rgba(255,255,255,0.09)",
-			shadowColor: theme.mode === "light" ? "#0F172A" : "#000000",
+			shadowColor: theme.colors.textPrimary,
 			shadowOpacity: theme.mode === "light" ? 0.09 : 0.32,
 			shadowRadius: 28,
 			shadowOffset: { width: 0, height: 16 },
@@ -2405,8 +2406,7 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			width: 98,
 			height: 98,
 			borderRadius: 49,
-			backgroundColor:
-				theme.mode === "light" ? "#FFFFFF" : theme.colors.surface,
+			backgroundColor: theme.colors.card,
 			alignItems: "center",
 			justifyContent: "center",
 			borderWidth: 1,
@@ -2414,7 +2414,7 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 				theme.mode === "light"
 					? "rgba(15,23,42,0.07)"
 					: theme.colors.borderSoft,
-			shadowColor: theme.mode === "light" ? "#0F172A" : "#000000",
+			shadowColor: theme.colors.textPrimary,
 			shadowOpacity: theme.mode === "light" ? 0.06 : 0.24,
 			shadowRadius: 18,
 			shadowOffset: { width: 0, height: 10 },

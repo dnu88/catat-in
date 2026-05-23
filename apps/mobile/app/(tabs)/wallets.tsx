@@ -297,6 +297,7 @@ export default function WalletsScreen() {
 						testID="wallets-create-toggle"
 						accessibilityRole="button"
 						accessibilityLabel={showCreate ? tx.cancel : tx.new}
+						accessibilityState={{ disabled: !canCreate, expanded: showCreate }}
 						style={[styles.addButton, !canCreate && styles.disabledButton]}
 						onPress={() => canCreate && setShowCreate((value) => !value)}
 						disabled={!canCreate}
@@ -335,6 +336,7 @@ export default function WalletsScreen() {
 									key={walletType}
 									testID={`wallet-edit-type-${walletType}`}
 									accessibilityRole="button"
+									accessibilityLabel={`${tx.edit} ${tx.types[walletType]}`}
 									accessibilityState={{ selected: editType === walletType }}
 									style={[
 										styles.typeChoice,
@@ -394,6 +396,7 @@ export default function WalletsScreen() {
 									key={walletType}
 									testID={`wallet-type-${walletType}`}
 									accessibilityRole="button"
+									accessibilityLabel={`${tx.new} ${tx.types[walletType]}`}
 									accessibilityState={{ selected: type === walletType }}
 									style={[
 										styles.typeChoice,
@@ -426,8 +429,6 @@ export default function WalletsScreen() {
 				) : null}
 
 				<View testID="wallets-total-hero" style={styles.totalCard}>
-					<View style={styles.heroBloomOne} />
-					<View style={styles.heroBloomTwo} />
 					<Text style={styles.totalLabel}>{tx.total}</Text>
 					<Text style={styles.totalValue}>{formatCurrency(totalBalance)}</Text>
 					<View style={styles.totalRow}>
@@ -447,6 +448,9 @@ export default function WalletsScreen() {
 					{(["all", ...walletTypes] as FilterType[]).map((filterValue) => (
 						<Pressable
 							key={filterValue}
+							accessibilityRole="button"
+							accessibilityLabel={`${tx.all}: ${filterValue === "all" ? tx.all : tx.types[filterValue]}`}
+							accessibilityState={{ selected: filter === filterValue }}
 							onPress={() => setFilter(filterValue)}
 							style={[
 								styles.filterChip,
@@ -466,7 +470,10 @@ export default function WalletsScreen() {
 				</ScrollView>
 
 				{loading ? (
-					<ActivityIndicator color={theme.colors.brandPrimary} />
+					<View style={styles.loadingInline}>
+						<ActivityIndicator color={theme.colors.brandPrimary} />
+						<Text style={styles.loadingText}>{tx.loading}</Text>
+					</View>
 				) : null}
 				{error ? <Text style={styles.errorText}>{error}</Text> : null}
 				{!loading && filtered.length === 0 ? (
@@ -474,10 +481,9 @@ export default function WalletsScreen() {
 				) : null}
 
 				{filtered.map((wallet) => (
-					<Pressable
+					<View
 						key={wallet.id}
 						testID={`wallet-card-${wallet.id}`}
-						accessibilityRole="button"
 						style={styles.walletCard}
 					>
 						<View style={styles.walletTop}>
@@ -564,7 +570,7 @@ export default function WalletsScreen() {
 								</Pressable>
 							</View>
 						</View>
-					</Pressable>
+					</View>
 				))}
 
 				<View style={{ height: 100 }} />
@@ -596,6 +602,8 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			marginTop: 2,
 		},
 		addButton: {
+			minHeight: 44,
+			justifyContent: "center",
 			backgroundColor: theme.colors.brandPrimary,
 			borderRadius: theme.radius.pill,
 			paddingHorizontal: 14,
@@ -632,6 +640,8 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 		},
 		typeGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
 		typeChoice: {
+			minHeight: 44,
+			justifyContent: "center",
 			borderWidth: 1,
 			borderColor: theme.colors.borderSoft,
 			backgroundColor: theme.colors.mutedSurface,
@@ -671,32 +681,6 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			overflow: "hidden",
 			...(theme.mode === "light" ? theme.shadow.lg : {}),
 		},
-		heroBloomOne: {
-			position: "absolute",
-			top: -60,
-			right: -60,
-			width: 180,
-			height: 180,
-			borderRadius: 90,
-			backgroundColor:
-				theme.mode === "light"
-					? "rgba(163, 255, 18, 0.22)"
-					: "rgba(163, 255, 18, 0.14)",
-			opacity: 0.55,
-		},
-		heroBloomTwo: {
-			position: "absolute",
-			bottom: -80,
-			left: -60,
-			width: 180,
-			height: 180,
-			borderRadius: 90,
-			backgroundColor:
-				theme.mode === "light"
-					? "rgba(74, 128, 240, 0.08)"
-					: "rgba(74, 128, 240, 0.10)",
-			opacity: 0.6,
-		},
 		totalLabel: {
 			color: theme.colors.textMuted,
 			fontSize: theme.typography.fontSize.sm,
@@ -723,8 +707,22 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			fontSize: theme.typography.fontSize.sm,
 			fontWeight: theme.typography.fontWeight.semibold,
 		},
+		loadingInline: {
+			minHeight: 44,
+			flexDirection: "row",
+			alignItems: "center",
+			justifyContent: "center",
+			gap: 8,
+		},
+		loadingText: {
+			color: theme.colors.textMuted,
+			fontSize: 12,
+			fontWeight: "700",
+		},
 		filterRow: { gap: 8, paddingVertical: 2 },
 		filterChip: {
+			minHeight: 44,
+			justifyContent: "center",
 			paddingHorizontal: 14,
 			paddingVertical: 8,
 			borderRadius: 999,
@@ -811,6 +809,8 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 		},
 		walletActions: { flexDirection: "row", gap: 8 },
 		walletActionButton: {
+			minHeight: 44,
+			justifyContent: "center",
 			borderRadius: 999,
 			borderWidth: 1,
 			borderColor: theme.colors.borderSoft,

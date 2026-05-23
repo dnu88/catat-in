@@ -9,15 +9,18 @@ import {
 	TextInput,
 	View,
 } from "react-native";
-import { useRouter } from "expo-router";
+import * as ExpoRouter from "expo-router";
 
 import { KaswiseIcon } from "../../src/components/icons/kaswise-icons";
 import type { KaswiseIconName } from "../../src/components/icons/kaswise-icons";
 import { IconBubble } from "../../src/components/ui";
+import { LoadingState } from "../../src/components/ui/LoadingState";
 import { useTheme } from "../../src/theme/theme-context";
 import {
 	createTransaction,
+	getTransaction,
 	type TransactionType,
+	updateTransaction,
 } from "../../src/services/transactions";
 import { listWallets, type Wallet } from "../../src/services/wallets";
 import { listCategories, type Category } from "../../src/services/categories";
@@ -65,7 +68,13 @@ function formatAmount(value: number): string {
 
 export default function TransactionNewScreen() {
 	const { theme } = useTheme();
-	const router = useRouter();
+	const router = ExpoRouter.useRouter();
+	const rawParams = (ExpoRouter as any).useLocalSearchParams?.() ?? {};
+	const transactionId = Array.isArray(rawParams.transactionId)
+		? rawParams.transactionId[0]
+		: rawParams.transactionId;
+	const isEditMode =
+		typeof transactionId === "string" && transactionId.length > 0;
 	const styles = useMemo(() => createStyles(theme), [theme]);
 
 	const [wallets, setWallets] = useState<Wallet[]>([]);
@@ -87,7 +96,7 @@ export default function TransactionNewScreen() {
 
 	useEffect(() => {
 		loadInitialData();
-	}, []);
+	}, [transactionId]);
 
 	const loadInitialData = async () => {
 		try {
@@ -95,10 +104,11 @@ export default function TransactionNewScreen() {
 				listWallets(),
 				listCategories().catch(() => [] as Category[]),
 			]);
-			const activeWallets = walletData.filter((w) => w.is_active);
+			const activeWallets = walletData.filter((w) => w.is_active !== false);
 			setWallets(activeWallets);
 			if (activeWallets[0]) setWalletId(activeWallets[0].id);
 
+			let categoryOptions = fallbackCategories;
 			if (categoryData.length > 0) {
 				const merged = categoryData.map((c) => ({
 					name: c.name,
@@ -112,7 +122,35 @@ export default function TransactionNewScreen() {
 						merger.push(fc);
 					}
 				}
+				categoryOptions = merger;
 				setCategories(merger);
+			}
+
+			if (isEditMode) {
+				const transaction = await getTransaction(transactionId);
+				if (!transaction) {
+					setError("Transaksi tidak ditemukan");
+					return;
+				}
+
+				const nextCategory = transaction.category || transaction.kategori || "";
+				setTxType(
+					transaction.transaction_type || transaction.type || "expense",
+				);
+				setAmountInput(
+					formatAmount(Number(transaction.amount ?? transaction.nominal ?? 0)),
+				);
+				setWalletId(transaction.wallet_id ?? null);
+				if (categoryOptions.some((option) => option.name === nextCategory)) {
+					setCategory(nextCategory);
+				} else if (nextCategory) {
+					setCategory("__custom__");
+					setCustomCategory(nextCategory);
+				}
+				setDescription(transaction.description || transaction.catatan || "");
+				setDate(transaction.date || transaction.tanggal || todayIso());
+				setMerchant(transaction.merchant || "");
+				setNote(transaction.note || "");
 			}
 		} catch (e) {
 			console.error("Failed to load form data:", e);
@@ -144,23 +182,36 @@ export default function TransactionNewScreen() {
 
 		setSubmitting(true);
 		setError(null);
+		const payload = {
+			wallet_id: walletId,
+			transaction_type: txType,
+			amount: amountValue,
+			category: resolvedCategory,
+			description: resolvedDescription,
+			merchant: merchant.trim() || null,
+			date,
+			note: note.trim() || null,
+		};
 		try {
-			await createTransaction({
-				wallet_id: walletId,
-				transaction_type: txType,
-				amount: amountValue,
-				category: resolvedCategory,
-				description: resolvedDescription,
-				merchant: merchant.trim() || null,
-				date,
-				note: note.trim() || null,
-			});
+			if (isEditMode) {
+				await updateTransaction(transactionId, payload);
+				Alert.alert("Berhasil", "Transaksi diperbarui.", [
+					{ text: "OK", onPress: () => router.replace("/(tabs)/transactions") },
+				]);
+				return;
+			}
+
+			await createTransaction(payload);
 			Alert.alert("Berhasil", "Transaksi tersimpan.", [
 				{ text: "OK", onPress: () => router.replace("/(tabs)/transactions") },
 			]);
 		} catch (e) {
 			const message =
-				e instanceof Error ? e.message : "Gagal menyimpan transaksi";
+				e instanceof Error
+					? e.message
+					: isEditMode
+						? "Gagal memperbarui transaksi"
+						: "Gagal menyimpan transaksi";
 			setError(message);
 			setSubmitting(false);
 		}
@@ -168,13 +219,8 @@ export default function TransactionNewScreen() {
 
 	if (loading) {
 		return (
-			<View
-				style={[
-					styles.screen,
-					{ justifyContent: "center", alignItems: "center" },
-				]}
-			>
-				<ActivityIndicator size="large" color={theme.colors.brandPrimary} />
+			<View style={styles.screen}>
+				<LoadingState label="Memuat form transaksi..." />
 			</View>
 		);
 	}
@@ -188,9 +234,13 @@ export default function TransactionNewScreen() {
 			>
 				<View style={styles.headerRow}>
 					<View>
-						<Text style={styles.title}>Catat Manual</Text>
+						<Text style={styles.title}>
+							{isEditMode ? "Edit Transaksi" : "Catat Manual"}
+						</Text>
 						<Text style={styles.subtitle}>
-							Input transaksi secara manual tanpa AI.
+							{isEditMode
+								? "Perbarui detail transaksi yang sudah tercatat."
+								: "Input transaksi secara manual tanpa AI."}
 						</Text>
 					</View>
 					<Pressable
@@ -247,6 +297,7 @@ export default function TransactionNewScreen() {
 					<View style={styles.amountRow}>
 						<Text style={styles.amountPrefix}>Rp</Text>
 						<TextInput
+							accessibilityLabel="Nominal transaksi"
 							style={styles.amountInput}
 							value={formatAmount(amountValue)}
 							onChangeText={(text) => setAmountInput(text)}
@@ -261,6 +312,7 @@ export default function TransactionNewScreen() {
 				<View style={styles.field}>
 					<Text style={styles.label}>Deskripsi</Text>
 					<TextInput
+						accessibilityLabel="Deskripsi transaksi"
 						style={styles.textInput}
 						value={description}
 						onChangeText={setDescription}
@@ -374,6 +426,7 @@ export default function TransactionNewScreen() {
 					</View>
 					{category === "__custom__" && (
 						<TextInput
+							accessibilityLabel="Nama kategori kustom"
 							style={styles.textInput}
 							value={customCategory}
 							onChangeText={setCustomCategory}
@@ -387,6 +440,7 @@ export default function TransactionNewScreen() {
 				<View style={styles.field}>
 					<Text style={styles.label}>Tanggal</Text>
 					<TextInput
+						accessibilityLabel="Tanggal transaksi"
 						style={styles.textInput}
 						value={date}
 						onChangeText={setDate}
@@ -400,6 +454,7 @@ export default function TransactionNewScreen() {
 				<View style={styles.field}>
 					<Text style={styles.label}>Merchant (opsional)</Text>
 					<TextInput
+						accessibilityLabel="Merchant transaksi opsional"
 						style={styles.textInput}
 						value={merchant}
 						onChangeText={setMerchant}
@@ -412,6 +467,7 @@ export default function TransactionNewScreen() {
 				<View style={styles.field}>
 					<Text style={styles.label}>Catatan (opsional)</Text>
 					<TextInput
+						accessibilityLabel="Catatan transaksi opsional"
 						style={[
 							styles.textInput,
 							{ minHeight: 70, textAlignVertical: "top" },
@@ -428,7 +484,11 @@ export default function TransactionNewScreen() {
 
 				<Pressable
 					accessibilityRole="button"
-					accessibilityLabel="Simpan transaksi manual"
+					accessibilityLabel={
+						isEditMode
+							? "Simpan perubahan transaksi"
+							: "Simpan transaksi manual"
+					}
 					accessibilityState={{ disabled: !canSubmit, busy: submitting }}
 					onPress={onSubmit}
 					disabled={!canSubmit}
@@ -437,7 +497,9 @@ export default function TransactionNewScreen() {
 					{submitting ? (
 						<ActivityIndicator color={theme.colors.textInverse} />
 					) : (
-						<Text style={styles.submitText}>Simpan Transaksi</Text>
+						<Text style={styles.submitText}>
+							{isEditMode ? "Simpan Perubahan" : "Simpan Transaksi"}
+						</Text>
 					)}
 				</Pressable>
 

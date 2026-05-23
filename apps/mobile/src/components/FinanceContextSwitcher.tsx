@@ -5,7 +5,11 @@ import { useI18n } from "../i18n/i18n-context";
 import { useFinanceContext } from "../state/finance-context";
 import { useTheme } from "../theme/theme-context";
 
-export function FinanceContextSwitcher({ variant = "compact" }: { variant?: "compact" | "hero" }) {
+export function FinanceContextSwitcher({
+	variant = "compact",
+}: {
+	variant?: "compact" | "hero";
+}) {
 	const { theme } = useTheme();
 	const { language } = useI18n();
 	const isEn = language === "en";
@@ -62,6 +66,7 @@ export function FinanceContextSwitcher({ variant = "compact" }: { variant?: "com
 					<Pressable
 						testID="finance-context-option-personal"
 						accessibilityRole="button"
+						accessibilityLabel={`${isEn ? "Choose finance context" : "Pilih konteks keuangan"}: ${personalLabel}`}
 						accessibilityState={{ selected: activeContext.type === "personal" }}
 						style={[
 							styles.option,
@@ -70,11 +75,14 @@ export function FinanceContextSwitcher({ variant = "compact" }: { variant?: "com
 						onPress={choosePersonal}
 					>
 						<Text style={styles.optionTitle}>{personalLabel}</Text>
-						<Text style={styles.optionMeta}>{isEn ? "Personal finance" : "Keuangan pribadi"}</Text>
+						<Text style={styles.optionMeta}>
+							{isEn ? "Personal finance" : "Keuangan pribadi"}
+						</Text>
 					</Pressable>
 
 					{memberships.map((membership) => {
-						const householdName = membership.households?.name ?? (isEn ? "Family" : "Keluarga");
+						const householdName =
+							membership.households?.name ?? (isEn ? "Family" : "Keluarga");
 						const isActive =
 							activeContext.type === "household" &&
 							activeContext.householdId === membership.household_id;
@@ -84,6 +92,7 @@ export function FinanceContextSwitcher({ variant = "compact" }: { variant?: "com
 								key={membership.household_id}
 								testID={`finance-context-option-${membership.household_id}`}
 								accessibilityRole="button"
+								accessibilityLabel={`${isEn ? "Choose finance context" : "Pilih konteks keuangan"}: ${householdName}`}
 								accessibilityState={{ selected: isActive }}
 								style={[styles.option, isActive && styles.optionActive]}
 								onPress={() => chooseHousehold(membership.household_id)}
@@ -99,7 +108,10 @@ export function FinanceContextSwitcher({ variant = "compact" }: { variant?: "com
 	);
 }
 
-function createStyles(theme: ReturnType<typeof useTheme>["theme"], variant: "compact" | "hero") {
+function createStyles(
+	theme: ReturnType<typeof useTheme>["theme"],
+	variant: "compact" | "hero",
+) {
 	const isHero = variant === "hero";
 	return StyleSheet.create({
 		container: {
@@ -114,8 +126,12 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"], variant: "com
 			minHeight: 44,
 			borderRadius: isHero ? theme.radius.pill : theme.radius.md,
 			borderWidth: 1,
-			borderColor: isHero ? `${theme.colors.brandPrimary}40` : theme.colors.borderSoft,
-			backgroundColor: isHero ? `${theme.colors.brandPrimary}12` : theme.colors.card,
+			borderColor: isHero
+				? `${theme.colors.brandPrimary}40`
+				: theme.colors.borderSoft,
+			backgroundColor: isHero
+				? `${theme.colors.brandPrimary}12`
+				: theme.colors.card,
 			paddingHorizontal: isHero ? theme.spacing.md : 6,
 			paddingVertical: isHero ? theme.spacing.sm : 4,
 			flexDirection: "row",

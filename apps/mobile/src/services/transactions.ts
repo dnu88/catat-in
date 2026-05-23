@@ -127,7 +127,7 @@ function buildUpdatePayload(updates: Partial<TransactionCreate>) {
 	return payload;
 }
 
-async function getTransactionById(id: string): Promise<Transaction | null> {
+export async function getTransaction(id: string): Promise<Transaction | null> {
 	const { data, error } = await supabase
 		.from("transactions")
 		.select("*")
@@ -196,7 +196,7 @@ export async function updateTransaction(
 	context: FinanceContext = defaultContext,
 ): Promise<Transaction> {
 	const userId = await getCurrentUserId();
-	const previous = await getTransactionById(id);
+	const previous = await getTransaction(id);
 	if (!previous) throw new Error("Transaksi tidak ditemukan");
 	if (!canUpdateInContext(context, previous, userId))
 		throw new Error("Akses lihat saja");
@@ -223,7 +223,7 @@ export async function deleteTransaction(
 	context: FinanceContext = defaultContext,
 ): Promise<void> {
 	const userId = await getCurrentUserId();
-	const previous = await getTransactionById(id);
+	const previous = await getTransaction(id);
 	if (!previous) throw new Error("Transaksi tidak ditemukan");
 	if (!canDeleteInContext(context, previous, userId))
 		throw new Error("Akses lihat saja");

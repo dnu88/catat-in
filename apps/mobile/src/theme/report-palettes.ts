@@ -23,6 +23,34 @@ export const reportCategoryPalette: Record<ThemeMode, string[]> = {
 	],
 };
 
+export const reportCategoryRoleColors = {
+	light: {
+		success: reportCategoryPalette.light[0],
+		navy: reportCategoryPalette.light[1],
+		warning: reportCategoryPalette.light[2],
+		danger: reportCategoryPalette.light[3],
+		info: reportCategoryPalette.light[4],
+		neutral: "#6B7280",
+	},
+	dark: {
+		success: reportCategoryPalette.dark[0],
+		navy: reportCategoryPalette.dark[1],
+		warning: reportCategoryPalette.dark[2],
+		danger: reportCategoryPalette.dark[3],
+		info: reportCategoryPalette.dark[4],
+		neutral: "#9CA3AF",
+	},
+} as const satisfies Record<ThemeMode, Record<string, string>>;
+
+export const reportDefaultCategoryColors = {
+	food: reportCategoryRoleColors.light.success,
+	transport: reportCategoryRoleColors.light.navy,
+	shopping: reportCategoryRoleColors.light.warning,
+	bills: reportCategoryRoleColors.light.danger,
+	entertainment: reportCategoryRoleColors.light.info,
+	other: reportCategoryRoleColors.light.neutral,
+} as const;
+
 export const budgetEnvelopePalette: Record<ThemeMode, string[]> = {
 	light: [
 		"#65A30D",
@@ -47,6 +75,17 @@ export const budgetEnvelopePalette: Record<ThemeMode, string[]> = {
 		"#94A3B8",
 	],
 };
+
+export const kaswiseLogoPalette = {
+	graphiteStart: "#4B5563",
+	graphiteEnd: "#1F2937",
+	mistStart: "#9CA3AF",
+	mistEnd: "#4B5563",
+	forestStart: "#166534",
+	forestEnd: "#022C22",
+	emeraldStart: "#A3FF12",
+	emeraldEnd: "#65A30D",
+} as const;
 
 export function getReportCategoryColor(mode: ThemeMode, index: number) {
 	const palette = reportCategoryPalette[mode];

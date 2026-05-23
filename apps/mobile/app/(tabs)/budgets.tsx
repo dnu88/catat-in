@@ -93,10 +93,7 @@ function EnvelopeRow({
 			: theme.colors.brandPrimary;
 
 	return (
-		<Pressable
-			testID={`envelope-card-${envelope.id}`}
-			style={styles.budgetCard}
-		>
+		<View testID={`envelope-card-${envelope.id}`} style={styles.budgetCard}>
 			<View style={styles.budgetTop}>
 				<View style={styles.budgetLeft}>
 					<IconBubble
@@ -156,7 +153,7 @@ function EnvelopeRow({
 					? `${overLabel} ${formatRupiah(progress.over_budget_amount)}`
 					: `${remainingLabel} ${formatRupiah(Math.max(progress.remaining_amount, 0))}`}
 			</Text>
-		</Pressable>
+		</View>
 	);
 }
 
@@ -434,6 +431,9 @@ export default function BudgetsScreen() {
 				action={
 					canCreate ? (
 						<Pressable
+							accessibilityRole="button"
+							accessibilityLabel={tx.add}
+							accessibilityState={{ expanded: showCreateForm }}
 							style={styles.addButton}
 							onPress={() => setShowCreateForm((value) => !value)}
 						>
@@ -616,6 +616,9 @@ export default function BudgetsScreen() {
 						/>
 					</View>
 					<Pressable
+						accessibilityRole="button"
+						accessibilityLabel={tx.save}
+						accessibilityState={{ disabled: saving, busy: saving }}
 						style={[styles.saveButton, saving && { opacity: 0.7 }]}
 						onPress={saveEnvelope}
 						disabled={saving}
@@ -844,6 +847,7 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 		colorOptionSwatch: { width: 24, height: 24, borderRadius: 12 },
 		notesInput: { minHeight: 64, textAlignVertical: "top" },
 		saveButton: {
+			minHeight: 44,
 			backgroundColor: theme.colors.brandPrimary,
 			borderRadius: 14,
 			alignItems: "center",

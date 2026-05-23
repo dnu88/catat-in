@@ -187,9 +187,7 @@ export default function DashboardScreen() {
 	const displayedTransactions = recentTransactions.map((transaction) => ({
 		id: transaction.id,
 		title:
-			transaction.merchant ??
-			transaction.description ??
-			transaction.category,
+			transaction.merchant ?? transaction.description ?? transaction.category,
 		meta: `${transaction.date ?? ""} · ${transaction.category}`,
 		amount: formatCompactAmount(
 			transaction.amount,
@@ -240,9 +238,6 @@ export default function DashboardScreen() {
 				</View>
 
 				<View testID="home-hero-card" style={styles.heroCard}>
-					<View style={styles.heroBloomOne} />
-					<View style={styles.heroBloomTwo} />
-
 					<View style={styles.heroContextRow}>
 						<FinanceContextSwitcher variant="hero" />
 					</View>
@@ -398,9 +393,7 @@ export default function DashboardScreen() {
 					) : (
 						<EmptyState
 							icon="transactions"
-							title={
-								isEn ? "No transactions yet" : "Belum ada transaksi"
-							}
+							title={isEn ? "No transactions yet" : "Belum ada transaksi"}
 							description={
 								isEn
 									? "Record your first transaction from the Capture tab to see it here."
@@ -478,26 +471,6 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			borderColor: theme.colors.borderSoft,
 			overflow: "hidden",
 		},
-		heroBloomOne: {
-			position: "absolute",
-			top: -60,
-			right: -60,
-			width: 180,
-			height: 180,
-			borderRadius: 90,
-			backgroundColor: "rgba(163, 255, 18, 0.14)",
-			opacity: 0.55,
-		},
-		heroBloomTwo: {
-			position: "absolute",
-			bottom: -80,
-			left: -60,
-			width: 180,
-			height: 180,
-			borderRadius: 90,
-			backgroundColor: "rgba(74, 128, 240, 0.10)",
-			opacity: 0.6,
-		},
 		heroContextRow: {
 			position: "relative",
 			zIndex: 20,
@@ -543,6 +516,7 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 		},
 		quickActionCard: {
 			flex: 1,
+			minHeight: 72,
 			backgroundColor: theme.colors.card,
 			borderRadius: 16,
 			borderWidth: 1,
