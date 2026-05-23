@@ -27,20 +27,22 @@ jest.mock("react-native-safe-area-context", () => ({
 	useSafeAreaInsets: () => ({ top: 0, right: 0, bottom: 24, left: 0 }),
 }));
 
-jest.mock("../src/lib/supabase", () => ({
-	useSupabase: () => ({
-		supabase: {
-			auth: {
-				getSession: jest.fn(async () => ({
-					data: { session: { user: { id: "user-1" } } },
-				})),
-				onAuthStateChange: jest.fn(() => ({
-					data: { subscription: { unsubscribe: mockUnsubscribe } },
-				})),
-			},
+jest.mock("../src/lib/supabase", () => {
+	const supabase = {
+		auth: {
+			getSession: jest.fn(async () => ({
+				data: { session: { user: { id: "user-1" } } },
+			})),
+			onAuthStateChange: jest.fn(() => ({
+				data: { subscription: { unsubscribe: mockUnsubscribe } },
+			})),
 		},
-	}),
-}));
+	};
+
+	return {
+		useSupabase: () => ({ supabase }),
+	};
+});
 
 jest.mock("../src/i18n/i18n-context", () => ({
 	useI18n: () => ({ t: (key: string) => key }),

@@ -127,6 +127,15 @@ describe("WalletsScreen", () => {
 		);
 	});
 
+	it("loads each wallet scope once on the initial render", async () => {
+		renderWallets();
+
+		expect(await screen.findByText("BCA Pribadi")).toBeTruthy();
+		expect(screen.getByText("Dompet Keluarga")).toBeTruthy();
+
+		await waitFor(() => expect(mockListWallets).toHaveBeenCalledTimes(2));
+	});
+
 	it("shows personal and family wallets together with scope badges", async () => {
 		renderWallets();
 

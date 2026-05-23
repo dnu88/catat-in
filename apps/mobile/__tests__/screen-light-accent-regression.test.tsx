@@ -67,7 +67,9 @@ describe("light accent regressions", () => {
 			</ThemeProvider>,
 		);
 
-		const closeButton = await screen.findByLabelText("Kembali dari catat manual");
+		const closeButton = await screen.findByLabelText(
+			"Kembali dari catat manual",
+		);
 		const closeStyle = StyleSheet.flatten(
 			closeButton.props.style as object,
 		) as ViewStyle;

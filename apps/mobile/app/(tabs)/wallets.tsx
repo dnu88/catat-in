@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
 	ActivityIndicator,
 	Pressable,
@@ -139,29 +139,45 @@ export default function WalletsScreen() {
 	const [editType, setEditType] = useState<WalletType>("bank");
 	const [editBalance, setEditBalance] = useState("");
 
+	const membershipKey = memberships
+		.map(
+			(membership) =>
+				`${membership.household_id}:${membership.role}:${membership.households?.name ?? ""}`,
+		)
+		.join("|");
+	const householdScopes = useMemo(
+		() =>
+			memberships.map((membership) => ({
+				householdId: membership.household_id,
+				role: membership.role,
+				scopeLabel: membership.households?.name ?? tx.family,
+			})),
+		[membershipKey, tx.family],
+	);
+
 	const activeScopeLabel =
 		activeContext.type === "household"
-			? (memberships.find(
-					(membership) => membership.household_id === activeContext.householdId,
-				)?.households?.name ?? tx.family)
+			? (householdScopes.find(
+					(scope) => scope.householdId === activeContext.householdId,
+				)?.scopeLabel ?? tx.family)
 			: tx.personal;
 
-	const loadWallets = async () => {
+	const loadWallets = useCallback(async () => {
 		setLoading(true);
 		setError(null);
 		try {
 			const personalRows = await listWallets({ type: "personal" });
 			const householdRows = await Promise.all(
-				memberships.map(async (membership) => {
+				householdScopes.map(async (scope) => {
 					const rows = await listWallets({
 						type: "household",
-						householdId: membership.household_id,
-						role: membership.role,
+						householdId: scope.householdId,
+						role: scope.role,
 					});
 					return rows.map((wallet) => ({
 						...wallet,
-						household_id: wallet.household_id ?? membership.household_id,
-						scopeLabel: membership.households?.name ?? tx.family,
+						household_id: wallet.household_id ?? scope.householdId,
+						scopeLabel: scope.scopeLabel,
 						scopeType: "household" as const,
 					}));
 				}),
@@ -183,11 +199,11 @@ export default function WalletsScreen() {
 		} finally {
 			setLoading(false);
 		}
-	};
+	}, [householdScopes, tx.error, tx.personal]);
 
 	useEffect(() => {
 		loadWallets();
-	}, [memberships, tx.error, tx.family, tx.personal]);
+	}, [loadWallets]);
 
 	const contextForWallet = (wallet: ScopedWallet) =>
 		wallet.scopeType === "household"
