@@ -1,6 +1,6 @@
 import { act, fireEvent, render, waitFor } from "@testing-library/react-native";
 import { Alert, StyleSheet } from "react-native";
-import type { ViewStyle } from "react-native";
+import type { TextStyle, ViewStyle } from "react-native";
 
 import TransactionsScreen, {
 	SWIPE_GESTURE_CONFIG,
@@ -170,6 +170,16 @@ describe("transaction swipe actions", () => {
 		expect(filterScroller.props.contentContainerStyle).toEqual(
 			expect.objectContaining({ paddingRight: expect.any(Number) }),
 		);
+
+		const allFilterStyle = StyleSheet.flatten(
+			screen.getByLabelText("Semua").props.style as object,
+		) as ViewStyle;
+		const allFilterTextStyle = StyleSheet.flatten(
+			screen.getByText("Semua").props.style as object,
+		) as TextStyle;
+		expect(allFilterStyle.alignItems).toBe("center");
+		expect(allFilterStyle.justifyContent).toBe("center");
+		expect(allFilterTextStyle.textAlign).toBe("center");
 	});
 
 	it("keeps top layout spacing and metric cards roomy", async () => {
@@ -180,6 +190,15 @@ describe("transaction swipe actions", () => {
 		const headerStyle = StyleSheet.flatten(
 			screen.getByTestId("transactions-header-block").props.style as object,
 		) as ViewStyle;
+		const periodRowStyle = StyleSheet.flatten(
+			screen.getByTestId("transactions-period-row").props.style as object,
+		) as ViewStyle;
+		const statRowStyle = StyleSheet.flatten(
+			screen.getByTestId("transactions-stat-row").props.style as object,
+		) as ViewStyle;
+		const filterScrollerStyle = StyleSheet.flatten(
+			screen.getByTestId("transactions-filter-scroller").props.style as object,
+		) as ViewStyle;
 		const incomeCardStyle = StyleSheet.flatten(
 			screen.getByTestId("transactions-stat-income").props.style as object,
 		) as ViewStyle;
@@ -188,19 +207,38 @@ describe("transaction swipe actions", () => {
 		) as ViewStyle;
 
 		expect(headerStyle.marginBottom).toBeGreaterThanOrEqual(12);
+		expect(periodRowStyle.marginBottom).toBeGreaterThanOrEqual(16);
+		expect(statRowStyle.marginTop).toBeGreaterThanOrEqual(4);
+		expect(statRowStyle.marginBottom).toBeGreaterThanOrEqual(20);
+		expect(filterScrollerStyle.marginTop).toBeGreaterThanOrEqual(4);
+		expect(filterScrollerStyle.marginBottom).toBeGreaterThanOrEqual(16);
 		expect(incomeCardStyle.flex).toBe(1);
 		expect(expenseCardStyle.flex).toBe(1);
 		expect(incomeCardStyle.minHeight).toBeGreaterThanOrEqual(136);
 		expect(expenseCardStyle.minHeight).toBeGreaterThanOrEqual(136);
 	});
 
+	it("adds right-side breathing room to transaction amounts", async () => {
+		const screen = renderScreen();
+
+		await waitFor(() => expect(screen.getByText("Kopi sore")).toBeTruthy());
+
+		const amountStyle = StyleSheet.flatten(
+			screen.getByTestId("transaction-amount-tx-1").props.style as object,
+		) as TextStyle;
+
+		expect(amountStyle.marginRight).toBeGreaterThanOrEqual(8);
+		expect(amountStyle.textAlign).toBe("right");
+	});
+
 	it("uses spring physics and resisted overdrag for organic row swipes", () => {
 		expect(SWIPE_GESTURE_CONFIG.maxRevealWidth).toBe(160);
 		expect(SWIPE_GESTURE_CONFIG.overdragResistance).toBeCloseTo(0.4);
-		expect(SWIPE_SNAP_SPRING_CONFIG.damping).toBeGreaterThanOrEqual(24);
-		expect(SWIPE_SNAP_SPRING_CONFIG.damping).toBeLessThanOrEqual(28);
-		expect(SWIPE_SNAP_SPRING_CONFIG.stiffness).toBeGreaterThanOrEqual(220);
-		expect(SWIPE_SNAP_SPRING_CONFIG.overshootClamping).toBe(true);
+		expect(SWIPE_SNAP_SPRING_CONFIG.damping).toBeGreaterThanOrEqual(16);
+		expect(SWIPE_SNAP_SPRING_CONFIG.damping).toBeLessThanOrEqual(20);
+		expect(SWIPE_SNAP_SPRING_CONFIG.stiffness).toBeGreaterThanOrEqual(150);
+		expect(SWIPE_SNAP_SPRING_CONFIG.stiffness).toBeLessThanOrEqual(180);
+		expect(SWIPE_SNAP_SPRING_CONFIG.overshootClamping).toBe(false);
 		expect(getSwipeTranslateX(24)).toBe(0);
 		expect(getSwipeTranslateX(-48)).toBe(-48);
 		expect(getSwipeTranslateX(-160)).toBe(-160);

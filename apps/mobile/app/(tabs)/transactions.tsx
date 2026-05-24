@@ -47,12 +47,12 @@ export const SWIPE_GESTURE_CONFIG = {
 } as const;
 
 export const SWIPE_SNAP_SPRING_CONFIG = {
-	damping: 26,
-	stiffness: 250,
-	mass: 0.9,
-	overshootClamping: true,
-	restDisplacementThreshold: 0.5,
-	restSpeedThreshold: 0.5,
+	damping: 18,
+	stiffness: 165,
+	mass: 0.95,
+	overshootClamping: false,
+	restDisplacementThreshold: 0.7,
+	restSpeedThreshold: 0.7,
 } as const;
 
 const SWIPE_ACTION_WIDTH = SWIPE_GESTURE_CONFIG.actionWidth;
@@ -288,6 +288,7 @@ function TransactionRow({
 						</Text>
 					</View>
 					<Text
+						testID={`transaction-amount-${item.id}`}
 						style={[
 							styles.rowAmount,
 							item.transaction_type === "income"
@@ -473,7 +474,7 @@ export default function TransactionsScreen() {
 
 			{loadError ? <StateMessage message={loadError} tone="error" /> : null}
 
-			<View style={styles.periodRow}>
+			<View testID="transactions-period-row" style={styles.periodRow}>
 				{(["week", "month", "year"] as Period[]).map((period) => (
 					<Pressable
 						key={period}
@@ -530,7 +531,7 @@ export default function TransactionsScreen() {
 				))}
 			</View>
 
-			<View style={styles.statRow}>
+			<View testID="transactions-stat-row" style={styles.statRow}>
 				<View testID="transactions-stat-income" style={styles.statCardShell}>
 					<StatCard
 						label={isEn ? "Income" : "Pemasukan"}
@@ -668,7 +669,11 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			fontSize: theme.typography.fontSize.sm,
 			fontWeight: theme.typography.fontWeight.bold,
 		},
-		periodRow: { flexDirection: "row", gap: theme.spacing.sm },
+		periodRow: {
+			flexDirection: "row",
+			gap: theme.spacing.sm,
+			marginBottom: theme.spacing.lg,
+		},
 		periodChip: {
 			flex: 1,
 			paddingVertical: theme.spacing.sm + 2,
@@ -688,6 +693,8 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 		statRow: {
 			flexDirection: "row",
 			gap: theme.spacing.sm + theme.spacing.xs - 2,
+			marginTop: theme.spacing.xs,
+			marginBottom: theme.spacing.xl,
 		},
 		statCardShell: {
 			flex: 1,
@@ -708,7 +715,9 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			lineHeight: 28,
 		},
 		filterScroller: {
+			marginTop: theme.spacing.xs,
 			marginRight: -theme.spacing.xl,
+			marginBottom: theme.spacing.lg,
 		},
 		filterContent: {
 			gap: theme.spacing.sm,
@@ -783,6 +792,8 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 		rowAmount: {
 			fontSize: theme.typography.fontSize.md,
 			fontWeight: theme.typography.fontWeight.extrabold,
+			marginRight: theme.spacing.sm,
+			textAlign: "right",
 		},
 		fab: {
 			position: "absolute",
