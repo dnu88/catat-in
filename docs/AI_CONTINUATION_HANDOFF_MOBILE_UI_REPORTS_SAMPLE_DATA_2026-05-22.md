@@ -6,6 +6,9 @@ Current branch: `main`
 Latest committed work: `30cce51 fix(mobile): polish finance context and swipe interactions`
 Original mobile UI baseline: `73c21e1 refactor(mobile): align dashboard reports and sample data`
 Previous major handoff: `docs/AI_CONTINUATION_HANDOFF_FAMILY_FINANCE_2026-05-22.md`
+Latest successor handoff: `docs/AI_CONTINUATION_HANDOFF_MOBILE_UI_MOTION_TRANSACTION_POLISH_2026-05-24.md` at `6cc0763 feat(mobile): add global page entrance motion`
+
+> Note: this 2026-05-22 handoff is now historical. Use the 2026-05-24 successor handoff above for the latest mobile transaction polish and global motion continuation context.
 
 ## Executive Summary
 
