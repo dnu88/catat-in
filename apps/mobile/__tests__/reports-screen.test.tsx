@@ -169,6 +169,10 @@ describe("ReportsScreen visual parity", () => {
 		await waitFor(() => expect(screen.getByText(/Dompet/i)).toBeTruthy());
 		expect(screen.getByText("Kelola")).toBeTruthy();
 		expect(screen.queryByText(/Amplop/i)).toBeNull();
+		expect(screen.getByTestId("reports-entrance-summary")).toBeTruthy();
+		expect(screen.getByTestId("reports-entrance-chart")).toBeTruthy();
+		expect(screen.getByTestId("reports-entrance-recommendation")).toBeTruthy();
+		expect(screen.getByTestId("reports-entrance-history")).toBeTruthy();
 
 		const entryCopy = screen.getByTestId("reports-envelope-copy");
 		const manageButton = screen.getByTestId("reports-envelope-manage");

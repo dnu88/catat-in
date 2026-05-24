@@ -8,6 +8,7 @@ import {
 	TextInput,
 	View,
 } from "react-native";
+import { PageEntrance, StaggeredStack } from "../../src/components/motion";
 import { useRouter } from "expo-router";
 
 import { useTransactionRealtime } from "../../src/hooks/useTransactionRealtime";
@@ -188,12 +189,13 @@ export default function CaptureScreen() {
 	};
 
 	return (
-		<View style={styles.screen}>
+		<PageEntrance testID="capture-page-entrance" style={styles.screen}>
 			<ScrollView
 				contentContainerStyle={styles.content}
 				showsVerticalScrollIndicator={false}
 			>
-				<View style={styles.headerRow}>
+				<StaggeredStack testIDPrefix="capture-entrance">
+				<View key="capture-header" testID="capture-header" style={styles.headerRow}>
 					<View>
 						<Text style={styles.title}>Capture AI</Text>
 						<Text style={styles.subtitle}>
@@ -202,7 +204,7 @@ export default function CaptureScreen() {
 					</View>
 				</View>
 
-				<View style={styles.inputArea}>
+				<View key="capture-input" testID="capture-input" style={styles.inputArea}>
 					<View style={styles.inputHeader}>
 						<Text style={styles.inputTitle}>Mode Teks</Text>
 						<Text style={styles.inputHelper}>
@@ -249,7 +251,7 @@ export default function CaptureScreen() {
 				</View>
 
 				{isProcessing && (
-					<View style={styles.feedbackCard}>
+					<View key="capture-processing" testID="capture-processing" style={styles.feedbackCard}>
 						<View style={styles.feedbackIconWrap}>
 							<KaswiseIcon
 								name="notification"
@@ -272,7 +274,7 @@ export default function CaptureScreen() {
 				)}
 
 				{isSuccess && (
-					<View style={styles.feedbackCard}>
+					<View key="capture-success" testID="capture-success" style={styles.feedbackCard}>
 						<View style={styles.feedbackIconWrap}>
 							<KaswiseIcon
 								name="capture"
@@ -338,7 +340,7 @@ export default function CaptureScreen() {
 				)}
 
 				{isError && (
-					<View style={styles.feedbackCard}>
+					<View key="capture-error" testID="capture-error" style={styles.feedbackCard}>
 						<View style={styles.feedbackIconWrap}>
 							<KaswiseIcon
 								name="notification"
@@ -364,10 +366,12 @@ export default function CaptureScreen() {
 						</Pressable>
 					</View>
 				)}
+				</StaggeredStack>
+
 
 				<View style={{ height: 100 }} />
 			</ScrollView>
-		</View>
+		</PageEntrance>
 	);
 }
 

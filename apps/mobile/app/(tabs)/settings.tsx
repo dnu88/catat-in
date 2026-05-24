@@ -1,6 +1,7 @@
 import { router } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { PageEntrance, StaggeredStack } from "../../src/components/motion";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 import { useSupabase } from "../../src/lib/supabase";
@@ -566,13 +567,14 @@ export default function SettingsScreen() {
 	};
 
 	return (
-		<View style={styles.screen}>
+		<PageEntrance testID="settings-page-entrance" style={styles.screen}>
 			<ScrollView
 				contentContainerStyle={styles.content}
 				showsVerticalScrollIndicator={false}
 			>
+				<StaggeredStack testIDPrefix="settings-entrance">
 				{/* Header */}
-				<View style={styles.headerRow}>
+				<View key="settings-header" testID="settings-header" style={styles.headerRow}>
 					<View style={styles.headerCopy}>
 						<Text style={styles.title}>{t("settingsTitle")}</Text>
 						<Text style={styles.subtitle}>{t("settingsSubtitle")}</Text>
@@ -581,7 +583,7 @@ export default function SettingsScreen() {
 				</View>
 
 				{/* Profile Card */}
-				<View style={styles.profileCard}>
+				<View key="settings-profile" testID="settings-profile" style={styles.profileCard}>
 					<View style={styles.profileAvatar}>
 						<Text style={styles.profileAvatarText}>{avatarInitials}</Text>
 					</View>
@@ -594,7 +596,7 @@ export default function SettingsScreen() {
 				</View>
 
 				{/* Family Section */}
-				<View style={styles.sectionCard}>
+				<View key="settings-family" testID="settings-family" style={styles.sectionCard}>
 					<Text style={styles.sectionTitle}>
 						{language === "id" ? "Keluarga" : "Family"}
 					</Text>
@@ -630,7 +632,7 @@ export default function SettingsScreen() {
 				</View>
 
 				{/* Theme Section */}
-				<View style={styles.sectionCard}>
+				<View key="settings-appearance" testID="settings-appearance" style={styles.sectionCard}>
 					<Text style={styles.sectionTitle}>
 						{language === "id" ? "Tampilan" : "Appearance"}
 					</Text>
@@ -677,7 +679,7 @@ export default function SettingsScreen() {
 				</View>
 
 				{/* Language Section */}
-				<View style={styles.sectionCard}>
+				<View key="settings-language" testID="settings-language" style={styles.sectionCard}>
 					<Text style={styles.sectionTitle}>{t("languageSection")}</Text>
 					<Text style={styles.sectionSub}>{t("languageSectionHelper")}</Text>
 
@@ -718,7 +720,7 @@ export default function SettingsScreen() {
 				</View>
 
 				{/* Notifications Section */}
-				<View style={styles.sectionCard}>
+				<View key="settings-notifications" testID="settings-notifications" style={styles.sectionCard}>
 					<Text style={styles.sectionTitle}>
 						{language === "id" ? "Notifikasi" : "Notifications"}
 					</Text>
@@ -770,7 +772,7 @@ export default function SettingsScreen() {
 				</View>
 
 				{/* App Info */}
-				<View style={styles.appInfo}>
+				<View key="settings-app-info" testID="settings-app-info" style={styles.appInfo}>
 					<Text style={styles.appName}>kaswise v1.0.0</Text>
 					<Text style={styles.appTagline}>
 						{language === "id"
@@ -780,7 +782,7 @@ export default function SettingsScreen() {
 				</View>
 
 				{/* Dev Tools */}
-				<View style={styles.sectionCard}>
+				<View key="settings-dev-tools" testID="settings-dev-tools" style={styles.sectionCard}>
 					<Text style={styles.sectionTitle}>
 						{language === "id" ? "Alat Pengembang" : "Dev Tools"}
 					</Text>
@@ -826,6 +828,8 @@ export default function SettingsScreen() {
 
 				{/* Logout */}
 				<Pressable
+					key="settings-logout"
+					testID="settings-logout"
 					accessibilityRole="button"
 					accessibilityLabel={
 						language === "id" ? "Keluar dari akun" : "Sign out"
@@ -837,10 +841,12 @@ export default function SettingsScreen() {
 						{language === "id" ? "Keluar dari Akun" : "Sign Out"}
 					</Text>
 				</Pressable>
+				</StaggeredStack>
+
 
 				<View style={{ height: 100 }} />
 			</ScrollView>
-		</View>
+		</PageEntrance>
 	);
 }
 

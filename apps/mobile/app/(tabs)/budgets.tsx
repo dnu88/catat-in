@@ -8,6 +8,7 @@ import {
 	TextInput,
 	View,
 } from "react-native";
+import { PageEntrance, StaggeredStack } from "../../src/components/motion";
 
 import {
 	KaswiseIcon,
@@ -424,8 +425,9 @@ export default function BudgetsScreen() {
 	);
 
 	const listHeaderElement = (
-		<>
+		<StaggeredStack testIDPrefix="budgets-entrance">
 			<ScreenHeader
+				key="budgets-header"
 				title={tx.title}
 				subtitle={tx.subtitle}
 				action={
@@ -442,7 +444,7 @@ export default function BudgetsScreen() {
 					) : null
 				}
 			/>
-			<View testID="finance-context-badge" style={styles.contextBadge}>
+			<View key="budgets-context" testID="finance-context-badge" style={styles.contextBadge}>
 				<Text style={styles.contextBadgeText}>
 					{activeContext.type === "household"
 						? tx.contextHousehold
@@ -450,10 +452,10 @@ export default function BudgetsScreen() {
 				</Text>
 			</View>
 
-			{loadError ? <StateMessage message={loadError} tone="error" /> : null}
+			{loadError ? <StateMessage key="budgets-error" message={loadError} tone="error" /> : null}
 
 			{showCreateForm ? (
-				<View testID="envelope-create-form" style={styles.createCard}>
+				<View key="budgets-create-form" testID="envelope-create-form" style={styles.createCard}>
 					<Text style={styles.createTitle}>{tx.createTitle}</Text>
 					<InputField
 						label={tx.nameLabel}
@@ -630,7 +632,7 @@ export default function BudgetsScreen() {
 				</View>
 			) : null}
 
-			<View style={styles.overviewCard}>
+			<View key="budgets-overview" testID="budgets-overview" style={styles.overviewCard}>
 				<View style={styles.overviewTop}>
 					<View>
 						<Text style={styles.overviewLabel}>{tx.activeLabel}</Text>
@@ -646,8 +648,8 @@ export default function BudgetsScreen() {
 				<Text style={styles.overviewHelper}>{tx.overviewHelper}</Text>
 			</View>
 
-			<Text style={styles.sectionTitle}>{tx.activeSection}</Text>
-		</>
+			<Text key="budgets-active-title" testID="budgets-active-title" style={styles.sectionTitle}>{tx.activeSection}</Text>
+		</StaggeredStack>
 	);
 
 	const ListEmpty = () => (
@@ -694,7 +696,7 @@ export default function BudgetsScreen() {
 	);
 
 	return (
-		<View style={styles.screen}>
+		<PageEntrance testID="budgets-page-entrance" style={styles.screen}>
 			<FlatList
 				data={activeSummaries}
 				keyboardShouldPersistTaps="handled"
@@ -710,7 +712,7 @@ export default function BudgetsScreen() {
 				windowSize={5}
 				removeClippedSubviews={!showCreateForm}
 			/>
-		</View>
+		</PageEntrance>
 	);
 }
 

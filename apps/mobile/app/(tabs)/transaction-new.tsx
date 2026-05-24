@@ -9,6 +9,7 @@ import {
 	TextInput,
 	View,
 } from "react-native";
+import { PageEntrance, StaggeredStack } from "../../src/components/motion";
 import * as ExpoRouter from "expo-router";
 
 import { KaswiseIcon } from "../../src/components/icons/kaswise-icons";
@@ -271,13 +272,14 @@ export default function TransactionNewScreen() {
 	}
 
 	return (
-		<View style={styles.screen}>
+		<PageEntrance testID="transaction-new-page-entrance" style={styles.screen}>
 			<ScrollView
 				contentContainerStyle={styles.content}
 				showsVerticalScrollIndicator={false}
 				keyboardShouldPersistTaps="handled"
 			>
-				<View style={styles.headerRow}>
+				<StaggeredStack testIDPrefix="transaction-new-entrance">
+				<View key="transaction-form-header" testID="transaction-form-header" style={styles.headerRow}>
 					<View>
 						<Text style={styles.title}>
 							{isEditMode ? "Edit Transaksi" : "Catat Manual"}
@@ -304,7 +306,7 @@ export default function TransactionNewScreen() {
 				</View>
 
 				{!canCreate && (
-					<View style={styles.warningCard}>
+					<View key="transaction-form-readonly" testID="transaction-form-readonly" style={styles.warningCard}>
 						<Text style={styles.warningText}>
 							Mode lihat saja aktif. Transaksi tidak bisa dibuat atau diubah.
 						</Text>
@@ -312,7 +314,7 @@ export default function TransactionNewScreen() {
 				)}
 
 				{/* Type Toggle */}
-				<View style={styles.typeRow}>
+				<View key="transaction-form-type" testID="transaction-form-type" style={styles.typeRow}>
 					{(["expense", "income"] as TransactionType[]).map((t) => (
 						<Pressable
 							key={t}
@@ -345,7 +347,7 @@ export default function TransactionNewScreen() {
 				</View>
 
 				{/* Amount */}
-				<View style={styles.field}>
+				<View key="transaction-form-amount" testID="transaction-form-amount" style={styles.field}>
 					<Text style={styles.label}>Nominal</Text>
 					<View style={styles.amountRow}>
 						<Text style={styles.amountPrefix}>Rp</Text>
@@ -362,7 +364,7 @@ export default function TransactionNewScreen() {
 				</View>
 
 				{/* Description */}
-				<View style={styles.field}>
+				<View key="transaction-form-description" testID="transaction-form-description" style={styles.field}>
 					<Text style={styles.label}>Deskripsi</Text>
 					<TextInput
 						accessibilityLabel="Deskripsi transaksi"
@@ -375,7 +377,7 @@ export default function TransactionNewScreen() {
 				</View>
 
 				{/* Wallet */}
-				<View style={styles.field}>
+				<View key="transaction-form-wallet" testID="transaction-form-wallet" style={styles.field}>
 					<Text style={styles.label}>Dompet</Text>
 					{wallets.length === 0 ? (
 						<View style={styles.warningCard}>
@@ -415,7 +417,7 @@ export default function TransactionNewScreen() {
 				</View>
 
 				{/* Category */}
-				<View style={styles.field}>
+				<View key="transaction-form-category" testID="transaction-form-category" style={styles.field}>
 					<Text style={styles.label}>Kategori</Text>
 					<View style={styles.chipRow}>
 						{categories.map((c) => (
@@ -490,7 +492,7 @@ export default function TransactionNewScreen() {
 				</View>
 
 				{/* Date */}
-				<View style={styles.field}>
+				<View key="transaction-form-date" testID="transaction-form-date" style={styles.field}>
 					<Text style={styles.label}>Tanggal</Text>
 					<TextInput
 						accessibilityLabel="Tanggal transaksi"
@@ -504,7 +506,7 @@ export default function TransactionNewScreen() {
 				</View>
 
 				{/* Merchant */}
-				<View style={styles.field}>
+				<View key="transaction-form-merchant" testID="transaction-form-merchant" style={styles.field}>
 					<Text style={styles.label}>Merchant (opsional)</Text>
 					<TextInput
 						accessibilityLabel="Merchant transaksi opsional"
@@ -517,7 +519,7 @@ export default function TransactionNewScreen() {
 				</View>
 
 				{/* Note */}
-				<View style={styles.field}>
+				<View key="transaction-form-note" testID="transaction-form-note" style={styles.field}>
 					<Text style={styles.label}>Catatan (opsional)</Text>
 					<TextInput
 						accessibilityLabel="Catatan transaksi opsional"
@@ -533,9 +535,11 @@ export default function TransactionNewScreen() {
 					/>
 				</View>
 
-				{error && <Text style={styles.errorText}>{error}</Text>}
+				{error && <Text key="transaction-form-error" testID="transaction-form-error" style={styles.errorText}>{error}</Text>}
 
 				<Pressable
+					key="transaction-form-submit"
+					testID="transaction-form-submit"
 					accessibilityRole="button"
 					accessibilityLabel={
 						isEditMode
@@ -555,10 +559,12 @@ export default function TransactionNewScreen() {
 						</Text>
 					)}
 				</Pressable>
+				</StaggeredStack>
+
 
 				<View style={{ height: 60 }} />
 			</ScrollView>
-		</View>
+		</PageEntrance>
 	);
 }
 

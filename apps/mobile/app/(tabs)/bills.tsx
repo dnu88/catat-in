@@ -7,6 +7,7 @@ import {
 	Text,
 	View,
 } from "react-native";
+import { PageEntrance, StaggeredStack } from "../../src/components/motion";
 
 import type { KaswiseIconName } from "../../src/components/icons/kaswise-icons";
 import {
@@ -220,13 +221,6 @@ export default function BillsScreen() {
 		[billsWithStatus],
 	);
 
-	if (loading) {
-		return (
-			<View style={styles.screen}>
-				<LoadingState label="Memuat tagihan..." />
-			</View>
-		);
-	}
 
 	const renderBill = ({ item }: { item: BillWithStatus }) => (
 		<BillRow
@@ -241,9 +235,10 @@ export default function BillsScreen() {
 
 	const keyExtractor = (item: BillWithStatus) => item.id;
 
-	const ListHeader = () => (
-		<>
+	const listHeader = useMemo(() => (
+		<StaggeredStack testIDPrefix="bills-entrance">
 			<ScreenHeader
+				key="bills-header"
 				title="Tagihan"
 				subtitle="Kelola pengingat tagihan rutin."
 				action={
@@ -254,14 +249,14 @@ export default function BillsScreen() {
 					) : null
 				}
 			/>
-			<View testID="finance-context-badge" style={styles.contextBadge}>
+			<View key="bills-context" testID="finance-context-badge" style={styles.contextBadge}>
 				<Text style={styles.contextBadgeText}>
 					{activeContext.type === "household" ? "Keluarga" : "Pribadi"}
 				</Text>
 			</View>
 
 			{overdueCount > 0 && (
-				<View style={styles.alertCard}>
+				<View key="bills-overdue-alert" testID="bills-overdue-alert" style={styles.alertCard}>
 					<IconBubble name="bills" tone="danger" size={44} />
 					<View style={styles.alertContent}>
 						<Text style={styles.alertTitle}>
@@ -274,7 +269,7 @@ export default function BillsScreen() {
 				</View>
 			)}
 
-			<View style={styles.summaryCard}>
+			<View key="bills-summary" testID="bills-summary" style={styles.summaryCard}>
 				<View style={styles.summaryRow}>
 					<View style={styles.summaryItem}>
 						<Text style={styles.summaryLabel}>Total Tagihan Bulan Ini</Text>
@@ -285,9 +280,11 @@ export default function BillsScreen() {
 				</View>
 			</View>
 
-			{loadError ? <StateMessage message={loadError} tone="error" /> : null}
+			{loadError ? <StateMessage key="bills-error" message={loadError} tone="error" /> : null}
 
 			<ScrollView
+				key="bills-filter"
+				testID="bills-filter"
 				horizontal
 				showsHorizontalScrollIndicator={false}
 				contentContainerStyle={styles.filterRow}
@@ -309,8 +306,16 @@ export default function BillsScreen() {
 					/>
 				))}
 			</ScrollView>
-		</>
-	);
+		</StaggeredStack>
+	), [
+		activeContext.type,
+		canCreate,
+		filter,
+		loadError,
+		overdueCount,
+		styles,
+		totalUpcoming,
+	]);
 
 	const ListEmpty = () => (
 		<EmptyState
@@ -321,13 +326,21 @@ export default function BillsScreen() {
 		/>
 	);
 
+	if (loading) {
+		return (
+			<View style={styles.screen}>
+				<LoadingState label="Memuat tagihan..." />
+			</View>
+		);
+	}
+
 	return (
-		<View style={styles.screen}>
+		<PageEntrance testID="bills-page-entrance" style={styles.screen}>
 			<FlatList
 				data={filtered}
 				renderItem={renderBill}
 				keyExtractor={keyExtractor}
-				ListHeaderComponent={ListHeader}
+				ListHeaderComponent={listHeader}
 				ListEmptyComponent={ListEmpty}
 				ListFooterComponent={<View style={{ height: 100 }} />}
 				contentContainerStyle={styles.content}
@@ -337,7 +350,7 @@ export default function BillsScreen() {
 				windowSize={5}
 				removeClippedSubviews
 			/>
-		</View>
+		</PageEntrance>
 	);
 }
 

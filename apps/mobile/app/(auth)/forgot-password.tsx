@@ -1,5 +1,6 @@
 import { router } from 'expo-router'
 import { useState } from 'react'
+import { StaggeredStack } from "../../src/components/motion";
 
 import { AuthBackButton, AuthButton, AuthFormCard, AuthHeroPanel, AuthLink, AuthScreenLayout } from '../../src/components/ui'
 import { InputField, StateMessage } from '../../src/components/ui'
@@ -36,11 +37,12 @@ export default function ForgotPasswordScreen() {
 
   return (
     <AuthScreenLayout>
-      <AuthBackButton onPress={() => router.back()} label={t('back')} />
+      <StaggeredStack testIDPrefix="forgot-password-entrance">
+      <AuthBackButton key="forgot-password-back" onPress={() => router.back()} label={t('back')} />
 
-      <AuthHeroPanel icon="email" iconTone="warning" eyebrow={language === 'id' ? 'Reset password' : 'Reset password'} title={t('forgotPasswordHeroTitle')} />
+      <AuthHeroPanel key="forgot-password-hero" icon="email" iconTone="warning" eyebrow={language === 'id' ? 'Reset password' : 'Reset password'} title={t('forgotPasswordHeroTitle')} />
 
-      <AuthFormCard title={t('forgotPasswordTitle')} subtitle={t('forgotPasswordSubtitle')}>
+      <AuthFormCard key="forgot-password-form" title={t('forgotPasswordTitle')} subtitle={t('forgotPasswordSubtitle')}>
         <InputField
           label={t('emailLabel')}
           value={email}
@@ -59,6 +61,7 @@ export default function ForgotPasswordScreen() {
 
         <AuthLink href="/(auth)/login" label={t('forgotPasswordLink')} align="center" />
       </AuthFormCard>
+      </StaggeredStack>
     </AuthScreenLayout>
   )
 }

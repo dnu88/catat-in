@@ -10,6 +10,7 @@ import {
 	Text,
 	View,
 } from "react-native";
+import { PageEntrance, StaggeredStack } from "../../src/components/motion";
 import { useRouter } from "expo-router";
 
 import { KaswiseIcon } from "../../src/components/icons/kaswise-icons";
@@ -423,15 +424,6 @@ export default function TransactionsScreen() {
 		);
 	};
 
-	if (loading) {
-		return (
-			<View style={styles.screen}>
-				<LoadingState
-					label={isEn ? "Loading transactions..." : "Memuat transaksi..."}
-				/>
-			</View>
-		);
-	}
 
 	const renderTransaction = ({
 		item,
@@ -454,8 +446,8 @@ export default function TransactionsScreen() {
 
 	const keyExtractor = (item: Transaction) => item.id;
 
-	const ListHeader = () => (
-		<>
+	const listHeader = useMemo(() => (
+		<StaggeredStack testIDPrefix="transactions-entrance">
 			<View testID="transactions-header-block" style={styles.headerBlock}>
 				<ScreenHeader
 					title={isEn ? "Transactions" : "Transaksi"}
@@ -472,7 +464,7 @@ export default function TransactionsScreen() {
 				/>
 			</View>
 
-			{loadError ? <StateMessage message={loadError} tone="error" /> : null}
+			{loadError ? <StateMessage key="transactions-error" message={loadError} tone="error" /> : null}
 
 			<View testID="transactions-period-row" style={styles.periodRow}>
 				{(["week", "month", "year"] as Period[]).map((period) => (
@@ -584,8 +576,21 @@ export default function TransactionsScreen() {
 					/>
 				))}
 			</ScrollView>
-		</>
-	);
+		</StaggeredStack>
+	), [
+		activeFilter,
+		activePeriod,
+		isEn,
+		list.length,
+		loadError,
+		styles,
+		theme.colors.brandPrimary,
+		theme.colors.brandPrimaryDeep,
+		theme.colors.textInverse,
+		theme.mode,
+		totalExpense,
+		totalIncome,
+	]);
 
 	const ListEmpty = () => (
 		<EmptyState
@@ -600,13 +605,23 @@ export default function TransactionsScreen() {
 		/>
 	);
 
+	if (loading) {
+		return (
+			<View style={styles.screen}>
+				<LoadingState
+					label={isEn ? "Loading transactions..." : "Memuat transaksi..."}
+				/>
+			</View>
+		);
+	}
+
 	return (
-		<View style={styles.screen}>
+		<PageEntrance testID="transactions-page-entrance" style={styles.screen}>
 			<FlatList
 				data={list}
 				renderItem={renderTransaction}
 				keyExtractor={keyExtractor}
-				ListHeaderComponent={ListHeader}
+				ListHeaderComponent={listHeader}
 				ListEmptyComponent={ListEmpty}
 				ListFooterComponent={<View style={{ height: 100 }} />}
 				contentContainerStyle={styles.content}
@@ -635,7 +650,7 @@ export default function TransactionsScreen() {
 					weight="bold"
 				/>
 			</Pressable>
-		</View>
+		</PageEntrance>
 	);
 }
 

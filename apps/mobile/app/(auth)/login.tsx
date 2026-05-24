@@ -1,5 +1,6 @@
 import { router } from 'expo-router'
 import { useState } from 'react'
+import { StaggeredStack } from "../../src/components/motion";
 
 import { AuthButton, AuthFooter, AuthFormCard, AuthHeroPanel, AuthLink, AuthScreenLayout } from '../../src/components/ui'
 import { InputField, StateMessage } from '../../src/components/ui'
@@ -37,8 +38,10 @@ export default function LoginScreen() {
 
   return (
     <AuthScreenLayout>
-      <KaswiseLogoMark testID="login-kaswise-logo-mark" size={58} />
+      <StaggeredStack testIDPrefix="login-entrance">
+      <KaswiseLogoMark key="login-logo" testID="login-kaswise-logo-mark" size={58} />
       <AuthHeroPanel
+        key="login-hero"
         icon="lock"
         iconTone="primary"
         title={t('loginHeroTitle')}
@@ -49,7 +52,7 @@ export default function LoginScreen() {
         ]}
       />
 
-      <AuthFormCard title={t('loginTitle')} subtitle={t('loginSubtitle')}>
+      <AuthFormCard key="login-form" title={t('loginTitle')} subtitle={t('loginSubtitle')}>
         <InputField
           label={t('emailLabel')}
           value={email}
@@ -81,7 +84,8 @@ export default function LoginScreen() {
         <AuthLink href="/(auth)/forgot-password" label={t('forgotPasswordPrompt')} variant="secondary" align="right" />
       </AuthFormCard>
 
-      <AuthFooter question={t('noAccount')} linkLabel={t('registerButton')} linkHref="/(auth)/register" />
+      <AuthFooter key="login-footer" question={t('noAccount')} linkLabel={t('registerButton')} linkHref="/(auth)/register" />
+      </StaggeredStack>
     </AuthScreenLayout>
   )
 }

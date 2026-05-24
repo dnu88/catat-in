@@ -1,5 +1,6 @@
 import { router } from 'expo-router'
 import { useState } from 'react'
+import { StaggeredStack } from "../../src/components/motion";
 
 import { AuthButton, AuthFooter, AuthFormCard, AuthHeroPanel, AuthScreenLayout } from '../../src/components/ui'
 import { InputField, StateMessage } from '../../src/components/ui'
@@ -47,7 +48,9 @@ export default function RegisterScreen() {
 
   return (
     <AuthScreenLayout>
+      <StaggeredStack testIDPrefix="register-entrance">
       <AuthHeroPanel
+        key="register-hero"
         icon="ai"
         iconTone="accent"
         title={t('registerHeroTitle')}
@@ -58,7 +61,7 @@ export default function RegisterScreen() {
         ]}
       />
 
-      <AuthFormCard title={t('registerTitle')} subtitle={t('registerSubtitle')}>
+      <AuthFormCard key="register-form" title={t('registerTitle')} subtitle={t('registerSubtitle')}>
         <InputField
           label={t('nameLabel')}
           value={name}
@@ -96,7 +99,8 @@ export default function RegisterScreen() {
         <AuthButton label={t('registerButton')} onPress={onRegister} loading={loading} disabled={loading} />
       </AuthFormCard>
 
-      <AuthFooter question={t('alreadyHaveAccount')} linkLabel={t('loginButton')} linkHref="/(auth)/login" />
+      <AuthFooter key="register-footer" question={t('alreadyHaveAccount')} linkLabel={t('loginButton')} linkHref="/(auth)/login" />
+      </StaggeredStack>
     </AuthScreenLayout>
   )
 }

@@ -8,6 +8,7 @@ import {
 	TextInput,
 	View,
 } from "react-native";
+import { PageEntrance, StaggeredStack } from "../../src/components/motion";
 
 import { useI18n } from "../../src/i18n/i18n-context";
 import {
@@ -299,12 +300,13 @@ export default function WalletsScreen() {
 	);
 
 	return (
-		<View style={styles.screen}>
+		<PageEntrance testID="wallets-page-entrance" style={styles.screen}>
 			<ScrollView
 				contentContainerStyle={styles.content}
 				showsVerticalScrollIndicator={false}
 			>
-				<View style={styles.headerRow}>
+				<StaggeredStack testIDPrefix="wallets-entrance">
+				<View key="wallets-header" testID="wallets-header" style={styles.headerRow}>
 					<View style={styles.headerCopy}>
 						<Text style={styles.title}>{tx.title}</Text>
 						<Text style={styles.subtitle}>{tx.subtitle}</Text>
@@ -325,7 +327,7 @@ export default function WalletsScreen() {
 				</View>
 
 				{editingWallet ? (
-					<View testID="wallet-edit-form" style={styles.formCard}>
+					<View key="wallet-edit-form" testID="wallet-edit-form" style={styles.formCard}>
 						<Text style={styles.formTitle}>
 							{tx.edit} · {editingWallet.scopeLabel}
 						</Text>
@@ -385,7 +387,7 @@ export default function WalletsScreen() {
 				) : null}
 
 				{showCreate ? (
-					<View testID="wallet-create-form" style={styles.formCard}>
+					<View key="wallet-create-form" testID="wallet-create-form" style={styles.formCard}>
 						<Text style={styles.formTitle}>
 							{tx.formTitle} · {activeScopeLabel}
 						</Text>
@@ -444,7 +446,7 @@ export default function WalletsScreen() {
 					</View>
 				) : null}
 
-				<View testID="wallets-total-hero" style={styles.totalCard}>
+				<View key="wallets-total-hero" testID="wallets-total-hero" style={styles.totalCard}>
 					<Text style={styles.totalLabel}>{tx.total}</Text>
 					<Text style={styles.totalValue}>{formatCurrency(totalBalance)}</Text>
 					<View style={styles.totalRow}>
@@ -457,6 +459,8 @@ export default function WalletsScreen() {
 				</View>
 
 				<ScrollView
+					key="wallets-filter"
+					testID="wallets-filter"
 					horizontal
 					showsHorizontalScrollIndicator={false}
 					contentContainerStyle={styles.filterRow}
@@ -486,14 +490,14 @@ export default function WalletsScreen() {
 				</ScrollView>
 
 				{loading ? (
-					<View style={styles.loadingInline}>
+					<View key="wallets-loading" testID="wallets-loading" style={styles.loadingInline}>
 						<ActivityIndicator color={theme.colors.brandPrimary} />
 						<Text style={styles.loadingText}>{tx.loading}</Text>
 					</View>
 				) : null}
-				{error ? <Text style={styles.errorText}>{error}</Text> : null}
+				{error ? <Text key="wallets-error" testID="wallets-error" style={styles.errorText}>{error}</Text> : null}
 				{!loading && filtered.length === 0 ? (
-					<Text style={styles.emptyText}>{tx.empty}</Text>
+					<Text key="wallets-empty" testID="wallets-empty" style={styles.emptyText}>{tx.empty}</Text>
 				) : null}
 
 				{filtered.map((wallet) => (
@@ -588,10 +592,12 @@ export default function WalletsScreen() {
 						</View>
 					</View>
 				))}
+				</StaggeredStack>
+
 
 				<View style={{ height: 100 }} />
 			</ScrollView>
-		</View>
+		</PageEntrance>
 	);
 }
 

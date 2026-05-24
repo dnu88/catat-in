@@ -216,6 +216,11 @@ describe("DashboardScreen dark luxury Home parity", () => {
 				.findByProps({ testID: "finance-context-switcher" }),
 		).toBeTruthy();
 
+		expect(screen.getByTestId("home-entrance-hero")).toBeTruthy();
+		expect(screen.getByTestId("home-entrance-actions")).toBeTruthy();
+		expect(screen.getByTestId("home-entrance-budget")).toBeTruthy();
+		expect(screen.getByTestId("home-entrance-recent")).toBeTruthy();
+
 		expect(screen.getByText("Total saldo")).toBeTruthy();
 		expect(screen.getByTestId("home-total-balance").props.children).toBe(
 			"Rp 0",

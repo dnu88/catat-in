@@ -3,6 +3,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useRouter } from "expo-router";
 
 import { FinanceContextSwitcher } from "../../src/components/FinanceContextSwitcher";
+import { PageEntrance, StaggeredEntrance } from "../../src/components/motion";
 import { KaswiseIcon } from "../../src/components/icons/kaswise-icons";
 import { EmptyState } from "../../src/components/ui";
 import { useI18n } from "../../src/i18n/i18n-context";
@@ -219,7 +220,7 @@ export default function DashboardScreen() {
 	});
 
 	return (
-		<View style={styles.screen}>
+		<PageEntrance testID="home-page-entrance" style={styles.screen}>
 			<ScrollView
 				style={styles.scrollView}
 				contentContainerStyle={styles.content}
@@ -237,7 +238,8 @@ export default function DashboardScreen() {
 					</View>
 				</View>
 
-				<View testID="home-hero-card" style={styles.heroCard}>
+				<StaggeredEntrance index={0} testID="home-entrance-hero">
+					<View testID="home-hero-card" style={styles.heroCard}>
 					<View style={styles.heroContextRow}>
 						<FinanceContextSwitcher variant="hero" />
 					</View>
@@ -261,10 +263,12 @@ export default function DashboardScreen() {
 							</Text>
 						</View>
 					</View>
-				</View>
+					</View>
+				</StaggeredEntrance>
 
-				<View style={styles.quickActionRow}>
-					{quickActions.map((action) => (
+				<StaggeredEntrance index={1} testID="home-entrance-actions">
+					<View style={styles.quickActionRow}>
+						{quickActions.map((action) => (
 						<Pressable
 							key={action.id}
 							testID={`home-quick-action-${action.id}`}
@@ -290,10 +294,12 @@ export default function DashboardScreen() {
 							</View>
 							<Text style={styles.quickActionLabel}>{action.label}</Text>
 						</Pressable>
-					))}
-				</View>
+						))}
+					</View>
+				</StaggeredEntrance>
 
-				<View testID="home-budget-section" style={styles.sectionCard}>
+				<StaggeredEntrance index={2} testID="home-entrance-budget">
+					<View testID="home-budget-section" style={styles.sectionCard}>
 					<View style={styles.sectionTopRow}>
 						<Text style={styles.sectionTitle}>{tx.budget}</Text>
 						<Pressable
@@ -349,11 +355,13 @@ export default function DashboardScreen() {
 							<Text style={styles.budgetStatus}>{tx.attention}</Text>
 						</View>
 					) : null}
-				</View>
+					</View>
+				</StaggeredEntrance>
 
-				<View style={styles.sectionCard}>
-					<View style={styles.sectionTopRow}>
-						<Text style={styles.sectionTitle}>Terakhir</Text>
+				<StaggeredEntrance index={3} testID="home-entrance-recent">
+					<View style={styles.sectionCard}>
+						<View style={styles.sectionTopRow}>
+							<Text style={styles.sectionTitle}>Terakhir</Text>
 						<Pressable
 							accessibilityRole="button"
 							accessibilityLabel="Lihat semua transaksi"
@@ -401,9 +409,10 @@ export default function DashboardScreen() {
 							}
 						/>
 					)}
-				</View>
+					</View>
+				</StaggeredEntrance>
 			</ScrollView>
-		</View>
+		</PageEntrance>
 	);
 }
 

@@ -7,6 +7,7 @@ import {
 	TextInput,
 	View,
 } from "react-native";
+import { PageEntrance, StaggeredStack } from "../../src/components/motion";
 
 import { Card } from "../../src/components/ui/Card";
 import { IconBubble } from "../../src/components/ui/IconBubble";
@@ -183,12 +184,14 @@ export default function GroupsScreen() {
 	]);
 
 	return (
-		<View style={styles.screen}>
+		<PageEntrance testID="groups-page-entrance" style={styles.screen}>
 			<ScrollView
 				contentContainerStyle={styles.content}
 				showsVerticalScrollIndicator={false}
 			>
+				<StaggeredStack testIDPrefix="groups-entrance">
 				<SectionHeader
+					key="groups-header"
 					title={tx.title}
 					subtitle={tx.subtitle}
 					action={
@@ -224,7 +227,7 @@ export default function GroupsScreen() {
 					}
 				/>
 
-				<Card variant="muted" style={styles.infoCard}>
+				<Card key="groups-info" variant="muted" style={styles.infoCard}>
 					<IconBubble name="groups" tone="info" size={48} />
 					<View style={styles.infoContent}>
 						<Text style={styles.infoTitle}>{tx.infoTitle}</Text>
@@ -233,7 +236,7 @@ export default function GroupsScreen() {
 				</Card>
 
 				{activeForm === "create" ? (
-					<Card variant="default" style={styles.formCard}>
+					<Card key="groups-create-form" variant="default" style={styles.formCard}>
 						<Text style={styles.formTitle}>{tx.createTitle}</Text>
 						<TextInput
 							accessibilityLabel={tx.namePlaceholder}
@@ -257,7 +260,7 @@ export default function GroupsScreen() {
 				) : null}
 
 				{activeForm === "join" ? (
-					<Card variant="default" style={styles.formCard}>
+					<Card key="groups-join-form" variant="default" style={styles.formCard}>
 						<Text style={styles.formTitle}>{tx.joinTitle}</Text>
 						<TextInput
 							accessibilityLabel={tx.invitePlaceholder}
@@ -281,11 +284,11 @@ export default function GroupsScreen() {
 					</Card>
 				) : null}
 
-				{error ? <Text style={styles.errorText}>{error}</Text> : null}
-				{loading ? <Text style={styles.emptyText}>{tx.loading}</Text> : null}
+				{error ? <Text key="groups-error" testID="groups-error" style={styles.errorText}>{error}</Text> : null}
+				{loading ? <Text key="groups-loading" testID="groups-loading" style={styles.emptyText}>{tx.loading}</Text> : null}
 
 				{!loading && memberships.length === 0 ? (
-					<Card variant="default" style={styles.emptyCard}>
+					<Card key="groups-empty" variant="default" style={styles.emptyCard}>
 						<IconBubble name="groups" tone="accent" size={46} />
 						<Text style={styles.emptyTitle}>{tx.emptyTitle}</Text>
 						<Text style={styles.emptyText}>{tx.emptyBody}</Text>
@@ -345,10 +348,12 @@ export default function GroupsScreen() {
 						</Card>
 					);
 				})}
+				</StaggeredStack>
+
 
 				<View style={{ height: 100 }} />
 			</ScrollView>
-		</View>
+		</PageEntrance>
 	);
 }
 

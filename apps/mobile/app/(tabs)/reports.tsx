@@ -14,6 +14,7 @@ import Svg, { Circle, Polyline } from "react-native-svg";
 import { useTheme } from "../../src/theme/theme-context";
 import { useSupabase } from "../../src/lib/supabase";
 import { IconBubble } from "../../src/components/ui";
+import { PageEntrance, StaggeredEntrance } from "../../src/components/motion";
 import type { KaswiseIconName } from "../../src/components/icons/kaswise-icons";
 import { useI18n } from "../../src/i18n/i18n-context";
 import { useFinanceContext } from "../../src/state/finance-context";
@@ -969,10 +970,11 @@ export default function ReportsScreen() {
 
 	return (
 		<View style={styles.screen}>
-			<ScrollView
-				contentContainerStyle={styles.content}
-				showsVerticalScrollIndicator={false}
-			>
+			<PageEntrance testID="reports-page-entrance" style={styles.pageEntrance}>
+				<ScrollView
+					contentContainerStyle={styles.content}
+					showsVerticalScrollIndicator={false}
+				>
 				{/* Header */}
 				<View style={styles.headerRow}>
 					<View>
@@ -1003,7 +1005,8 @@ export default function ReportsScreen() {
 				</View>
 
 				{/* Summary Row — shown before controls */}
-				<View testID="reports-summary-card" style={styles.summaryCard}>
+				<StaggeredEntrance index={0} testID="reports-entrance-summary">
+					<View testID="reports-summary-card" style={styles.summaryCard}>
 					<View style={styles.summaryTopRow}>
 						<View style={styles.summaryHalf}>
 							<Text style={styles.summaryLabel}>{tx.income}</Text>
@@ -1035,9 +1038,11 @@ export default function ReportsScreen() {
 						</Text>
 						<Text style={styles.summarySavingRate}>{savingRate}</Text>
 					</View>
-				</View>
+					</View>
+				</StaggeredEntrance>
 
-				<View testID="reports-envelope-entry" style={styles.envelopeEntryCard}>
+				<StaggeredEntrance index={2} testID="reports-entrance-recommendation">
+					<View testID="reports-envelope-entry" style={styles.envelopeEntryCard}>
 					<View style={styles.envelopeEntryTopRow}>
 						<View style={styles.envelopeEntryTitleRow}>
 							<IconBubble name="budgets" tone="primary" size={36} />
@@ -1069,7 +1074,8 @@ export default function ReportsScreen() {
 							</Text>
 						</Pressable>
 					</View>
-				</View>
+					</View>
+				</StaggeredEntrance>
 
 				{/* Tab Selector */}
 				<ScrollView
@@ -1195,17 +1201,20 @@ export default function ReportsScreen() {
 					</View>
 				)}
 				{realTransactionCount !== null && !dataLoading && (
-					<View testID="reports-info-card" style={styles.infoCard}>
+					<StaggeredEntrance index={3} testID="reports-entrance-info">
+						<View testID="reports-info-card" style={styles.infoCard}>
 						<Text style={styles.infoText}>
 							{tx.txFound(realTransactionCount)}
 						</Text>
-					</View>
+						</View>
+					</StaggeredEntrance>
 				)}
 
 				{activeTab === "overview" && (
 					<>
 						{/* Chart */}
-						<View style={styles.chartCard}>
+						<StaggeredEntrance index={1} testID="reports-entrance-chart">
+							<View style={styles.chartCard}>
 							<Text style={styles.chartTitle}>{tx.trendTitle}</Text>
 							<Text style={styles.chartSub}>{tx.trendSub}</Text>
 
@@ -1337,8 +1346,10 @@ export default function ReportsScreen() {
 									<Text style={styles.legendText}>{tx.expense}</Text>
 								</View>
 							</View>
-						</View>
-						<View style={styles.top5Card}>
+							</View>
+						</StaggeredEntrance>
+						<StaggeredEntrance index={3} testID="reports-entrance-history">
+							<View style={styles.top5Card}>
 							<Text style={styles.top5Title}>5 Pengeluaran Terbanyak</Text>
 							<Text style={styles.top5Sub}>{periodDisplayLabel}</Text>
 							{top5Expenses.length === 0 ? (
@@ -1361,7 +1372,8 @@ export default function ReportsScreen() {
 									</View>
 								))
 							)}
-						</View>
+							</View>
+						</StaggeredEntrance>
 					</>
 				)}
 				{activeTab === "category" && (
@@ -1633,7 +1645,8 @@ export default function ReportsScreen() {
 				)}
 
 				<View style={{ height: 100 }} />
-			</ScrollView>
+				</ScrollView>
+			</PageEntrance>
 
 			{/* Date Range Modal */}
 			<Modal
@@ -1937,6 +1950,7 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 
 	return StyleSheet.create({
 		screen: { flex: 1, backgroundColor: theme.colors.background },
+		pageEntrance: { flex: 1 },
 		content: { padding: 20, gap: 10, paddingBottom: 26 },
 		headerRow: {
 			flexDirection: "row",

@@ -1,16 +1,14 @@
 import { Stack } from 'expo-router'
 
 import { useTheme } from '../../src/theme/theme-context'
+import { createKaswiseStackScreenOptions } from '../../src/navigation/transitions'
 
 export default function AuthLayout() {
   const { theme } = useTheme()
 
   return (
     <Stack
-      screenOptions={{
-        headerShown: false,
-        contentStyle: { backgroundColor: theme.colors.background },
-      }}
+      screenOptions={createKaswiseStackScreenOptions(theme.colors.background)}
     >
       <Stack.Screen name="login" />
       <Stack.Screen name="register" />
