@@ -290,5 +290,5 @@ At the time of this handoff:
 - `main` contains the merged family finance work.
 - `origin/main` has been pushed.
 - Worktree branch `feature/mobile-family-finance` remains available but is no longer needed for normal continuation.
-- Follow-up mobile UI/report/sample-data continuation is documented in `docs/AI_CONTINUATION_HANDOFF_MOBILE_UI_REPORTS_SAMPLE_DATA_2026-05-22.md`.
+- Follow-up mobile UI/report/sample-data continuation is documented in `docs/AI_CONTINUATION_HANDOFF_MOBILE_UI_REPORTS_SAMPLE_DATA_2026-05-22.md` and was refreshed through `30cce51` on 2026-05-24.
 - Use `main` for future work unless intentionally creating a new feature branch.

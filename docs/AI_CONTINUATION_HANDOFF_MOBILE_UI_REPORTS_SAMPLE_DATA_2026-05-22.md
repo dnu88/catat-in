@@ -3,14 +3,15 @@
 Date: 2026-05-22
 Repo: `dnu88/catat-in`
 Current branch: `main`
-Latest committed work: `73c21e1 refactor(mobile): align dashboard reports and sample data`
+Latest committed work: `30cce51 fix(mobile): polish finance context and swipe interactions`
+Original mobile UI baseline: `73c21e1 refactor(mobile): align dashboard reports and sample data`
 Previous major handoff: `docs/AI_CONTINUATION_HANDOFF_FAMILY_FINANCE_2026-05-22.md`
 
 ## Executive Summary
 
-After the family finance merge, the mobile app received a production polish pass covering UI audit fixes, Home dashboard cleanup, Reports data wiring, and a developer sample-data flow.
+After the family finance merge, the mobile app received a production polish pass covering UI audit fixes, Home dashboard cleanup, Reports data wiring, and a developer sample-data flow. The original 2026-05-22 mobile UI baseline was `73c21e1`; as of the 2026-05-24 documentation refresh, current `main`/`origin/main` is `30cce51`.
 
-The latest committed state includes:
+The current committed state includes the original baseline plus follow-up hardening:
 
 - Home dashboard now uses real Supabase data, not deleted mock data.
 - Home finance switcher caption uses `Profile`, not `Konteks` / `Context`.
@@ -23,13 +24,36 @@ The latest committed state includes:
 - Light theme green accents were darkened for contrast and WCAG readability.
 - Dead legacy mobile screens/styles/mock files were removed.
 
-## Latest Commit
+## Current Latest Commit
 
 ```text
-73c21e1 refactor(mobile): align dashboard reports and sample data
+30cce51 fix(mobile): polish finance context and swipe interactions
 ```
 
-Commit scope:
+This is six commits after the original `73c21e1` mobile UI/reports/sample-data baseline.
+
+Follow-up commits after `73c21e1`:
+
+1. `f253778 docs: add mobile UI continuation handoff`
+2. `78a859a docs(design): refresh impeccable design context`
+3. `2cfb741 fix(mobile): apply impeccable audit hardening`
+4. `7a477de fix(mobile): polish audit hardening and transaction actions`
+5. `092c26d test(mobile): stabilize wallet loading assertions`
+6. `30cce51 fix(mobile): polish finance context and swipe interactions`
+
+Aggregate scope for `73c21e1..30cce51`:
+
+- 30 files changed.
+- 5703 insertions, 3080 deletions.
+- Main areas: mobile design docs/context, tab layout, Settings, Reports, Transactions, Transaction New edit flow, wallet loading tests, finance context polish, swipe interactions, and additional regression tests.
+
+Current HEAD commit scope (`30cce51`):
+
+- 7 mobile files changed.
+- 690 insertions, 79 deletions.
+- Polished budget envelope loading, transaction edit mode, transaction swipe actions, and light accent regression coverage.
+
+Historical baseline scope for `73c21e1`:
 
 - 42 mobile files changed.
 - 1166 insertions, 2121 deletions.
@@ -42,27 +66,25 @@ Commit scope:
 
 ## Verification Evidence
 
-Fresh verification after the latest changes:
+Fresh mobile verification at current HEAD (`30cce51`) on 2026-05-24:
 
 ```bash
 cd /home/Danu88/catat-in/apps/mobile
 npx tsc --noEmit
-./node_modules/.bin/jest --runInBand --silent
+./node_modules/.bin/jest --runInBand --silent --json --outputFile=/tmp/kaswise-mobile-jest-results.json
 ```
 
 Results:
 
-- TypeScript: pass, no output.
-- Jest: `27 passed, 27 total`; `161 passed, 161 total`; `EXIT=0`.
+- TypeScript: pass, no output, exit `0`.
+- Jest: `30 passed, 30 total`; `181 passed, 181 total`; `0 failed`; exit `0`.
 
-Additional targeted checks also passed:
+Scope note for this refresh:
 
-```bash
-./node_modules/.bin/jest __tests__/reports-screen.test.tsx --runInBand
-./node_modules/.bin/jest __tests__/tabs-index.test.tsx --runInBand
-```
+- Mobile TypeScript and mobile Jest were rerun for this documentation update.
+- Web build and Supabase migration tests were not rerun on 2026-05-24; see the family finance handoff for the last recorded full-stack verification.
 
-Note: non-silent Jest runs still print existing React Native `act(...)` warnings from async screen tests. They do not fail the suite. Silent run confirms pass status.
+Note: non-silent Jest runs may still print existing React Native `act(...)` warnings from async screen tests. They do not fail the suite. Silent run confirms pass status.
 
 ## Product / Design Decisions
 
@@ -271,7 +293,7 @@ Important caution:
 
 ## Audit / UI Polish Changes Included
 
-The commit also includes earlier verified audit fixes requested by the user:
+The baseline and follow-up commits also include earlier verified audit fixes requested by the user:
 
 - Deleted dead mobile code and mock screens.
 - Trimmed stale Tailwind config usage.
@@ -371,14 +393,15 @@ From repo root:
 ```bash
 git status --short
 git log -5 --oneline
-git show --stat --summary 73c21e1
+git show --stat --summary 30cce51
 ```
 
 ## Repository State at This Handoff
 
-At the time this document was written:
+At the time of the 2026-05-24 refresh:
 
-- Latest application commit: `73c21e1 refactor(mobile): align dashboard reports and sample data`.
-- Tests were verified before commit.
-- This documentation file is newly created after that commit and is not included in `73c21e1` unless committed separately.
+- Latest application commit: `30cce51 fix(mobile): polish finance context and swipe interactions`.
+- Repository state: `main...origin/main`, clean working tree at refresh time.
+- Current mobile verification: TypeScript pass; Jest `30/30` suites and `181/181` tests pass.
+- Original mobile UI/report/sample-data baseline remains `73c21e1 refactor(mobile): align dashboard reports and sample data` for historical context.
 - Use `main` for future work unless intentionally creating a new feature branch.
