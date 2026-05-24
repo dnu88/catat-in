@@ -1,3 +1,4 @@
+import type { StyleProp, TextStyle, ViewStyle } from 'react-native'
 import { Text, View } from 'react-native'
 import { useTheme } from '../../theme/theme-context'
 import type { KaswiseIconName } from '../icons/kaswise-icons'
@@ -10,14 +11,26 @@ type StatCardProps = {
   helper?: string
   icon: KaswiseIconName
   tone?: IconBubbleTone
+  style?: StyleProp<ViewStyle>
+  contentStyle?: StyleProp<ViewStyle>
+  valueTextStyle?: StyleProp<TextStyle>
 }
 
-export function StatCard({ label, value, helper, icon, tone = 'primary' }: StatCardProps) {
+export function StatCard({
+  label,
+  value,
+  helper,
+  icon,
+  tone = 'primary',
+  style,
+  contentStyle,
+  valueTextStyle,
+}: StatCardProps) {
   const { theme } = useTheme()
 
   return (
-    <Card variant="default">
-      <View style={{ gap: theme.spacing.md }}>
+    <Card variant="default" style={style}>
+      <View style={[{ gap: theme.spacing.md }, contentStyle]}>
         <IconBubble name={icon} tone={tone} size={36} />
         <View style={{ gap: theme.spacing.xs / 2 }}>
           <Text
@@ -30,11 +43,14 @@ export function StatCard({ label, value, helper, icon, tone = 'primary' }: StatC
             {label}
           </Text>
           <Text
-            style={{
-              color: theme.colors.textPrimary,
-              fontSize: theme.typography.metric.fontSize,
-              fontWeight: theme.typography.metric.fontWeight,
-            }}
+            style={[
+              {
+                color: theme.colors.textPrimary,
+                fontSize: theme.typography.metric.fontSize,
+                fontWeight: theme.typography.metric.fontWeight,
+              },
+              valueTextStyle,
+            ]}
           >
             {value}
           </Text>

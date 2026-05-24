@@ -8,6 +8,7 @@ import TransactionsScreen, {
 	filterTransactionsByPeriod,
 	getSwipeTranslateX,
 	getTransactionDateValue,
+	shouldOpenSwipe,
 } from "../app/(tabs)/transactions";
 import { I18nProvider } from "../src/i18n/i18n-context";
 import { ThemeProvider } from "../src/theme/theme-context";
@@ -147,11 +148,50 @@ describe("transaction swipe actions", () => {
 		expect(screen.getByLabelText("Hapus transaksi Kopi sore")).toBeTruthy();
 	});
 
-	it("uses tiny, scroll-safe swipe thresholds for row actions", () => {
-		expect(SWIPE_GESTURE_CONFIG.openDistance).toBeLessThanOrEqual(12);
-		expect(SWIPE_GESTURE_CONFIG.openVelocity).toBeLessThanOrEqual(0.2);
+	it("opens row actions only after crossing the 50% reveal threshold", () => {
+		expect(SWIPE_GESTURE_CONFIG.openThresholdRatio).toBe(0.5);
+		expect(SWIPE_GESTURE_CONFIG.openThreshold).toBe(80);
 		expect(SWIPE_GESTURE_CONFIG.activationDistance).toBeLessThanOrEqual(4);
 		expect(SWIPE_GESTURE_CONFIG.verticalIntentRatio).toBeGreaterThanOrEqual(1.15);
+		expect(shouldOpenSwipe(-79)).toBe(false);
+		expect(shouldOpenSwipe(-80)).toBe(true);
+		expect(shouldOpenSwipe(-120)).toBe(true);
+		expect(shouldOpenSwipe(120)).toBe(false);
+	});
+
+	it("uses a horizontal scroll container for category filters", async () => {
+		const screen = renderScreen();
+
+		await waitFor(() => expect(screen.getByText("Kopi sore")).toBeTruthy());
+
+		const filterScroller = screen.getByTestId("transactions-filter-scroller");
+		expect(filterScroller.props.horizontal).toBe(true);
+		expect(filterScroller.props.showsHorizontalScrollIndicator).toBe(false);
+		expect(filterScroller.props.contentContainerStyle).toEqual(
+			expect.objectContaining({ paddingRight: expect.any(Number) }),
+		);
+	});
+
+	it("keeps top layout spacing and metric cards roomy", async () => {
+		const screen = renderScreen();
+
+		await waitFor(() => expect(screen.getByText("Kopi sore")).toBeTruthy());
+
+		const headerStyle = StyleSheet.flatten(
+			screen.getByTestId("transactions-header-block").props.style as object,
+		) as ViewStyle;
+		const incomeCardStyle = StyleSheet.flatten(
+			screen.getByTestId("transactions-stat-income").props.style as object,
+		) as ViewStyle;
+		const expenseCardStyle = StyleSheet.flatten(
+			screen.getByTestId("transactions-stat-expense").props.style as object,
+		) as ViewStyle;
+
+		expect(headerStyle.marginBottom).toBeGreaterThanOrEqual(12);
+		expect(incomeCardStyle.flex).toBe(1);
+		expect(expenseCardStyle.flex).toBe(1);
+		expect(incomeCardStyle.minHeight).toBeGreaterThanOrEqual(136);
+		expect(expenseCardStyle.minHeight).toBeGreaterThanOrEqual(136);
 	});
 
 	it("uses spring physics and resisted overdrag for organic row swipes", () => {
@@ -187,6 +227,9 @@ describe("transaction swipe actions", () => {
 		expect(shellStyle.overflow).toBe("hidden");
 		expect(shellStyle.borderRadius).toBeGreaterThanOrEqual(14);
 		expect(actionRailStyle.width).toBeGreaterThanOrEqual(160);
+		expect(actionRailStyle.position).toBe("absolute");
+		expect(actionRailStyle.right).toBe(0);
+		expect(actionRailStyle.bottom).toBe(0);
 		expect(
 			editButtonStyle.minHeight ?? editButtonStyle.height,
 		).toBeGreaterThanOrEqual(44);

@@ -5,6 +5,7 @@ import {
 	FlatList,
 	PanResponder,
 	Pressable,
+	ScrollView,
 	StyleSheet,
 	Text,
 	View,
@@ -40,8 +41,8 @@ export const SWIPE_GESTURE_CONFIG = {
 	maxRevealWidth: 160,
 	activationDistance: 3,
 	verticalIntentRatio: 1.2,
-	openDistance: 10,
-	openVelocity: 0.18,
+	openThresholdRatio: 0.5,
+	openThreshold: 80,
 	overdragResistance: 0.4,
 } as const;
 
@@ -70,6 +71,10 @@ export function getSwipeTranslateX(dx: number): number {
 		SWIPE_GESTURE_CONFIG.maxRevealWidth +
 		overdragDistance * SWIPE_GESTURE_CONFIG.overdragResistance
 	);
+}
+
+export function shouldOpenSwipe(dx: number): boolean {
+	return dx <= -SWIPE_GESTURE_CONFIG.openThreshold;
 }
 
 function formatCompactRupiah(value: number) {
@@ -204,10 +209,7 @@ function TransactionRow({
 					translateX.setValue(getSwipeTranslateX(gestureState.dx));
 				},
 				onPanResponderRelease: (_, gestureState) => {
-					const shouldOpen =
-						gestureState.dx < -SWIPE_GESTURE_CONFIG.openDistance ||
-						gestureState.vx < -SWIPE_GESTURE_CONFIG.openVelocity;
-					snapTo(shouldOpen ? -SWIPE_REVEAL_WIDTH : 0);
+					snapTo(shouldOpenSwipe(gestureState.dx) ? -SWIPE_REVEAL_WIDTH : 0);
 				},
 				onPanResponderTerminate: () => snapTo(0),
 			}),
@@ -453,19 +455,21 @@ export default function TransactionsScreen() {
 
 	const ListHeader = () => (
 		<>
-			<ScreenHeader
-				title={isEn ? "Transactions" : "Transaksi"}
-				subtitle={
-					isEn
-						? "Track your daily cash flow in detail."
-						: "Pantau arus kas harianmu dengan detail."
-				}
-				action={
-					<View style={styles.summaryBadge}>
-						<Text style={styles.summaryBadgeText}>{list.length} item</Text>
-					</View>
-				}
-			/>
+			<View testID="transactions-header-block" style={styles.headerBlock}>
+				<ScreenHeader
+					title={isEn ? "Transactions" : "Transaksi"}
+					subtitle={
+						isEn
+							? "Track your daily cash flow in detail."
+							: "Pantau arus kas harianmu dengan detail."
+					}
+					action={
+						<View style={styles.summaryBadge}>
+							<Text style={styles.summaryBadgeText}>{list.length} item</Text>
+						</View>
+					}
+				/>
+			</View>
 
 			{loadError ? <StateMessage message={loadError} tone="error" /> : null}
 
@@ -527,21 +531,37 @@ export default function TransactionsScreen() {
 			</View>
 
 			<View style={styles.statRow}>
-				<StatCard
-					label={isEn ? "Income" : "Pemasukan"}
-					value={formatCompactRupiah(totalIncome)}
-					icon="chart"
-					tone="success"
-				/>
-				<StatCard
-					label={isEn ? "Expense" : "Pengeluaran"}
-					value={formatCompactRupiah(totalExpense)}
-					icon="transactions"
-					tone="danger"
-				/>
+				<View testID="transactions-stat-income" style={styles.statCardShell}>
+					<StatCard
+						label={isEn ? "Income" : "Pemasukan"}
+						value={formatCompactRupiah(totalIncome)}
+						icon="chart"
+						tone="success"
+						style={styles.statCard}
+						contentStyle={styles.statCardContent}
+						valueTextStyle={styles.statValueText}
+					/>
+				</View>
+				<View testID="transactions-stat-expense" style={styles.statCardShell}>
+					<StatCard
+						label={isEn ? "Expense" : "Pengeluaran"}
+						value={formatCompactRupiah(totalExpense)}
+						icon="transactions"
+						tone="danger"
+						style={styles.statCard}
+						contentStyle={styles.statCardContent}
+						valueTextStyle={styles.statValueText}
+					/>
+				</View>
 			</View>
 
-			<View style={styles.filterRow}>
+			<ScrollView
+				testID="transactions-filter-scroller"
+				horizontal
+				showsHorizontalScrollIndicator={false}
+				style={styles.filterScroller}
+				contentContainerStyle={styles.filterContent}
+			>
 				{(["all", "income", "expense"] as Filter[]).map((filter) => (
 					<FilterChip
 						key={filter}
@@ -562,7 +582,7 @@ export default function TransactionsScreen() {
 						onPress={() => setActiveFilter(filter)}
 					/>
 				))}
-			</View>
+			</ScrollView>
 		</>
 	);
 
@@ -631,6 +651,10 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			gap: theme.spacing.sm + theme.spacing.xs - 2,
 			paddingBottom: 26,
 		},
+		headerBlock: {
+			marginBottom: theme.spacing.lg,
+			paddingBottom: theme.spacing.xs,
+		},
 		summaryBadge: {
 			backgroundColor: theme.colors.mutedSurface,
 			borderWidth: 1,
@@ -665,10 +689,31 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			flexDirection: "row",
 			gap: theme.spacing.sm + theme.spacing.xs - 2,
 		},
-		filterRow: {
-			flexDirection: "row",
+		statCardShell: {
+			flex: 1,
+			minWidth: 0,
+			minHeight: 140,
+		},
+		statCard: {
+			flex: 1,
+			minHeight: 140,
+			paddingHorizontal: theme.spacing.md,
+			paddingVertical: theme.spacing.lg,
+		},
+		statCardContent: {
+			flex: 1,
+			justifyContent: "space-between",
+		},
+		statValueText: {
+			lineHeight: 28,
+		},
+		filterScroller: {
+			marginRight: -theme.spacing.xl,
+		},
+		filterContent: {
 			gap: theme.spacing.sm,
-			flexWrap: "wrap",
+			paddingRight: theme.spacing.xl,
+			paddingBottom: theme.spacing.xs,
 		},
 		swipeShell: {
 			position: "relative",
