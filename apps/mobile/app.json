@@ -6,6 +6,12 @@
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
     "scheme": "kaswise",
+    "icon": "./assets/icon.png",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#EAF1FF"
+    },
     "assetBundlePatterns": [
       "**/*"
     ],
@@ -15,21 +21,28 @@
     },
     "android": {
       "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#EAF1FF"
       },
       "package": "com.kaswise.app"
     },
     "web": {
       "bundler": "metro",
-      "output": "single"
+      "output": "single",
+      "favicon": "./assets/favicon.png",
+      "name": "Kaswise",
+      "shortName": "Kaswise",
+      "description": "Aplikasi keuangan pribadi yang cerdas",
+      "themeColor": "#4F46E5",
+      "backgroundColor": "#EAF1FF"
     },
     "plugins": [
       "expo-router",
       "expo-secure-store"
     ],
     "extra": {
-      "supabaseUrl": "${EXPO_PUBLIC_SUPABASE_URL}",
-      "supabaseAnonKey": "${EXPO_PUBLIC_SUPABASE_ANON_KEY}"
+      "supabaseUrl": "https://xqvtsgfakuehjwdmenuw.supabase.co",
+      "supabaseAnonKey": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhxdnRzZ2Zha3VlaGp3ZG1lbnV3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYwOTAwNTcsImV4cCI6MjA5MTY2NjA1N30.9GfVlqwI1xTFolIS18i9n-ErM_s9h8R4n4Bx54pn0sE"
     }
   }
 }
