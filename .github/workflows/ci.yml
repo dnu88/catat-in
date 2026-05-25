@@ -39,6 +39,8 @@ jobs:
   backend-quality-gate:
     name: Backend quality gate (pytest)
     runs-on: ubuntu-latest
+    env:
+      SECRET_KEY: ci-test-secret-key
     steps:
       - name: Checkout
         uses: actions/checkout@v4
