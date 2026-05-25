@@ -17,8 +17,6 @@ jobs:
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
-        with:
-          version: 9
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -83,8 +81,6 @@ jobs:
       - name: Setup pnpm
         if: ${{ env.VITE_FIREBASE_API_KEY != '' && env.VITE_FIREBASE_AUTH_DOMAIN != '' && env.VITE_FIREBASE_PROJECT_ID != '' && env.VITE_FIREBASE_STORAGE_BUCKET != '' && env.VITE_FIREBASE_MESSAGING_SENDER_ID != '' && env.VITE_FIREBASE_APP_ID != '' }}
         uses: pnpm/action-setup@v4
-        with:
-          version: 9
 
       - name: Setup Node
         if: ${{ env.VITE_FIREBASE_API_KEY != '' && env.VITE_FIREBASE_AUTH_DOMAIN != '' && env.VITE_FIREBASE_PROJECT_ID != '' && env.VITE_FIREBASE_STORAGE_BUCKET != '' && env.VITE_FIREBASE_MESSAGING_SENDER_ID != '' && env.VITE_FIREBASE_APP_ID != '' }}
