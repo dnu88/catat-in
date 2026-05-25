@@ -1,4 +1,5 @@
 import { router } from 'expo-router'
+import * as WebBrowser from 'expo-web-browser'
 import { useState } from 'react'
 import { StaggeredStack } from "../../src/components/motion";
 
@@ -6,7 +7,10 @@ import { AuthButton, AuthFooter, AuthFormCard, AuthHeroPanel, AuthLink, AuthScre
 import { InputField, StateMessage } from '../../src/components/ui'
 import { KaswiseLogoMark } from '../../src/components/brand/KaswiseLogoMark'
 import { useI18n } from '../../src/i18n/i18n-context'
+import { getAuthCallbackRedirectTo, getAuthCodeFromUrl } from '../../src/lib/auth-redirects'
 import { useSupabase } from '../../src/lib/supabase'
+
+WebBrowser.maybeCompleteAuthSession()
 
 export default function LoginScreen() {
   const { supabase } = useSupabase()
@@ -15,6 +19,7 @@ export default function LoginScreen() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
+  const [googleLoading, setGoogleLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   const onLogin = async () => {
@@ -30,6 +35,50 @@ export default function LoginScreen() {
 
     if (signInError) {
       setError(t('loginFailed'))
+      return
+    }
+
+    router.replace('/(tabs)')
+  }
+
+  const onGoogleLogin = async () => {
+    setError(null)
+    setGoogleLoading(true)
+
+    const redirectTo = getAuthCallbackRedirectTo()
+    const { data, error: oauthError } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo,
+        skipBrowserRedirect: true,
+      },
+    })
+
+    if (oauthError || !data.url) {
+      setGoogleLoading(false)
+      setError(t('googleLoginFailed'))
+      return
+    }
+
+    const result = await WebBrowser.openAuthSessionAsync(data.url, redirectTo)
+
+    if (result.type !== 'success') {
+      setGoogleLoading(false)
+      return
+    }
+
+    const code = getAuthCodeFromUrl(result.url)
+    if (!code) {
+      setGoogleLoading(false)
+      setError(t('googleLoginFailed'))
+      return
+    }
+
+    const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code)
+    setGoogleLoading(false)
+
+    if (exchangeError) {
+      setError(t('googleLoginFailed'))
       return
     }
 
@@ -79,7 +128,8 @@ export default function LoginScreen() {
 
         {error ? <StateMessage message={error} tone="error" /> : null}
 
-        <AuthButton label={t('loginButton')} onPress={onLogin} loading={loading} disabled={loading} />
+        <AuthButton label={t('loginButton')} onPress={onLogin} loading={loading} disabled={loading || googleLoading} />
+        <AuthButton testID="auth-google-button" label={t('googleLoginButton')} onPress={onGoogleLogin} loading={googleLoading} disabled={loading || googleLoading} />
 
         <AuthLink href="/(auth)/forgot-password" label={t('forgotPasswordPrompt')} variant="secondary" align="right" />
       </AuthFormCard>

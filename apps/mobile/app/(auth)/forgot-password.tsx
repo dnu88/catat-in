@@ -5,6 +5,7 @@ import { StaggeredStack } from "../../src/components/motion";
 import { AuthBackButton, AuthButton, AuthFormCard, AuthHeroPanel, AuthLink, AuthScreenLayout } from '../../src/components/ui'
 import { InputField, StateMessage } from '../../src/components/ui'
 import { useI18n } from '../../src/i18n/i18n-context'
+import { getPasswordResetRedirectTo } from '../../src/lib/auth-redirects'
 import { useSupabase } from '../../src/lib/supabase'
 
 export default function ForgotPasswordScreen() {
@@ -22,7 +23,7 @@ export default function ForgotPasswordScreen() {
     setMessage(null)
 
     const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
-      redirectTo: 'kaswise://reset-password',
+      redirectTo: getPasswordResetRedirectTo(),
     })
 
     setLoading(false)

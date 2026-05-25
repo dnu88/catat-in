@@ -126,6 +126,7 @@ type AuthButtonProps = {
 	onPress: () => void;
 	loading?: boolean;
 	disabled?: boolean;
+	testID?: string;
 };
 
 export function AuthButton({
@@ -133,13 +134,14 @@ export function AuthButton({
 	onPress,
 	loading,
 	disabled,
+	testID = "auth-primary-button",
 }: AuthButtonProps) {
 	const { theme } = useTheme();
 	const styles = useMemo(() => createButtonStyles(theme), [theme]);
 
 	return (
 		<Pressable
-			testID="auth-primary-button"
+			testID={testID}
 			accessibilityRole="button"
 			accessibilityLabel={label}
 			accessibilityState={{
