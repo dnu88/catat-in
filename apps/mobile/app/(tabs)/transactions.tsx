@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
 	Alert,
 	Animated,
+	Platform,
 	FlatList,
 	PanResponder,
 	Pressable,
@@ -390,38 +391,54 @@ export default function TransactionsScreen() {
 		);
 	};
 
+	const deleteSelectedTransaction = useCallback(
+		async (id: string) => {
+			try {
+				await deleteTransaction(id, activeContext);
+				await loadTransactions();
+			} catch (error) {
+				console.error("Error deleting transaction:", error);
+				setLoadError(
+					isEn
+						? "Failed to delete transaction. Please try again."
+						: "Gagal menghapus transaksi. Coba lagi sebentar.",
+				);
+			}
+		},
+		[activeContext, activeContextKey, isEn, loadTransactions],
+	);
+
 	const handleDeleteTransaction = (item: Transaction) => {
 		const title =
 			item.description ||
 			item.merchant ||
 			item.category ||
 			(isEn ? "transaction" : "transaksi");
-		Alert.alert(
-			isEn ? "Delete transaction?" : "Hapus transaksi?",
-			isEn
-				? `Transaction ${title} will be permanently deleted.`
-				: `Transaksi ${title} akan dihapus permanen.`,
-			[
-				{ text: isEn ? "Cancel" : "Batal", style: "cancel" },
-				{
-					text: isEn ? "Delete" : "Hapus",
-					style: "destructive",
-					onPress: async () => {
-						try {
-							await deleteTransaction(item.id, activeContext);
-							await loadTransactions();
-						} catch (error) {
-							console.error("Error deleting transaction:", error);
-							setLoadError(
-								isEn
-									? "Failed to delete transaction. Please try again."
-									: "Gagal menghapus transaksi. Coba lagi sebentar.",
-							);
-						}
-					},
+		const confirmTitle = isEn ? "Delete transaction?" : "Hapus transaksi?";
+		const confirmMessage = isEn
+			? `Transaction ${title} will be permanently deleted.`
+			: `Transaksi ${title} akan dihapus permanen.`;
+
+		if (Platform.OS === "web") {
+			const confirm = (globalThis as {
+				confirm?: (message?: string) => boolean;
+			}).confirm;
+			if (confirm?.(`${confirmTitle}\n\n${confirmMessage}`)) {
+				void deleteSelectedTransaction(item.id);
+			}
+			return;
+		}
+
+		Alert.alert(confirmTitle, confirmMessage, [
+			{ text: isEn ? "Cancel" : "Batal", style: "cancel" },
+			{
+				text: isEn ? "Delete" : "Hapus",
+				style: "destructive",
+				onPress: () => {
+					void deleteSelectedTransaction(item.id);
 				},
-			],
-		);
+			},
+		]);
 	};
 
 
