@@ -1,6 +1,5 @@
 -- Align drifted production transactions table with current Expo mobile/PWA payloads.
--- The app stores current fields in nominal/kategori/catatan/type/tanggal and also creates
--- processing draft rows with only input_type/status/raw_input. Older production columns must be nullable.
+-- Safe to re-run on both drifted production schemas and fresh schemas.
 
 begin;
 
@@ -12,10 +11,22 @@ select
 from auth.users u
 on conflict (id) do nothing;
 
-alter table public.transactions alter column amount drop not null;
-alter table public.transactions alter column category drop not null;
-alter table public.transactions alter column description drop not null;
-alter table public.transactions alter column transaction_type drop not null;
-alter table public.transactions alter column date drop not null;
+do $$
+declare
+  legacy_column text;
+begin
+  foreach legacy_column in array array['amount', 'category', 'description', 'transaction_type', 'date']
+  loop
+    if exists (
+      select 1
+      from information_schema.columns
+      where table_schema = 'public'
+        and table_name = 'transactions'
+        and column_name = legacy_column
+    ) then
+      execute format('alter table public.transactions alter column %I drop not null', legacy_column);
+    end if;
+  end loop;
+end $$;
 
 commit;

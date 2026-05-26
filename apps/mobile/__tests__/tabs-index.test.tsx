@@ -173,7 +173,7 @@ describe("DashboardScreen dark luxury Home parity", () => {
 				parent_category_name: "Makan & Minum",
 				limit_amount: 250000,
 				start_date: "2026-05-10",
-				end_date: "2026-05-25",
+				end_date: "2099-05-25",
 				icon: "coffee",
 				color: "#4A80F0",
 				notes: "Kopi Kenangan",

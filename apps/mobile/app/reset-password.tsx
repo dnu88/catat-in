@@ -31,20 +31,21 @@ export default function ResetPasswordScreen() {
       const accessToken = getStringParam(params.access_token) ?? urlTokens?.accessToken ?? null
       const refreshToken = getStringParam(params.refresh_token) ?? urlTokens?.refreshToken ?? null
       const tokenHash = getStringParam(params.token_hash) ?? urlTokens?.tokenHash ?? null
+      const recoveryType = getStringParam(params.type) ?? urlTokens?.type ?? null
 
       const result = code
         ? await supabase.auth.exchangeCodeForSession(code)
-        : accessToken && refreshToken
+        : accessToken && refreshToken && recoveryType === 'recovery'
           ? await supabase.auth.setSession({ access_token: accessToken, refresh_token: refreshToken })
           : tokenHash
             ? await supabase.auth.verifyOtp({ type: 'recovery', token_hash: tokenHash })
-            : await supabase.auth.getSession()
+            : null
 
       if (!mounted) {
         return
       }
 
-      if (result.error || !result.data.session) {
+      if (!result || result.error || !result.data.session) {
         setIsError(true)
         setSessionReady(false)
         setMessage(t('resetPasswordLinkInvalid'))
@@ -61,7 +62,7 @@ export default function ResetPasswordScreen() {
     return () => {
       mounted = false
     }
-  }, [params.access_token, params.code, params.refresh_token, params.token_hash, supabase, t])
+  }, [params.access_token, params.code, params.refresh_token, params.token_hash, params.type, supabase, t])
 
   const onUpdatePassword = async () => {
     setIsError(false)
