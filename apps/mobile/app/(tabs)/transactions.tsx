@@ -4,6 +4,7 @@ import {
 	Animated,
 	Platform,
 	FlatList,
+	RefreshControl,
 	PanResponder,
 	Pressable,
 	ScrollView,
@@ -647,6 +648,15 @@ export default function TransactionsScreen() {
 				maxToRenderPerBatch={10}
 				windowSize={5}
 				removeClippedSubviews
+				refreshing={loading}
+				onRefresh={loadTransactions}
+				refreshControl={
+					<RefreshControl
+						refreshing={loading}
+						onRefresh={loadTransactions}
+						tintColor={theme.colors.brandPrimary}
+					/>
+				}
 			/>
 
 			<Pressable

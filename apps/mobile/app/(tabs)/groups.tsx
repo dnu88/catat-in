@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
 	Pressable,
+	RefreshControl,
 	ScrollView,
 	StyleSheet,
 	Text,
@@ -188,6 +189,13 @@ export default function GroupsScreen() {
 			<ScrollView
 				contentContainerStyle={styles.content}
 				showsVerticalScrollIndicator={false}
+				refreshControl={
+					<RefreshControl
+						refreshing={loading}
+						onRefresh={refreshHouseholds}
+						tintColor={theme.colors.brandPrimary}
+					/>
+				}
 			>
 				<StaggeredStack testIDPrefix="groups-entrance">
 				<SectionHeader

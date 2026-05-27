@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import {
 	ActivityIndicator,
 	Pressable,
+	RefreshControl,
 	ScrollView,
 	StyleSheet,
 	Text,
@@ -226,6 +227,12 @@ export default function WalletsScreen() {
 		setShowCreate(false);
 	};
 
+	const cancelEdit = () => {
+		setEditingWallet(null);
+		setEditName("");
+		setEditBalance("");
+	};
+
 	const handleUpdate = async () => {
 		if (!editingWallet || !editName.trim()) return;
 		setSubmitting(true);
@@ -304,6 +311,13 @@ export default function WalletsScreen() {
 			<ScrollView
 				contentContainerStyle={styles.content}
 				showsVerticalScrollIndicator={false}
+				refreshControl={
+					<RefreshControl
+						refreshing={loading}
+						onRefresh={loadWallets}
+						tintColor={theme.colors.brandPrimary}
+					/>
+				}
 			>
 				<StaggeredStack testIDPrefix="wallets-entrance">
 				<View key="wallets-header" testID="wallets-header" style={styles.headerRow}>
@@ -373,16 +387,28 @@ export default function WalletsScreen() {
 								</Pressable>
 							))}
 						</View>
-						<Pressable
-							testID="wallet-update-submit"
-							accessibilityRole="button"
-							accessibilityLabel={tx.update}
-							style={[styles.submitButton, submitting && styles.disabledButton]}
-							onPress={handleUpdate}
-							disabled={submitting}
-						>
-							<Text style={styles.submitButtonText}>{tx.update}</Text>
-						</Pressable>
+						<View style={styles.editActionRow}>
+							<Pressable
+								testID="wallet-update-cancel"
+								accessibilityRole="button"
+								accessibilityLabel={tx.cancel}
+								style={styles.cancelButton}
+								onPress={cancelEdit}
+								disabled={submitting}
+							>
+								<Text style={styles.cancelButtonText}>{tx.cancel}</Text>
+							</Pressable>
+							<Pressable
+								testID="wallet-update-submit"
+								accessibilityRole="button"
+								accessibilityLabel={tx.update}
+								style={[styles.submitButton, styles.editSubmitButton, submitting && styles.disabledButton]}
+								onPress={handleUpdate}
+								disabled={submitting}
+							>
+								<Text style={styles.submitButtonText}>{tx.update}</Text>
+							</Pressable>
+						</View>
 					</View>
 				) : null}
 
@@ -610,6 +636,7 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			justifyContent: "space-between",
 			alignItems: "flex-start",
 			gap: 12,
+			flexWrap: "wrap",
 		},
 		headerCopy: { flex: 1 },
 		title: {
@@ -690,6 +717,23 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 		},
 		submitButtonText: {
 			color: theme.colors.textInverse,
+			fontSize: 14,
+			fontWeight: "800",
+		},
+		editActionRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+		editSubmitButton: { flexGrow: 1, paddingHorizontal: 14 },
+		cancelButton: {
+			minHeight: 44,
+			borderRadius: theme.radius.pill,
+			borderWidth: 1,
+			borderColor: theme.colors.borderSoft,
+			backgroundColor: theme.colors.card,
+			alignItems: "center",
+			justifyContent: "center",
+			paddingHorizontal: 14,
+		},
+		cancelButtonText: {
+			color: theme.colors.textSecondary,
 			fontSize: 14,
 			fontWeight: "800",
 		},
@@ -829,7 +873,7 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			fontSize: 18,
 			fontWeight: "800",
 		},
-		walletActions: { flexDirection: "row", gap: 8 },
+		walletActions: { flexDirection: "row", gap: 8, flexWrap: "wrap" },
 		walletActionButton: {
 			minHeight: 44,
 			justifyContent: "center",

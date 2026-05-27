@@ -285,12 +285,29 @@ export async function createBudgetEnvelope(
 	if (!canCreateInContext(context)) throw new Error("Akses lihat saja");
 	const { data, error } = await supabase
 		.from("budget_envelopes")
-		.insert({ ...input, ...buildFinanceInsertAudit(context, input.user_id) })
+		.insert({
+			...input,
+			status: "active",
+			...buildFinanceInsertAudit(context, input.user_id),
+		})
 		.select("*, category:categories(id,name)")
 		.single();
 
 	if (error) throw error;
 	return mapBudgetEnvelope(data);
+}
+
+export async function deleteBudgetEnvelope(
+	supabase: SupabaseLike,
+	id: string,
+	userId: string,
+): Promise<void> {
+	const { error } = await supabase
+		.from("budget_envelopes")
+		.update({ status: "archived", updated_by: userId })
+		.eq("id", id);
+
+	if (error) throw error;
 }
 
 function mapEnvelopeAllocation(row: EnvelopeAllocationRow): EnvelopeAllocation {

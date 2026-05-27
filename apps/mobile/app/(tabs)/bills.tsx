@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import {
 	FlatList,
 	Pressable,
+	RefreshControl,
 	ScrollView,
 	StyleSheet,
 	Text,
@@ -155,6 +156,7 @@ export default function BillsScreen() {
 	}, [activeContext]);
 
 	const loadBills = async () => {
+		setLoading(true);
 		try {
 			setLoadError(null);
 			const data = await listBills(activeContext);
@@ -349,6 +351,15 @@ export default function BillsScreen() {
 				maxToRenderPerBatch={10}
 				windowSize={5}
 				removeClippedSubviews
+				refreshing={loading}
+				onRefresh={loadBills}
+				refreshControl={
+					<RefreshControl
+						refreshing={loading}
+						onRefresh={loadBills}
+						tintColor={theme.colors.brandPrimary}
+					/>
+				}
 			/>
 		</PageEntrance>
 	);
@@ -475,6 +486,7 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			flexDirection: "row",
 			justifyContent: "space-between",
 			alignItems: "center",
+			flexWrap: "wrap",
 			borderTopWidth: 1,
 			borderTopColor: theme.colors.borderSoft,
 			paddingTop: 10,

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import {
 	ActivityIndicator,
 	Pressable,
+	RefreshControl,
 	ScrollView,
 	StyleSheet,
 	Text,
@@ -21,6 +22,7 @@ import {
 	type KaswiseIconName,
 } from "../../src/components/icons/kaswise-icons";
 import { createEnvelopeAllocation } from "../../src/services/budget-envelopes";
+import { listWallets, type Wallet } from "../../src/services/wallets";
 import { buildFinanceInsertAudit } from "../../src/services/finance-context-query";
 import { useFinanceContext } from "../../src/state/finance-context";
 
@@ -64,12 +66,26 @@ export default function CaptureScreen() {
 		() =>
 			isEn
 				? {
+						walletLabel: "Wallet for sync",
+						noWallet: "No active wallet. Saved transaction will not change wallet balance.",
+						processingTitle: "Processing...",
+						processingSub: "Kaswise AI is reading your transaction. You can leave this page.",
+						successTitle: "Transaction saved!",
+						successSub: "Wallet balance and budget rules are synced automatically when a wallet is selected.",
+						queued: "Transaction queued. We will show it here when AI finishes.",
 						budgetWallet: "Budget Wallet",
 						remainingAfter: (amount: number) =>
 							`Rp${amount.toLocaleString("id-ID")} left after this transaction`,
 						needsReview: "Needs review in Reports",
 					}
 				: {
+						walletLabel: "Akun untuk sinkronisasi",
+						noWallet: "Belum ada akun aktif. Transaksi tersimpan tanpa mengubah saldo akun.",
+						processingTitle: "Sedang memproses...",
+						processingSub: "AI Kaswise sedang membaca transaksimu. Kamu bisa meninggalkan halaman ini.",
+						successTitle: "Transaksi tercatat! Berhasil disimpan.",
+						successSub: "Saldo akun dan aturan budget otomatis tersinkron saat akun dipilih.",
+						queued: "Transaksi masuk antrean. Hasilnya akan tampil di sini setelah AI selesai.",
 						budgetWallet: "Dompet",
 						remainingAfter: (amount: number) =>
 							`Rp${amount.toLocaleString("id-ID")} tersisa setelah transaksi ini`,
@@ -81,17 +97,46 @@ export default function CaptureScreen() {
 
 	const [textInput, setTextInput] = useState("");
 	const [transactionId, setTransactionId] = useState<string | null>(null);
+	const [wallets, setWallets] = useState<Wallet[]>([]);
+	const [walletId, setWalletId] = useState<string | null>(null);
+	const [walletLoading, setWalletLoading] = useState(false);
 	const [submitting, setSubmitting] = useState(false);
+	const [queuedMessage, setQueuedMessage] = useState<string | null>(null);
 	const [error, setError] = useState<string | null>(null);
 	const persistedSuggestionKeyRef = useRef<string | null>(null);
 
 	const { transaction, loading } = useTransactionRealtime(transactionId);
+
+	const loadWalletOptions = async () => {
+		setWalletLoading(true);
+		try {
+			const data = await listWallets(activeContext);
+			const activeWallets = data.filter((wallet) => wallet.is_active !== false);
+			setWallets(activeWallets);
+			setWalletId((current) =>
+				current && activeWallets.some((wallet) => wallet.id === current)
+					? current
+					: (activeWallets[0]?.id ?? null),
+			);
+		} catch (error) {
+			console.error("Failed to load wallet options:", error);
+			setWallets([]);
+			setWalletId(null);
+		} finally {
+			setWalletLoading(false);
+		}
+	};
+
+	useEffect(() => {
+		void loadWalletOptions();
+	}, [activeContext]);
 
 	const submitText = async () => {
 		const value = textInput.trim();
 		if (!value || submitting) return;
 
 		setSubmitting(true);
+		setQueuedMessage(null);
 		setError(null);
 
 		try {
@@ -109,6 +154,7 @@ export default function CaptureScreen() {
 				.from("transactions")
 				.insert({
 					...buildFinanceInsertAudit(activeContext, user.id),
+					...(walletId ? { wallet_id: walletId } : {}),
 					input_type: "text",
 					status: "processing",
 					raw_input: value,
@@ -124,17 +170,26 @@ export default function CaptureScreen() {
 			}
 
 			setTransactionId(data.id);
-
-			await supabase.functions.invoke("process-text", {
-				body: {
-					transaction_id: data.id,
-					user_id: user.id,
-					raw_text: value,
-				},
-			});
-
+			setQueuedMessage(tx.queued);
 			setTextInput("");
 			setSubmitting(false);
+
+			void supabase.functions
+				.invoke("process-text", {
+					body: {
+						transaction_id: data.id,
+						user_id: user.id,
+						raw_text: value,
+					},
+				})
+				.then(({ error: invokeError }) => {
+					if (invokeError) {
+						setError("Gagal memproses AI. Coba lagi sebentar.");
+					}
+				})
+				.catch(() => {
+					setError("Gagal memproses AI. Coba lagi sebentar.");
+				});
 		} catch (e) {
 			setError("Terjadi kesalahan sistem. Silakan coba lagi.");
 			setSubmitting(false);
@@ -184,6 +239,7 @@ export default function CaptureScreen() {
 	const resetCapture = (clearText = true) => {
 		setTransactionId(null);
 		setSubmitting(false);
+		setQueuedMessage(null);
 		setError(null);
 		if (clearText) setTextInput("");
 	};
@@ -193,6 +249,13 @@ export default function CaptureScreen() {
 			<ScrollView
 				contentContainerStyle={styles.content}
 				showsVerticalScrollIndicator={false}
+				refreshControl={
+					<RefreshControl
+						refreshing={walletLoading || loading}
+						onRefresh={loadWalletOptions}
+						tintColor={theme.colors.brandPrimary}
+					/>
+				}
 			>
 				<StaggeredStack testIDPrefix="capture-entrance">
 				<View key="capture-header" testID="capture-header" style={styles.headerRow}>
@@ -224,6 +287,40 @@ export default function CaptureScreen() {
 							placeholder="Contoh: Beli kopi 35rb di Kopi Kenangan pakai QRIS"
 							placeholderTextColor={theme.colors.textMuted}
 						/>
+
+						<View style={styles.walletSelector}>
+							<Text style={styles.walletSelectorLabel}>{tx.walletLabel}</Text>
+							{wallets.length > 0 ? (
+								<ScrollView horizontal showsHorizontalScrollIndicator={false}>
+									<View style={styles.walletChipRow}>
+										{wallets.map((wallet) => (
+											<Pressable
+												key={wallet.id}
+												accessibilityRole="button"
+												accessibilityLabel={`${tx.walletLabel}: ${wallet.name}`}
+												accessibilityState={{ selected: walletId === wallet.id }}
+												style={[
+													styles.walletChip,
+													walletId === wallet.id && styles.walletChipActive,
+												]}
+												onPress={() => setWalletId(wallet.id)}
+											>
+												<Text
+													style={[
+														styles.walletChipText,
+														walletId === wallet.id && styles.walletChipTextActive,
+													]}
+												>
+													{wallet.name}
+												</Text>
+											</Pressable>
+										))}
+									</View>
+								</ScrollView>
+							) : (
+								<Text style={styles.walletEmptyText}>{tx.noWallet}</Text>
+							)}
+						</View>
 
 						<Pressable
 							accessibilityRole="button"
@@ -260,9 +357,9 @@ export default function CaptureScreen() {
 								weight="bold"
 							/>
 						</View>
-						<Text style={styles.feedbackTitle}>Sedang memproses...</Text>
+						<Text style={styles.feedbackTitle}>{tx.processingTitle}</Text>
 						<Text style={styles.feedbackSub}>
-							AI Kaswise sedang membaca transaksimu
+							{queuedMessage ?? tx.processingSub}
 						</Text>
 						{loading && (
 							<ActivityIndicator
@@ -283,9 +380,9 @@ export default function CaptureScreen() {
 								weight="bold"
 							/>
 						</View>
-						<Text style={styles.feedbackTitle}>Transaksi tercatat!</Text>
+						<Text style={styles.feedbackTitle}>{tx.successTitle}</Text>
 						<Text style={styles.feedbackSub}>
-							Mau cek dulu sebelum disimpan?
+							{tx.successSub}
 						</Text>
 						{envelopeSuggestion ? (
 							<View
@@ -429,6 +526,37 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			color: theme.colors.textInverse,
 			fontSize: theme.typography.fontSize.lg,
 			fontWeight: theme.typography.fontWeight.bold,
+		},
+		walletSelector: { gap: 8 },
+		walletSelectorLabel: {
+			color: theme.colors.textSecondary,
+			fontSize: 12,
+			fontWeight: "700",
+		},
+		walletChipRow: { flexDirection: "row", gap: 8, paddingVertical: 2 },
+		walletChip: {
+			minHeight: 40,
+			justifyContent: "center",
+			borderRadius: 999,
+			borderWidth: 1,
+			borderColor: theme.colors.borderSoft,
+			backgroundColor: theme.colors.mutedSurface,
+			paddingHorizontal: 12,
+		},
+		walletChipActive: {
+			backgroundColor: theme.colors.brandPrimary,
+			borderColor: theme.colors.brandPrimary,
+		},
+		walletChipText: {
+			color: theme.colors.textSecondary,
+			fontSize: 12,
+			fontWeight: "800",
+		},
+		walletChipTextActive: { color: theme.colors.textInverse },
+		walletEmptyText: {
+			color: theme.colors.warning,
+			fontSize: 12,
+			lineHeight: 18,
 		},
 		comingSoonText: {
 			color: theme.colors.textMuted,

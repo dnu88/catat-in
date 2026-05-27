@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useRouter } from "expo-router";
 
 import { FinanceContextSwitcher } from "../../src/components/FinanceContextSwitcher";
@@ -111,10 +111,9 @@ export default function DashboardScreen() {
 	const [userName, setUserName] = useState("");
 	const [userEmail, setUserEmail] = useState("");
 
-	useEffect(() => {
-		let mounted = true;
+	const [refreshing, setRefreshing] = useState(false);
 
-		const loadEnvelopeAlerts = async () => {
+	const loadDashboard = useCallback(async (mounted = true) => {
 			try {
 				const {
 					data: { user },
@@ -171,14 +170,24 @@ export default function DashboardScreen() {
 				console.error("Error loading home envelope alerts:", error);
 				if (mounted) setEnvelopeAlerts([]);
 			}
-		};
+	}, [supabase, activeContext]);
 
-		loadEnvelopeAlerts();
-
+	useEffect(() => {
+		let mounted = true;
+		void loadDashboard(mounted);
 		return () => {
 			mounted = false;
 		};
-	}, [supabase, activeContext]);
+	}, [loadDashboard]);
+
+	const onRefresh = useCallback(async () => {
+		setRefreshing(true);
+		try {
+			await loadDashboard(true);
+		} finally {
+			setRefreshing(false);
+		}
+	}, [loadDashboard]);
 
 	const primaryEnvelopeAlert = envelopeAlerts[0];
 	const totalBalance = wallets.reduce(
@@ -225,6 +234,13 @@ export default function DashboardScreen() {
 				style={styles.scrollView}
 				contentContainerStyle={styles.content}
 				showsVerticalScrollIndicator={false}
+				refreshControl={
+					<RefreshControl
+						refreshing={refreshing}
+						onRefresh={onRefresh}
+						tintColor={theme.colors.brandPrimary}
+					/>
+				}
 			>
 				<View style={styles.headerRow}>
 					<View style={styles.headerCopy}>

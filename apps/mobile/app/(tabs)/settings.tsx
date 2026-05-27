@@ -1,6 +1,6 @@
 import { router } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
 import { PageEntrance, StaggeredStack } from "../../src/components/motion";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
@@ -313,6 +313,7 @@ export default function SettingsScreen() {
 	const [profileEmail, setProfileEmail] = useState("");
 	const [seedLoading, setSeedLoading] = useState(false);
 	const [seedResult, setSeedResult] = useState<SeedResultState | null>(null);
+	const [refreshing, setRefreshing] = useState(false);
 
 	useEffect(() => {
 		let active = true;
@@ -555,6 +556,25 @@ export default function SettingsScreen() {
 		}
 	};
 
+	const onRefresh = async () => {
+		setRefreshing(true);
+		try {
+			const {
+				data: { user },
+			} = await supabase.auth.getUser();
+			const email = user?.email ?? "";
+			const metadata = (user?.user_metadata ?? {}) as Record<string, unknown>;
+			setProfileEmail(email);
+			setProfileName(
+				(typeof metadata.full_name === "string" && metadata.full_name) ||
+					(typeof metadata.name === "string" && metadata.name) ||
+					"",
+			);
+		} finally {
+			setRefreshing(false);
+		}
+	};
+
 	const onLogout = async () => {
 		await supabase.auth.signOut();
 		router.replace("/(auth)/login");
@@ -571,6 +591,13 @@ export default function SettingsScreen() {
 			<ScrollView
 				contentContainerStyle={styles.content}
 				showsVerticalScrollIndicator={false}
+				refreshControl={
+					<RefreshControl
+						refreshing={refreshing}
+						onRefresh={onRefresh}
+						tintColor={theme.colors.brandPrimary}
+					/>
+				}
 			>
 				<StaggeredStack testIDPrefix="settings-entrance">
 				{/* Header */}
@@ -781,50 +808,6 @@ export default function SettingsScreen() {
 					</Text>
 				</View>
 
-				{/* Dev Tools */}
-				<View key="settings-dev-tools" testID="settings-dev-tools" style={styles.sectionCard}>
-					<Text style={styles.sectionTitle}>
-						{language === "id" ? "Alat Pengembang" : "Dev Tools"}
-					</Text>
-					<Text style={styles.sectionSub}>
-						{language === "id"
-							? "Isi transaksi dan anggaran contoh untuk demo aplikasi."
-							: "Fill sample transactions and budgets for app demos."}
-					</Text>
-					<Pressable
-						testID="settings-seed-sample-data"
-						accessibilityRole="button"
-						accessibilityLabel={
-							language === "id" ? "Isi Data Contoh" : "Seed Sample Data"
-						}
-						disabled={seedLoading}
-						onPress={onSeedSampleData}
-						style={[
-							styles.seedButton,
-							seedLoading && styles.seedButtonDisabled,
-						]}
-					>
-						<Text style={styles.seedButtonText}>
-							{seedLoading
-								? language === "id"
-									? "Mengisi..."
-									: "Seeding..."
-								: language === "id"
-									? "Isi Data Contoh"
-									: "Seed Sample Data"}
-						</Text>
-					</Pressable>
-					{seedResult ? (
-						<Text
-							style={[
-								styles.seedResult,
-								seedResult.type === "error" && styles.seedResultError,
-							]}
-						>
-							{seedResult.message}
-						</Text>
-					) : null}
-				</View>
 
 				{/* Logout */}
 				<Pressable

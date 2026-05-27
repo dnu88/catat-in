@@ -1,8 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 import {
 	ActivityIndicator,
+	Alert,
 	FlatList,
+	Platform,
 	Pressable,
+	RefreshControl,
 	StyleSheet,
 	Text,
 	TextInput,
@@ -25,6 +28,7 @@ import { useSupabase } from "../../src/lib/supabase";
 import {
 	buildEnvelopeProgress,
 	createBudgetEnvelope,
+	deleteBudgetEnvelope,
 	getEnvelopeStatus,
 	listBudgetEnvelopes,
 	listEnvelopeAllocations,
@@ -49,6 +53,8 @@ type EnvelopeRowProps = {
 	noCategoryLabel: string;
 	overLabel: string;
 	remainingLabel: string;
+	deleteLabel: string;
+	onDelete: (envelope: BudgetEnvelope) => void;
 };
 
 const iconOptions: {
@@ -85,6 +91,8 @@ function EnvelopeRow({
 	noCategoryLabel,
 	overLabel,
 	remainingLabel,
+	deleteLabel,
+	onDelete,
 }: EnvelopeRowProps) {
 	const { envelope, progress } = item;
 	const toneColor = progress.is_over_budget
@@ -149,11 +157,21 @@ function EnvelopeRow({
 				/>
 			</View>
 
-			<Text style={styles.budgetFooter}>
-				{progress.is_over_budget
-					? `${overLabel} ${formatRupiah(progress.over_budget_amount)}`
-					: `${remainingLabel} ${formatRupiah(Math.max(progress.remaining_amount, 0))}`}
-			</Text>
+			<View style={styles.budgetFooterRow}>
+				<Text style={styles.budgetFooter}>
+					{progress.is_over_budget
+						? `${overLabel} ${formatRupiah(progress.over_budget_amount)}`
+						: `${remainingLabel} ${formatRupiah(Math.max(progress.remaining_amount, 0))}`}
+				</Text>
+				<Pressable
+					accessibilityRole="button"
+					accessibilityLabel={`${deleteLabel} ${envelope.name}`}
+					style={styles.deleteButton}
+					onPress={() => onDelete(envelope)}
+				>
+					<Text style={styles.deleteButtonText}>{deleteLabel}</Text>
+				</Pressable>
+			</View>
 		</View>
 	);
 }
@@ -194,6 +212,11 @@ export default function BudgetsScreen() {
 						contextPersonal: "Personal",
 						saving: "Saving...",
 						save: "Save budget wallet",
+						delete: "Delete",
+						deleteConfirmTitle: "Delete budget wallet?",
+						deleteConfirmMessage: (name: string) =>
+							`${name} will be removed from active budgets and moved to archive.`,
+						cancel: "Cancel",
 						activeLabel: "Active wallets",
 						reviewMeta: "needs review",
 						reviewScope: "Review only in Reports/Wallets",
@@ -243,6 +266,11 @@ export default function BudgetsScreen() {
 						contextPersonal: "Pribadi",
 						saving: "Menyimpan...",
 						save: "Simpan dompet",
+						delete: "Hapus",
+						deleteConfirmTitle: "Hapus dompet budget?",
+						deleteConfirmMessage: (name: string) =>
+							`${name} akan dihapus dari budget aktif dan dipindahkan ke arsip.`,
+						cancel: "Batal",
 						activeLabel: "Dompet aktif",
 						reviewMeta: "perlu cek",
 						reviewScope: "Review hanya di Reports/Dompet",
@@ -288,11 +316,34 @@ export default function BudgetsScreen() {
 	const [notes, setNotes] = useState("");
 	const [saving, setSaving] = useState(false);
 	const [loading, setLoading] = useState(true);
+	const [deletingId, setDeletingId] = useState<string | null>(null);
 	const [loadError, setLoadError] = useState<string | null>(null);
 
 	useEffect(() => {
 		loadEnvelopes();
 	}, [activeContext]);
+
+	const getDefaultDateRange = () => {
+		const now = new Date();
+		const start = new Date(now.getFullYear(), now.getMonth(), 1);
+		const end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+		return {
+			start: start.toISOString().slice(0, 10),
+			end: end.toISOString().slice(0, 10),
+		};
+	};
+
+	const openCreateForm = () => {
+		setShowCreateForm((value) => {
+			const next = !value;
+			if (next && (!startDate || !endDate)) {
+				const range = getDefaultDateRange();
+				setStartDate(range.start);
+				setEndDate(range.end);
+			}
+			return next;
+		});
+	};
 
 	const loadEnvelopes = async () => {
 		try {
@@ -385,10 +436,51 @@ export default function BudgetsScreen() {
 			await loadEnvelopes();
 		} catch (error) {
 			console.error("Error creating budget envelope:", error);
-			setLoadError(tx.saveError);
+			const message = error instanceof Error ? ` ${error.message}` : "";
+			setLoadError(`${tx.saveError}${message}`);
 		} finally {
 			setSaving(false);
 		}
+	};
+
+	const deleteSelectedEnvelope = async (envelope: BudgetEnvelope) => {
+		if (!userId || deletingId) return;
+		try {
+			setDeletingId(envelope.id);
+			setLoadError(null);
+			await deleteBudgetEnvelope(supabase, envelope.id, userId);
+			await loadEnvelopes();
+		} catch (error) {
+			console.error("Error deleting budget envelope:", error);
+			const message = error instanceof Error ? ` ${error.message}` : "";
+			setLoadError(`${tx.saveError}${message}`);
+		} finally {
+			setDeletingId(null);
+		}
+	};
+
+	const confirmDeleteEnvelope = (envelope: BudgetEnvelope) => {
+		if (deletingId) return;
+		const title = tx.deleteConfirmTitle;
+		const message = tx.deleteConfirmMessage(envelope.name);
+
+		if (Platform.OS === "web") {
+			const confirm = (globalThis as { confirm?: (message?: string) => boolean })
+				.confirm;
+			if (confirm?.(`${title}\n\n${message}`)) {
+				void deleteSelectedEnvelope(envelope);
+			}
+			return;
+		}
+
+		Alert.alert(title, message, [
+			{ text: tx.cancel, style: "cancel" },
+			{
+				text: tx.delete,
+				style: "destructive",
+				onPress: () => void deleteSelectedEnvelope(envelope),
+			},
+		]);
 	};
 
 	if (loading) {
@@ -421,6 +513,8 @@ export default function BudgetsScreen() {
 			noCategoryLabel={tx.noCategory}
 			overLabel={tx.over}
 			remainingLabel={tx.remaining}
+		deleteLabel={tx.delete}
+		onDelete={confirmDeleteEnvelope}
 		/>
 	);
 
@@ -437,7 +531,7 @@ export default function BudgetsScreen() {
 							accessibilityLabel={tx.add}
 							accessibilityState={{ expanded: showCreateForm }}
 							style={styles.addButton}
-							onPress={() => setShowCreateForm((value) => !value)}
+							onPress={openCreateForm}
 						>
 							<Text style={styles.addButtonText}>{tx.add}</Text>
 						</Pressable>
@@ -711,6 +805,15 @@ export default function BudgetsScreen() {
 				maxToRenderPerBatch={10}
 				windowSize={5}
 				removeClippedSubviews={!showCreateForm}
+				refreshing={loading}
+				onRefresh={loadEnvelopes}
+				refreshControl={
+					<RefreshControl
+						refreshing={loading}
+						onRefresh={loadEnvelopes}
+						tintColor={theme.colors.brandPrimary}
+					/>
+				}
 			/>
 		</PageEntrance>
 	);
@@ -949,10 +1052,33 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			overflow: "hidden",
 		},
 		budgetBarFill: { height: "100%", borderRadius: 999 },
+		budgetFooterRow: {
+			flexDirection: "row",
+			alignItems: "center",
+			justifyContent: "space-between",
+			gap: 10,
+			flexWrap: "wrap",
+		},
 		budgetFooter: {
 			color: theme.colors.textMuted,
 			fontSize: 11,
 			fontWeight: "600",
+			flexShrink: 1,
+		},
+		deleteButton: {
+			minHeight: 36,
+			justifyContent: "center",
+			borderRadius: 999,
+			borderWidth: 1,
+			borderColor: `${theme.colors.danger}40`,
+			backgroundColor: `${theme.colors.danger}12`,
+			paddingHorizontal: 12,
+			paddingVertical: 6,
+		},
+		deleteButtonText: {
+			color: theme.colors.danger,
+			fontSize: 12,
+			fontWeight: "800",
 		},
 		footerSections: { gap: 8 },
 		reviewCard: {

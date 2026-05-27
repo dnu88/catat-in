@@ -7,6 +7,7 @@ import {
 	View,
 	Share,
 	Modal,
+	RefreshControl,
 } from "react-native";
 import { useRouter } from "expo-router";
 import Svg, { Circle, Polyline } from "react-native-svg";
@@ -174,6 +175,7 @@ export default function ReportsScreen() {
 	const [periodFilter, setPeriodFilter] = useState<PeriodFilter>("month");
 	const [selectedBar, setSelectedBar] = useState<number | null>(null);
 	const [dataLoading, setDataLoading] = useState(false);
+	const [refreshTick, setRefreshTick] = useState(0);
 	const [dataError, setDataError] = useState<string | null>(null);
 	const [realTransactionCount, setRealTransactionCount] = useState<
 		number | null
@@ -862,11 +864,7 @@ export default function ReportsScreen() {
 						.sort((a, b) => b.percent - a.percent);
 					setDynamicCategories(withUniqueCategoryColors(generated));
 				} else {
-					setDynamicCategories(
-						withUniqueCategoryColors(
-							categories.map((c) => ({ ...c, ...getCategoryVisualMeta(c.id) })),
-						),
-					);
+					setDynamicCategories([]);
 				}
 
 				// Load compare data if activeTab is 'compare'
@@ -966,6 +964,7 @@ export default function ReportsScreen() {
 		customEndDay,
 		supabase,
 		activeContext,
+		refreshTick,
 	]);
 
 	return (
@@ -974,6 +973,13 @@ export default function ReportsScreen() {
 				<ScrollView
 					contentContainerStyle={styles.content}
 					showsVerticalScrollIndicator={false}
+					refreshControl={
+						<RefreshControl
+							refreshing={dataLoading}
+							onRefresh={() => setRefreshTick((value) => value + 1)}
+							tintColor={theme.colors.brandPrimary}
+						/>
+					}
 				>
 				{/* Header */}
 				<View style={styles.headerRow}>

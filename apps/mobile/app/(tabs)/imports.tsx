@@ -1,19 +1,21 @@
-import { useMemo } from 'react'
-import { FlatList, ScrollView, StyleSheet, Text, View } from 'react-native'
+import { useCallback, useMemo, useState } from 'react'
+import { FlatList, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { PageEntrance, StaggeredStack } from '../../src/components/motion'
 
 import { KaswiseIcon } from '../../src/components/icons/kaswise-icons'
 import { Card, IconBubble, SectionHeader } from '../../src/components/ui'
 import { useTheme } from '../../src/theme/theme-context'
 
-const importHistory = [
-  { id: '1', source: 'BCA Mobile', date: '5 Mei 2026', count: 24, icon: 'wallets' as const },
-  { id: '2', source: 'GoPay CSV', date: '1 Mei 2026', count: 18, icon: 'card' as const },
-]
+const importHistory: Array<{ id: string; source: string; date: string; count: number; icon: 'wallets' | 'card' }> = []
 
 export default function ImportsScreen() {
   const { theme } = useTheme()
   const styles = useMemo(() => createStyles(theme), [theme])
+  const [refreshing, setRefreshing] = useState(false)
+  const onRefresh = useCallback(() => {
+    setRefreshing(true)
+    setTimeout(() => setRefreshing(false), 250)
+  }, [])
 
   const renderHistoryItem = ({ item, index }: { item: (typeof importHistory)[number]; index: number }) => (
     <View style={[styles.historyRow, index < importHistory.length - 1 && styles.historyRowBorder]}>
@@ -35,7 +37,11 @@ export default function ImportsScreen() {
 
   return (
     <PageEntrance testID="imports-page-entrance" style={styles.screen}>
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.colors.brandPrimary} />}
+      >
         <StaggeredStack testIDPrefix="imports-entrance">
           <SectionHeader
             key="import-header"
@@ -76,13 +82,17 @@ export default function ImportsScreen() {
             subtitle="Sumber terakhir yang berhasil diproses."
           />
           <Card key="import-history-list" variant="default" style={styles.listCard}>
-            <FlatList
-              data={importHistory}
-              renderItem={renderHistoryItem}
-              keyExtractor={(item) => item.id}
-              scrollEnabled={false}
-              initialNumToRender={10}
-            />
+            {importHistory.length > 0 ? (
+              <FlatList
+                data={importHistory}
+                renderItem={renderHistoryItem}
+                keyExtractor={(item) => item.id}
+                scrollEnabled={false}
+                initialNumToRender={10}
+              />
+            ) : (
+              <Text style={styles.emptyHistoryText}>Belum ada riwayat import.</Text>
+            )}
           </Card>
 
           <Card key="import-placeholder" variant="muted" style={styles.placeholderCard}>
@@ -143,6 +153,7 @@ function createStyles(theme: ReturnType<typeof useTheme>['theme']) {
       backgroundColor: theme.iconBubbles.success.background,
     },
     statusBadgeText: { color: theme.colors.success, fontSize: 11, fontWeight: '700' },
+    emptyHistoryText: { color: theme.colors.textMuted, fontSize: 12, textAlign: 'center', paddingVertical: 16 },
     placeholderCard: { alignItems: 'center', gap: 10 },
     placeholderTitle: { color: theme.colors.textPrimary, fontSize: 15, fontWeight: '800' },
     placeholderSub: { color: theme.colors.textMuted, fontSize: 12, textAlign: 'center', lineHeight: 18 },
