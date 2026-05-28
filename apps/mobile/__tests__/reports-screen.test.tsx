@@ -115,6 +115,10 @@ jest.mock("../src/state/finance-context", () => ({
 }));
 
 jest.mock("expo-router", () => ({
+	useFocusEffect: (callback: () => void | (() => void)) => {
+		const React = require("react");
+		React.useEffect(() => callback(), [callback]);
+	},
 	useRouter: () => ({ push: jest.fn() }),
 }));
 

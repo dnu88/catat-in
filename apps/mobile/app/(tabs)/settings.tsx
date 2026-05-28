@@ -1,6 +1,6 @@
 import { router } from "expo-router";
-import { useEffect, useMemo, useState } from "react";
-import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { ActivityIndicator, Animated, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
 import { PageEntrance, StaggeredStack } from "../../src/components/motion";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
@@ -10,6 +10,8 @@ import { KaswiseLogoMark } from "../../src/components/brand/KaswiseLogoMark";
 import { IconBubble } from "../../src/components/ui";
 import { useTheme } from "../../src/theme/theme-context";
 import { useI18n } from "../../src/i18n/i18n-context";
+
+const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 const NOTIFICATION_KEYS = {
 	dailyReminder: "@kaswise/notifications/dailyReminder",
@@ -314,6 +316,8 @@ export default function SettingsScreen() {
 	const [seedLoading, setSeedLoading] = useState(false);
 	const [seedResult, setSeedResult] = useState<SeedResultState | null>(null);
 	const [refreshing, setRefreshing] = useState(false);
+	const [logoutLoading, setLogoutLoading] = useState(false);
+	const logoutScale = useRef(new Animated.Value(1)).current;
 
 	useEffect(() => {
 		let active = true;
@@ -575,9 +579,27 @@ export default function SettingsScreen() {
 		}
 	};
 
+	const animateLogoutButton = (toValue: number) => {
+		Animated.spring(logoutScale, {
+			toValue,
+			useNativeDriver: true,
+			speed: 24,
+			bounciness: 6,
+		}).start();
+	};
+
 	const onLogout = async () => {
-		await supabase.auth.signOut();
-		router.replace("/(auth)/login");
+		if (logoutLoading) return;
+
+		setLogoutLoading(true);
+		animateLogoutButton(0.96);
+		try {
+			await supabase.auth.signOut();
+			router.replace("/(auth)/login");
+		} finally {
+			setLogoutLoading(false);
+			animateLogoutButton(1);
+		}
 	};
 
 	const themeLabels = {
@@ -810,20 +832,32 @@ export default function SettingsScreen() {
 
 
 				{/* Logout */}
-				<Pressable
+				<AnimatedPressable
 					key="settings-logout"
 					testID="settings-logout"
 					accessibilityRole="button"
 					accessibilityLabel={
 						language === "id" ? "Keluar dari akun" : "Sign out"
 					}
-					style={styles.logoutBtn}
+					accessibilityState={{ busy: logoutLoading, disabled: logoutLoading }}
+					disabled={logoutLoading}
+					hitSlop={12}
+					onPressIn={() => animateLogoutButton(0.97)}
+					onPressOut={() => animateLogoutButton(1)}
+					style={[
+						styles.logoutBtn,
+						{ transform: [{ scale: logoutScale }], opacity: logoutLoading ? 0.72 : 1 },
+					]}
 					onPress={onLogout}
 				>
-					<Text style={styles.logoutText}>
-						{language === "id" ? "Keluar dari Akun" : "Sign Out"}
-					</Text>
-				</Pressable>
+					{logoutLoading ? (
+						<ActivityIndicator color={theme.colors.danger} />
+					) : (
+						<Text style={styles.logoutText}>
+							{language === "id" ? "Keluar dari Akun" : "Sign Out"}
+						</Text>
+					)}
+				</AnimatedPressable>
 				</StaggeredStack>
 
 

@@ -172,7 +172,7 @@ describe("Capture envelope suggestion", () => {
 		);
 	});
 
-	it("creates the processing transaction in the active household context", async () => {
+	it("saves text capture instantly in the active household context", async () => {
 		mockEnvelopeSuggestion = null;
 		mockActiveContext = {
 			type: "household",
@@ -188,15 +188,21 @@ describe("Capture envelope suggestion", () => {
 		fireEvent.press(screen.getByText("Proses dengan AI"));
 
 		await waitFor(() => expect(mockInsert).toHaveBeenCalledTimes(1));
-		expect(mockInsert).toHaveBeenCalledWith({
-			user_id: "user-1",
-			household_id: "hh-1",
-			created_by: "user-1",
-			updated_by: "user-1",
-			input_type: "text",
-			status: "processing",
-			raw_input: "Beli kopi 35rb",
-			review_required: false,
-		});
+		expect(mockInsert).toHaveBeenCalledWith(
+			expect.objectContaining({
+				user_id: "user-1",
+				household_id: "hh-1",
+				created_by: "user-1",
+				updated_by: "user-1",
+				input_type: "text",
+				status: "done",
+				raw_input: "Beli kopi 35rb",
+				type: "expense",
+				nominal: 35000,
+				kategori: "Makanan & Minuman",
+				catatan: "Beli kopi 35rb",
+			}),
+		);
+		expect(mockInvoke).not.toHaveBeenCalled();
 	});
 });

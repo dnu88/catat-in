@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
 	Pressable,
 	ScrollView,
@@ -9,7 +9,7 @@ import {
 	Modal,
 	RefreshControl,
 } from "react-native";
-import { useRouter } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router";
 import Svg, { Circle, Polyline } from "react-native-svg";
 
 import { useTheme } from "../../src/theme/theme-context";
@@ -176,6 +176,7 @@ export default function ReportsScreen() {
 	const [selectedBar, setSelectedBar] = useState<number | null>(null);
 	const [dataLoading, setDataLoading] = useState(false);
 	const [refreshTick, setRefreshTick] = useState(0);
+	const hasFocusedOnceRef = useRef(false);
 	const [dataError, setDataError] = useState<string | null>(null);
 	const [realTransactionCount, setRealTransactionCount] = useState<
 		number | null
@@ -725,6 +726,18 @@ export default function ReportsScreen() {
 		setCustomEndDay(safeEndDay);
 		setShowDateModal(false);
 	};
+
+	useFocusEffect(
+		useCallback(() => {
+			if (!hasFocusedOnceRef.current) {
+				hasFocusedOnceRef.current = true;
+				return undefined;
+			}
+
+			setRefreshTick((value) => value + 1);
+			return undefined;
+		}, []),
+	);
 
 	const handleShare = async () => {
 		const periodText =

@@ -17,6 +17,10 @@ let mockActiveContext:
 };
 
 jest.mock("expo-router", () => ({
+	useFocusEffect: (callback: () => void | (() => void)) => {
+		const React = require("react");
+		React.useEffect(() => callback(), [callback]);
+	},
 	useRouter: () => ({ push: mockPush }),
 }));
 

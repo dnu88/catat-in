@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
-import { useRouter } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router";
 
 import { FinanceContextSwitcher } from "../../src/components/FinanceContextSwitcher";
 import { PageEntrance, StaggeredEntrance } from "../../src/components/motion";
@@ -165,13 +165,15 @@ export default function DashboardScreen() {
 			}
 	}, [supabase, activeContext]);
 
-	useEffect(() => {
-		let mounted = true;
-		void loadDashboard(mounted);
-		return () => {
-			mounted = false;
-		};
-	}, [loadDashboard]);
+	useFocusEffect(
+		useCallback(() => {
+			let mounted = true;
+			void loadDashboard(mounted);
+			return () => {
+				mounted = false;
+			};
+		}, [loadDashboard]),
+	);
 
 	const onRefresh = useCallback(async () => {
 		setRefreshing(true);

@@ -53,6 +53,106 @@ const modes = [
 	},
 ] as const;
 
+type QuickTransactionDraft = {
+	transactionType: "income" | "expense";
+	amount: number;
+	category: string;
+	merchant: string | null;
+	note: string;
+	date: string;
+	confidence: number;
+};
+
+const categoryKeywords: Array<{ category: string; keywords: string[] }> = [
+	{ category: "Makanan & Minuman", keywords: ["makan", "kopi", "cafe", "kafe", "resto", "warteg", "nasi", "minum", "gofood", "grabfood"] },
+	{ category: "Transportasi", keywords: ["grab", "gojek", "taxi", "taksi", "bensin", "pertamina", "parkir", "tol", "ojek"] },
+	{ category: "Belanja", keywords: ["belanja", "indomaret", "alfamart", "supermarket", "shopee", "tokopedia", "mall"] },
+	{ category: "Tagihan", keywords: ["pln", "listrik", "air", "pdam", "internet", "wifi", "tagihan", "pulsa", "paket data"] },
+	{ category: "Kesehatan", keywords: ["obat", "dokter", "apotek", "vitamin", "klinik", "rumah sakit"] },
+	{ category: "Hiburan", keywords: ["netflix", "spotify", "bioskop", "game", "steam", "hiburan"] },
+	{ category: "Pendidikan", keywords: ["buku", "kursus", "sekolah", "kuliah", "kelas"] },
+];
+
+function dateKey(date = new Date()) {
+	return date.toISOString().slice(0, 10);
+}
+
+function normalizeNumber(rawValue: string) {
+	const normalized = rawValue.replace(/\s/g, "");
+	if (normalized.includes(",") && !normalized.includes(".")) {
+		return Number(normalized.replace(",", "."));
+	}
+	return Number(normalized.replace(/[.,]/g, ""));
+}
+
+function parseAmountFromText(value: string) {
+	const unitMatch = value.match(/(?:rp\s*)?(\d+(?:[.,]\d+)?)\s*(juta|jt|ribu|rb|k)\b/i);
+	if (unitMatch) {
+		const amount = Number(unitMatch[1].replace(",", "."));
+		const unit = unitMatch[2].toLowerCase();
+		if (unit === "juta" || unit === "jt") return Math.round(amount * 1_000_000);
+		return Math.round(amount * 1_000);
+	}
+
+	const rupiahMatch = value.match(/rp\s*([\d.,]+)/i);
+	if (rupiahMatch) return normalizeNumber(rupiahMatch[1]);
+
+	const plainMatch = value.match(/\b(\d[\d.]{3,}|\d{4,})\b/);
+	return plainMatch ? normalizeNumber(plainMatch[1]) : 0;
+}
+
+function inferTransactionType(value: string): "income" | "expense" {
+	return /\b(gaji|bonus|freelance|dibayar|bayaran|pemasukan|income|terima|masuk)\b/i.test(value)
+		? "income"
+		: "expense";
+}
+
+function inferCategory(value: string, transactionType: "income" | "expense") {
+	const lowered = value.toLowerCase();
+	if (transactionType === "income") {
+		if (/bonus/i.test(value)) return "Bonus";
+		if (/freelance|proyek|klien/i.test(value)) return "Freelance";
+		return "Gaji";
+	}
+
+	return categoryKeywords.find((item) =>
+		item.keywords.some((keyword) => lowered.includes(keyword)),
+	)?.category ?? "Lainnya";
+}
+
+function inferMerchant(value: string) {
+	const match = value.match(/\b(?:di|ke|dari)\s+([a-z0-9&.' -]{2,48})/i);
+	if (!match) return null;
+	const merchant = match[1]
+		.split(/\b(?:pakai|dengan|via|untuk|sebesar|tanggal|tgl)\b/i)[0]
+		.trim()
+		.replace(/[.,;:]+$/, "");
+	return merchant || null;
+}
+
+function buildQuickTransactionDraft(value: string): QuickTransactionDraft | null {
+	const amount = parseAmountFromText(value);
+	if (!Number.isFinite(amount) || amount <= 0) return null;
+
+	const transactionType = inferTransactionType(value);
+	const category = inferCategory(value, transactionType);
+	const merchant = inferMerchant(value);
+	const confidence = Math.min(
+		0.92,
+		0.68 + (merchant ? 0.08 : 0) + (category !== "Lainnya" ? 0.08 : 0),
+	);
+
+	return {
+		transactionType,
+		amount,
+		category,
+		merchant,
+		note: value,
+		date: dateKey(),
+		confidence,
+	};
+}
+
 type ModeId = (typeof modes)[number]["id"];
 
 export default function CaptureScreen() {
@@ -72,7 +172,8 @@ export default function CaptureScreen() {
 						processingSub: "Kaswise AI is reading your transaction. You can leave this page.",
 						successTitle: "Transaction saved!",
 						successSub: "Wallet balance and budget rules are synced automatically when a wallet is selected.",
-						queued: "Transaction queued. We will show it here when AI finishes.",
+						queued: "Transaction saved. Kaswise prepared a quick reading instantly.",
+						amountRequired: "Add an amount so Kaswise can save the transaction instantly.",
 						budgetWallet: "Budget Wallet",
 						remainingAfter: (amount: number) =>
 							`Rp${amount.toLocaleString("id-ID")} left after this transaction`,
@@ -85,7 +186,8 @@ export default function CaptureScreen() {
 						processingSub: "AI Kaswise sedang membaca transaksimu. Kamu bisa meninggalkan halaman ini.",
 						successTitle: "Transaksi tercatat! Berhasil disimpan.",
 						successSub: "Saldo akun dan aturan budget otomatis tersinkron saat akun dipilih.",
-						queued: "Transaksi masuk antrean. Hasilnya akan tampil di sini setelah AI selesai.",
+						queued: "Transaksi langsung disimpan. Kaswise membaca catatanmu secara instan.",
+						amountRequired: "Tambahkan nominal agar transaksi bisa langsung disimpan.",
 						budgetWallet: "Dompet",
 						remainingAfter: (amount: number) =>
 							`Rp${amount.toLocaleString("id-ID")} tersisa setelah transaksi ini`,
@@ -103,9 +205,11 @@ export default function CaptureScreen() {
 	const [submitting, setSubmitting] = useState(false);
 	const [queuedMessage, setQueuedMessage] = useState<string | null>(null);
 	const [error, setError] = useState<string | null>(null);
+	const [optimisticTransaction, setOptimisticTransaction] = useState<any | null>(null);
 	const persistedSuggestionKeyRef = useRef<string | null>(null);
 
 	const { transaction, loading } = useTransactionRealtime(transactionId);
+	const displayedTransaction = transaction ?? optimisticTransaction;
 
 	const loadWalletOptions = async () => {
 		setWalletLoading(true);
@@ -135,9 +239,16 @@ export default function CaptureScreen() {
 		const value = textInput.trim();
 		if (!value || submitting) return;
 
+		const quickDraft = buildQuickTransactionDraft(value);
+		if (!quickDraft) {
+			setError(tx.amountRequired);
+			return;
+		}
+
 		setSubmitting(true);
 		setQueuedMessage(null);
 		setError(null);
+		setOptimisticTransaction(null);
 
 		try {
 			const {
@@ -150,46 +261,54 @@ export default function CaptureScreen() {
 				return;
 			}
 
+			const insertPayload = {
+				...buildFinanceInsertAudit(activeContext, user.id),
+				...(walletId ? { wallet_id: walletId } : {}),
+				input_type: "text",
+				status: "done",
+				raw_input: value,
+				review_required: quickDraft.confidence < 0.85,
+				confidence: quickDraft.confidence,
+				type: quickDraft.transactionType,
+				nominal: quickDraft.amount,
+				kategori: quickDraft.category,
+				tanggal: quickDraft.date,
+				catatan: quickDraft.note,
+				merchant: quickDraft.merchant,
+			};
+
 			const { data, error: insertError } = await supabase
 				.from("transactions")
-				.insert({
-					...buildFinanceInsertAudit(activeContext, user.id),
-					...(walletId ? { wallet_id: walletId } : {}),
-					input_type: "text",
-					status: "processing",
-					raw_input: value,
-					review_required: false,
-				})
+				.insert(insertPayload)
 				.select("id")
 				.single();
 
 			if (insertError || !data?.id) {
-				setError("Gagal membuat transaksi sementara. Coba lagi.");
+				setError("Gagal menyimpan transaksi. Coba lagi.");
 				setSubmitting(false);
 				return;
 			}
 
+			setOptimisticTransaction({
+				id: data.id,
+				status: "done",
+				confidence: quickDraft.confidence,
+				transaction_type: quickDraft.transactionType,
+				type: quickDraft.transactionType,
+				amount: quickDraft.amount,
+				nominal: quickDraft.amount,
+				category: quickDraft.category,
+				kategori: quickDraft.category,
+				description: quickDraft.note,
+				catatan: quickDraft.note,
+				merchant: quickDraft.merchant,
+				date: quickDraft.date,
+				tanggal: quickDraft.date,
+			});
 			setTransactionId(data.id);
 			setQueuedMessage(tx.queued);
 			setTextInput("");
 			setSubmitting(false);
-
-			void supabase.functions
-				.invoke("process-text", {
-					body: {
-						transaction_id: data.id,
-						user_id: user.id,
-						raw_text: value,
-					},
-				})
-				.then(({ error: invokeError }) => {
-					if (invokeError) {
-						setError("Gagal memproses AI. Coba lagi sebentar.");
-					}
-				})
-				.catch(() => {
-					setError("Gagal memproses AI. Coba lagi sebentar.");
-				});
 		} catch (e) {
 			setError("Terjadi kesalahan sistem. Silakan coba lagi.");
 			setSubmitting(false);
@@ -197,10 +316,11 @@ export default function CaptureScreen() {
 	};
 
 	const isSuccess =
-		transaction?.status === "done" || (transaction?.confidence ?? 0) >= 0.85;
-	const isError = Boolean(error) || transaction?.status === "error";
+		displayedTransaction?.status === "done" ||
+		(displayedTransaction?.confidence ?? 0) >= 0.85;
+	const isError = Boolean(error) || displayedTransaction?.status === "error";
 	const isProcessing = Boolean(transactionId) && !isSuccess && !isError;
-	const envelopeSuggestion = (transaction as any)
+	const envelopeSuggestion = (displayedTransaction as any)
 		?.envelope_suggestion as null | {
 		id?: string;
 		envelope_id?: string;
@@ -225,7 +345,7 @@ export default function CaptureScreen() {
 		createEnvelopeAllocation(supabase, {
 			transaction_id: currentTransactionId,
 			envelope_id: envelopeId,
-			amount: Number(suggestion.amount ?? (transaction as any)?.amount ?? 0),
+			amount: Number(suggestion.amount ?? (displayedTransaction as any)?.amount ?? 0),
 			confidence:
 				typeof suggestion.confidence === "number"
 					? suggestion.confidence
@@ -234,10 +354,11 @@ export default function CaptureScreen() {
 		}).catch((error) => {
 			console.error("Failed to persist envelope allocation:", error);
 		});
-	}, [envelopeSuggestion, isSuccess, supabase, transaction]);
+	}, [displayedTransaction, envelopeSuggestion, isSuccess, supabase]);
 
 	const resetCapture = (clearText = true) => {
 		setTransactionId(null);
+		setOptimisticTransaction(null);
 		setSubmitting(false);
 		setQueuedMessage(null);
 		setError(null);
