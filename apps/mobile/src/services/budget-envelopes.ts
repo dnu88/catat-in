@@ -61,6 +61,15 @@ export type EnvelopeTransactionCandidate = {
 	amount: number;
 };
 
+export type EnvelopeAllocationSyncTransaction = EnvelopeTransactionCandidate & {
+	id: string;
+	transaction_type?: string | null;
+	type?: string | null;
+	date?: string | null;
+	tanggal?: string | null;
+	created_at?: string | null;
+};
+
 export type EnvelopeMatch = {
 	envelope: BudgetEnvelope;
 	confidence: number;
@@ -353,4 +362,68 @@ export async function createEnvelopeAllocation(
 
 	if (error) throw error;
 	return mapEnvelopeAllocation(data);
+}
+
+
+export async function deleteEnvelopeAllocationsForTransaction(
+	supabase: SupabaseLike,
+	transactionId: string,
+): Promise<void> {
+	const { error } = await supabase
+		.from("transaction_envelope_allocations")
+		.delete()
+		.eq("transaction_id", transactionId);
+
+	if (error) throw error;
+}
+
+export async function syncEnvelopeAllocationForTransaction(
+	supabase: SupabaseLike,
+	transaction: EnvelopeAllocationSyncTransaction,
+	userId: string,
+	context: FinanceContext = defaultContext,
+): Promise<void> {
+	const transactionType = transaction.transaction_type ?? transaction.type;
+	const amount = Number(transaction.amount ?? 0);
+	const transactionDate = toDateKey(
+		transaction.date ?? transaction.tanggal ?? transaction.created_at,
+	);
+
+	if (transactionType !== "expense" || amount <= 0 || !transactionDate) {
+		await deleteEnvelopeAllocationsForTransaction(supabase, transaction.id);
+		return;
+	}
+
+	const envelopes = (await listBudgetEnvelopes(supabase, userId, context)).filter(
+		(envelope) =>
+			getEnvelopeStatus(envelope, transactionDate) === "active" &&
+			toDateKey(envelope.start_date) <= transactionDate &&
+			toDateKey(envelope.end_date) >= transactionDate,
+	);
+
+	const match = matchEnvelopeForTransaction(
+		{
+			description: transaction.description,
+			merchant: transaction.merchant,
+			categoryName: transaction.categoryName,
+			amount,
+		},
+		envelopes,
+	);
+
+	await deleteEnvelopeAllocationsForTransaction(supabase, transaction.id);
+
+	if (!match) return;
+
+	const { error } = await supabase
+		.from("transaction_envelope_allocations")
+		.insert({
+			transaction_id: transaction.id,
+			envelope_id: match.envelope.id,
+			amount,
+			confidence: match.confidence,
+			needs_review: match.needs_review,
+		});
+
+	if (error) throw error;
 }

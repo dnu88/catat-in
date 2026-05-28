@@ -145,17 +145,18 @@ describe("transaction swipe actions", () => {
 		await waitFor(() => expect(screen.getByText("Kopi sore")).toBeTruthy());
 
 		expect(screen.getByLabelText("Edit transaksi Kopi sore")).toBeTruthy();
+		expect(screen.getByLabelText("Edit cepat transaksi Kopi sore")).toBeTruthy();
 		expect(screen.getByLabelText("Hapus transaksi Kopi sore")).toBeTruthy();
 	});
 
-	it("opens row actions only after crossing the 50% reveal threshold", () => {
-		expect(SWIPE_GESTURE_CONFIG.openThresholdRatio).toBe(0.5);
-		expect(SWIPE_GESTURE_CONFIG.openThreshold).toBe(80);
-		expect(SWIPE_GESTURE_CONFIG.activationDistance).toBeLessThanOrEqual(4);
-		expect(SWIPE_GESTURE_CONFIG.verticalIntentRatio).toBeGreaterThanOrEqual(1.15);
-		expect(shouldOpenSwipe(-79)).toBe(false);
+	it("opens row actions with a lighter, less rigid swipe threshold", () => {
+		expect(SWIPE_GESTURE_CONFIG.openThresholdRatio).toBeLessThanOrEqual(0.35);
+		expect(SWIPE_GESTURE_CONFIG.openThreshold).toBe(56);
+		expect(SWIPE_GESTURE_CONFIG.activationDistance).toBeLessThanOrEqual(2);
+		expect(SWIPE_GESTURE_CONFIG.verticalIntentRatio).toBeLessThanOrEqual(1);
+		expect(shouldOpenSwipe(-55)).toBe(false);
+		expect(shouldOpenSwipe(-56)).toBe(true);
 		expect(shouldOpenSwipe(-80)).toBe(true);
-		expect(shouldOpenSwipe(-120)).toBe(true);
 		expect(shouldOpenSwipe(120)).toBe(false);
 	});
 

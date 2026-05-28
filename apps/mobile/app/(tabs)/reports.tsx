@@ -116,26 +116,52 @@ type ReportTransaction = {
 };
 
 type ReportTransactionRow = {
+	amount?: number | string | null;
 	nominal?: number | string | null;
+	transaction_type?: "income" | "expense" | null;
 	type?: "income" | "expense" | null;
+	category?: string | null;
 	kategori?: string | null;
+	date?: string | null;
 	tanggal?: string | null;
+	created_at?: string | null;
+	description?: string | null;
 	catatan?: string | null;
+	note?: string | null;
 	merchant?: string | null;
 };
+
+function toReportDateKey(value: string | null | undefined) {
+	return value ? String(value).slice(0, 10) : null;
+}
 
 function normalizeReportTransaction(
 	row: ReportTransactionRow,
 ): ReportTransaction {
+	const date = toReportDateKey(row.date ?? row.tanggal ?? row.created_at);
+	const transactionType = row.transaction_type ?? row.type;
+	const description = row.description ?? row.catatan ?? row.note ?? row.merchant;
+
 	return {
-		amount: Number(row.nominal ?? 0),
-		transaction_type: row.type === "income" ? "income" : "expense",
-		category: row.kategori ?? null,
-		date: row.tanggal ?? null,
-		description: row.catatan ?? row.merchant ?? null,
+		amount: Number(row.amount ?? row.nominal ?? 0),
+		transaction_type: transactionType === "income" ? "income" : "expense",
+		category: row.category ?? row.kategori ?? null,
+		date,
+		description: description ?? null,
 		merchant: row.merchant ?? null,
-		note: row.catatan ?? null,
+		note: row.note ?? row.catatan ?? null,
 	};
+}
+
+function filterReportTransactionsByDateRange(
+	transactions: ReportTransaction[],
+	startDateString: string,
+	endDateString: string,
+) {
+	return transactions.filter((transaction) => {
+		const value = toReportDateKey(transaction.date);
+		return Boolean(value && value >= startDateString && value <= endDateString);
+	});
 }
 
 const fallbackCategoryColors = reportCategoryPalette;
@@ -819,9 +845,7 @@ export default function ReportsScreen() {
 					);
 				}
 
-				let query = supabase
-					.from("transactions")
-					.select("nominal, type, kategori, tanggal, catatan, merchant");
+				let query = supabase.from("transactions").select("*");
 				query = applyFinanceContextFilter(
 					query as any,
 					activeContext,
@@ -829,15 +853,18 @@ export default function ReportsScreen() {
 				if (activeContext.type === "personal") {
 					query = query.eq("user_id", user.id) as typeof query;
 				}
-				const { data: transactions, error } = await query
-					.gte("tanggal", startDateString)
-					.lte("tanggal", endDateString);
+				const { data: transactions, error } = await query;
 
 				if (error) throw error;
 
-				const loadedTransactions = (
+				const allTransactions = (
 					(transactions || []) as ReportTransactionRow[]
 				).map(normalizeReportTransaction);
+				const loadedTransactions = filterReportTransactionsByDateRange(
+					allTransactions,
+					startDateString,
+					endDateString,
+				);
 				setReportTransactions(loadedTransactions);
 				setRealTransactionCount(loadedTransactions.length);
 
@@ -887,35 +914,16 @@ export default function ReportsScreen() {
 					const prevEndDate = new Date(endDate);
 					prevEndDate.setMonth(prevEndDate.getMonth() - 1);
 
-					let prevQuery = supabase.from("transactions").select("nominal, type");
-					prevQuery = applyFinanceContextFilter(
-						prevQuery as any,
-						activeContext,
-					) as typeof prevQuery;
-					if (activeContext.type === "personal") {
-						prevQuery = prevQuery.eq("user_id", user.id) as typeof prevQuery;
-					}
-					const { data: prevTransactionsRows, error: prevError } =
-						await prevQuery
-							.gte(
-								"tanggal",
-								dateKey(
-									prevStartDate.getFullYear(),
-									prevStartDate.getMonth() + 1,
-									prevStartDate.getDate(),
-								),
-							)
-							.lte(
-								"tanggal",
-								dateKey(
-									prevEndDate.getFullYear(),
-									prevEndDate.getMonth() + 1,
-									prevEndDate.getDate(),
-								),
-							);
-
-					if (prevError)
-						console.error("Failed to load previous period:", prevError);
+					const prevStartDateString = dateKey(
+						prevStartDate.getFullYear(),
+						prevStartDate.getMonth() + 1,
+						prevStartDate.getDate(),
+					);
+					const prevEndDateString = dateKey(
+						prevEndDate.getFullYear(),
+						prevEndDate.getMonth() + 1,
+						prevEndDate.getDate(),
+					);
 
 					const currentIncome =
 						loadedTransactions
@@ -927,9 +935,11 @@ export default function ReportsScreen() {
 							.reduce((sum, t) => sum + t.amount, 0) || 0;
 					const currentNet = currentIncome - currentExpense;
 
-					const prevTransactions = (
-						(prevTransactionsRows || []) as ReportTransactionRow[]
-					).map(normalizeReportTransaction);
+					const prevTransactions = filterReportTransactionsByDateRange(
+						allTransactions,
+						prevStartDateString,
+						prevEndDateString,
+					);
 					const prevIncome =
 						prevTransactions
 							.filter((t) => t.transaction_type === "income")

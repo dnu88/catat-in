@@ -1,6 +1,10 @@
 import { supabase } from "../lib/supabase";
 import { getCurrentUserId } from "./currentUser";
 import {
+	deleteEnvelopeAllocationsForTransaction,
+	syncEnvelopeAllocationForTransaction,
+} from "./budget-envelopes";
+import {
 	applyFinanceContextFilter,
 	buildFinanceInsertAudit,
 	buildFinanceUpdateAudit,
@@ -127,6 +131,42 @@ function buildUpdatePayload(updates: Partial<TransactionCreate>) {
 	return payload;
 }
 
+async function syncBudgetAllocationSafely(
+	transaction: Transaction,
+	userId: string,
+	context: FinanceContext,
+) {
+	try {
+		await syncEnvelopeAllocationForTransaction(
+			supabase,
+			{
+				id: transaction.id,
+				transaction_type: transaction.transaction_type,
+				type: transaction.type,
+				amount: transaction.amount,
+				description: transaction.description,
+				merchant: transaction.merchant,
+				categoryName: transaction.category,
+				date: transaction.date,
+				tanggal: transaction.tanggal,
+				created_at: transaction.created_at,
+			},
+			userId,
+			context,
+		);
+	} catch {
+		// Budget allocation must never block the transaction write.
+	}
+}
+
+async function deleteBudgetAllocationSafely(transactionId: string) {
+	try {
+		await deleteEnvelopeAllocationsForTransaction(supabase, transactionId);
+	} catch {
+		// If the allocation table is unavailable, the transaction delete still proceeds.
+	}
+}
+
 export async function getTransaction(id: string): Promise<Transaction | null> {
 	const { data, error } = await supabase
 		.from("transactions")
@@ -157,7 +197,9 @@ export async function createTransaction(
 
 	if (error) throw error;
 
-	return normalizeTransaction(data);
+	const created = normalizeTransaction(data);
+	await syncBudgetAllocationSafely(created, userId, context);
+	return created;
 }
 
 export async function listTransactions(
@@ -215,7 +257,9 @@ export async function updateTransaction(
 
 	if (error) throw error;
 
-	return normalizeTransaction(data);
+	const updated = normalizeTransaction(data);
+	await syncBudgetAllocationSafely(updated, userId, context);
+	return updated;
 }
 
 export async function deleteTransaction(
@@ -227,6 +271,8 @@ export async function deleteTransaction(
 	if (!previous) throw new Error("Transaksi tidak ditemukan");
 	if (!canDeleteInContext(context, previous, userId))
 		throw new Error("Akses lihat saja");
+
+	await deleteBudgetAllocationSafely(id);
 
 	const { error } = await supabase.from("transactions").delete().eq("id", id);
 	if (error) throw error;

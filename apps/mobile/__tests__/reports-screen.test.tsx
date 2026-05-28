@@ -20,6 +20,14 @@ let mockActiveContext:
 
 const mockTransactions = [
 	{
+		amount: 125000,
+		transaction_type: "income",
+		category: "Pendapatan",
+		date: "2026-05-05",
+		description: "Bonus modern schema",
+		merchant: "Klien",
+	},
+	{
 		nominal: 500000,
 		type: "expense",
 		kategori: "Makan",
@@ -68,12 +76,16 @@ jest.mock("../src/lib/supabase", () => {
 		gte: jest.Mock;
 		lte: jest.Mock;
 		is: jest.Mock;
+		then: jest.Mock;
 	} = {
 		select: jest.fn(() => chain),
 		eq: jest.fn(() => chain),
 		is: jest.fn(() => chain),
 		gte: gteMock,
 		lte: lteMock,
+		then: jest.fn((resolve, reject) =>
+			Promise.resolve({ data: mockTransactions, error: null }).then(resolve, reject),
+		),
 	};
 	(globalThis as any).__reportsQueryChain = chain;
 
@@ -222,18 +234,16 @@ describe("ReportsScreen visual parity", () => {
 		expect(savingsStyle.color).toBe("#0A0A0A");
 	});
 
-	it("queries deployed transaction schema columns and normalizes them for category visuals", async () => {
+	it("queries all deployed transaction columns and normalizes legacy plus current fields for category visuals", async () => {
 		renderReports();
 
 		fireEvent.press(screen.getByText("Kategori"));
 		await screen.findByTestId("reports-category-fill-makan");
 
 		const chain = (globalThis as any).__reportsQueryChain;
-		expect(chain.select).toHaveBeenCalledWith(
-			"nominal, type, kategori, tanggal, catatan, merchant",
-		);
-		expect(chain.gte).toHaveBeenCalledWith("tanggal", expect.any(String));
-		expect(chain.lte).toHaveBeenCalledWith("tanggal", expect.any(String));
+		expect(chain.select).toHaveBeenCalledWith("*");
+		expect(chain.gte).not.toHaveBeenCalled();
+		expect(chain.lte).not.toHaveBeenCalled();
 		expect(screen.getByTestId("reports-category-fill-makan")).toBeTruthy();
 	});
 
@@ -426,7 +436,7 @@ describe("ReportsScreen visual parity", () => {
 		expect(foodGlow.props.cy).toBe(foodGlow.props.cx);
 	});
 
-	it("lets custom period choose exact start and end dates for the Supabase query", async () => {
+	it("lets custom period choose exact start and end dates for client-side report filtering", async () => {
 		const screen = renderReports();
 
 		fireEvent.press(screen.getByText("Kustom"));
@@ -439,14 +449,9 @@ describe("ReportsScreen visual parity", () => {
 		fireEvent.press(screen.getByLabelText("Terapkan rentang tanggal"));
 
 		await waitFor(() => {
-			expect((globalThis as any).__reportsGteMock).toHaveBeenLastCalledWith(
-				"tanggal",
-				expect.stringMatching(/-15$/),
-			);
-			expect((globalThis as any).__reportsLteMock).toHaveBeenLastCalledWith(
-				"tanggal",
-				expect.stringMatching(/-20$/),
-			);
+			expect((globalThis as any).__reportsQueryChain.then).toHaveBeenCalled();
+			expect((globalThis as any).__reportsGteMock).not.toHaveBeenCalled();
+			expect((globalThis as any).__reportsLteMock).not.toHaveBeenCalled();
 		});
 	});
 });

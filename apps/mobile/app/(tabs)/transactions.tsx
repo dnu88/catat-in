@@ -42,10 +42,10 @@ const DATE_ONLY_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/;
 export const SWIPE_GESTURE_CONFIG = {
 	actionWidth: 80,
 	maxRevealWidth: 160,
-	activationDistance: 3,
-	verticalIntentRatio: 1.2,
-	openThresholdRatio: 0.5,
-	openThreshold: 80,
+	activationDistance: 2,
+	verticalIntentRatio: 0.9,
+	openThresholdRatio: 0.35,
+	openThreshold: 56,
 	overdragResistance: 0.4,
 } as const;
 
@@ -290,18 +290,30 @@ function TransactionRow({
 							{item.category || "-"} • {formattedDate}
 						</Text>
 					</View>
-					<Text
-						testID={`transaction-amount-${item.id}`}
-						style={[
-							styles.rowAmount,
-							item.transaction_type === "income"
-								? { color: theme.colors.success }
-								: { color: theme.colors.textPrimary },
-						]}
-					>
-						{item.transaction_type === "income" ? "+" : "-"} Rp{" "}
-						{amount.toLocaleString("id-ID")}
-					</Text>
+					<View style={styles.rowTrailing}>
+						<Text
+							testID={`transaction-amount-${item.id}`}
+							style={[
+								styles.rowAmount,
+								item.transaction_type === "income"
+									? { color: theme.colors.success }
+									: { color: theme.colors.textPrimary },
+							]}
+						>
+							{item.transaction_type === "income" ? "+" : "-"} Rp{" "}
+							{amount.toLocaleString("id-ID")}
+						</Text>
+						<Pressable
+							testID={`transaction-inline-edit-${item.id}`}
+							accessibilityRole="button"
+							accessibilityLabel={`${isEn ? "Quick edit transaction" : "Edit cepat transaksi"} ${title}`}
+							hitSlop={10}
+							style={styles.inlineEditButton}
+							onPress={() => onEdit(item)}
+						>
+							<Text style={styles.inlineEditText}>Edit</Text>
+						</Pressable>
+					</View>
 				</View>
 			</Animated.View>
 		</View>
@@ -831,11 +843,31 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			marginTop: 1,
 		},
 		rowSub: { color: theme.colors.textMuted, fontSize: 11, marginTop: 2 },
+		rowTrailing: {
+			alignItems: "flex-end",
+			gap: theme.spacing.xs,
+			minWidth: 104,
+		},
 		rowAmount: {
 			fontSize: theme.typography.fontSize.md,
 			fontWeight: theme.typography.fontWeight.extrabold,
 			marginRight: theme.spacing.sm,
 			textAlign: "right",
+		},
+		inlineEditButton: {
+			minHeight: 28,
+			minWidth: 52,
+			borderRadius: theme.radius.pill,
+			alignItems: "center",
+			justifyContent: "center",
+			backgroundColor: theme.colors.mutedSurface,
+			borderWidth: 1,
+			borderColor: theme.colors.borderSoft,
+		},
+		inlineEditText: {
+			color: theme.colors.textSecondary,
+			fontSize: 11,
+			fontWeight: theme.typography.fontWeight.bold,
 		},
 		fab: {
 			position: "absolute",

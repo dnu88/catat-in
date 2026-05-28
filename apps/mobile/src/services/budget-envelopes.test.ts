@@ -3,6 +3,7 @@ import {
 	getEnvelopeStatus,
 	getHomeEnvelopeAlerts,
 	createEnvelopeAllocation,
+	syncEnvelopeAllocationForTransaction,
 	listBudgetEnvelopes,
 	listEnvelopeAllocations,
 	matchEnvelopeForTransaction,
@@ -302,6 +303,70 @@ describe("budget envelope service query builders", () => {
 
 		expect(result[0].transaction_date).toBe("2026-05-16");
 		expect(result[0].transaction_description).toBe("Fore Coffee");
+	});
+
+	it("syncs an expense transaction into the best matching envelope", async () => {
+		const calls: string[] = [];
+		const envelopeRows = [
+			{
+				id: "env-food",
+				user_id: "user-1",
+				name: "Makan",
+				parent_category_id: "cat-food",
+				limit_amount: 500000,
+				start_date: "2026-05-01",
+				end_date: "2026-05-31",
+				icon: null,
+				color: null,
+				notes: "kopi nasi ayam",
+				status: "active",
+				created_at: "2026-05-01T00:00:00Z",
+				updated_at: "2026-05-01T00:00:00Z",
+				category: { name: "Makan" },
+			},
+		];
+		const deleteChain = {
+			eq: jest.fn((key: string, value: string) => {
+				calls.push(`delete-eq:${key}:${value}`);
+				return Promise.resolve({ error: null });
+			}),
+		};
+		const envelopeChain = {
+			select: jest.fn(() => envelopeChain),
+			is: jest.fn(() => envelopeChain),
+			eq: jest.fn(() => envelopeChain),
+			order: jest.fn(() => Promise.resolve({ data: envelopeRows, error: null })),
+		};
+		const allocationChain = {
+			delete: jest.fn(() => deleteChain),
+			insert: jest.fn((value) => {
+				calls.push(`insert:${JSON.stringify(value)}`);
+				return Promise.resolve({ error: null });
+			}),
+		};
+		const supabase = {
+			from: jest.fn((table: string) =>
+				table === "budget_envelopes" ? envelopeChain : allocationChain,
+			),
+		};
+
+		await syncEnvelopeAllocationForTransaction(
+			supabase as never,
+			{
+				id: "tx-1",
+				transaction_type: "expense",
+				amount: 35000,
+				categoryName: "Makan",
+				description: "Beli kopi",
+				merchant: "Kopi Kenangan",
+				date: "2026-05-12",
+			},
+			"user-1",
+		);
+
+		expect(calls).toContain("delete-eq:transaction_id:tx-1");
+		expect(calls.some((call) => call.includes('"envelope_id":"env-food"'))).toBe(true);
+		expect(calls.some((call) => call.includes('"amount":35000'))).toBe(true);
 	});
 
 	it("creates an envelope allocation for a suggested envelope", async () => {
