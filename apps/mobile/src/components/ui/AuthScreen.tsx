@@ -2,12 +2,12 @@ import { type ReactNode, useMemo } from "react";
 import {
 	ActivityIndicator,
 	Pressable,
-	SafeAreaView,
 	ScrollView,
 	StyleSheet,
 	Text,
 	View,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { Link } from "expo-router";
 
 import type { IconBubbleTone } from "./IconBubble";

@@ -189,7 +189,6 @@ function useEntranceProgress({
 		progress.current.stopAnimation();
 
 		if (disabled || reduceMotion === true) {
-			progress.current.setValue(1);
 			hasCompletedEntranceRef.current = true;
 			return undefined;
 		}
@@ -236,18 +235,24 @@ export function StaggeredEntrance({
 		getTimingConfig,
 	});
 	const animatedStyle = useMemo(
-		() => ({
-			opacity: progress.current,
-			transform: [
-				{
-					translateY: progress.current.interpolate({
-						inputRange: [0, 1],
-						outputRange: [ENTRANCE_TRANSLATE_Y, 0],
-					}),
-				},
-			],
-		}),
-		[progress],
+		() => {
+			if (disabled || reduceMotion === true) {
+				return getEntranceInitialStyle(true);
+			}
+
+			return {
+				opacity: progress.current,
+				transform: [
+					{
+						translateY: progress.current.interpolate({
+							inputRange: [0, 1],
+							outputRange: [ENTRANCE_TRANSLATE_Y, 0],
+						}),
+					},
+				],
+			};
+		},
+		[disabled, progress, reduceMotion],
 	);
 
 	return (
@@ -273,18 +278,24 @@ export function PageEntrance({
 		getTimingConfig,
 	});
 	const animatedStyle = useMemo(
-		() => ({
-			opacity: progress.current,
-			transform: [
-				{
-					translateX: progress.current.interpolate({
-						inputRange: [0, 1],
-						outputRange: [PAGE_ENTRANCE_TRANSLATE_X, 0],
-					}),
-				},
-			],
-		}),
-		[progress],
+		() => {
+			if (disabled || reduceMotion === true) {
+				return getPageEntranceInitialStyle(true);
+			}
+
+			return {
+				opacity: progress.current,
+				transform: [
+					{
+						translateX: progress.current.interpolate({
+							inputRange: [0, 1],
+							outputRange: [PAGE_ENTRANCE_TRANSLATE_X, 0],
+						}),
+					},
+				],
+			};
+		},
+		[disabled, progress, reduceMotion],
 	);
 
 	return (

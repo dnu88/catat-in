@@ -230,7 +230,7 @@ describe("DashboardScreen dark luxury Home parity", () => {
 		expect(screen.queryByText("↗ 15%")).toBeNull();
 
 		expect(screen.getByText("Input AI")).toBeTruthy();
-		expect(screen.getByText("Import")).toBeTruthy();
+		expect(screen.queryByText("Import")).toBeNull();
 
 		expect(screen.getByText("Anggaran")).toBeTruthy();
 		expect(screen.getByText("Lihat →")).toBeTruthy();
@@ -253,7 +253,6 @@ describe("DashboardScreen dark luxury Home parity", () => {
 			"Total saldo",
 			"Rp 0",
 			"Input AI",
-			"Import",
 			"Anggaran",
 			"Terakhir",
 			"Belum ada transaksi",
@@ -343,14 +342,13 @@ describe("DashboardScreen dark luxury Home parity", () => {
 		expect(listTransactions).toHaveBeenCalledWith(undefined, mockActiveContext);
 	});
 
-	it("routes primary Home actions to the expected tabs", async () => {
+	it("routes visible Home actions to the expected tabs", async () => {
 		const screen = renderDashboard();
+
+		expect(screen.queryByText("Import")).toBeNull();
 
 		fireEvent.press(screen.getByText("Input AI"));
 		expect(mockPush).toHaveBeenLastCalledWith("/(tabs)/capture");
-
-		fireEvent.press(screen.getByText("Import"));
-		expect(mockPush).toHaveBeenLastCalledWith("/(tabs)/imports");
 
 		fireEvent.press(screen.getByText("Lihat →"));
 		expect(mockPush).toHaveBeenLastCalledWith("/(tabs)/budgets");

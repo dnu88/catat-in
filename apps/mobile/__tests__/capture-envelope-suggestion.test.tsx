@@ -59,6 +59,11 @@ jest.mock("../src/services/budget-envelopes", () => ({
 		mockCreateEnvelopeAllocation.apply(null, args),
 }));
 
+
+jest.mock("../src/services/wallets", () => ({
+	listWallets: jest.fn(async () => []),
+}));
+
 jest.mock("../src/state/finance-context", () => ({
 	useFinanceContext: () => ({
 		activeContext: mockActiveContext,

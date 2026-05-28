@@ -32,13 +32,6 @@ const quickActions = [
 		route: "/(tabs)/capture",
 		tone: "primary",
 	},
-	{
-		id: "import",
-		label: "Import",
-		icon: "imports",
-		route: "/(tabs)/imports",
-		tone: "info",
-	},
 ] as const;
 
 function formatCurrency(value: number) {

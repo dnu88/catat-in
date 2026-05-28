@@ -5,6 +5,7 @@ import { StaggeredStack } from "../../src/components/motion";
 import { AuthButton, AuthFooter, AuthFormCard, AuthHeroPanel, AuthScreenLayout } from '../../src/components/ui'
 import { InputField, StateMessage } from '../../src/components/ui'
 import { useI18n } from '../../src/i18n/i18n-context'
+import { getAuthCallbackRedirectTo } from '../../src/lib/auth-redirects'
 import { useSupabase } from '../../src/lib/supabase'
 
 export default function RegisterScreen() {
@@ -16,9 +17,11 @@ export default function RegisterScreen() {
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [message, setMessage] = useState<string | null>(null)
 
   const onRegister = async () => {
     setError(null)
+    setMessage(null)
     if (password.length < 8) {
       setError(t('passwordTooShort'))
       return
@@ -26,10 +29,11 @@ export default function RegisterScreen() {
 
     setLoading(true)
 
-    const { error: signUpError } = await supabase.auth.signUp({
+    const { data, error: signUpError } = await supabase.auth.signUp({
       email: email.trim(),
       password,
       options: {
+        emailRedirectTo: getAuthCallbackRedirectTo(),
         data: {
           full_name: name.trim(),
         },
@@ -43,7 +47,12 @@ export default function RegisterScreen() {
       return
     }
 
-    router.replace('/(tabs)')
+    if (data.session) {
+      router.replace('/(tabs)')
+      return
+    }
+
+    setMessage(t('registerCheckEmail'))
   }
 
   return (
@@ -95,6 +104,7 @@ export default function RegisterScreen() {
         />
 
         {error ? <StateMessage message={error} tone="error" /> : null}
+        {message ? <StateMessage message={message} tone="success" /> : null}
 
         <AuthButton label={t('registerButton')} onPress={onRegister} loading={loading} disabled={loading} />
       </AuthFormCard>
