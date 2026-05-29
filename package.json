@@ -15,7 +15,11 @@
     "test:backend": "cd backend && venv\\Scripts\\python.exe -m pytest",
     "build": "corepack pnpm --filter web build",
     "lint": "pnpm -r lint",
-    "type-check": "pnpm -r type-check"
+    "type-check": "pnpm -r type-check",
+    "test:golive:pwa": "corepack pnpm --filter mobile test:golive",
+    "test:golive:pwa:headed": "corepack pnpm --filter mobile test:golive:headed",
+    "build:mobile-pwa": "corepack pnpm --filter mobile export:pwa",
+    "deploy:mobile-pwa": "corepack pnpm --filter mobile deploy:pwa"
   },
   "devDependencies": {
     "concurrently": "^8.2.2",

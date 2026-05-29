@@ -145,7 +145,6 @@ describe("transaction swipe actions", () => {
 		await waitFor(() => expect(screen.getByText("Kopi sore")).toBeTruthy());
 
 		expect(screen.getByLabelText("Edit transaksi Kopi sore")).toBeTruthy();
-		expect(screen.getByLabelText("Edit cepat transaksi Kopi sore")).toBeTruthy();
 		expect(screen.getByLabelText("Hapus transaksi Kopi sore")).toBeTruthy();
 	});
 

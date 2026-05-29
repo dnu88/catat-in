@@ -2,6 +2,8 @@
 .env
 .env.local
 .env.*.local
+.env.golive
+apps/mobile/.env.golive
 .tmp/
 .claude/
 .superpowers/
@@ -64,6 +66,8 @@ npm-debug.log*
 coverage/
 .nyc_output/
 apps/web/test-results/
+apps/mobile/test-results/
+apps/mobile/playwright-report/
 
 # ── DOCKER ───────────────────────────────────────────────────
 docker-compose.override.yml

@@ -1,0 +1,66 @@
+name: Go Live PWA Smoke
+
+on:
+  workflow_dispatch:
+    inputs:
+      base_url:
+        description: Live PWA URL to test
+        required: false
+        default: https://kaswise.com
+      run_id:
+        description: Optional deterministic test data suffix
+        required: false
+        default: github
+
+jobs:
+  golive-pwa:
+    name: Kaswise.com PWA go-live smoke
+    runs-on: ubuntu-latest
+    environment: golive
+    env:
+      KASWISE_GOLIVE_BASE_URL: ${{ inputs.base_url }}
+      KASWISE_GOLIVE_RUN_ID: ${{ inputs.run_id }}-${{ github.run_number }}
+      KASWISE_GOLIVE_EMAIL: ${{ secrets.KASWISE_GOLIVE_EMAIL }}
+      KASWISE_GOLIVE_PASSWORD: ${{ secrets.KASWISE_GOLIVE_PASSWORD }}
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      CI: "true"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Playwright Chromium
+        working-directory: apps/mobile
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Run Go Live PWA tests
+        working-directory: apps/mobile
+        run: pnpm test:golive
+
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: golive-pwa-playwright-report
+          path: apps/mobile/playwright-report/golive
+          if-no-files-found: ignore
+
+      - name: Upload Playwright traces/results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: golive-pwa-test-results
+          path: apps/mobile/test-results
+          if-no-files-found: ignore
