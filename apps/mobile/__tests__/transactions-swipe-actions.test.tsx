@@ -28,6 +28,7 @@ let mockActiveContext:
 	type: "personal",
 };
 let mockCanCreate = true;
+let latestFocusCallback: null | (() => void | (() => void)) = null;
 
 function isoDate(date: Date): string {
 	return date.toISOString().slice(0, 10);
@@ -67,6 +68,11 @@ function renderTransactionsTree() {
 
 jest.mock("expo-router", () => ({
 	useRouter: () => ({ push: mockPush }),
+	useFocusEffect: (callback: () => void | (() => void)) => {
+		const React = require("react");
+		latestFocusCallback = callback;
+		React.useEffect(() => callback(), [callback]);
+	},
 }));
 
 jest.mock("../src/services/transactions", () => ({
@@ -124,6 +130,7 @@ describe("transaction swipe actions", () => {
 		jest.clearAllMocks();
 		mockActiveContext = { type: "personal" };
 		mockCanCreate = true;
+		latestFocusCallback = null;
 		mockListTransactions.mockResolvedValue(mockTransactions);
 		mockDeleteTransaction.mockResolvedValue(undefined);
 	});
@@ -146,6 +153,31 @@ describe("transaction swipe actions", () => {
 
 		expect(screen.getByLabelText("Edit transaksi Kopi sore")).toBeTruthy();
 		expect(screen.getByLabelText("Hapus transaksi Kopi sore")).toBeTruthy();
+	});
+
+	it("refreshes the list when returning from an edited transaction", async () => {
+		const screen = renderScreen();
+
+		await waitFor(() => expect(screen.getByText("Kopi sore")).toBeTruthy());
+		mockListTransactions.mockResolvedValueOnce([
+			{
+				...mockTransactions[0],
+				description: "Kopi pagi",
+				catatan: "Kopi pagi",
+				amount: 42000,
+				nominal: 42000,
+			},
+		]);
+
+		await act(async () => {
+			latestFocusCallback?.();
+		});
+
+		await waitFor(() => expect(screen.getByText("Kopi pagi")).toBeTruthy());
+		expect(screen.queryByText("Kopi sore")).toBeNull();
+		expect(
+			screen.getByTestId("transaction-amount-tx-1").props.children.join(""),
+		).toBe("- Rp 42.000");
 	});
 
 	it("opens row actions with a lighter, less rigid swipe threshold", () => {

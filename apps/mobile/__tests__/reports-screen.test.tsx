@@ -304,20 +304,33 @@ describe("ReportsScreen visual parity", () => {
 		expect(getFlattenedStyle(foodFill).backgroundColor).not.toBe("#A3FF12");
 	});
 
-	it("renders the period trend with continuous proportional svg lines and visible points", () => {
+	it("renders a period-aware cashflow pulse instead of a mainstream line/bar chart", () => {
 		const screen = renderReports();
 
-		const chartSvg = screen.getByTestId("reports-line-chart-svg");
-		expect(chartSvg.props.accessibilityRole).toBe("image");
-		expect(chartSvg.props.accessibilityLabel).toBe(
-			"Tren pemasukan dan pengeluaran 6 bulan terakhir",
-		);
+		const chart = screen.getByTestId("reports-line-chart-svg");
+		expect(chart.props.accessibilityRole).toBe("image");
+		expect(chart.props.accessibilityLabel).toMatch(/Ritme Kas:/);
+		expect(screen.getByTestId("reports-pulse-chart")).toBeTruthy();
 		expect(screen.getAllByTestId(/reports-line-guide-/)).toHaveLength(3);
-		expect(screen.queryByLabelText(/18,154/)).toBeNull();
-		expect(screen.queryByLabelText(/322,154/)).toBeNull();
-		expect(screen.getAllByTestId(/reports-line-dot-income-/)).toHaveLength(6);
-		expect(screen.getAllByTestId(/reports-line-dot-expense-/)).toHaveLength(6);
+		expect(screen.getAllByTestId(/reports-pulse-column-/).length).toBeGreaterThanOrEqual(4);
+		expect(screen.getAllByTestId(/reports-line-dot-income-/).length).toBeGreaterThanOrEqual(4);
+		expect(screen.getAllByTestId(/reports-line-dot-expense-/).length).toBeGreaterThanOrEqual(4);
+		expect(screen.queryByTestId("reports-line-path-income")).toBeNull();
+		expect(screen.queryByTestId("reports-line-path-expense")).toBeNull();
 		expect(screen.queryByTestId("reports-bar-chart")).toBeNull();
+	});
+
+	it("updates the pulse bucket count immediately when selecting longer periods", () => {
+		const screen = renderReports();
+
+		fireEvent.press(screen.getByText("3 Bulan"));
+		expect(screen.getAllByTestId(/reports-pulse-column-/)).toHaveLength(3);
+
+		fireEvent.press(screen.getByText("6 Bulan"));
+		expect(screen.getAllByTestId(/reports-pulse-column-/)).toHaveLength(6);
+
+		fireEvent.press(screen.getByText("1 Tahun"));
+		expect(screen.getAllByTestId(/reports-pulse-column-/)).toHaveLength(12);
 	});
 
 	it("opens a category transaction detail panel and closes it with the back button", async () => {

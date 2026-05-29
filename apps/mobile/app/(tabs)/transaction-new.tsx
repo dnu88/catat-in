@@ -29,28 +29,70 @@ import { listCategories, type Category } from "../../src/services/categories";
 type CategoryOption = { name: string; icon: KaswiseIconName };
 
 const categoryIcons: Record<string, KaswiseIconName> = {
-	Makan: "chart",
-	Transport: "transactions",
-	Belanja: "wallets",
-	Hiburan: "insight",
+	Makan: "food",
+	"Makan & Minum": "food",
+	"Makanan & Minuman": "food",
+	"Food & Beverage": "food",
+	Transport: "transport",
+	Transportasi: "transport",
+	Belanja: "groceries",
+	Groceries: "groceries",
+	Hiburan: "recreation",
+	Entertainment: "recreation",
 	Tagihan: "bills",
-	Kesehatan: "budgets",
+	Bills: "bills",
+	Kesehatan: "sport",
+	Health: "sport",
 	Pendidikan: "file",
+	Education: "file",
 	Pendapatan: "card",
-	Lainnya: "card",
+	Salary: "card",
+	Bonus: "gift",
+	Freelance: "investment",
+	Lainnya: "otherExpenses",
+	"Other expenses": "otherExpenses",
 };
 
 const fallbackCategories: CategoryOption[] = [
-	{ name: "Makan", icon: "chart" },
-	{ name: "Transport", icon: "transactions" },
-	{ name: "Belanja", icon: "wallets" },
-	{ name: "Hiburan", icon: "insight" },
+	{ name: "Makan", icon: "food" },
+	{ name: "Transport", icon: "transport" },
+	{ name: "Belanja", icon: "groceries" },
+	{ name: "Hiburan", icon: "recreation" },
 	{ name: "Tagihan", icon: "bills" },
-	{ name: "Kesehatan", icon: "budgets" },
+	{ name: "Kesehatan", icon: "sport" },
 	{ name: "Pendidikan", icon: "file" },
 	{ name: "Pendapatan", icon: "card" },
-	{ name: "Lainnya", icon: "card" },
+	{ name: "Lainnya", icon: "otherExpenses" },
 ];
+
+function normalizeCategoryIcon(icon: string | null | undefined, name: string): KaswiseIconName {
+	if (categoryIcons[name]) return categoryIcons[name];
+	const iconName = (icon ?? "") as KaswiseIconName;
+	if (iconName && [
+		"food",
+		"coffee",
+		"transport",
+		"bus",
+		"sport",
+		"recreation",
+		"movie",
+		"bills",
+		"groceries",
+		"investment",
+		"gift",
+		"otherExpenses",
+		"file",
+		"card",
+		"chart",
+		"wallets",
+		"insight",
+		"budgets",
+		"transactions",
+	].includes(iconName)) {
+		return iconName;
+	}
+	return categoryIcons[name] || "otherExpenses";
+}
 
 function todayIso(): string {
 	return new Date().toISOString().slice(0, 10);
@@ -119,20 +161,14 @@ export default function TransactionNewScreen() {
 
 			const activeWallets = walletData.filter((w) => w.is_active !== false);
 			let categoryOptions = fallbackCategories;
-			if (categoryData.length > 0) {
-				const merged = categoryData.map((c) => ({
+			const defaultCategoryData = categoryData.filter(
+				(c) => c.is_default !== false,
+			);
+			if (defaultCategoryData.length > 0) {
+				categoryOptions = defaultCategoryData.map((c) => ({
 					name: c.name,
-					icon: categoryIcons[c.name] || "card",
+					icon: normalizeCategoryIcon(c.icon, c.name),
 				}));
-				const merger = [...merged];
-				for (const fc of fallbackCategories) {
-					if (
-						!merger.some((m) => m.name.toLowerCase() === fc.name.toLowerCase())
-					) {
-						merger.push(fc);
-					}
-				}
-				categoryOptions = merger;
 			}
 
 			let transaction: Awaited<ReturnType<typeof getTransaction>> = null;
@@ -458,30 +494,32 @@ export default function TransactionNewScreen() {
 								</View>
 							</Pressable>
 						))}
-						<Pressable
-							accessibilityRole="button"
-							accessibilityLabel="Pilih kategori kustom"
-							accessibilityState={{ selected: category === "__custom__" }}
-							onPress={() => setCategory("__custom__")}
-							style={[
-								styles.chip,
-								category === "__custom__" && {
-									backgroundColor: theme.colors.brandPrimary,
-									borderColor: theme.colors.brandPrimary,
-								},
-							]}
-						>
-							<Text
+						{!isEditMode && (
+							<Pressable
+								accessibilityRole="button"
+								accessibilityLabel="Pilih kategori kustom"
+								accessibilityState={{ selected: category === "__custom__" }}
+								onPress={() => setCategory("__custom__")}
 								style={[
-									styles.chipText,
+									styles.chip,
 									category === "__custom__" && {
-										color: theme.colors.textInverse,
+										backgroundColor: theme.colors.brandPrimary,
+										borderColor: theme.colors.brandPrimary,
 									},
 								]}
 							>
-								+ Kustom
-							</Text>
-						</Pressable>
+								<Text
+									style={[
+										styles.chipText,
+										category === "__custom__" && {
+											color: theme.colors.textInverse,
+										},
+									]}
+								>
+									+ Kustom
+								</Text>
+							</Pressable>
+						)}
 					</View>
 					{category === "__custom__" && (
 						<TextInput

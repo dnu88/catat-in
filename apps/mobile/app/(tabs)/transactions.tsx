@@ -13,7 +13,7 @@ import {
 	View,
 } from "react-native";
 import { PageEntrance, StaggeredStack } from "../../src/components/motion";
-import { useRouter } from "expo-router";
+import * as ExpoRouter from "expo-router";
 
 import { KaswiseIcon } from "../../src/components/icons/kaswise-icons";
 import {
@@ -312,7 +312,7 @@ export default function TransactionsScreen() {
 	const { theme } = useTheme();
 	const { language } = useI18n();
 	const { activeContext, canCreate } = useFinanceContext();
-	const router = useRouter();
+	const router = ExpoRouter.useRouter();
 	const styles = useMemo(() => createStyles(theme), [theme]);
 	const activeContextKey =
 		activeContext.type === "household"
@@ -326,6 +326,11 @@ export default function TransactionsScreen() {
 	const [loading, setLoading] = useState(true);
 	const [loadError, setLoadError] = useState<string | null>(null);
 	const loadRequestRef = useRef(0);
+
+	const useOptionalFocusEffect = (ExpoRouter as {
+		useFocusEffect?: typeof useEffect;
+	}).useFocusEffect;
+	const hasFocusedOnceRef = useRef(false);
 
 	const loadTransactions = useCallback(async () => {
 		const requestId = ++loadRequestRef.current;
@@ -354,6 +359,18 @@ export default function TransactionsScreen() {
 			loadRequestRef.current += 1;
 		};
 	}, [loadTransactions]);
+
+	useOptionalFocusEffect?.(
+		useCallback(() => {
+			if (!hasFocusedOnceRef.current) {
+				hasFocusedOnceRef.current = true;
+				return undefined;
+			}
+
+			void loadTransactions();
+			return undefined;
+		}, [loadTransactions]),
+	);
 
 	const periodTransactions = useMemo(
 		() => filterTransactionsByPeriod(transactions, activePeriod),

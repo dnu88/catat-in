@@ -10,7 +10,7 @@ import {
 	RefreshControl,
 } from "react-native";
 import { useFocusEffect, useRouter } from "expo-router";
-import Svg, { Circle, Polyline } from "react-native-svg";
+import Svg, { Circle } from "react-native-svg";
 
 import { useTheme } from "../../src/theme/theme-context";
 import { useSupabase } from "../../src/lib/supabase";
@@ -33,7 +33,7 @@ const categories = [
 		percent: 32,
 		value: 2_050_000,
 		amount: "Rp 2.050.000",
-		icon: "bills" as KaswiseIconName,
+		icon: "food" as KaswiseIconName,
 		color: reportDefaultCategoryColors.food,
 		tone: "success" as const,
 	},
@@ -43,7 +43,7 @@ const categories = [
 		percent: 22,
 		value: 1_408_000,
 		amount: "Rp 1.408.000",
-		icon: "card" as KaswiseIconName,
+		icon: "transport" as KaswiseIconName,
 		color: reportDefaultCategoryColors.transport,
 		tone: "navy" as const,
 	},
@@ -53,7 +53,7 @@ const categories = [
 		percent: 18,
 		value: 1_152_000,
 		amount: "Rp 1.152.000",
-		icon: "wallets" as KaswiseIconName,
+		icon: "groceries" as KaswiseIconName,
 		color: reportDefaultCategoryColors.shopping,
 		tone: "warning" as const,
 	},
@@ -63,7 +63,7 @@ const categories = [
 		percent: 15,
 		value: 960_000,
 		amount: "Rp 960.000",
-		icon: "file" as KaswiseIconName,
+		icon: "bills" as KaswiseIconName,
 		color: reportDefaultCategoryColors.bills,
 		tone: "danger" as const,
 	},
@@ -73,7 +73,7 @@ const categories = [
 		percent: 8,
 		value: 512_000,
 		amount: "Rp 512.000",
-		icon: "insight" as KaswiseIconName,
+		icon: "recreation" as KaswiseIconName,
 		color: reportDefaultCategoryColors.entertainment,
 		tone: "info" as const,
 	},
@@ -83,7 +83,7 @@ const categories = [
 		percent: 5,
 		value: 320_000,
 		amount: "Rp 320.000",
-		icon: "chart" as KaswiseIconName,
+		icon: "otherExpenses" as KaswiseIconName,
 		color: reportDefaultCategoryColors.other,
 		tone: "neutral" as const,
 	},
@@ -265,61 +265,86 @@ export default function ReportsScreen() {
 	const categoryColorByName: Record<string, CategoryVisualMeta> = {
 		food: {
 			color: categoryRoleColors.success,
-			icon: "bills",
+			icon: "food",
+			tone: "success",
+		},
+		"food & beverage": {
+			color: categoryRoleColors.success,
+			icon: "food",
+			tone: "success",
+		},
+		"makanan & minuman": {
+			color: categoryRoleColors.success,
+			icon: "food",
 			tone: "success",
 		},
 		makan: {
 			color: categoryRoleColors.success,
-			icon: "bills",
+			icon: "food",
 			tone: "success",
 		},
 		"makan & minum": {
 			color: categoryRoleColors.success,
-			icon: "bills",
+			icon: "food",
 			tone: "success",
 		},
 		transport: {
 			color: categoryRoleColors.navy,
-			icon: "card",
+			icon: "transport",
 			tone: "navy",
 		},
 		transportasi: {
 			color: categoryRoleColors.navy,
-			icon: "card",
+			icon: "transport",
 			tone: "navy",
 		},
 		shopping: {
 			color: categoryRoleColors.warning,
-			icon: "wallets",
+			icon: "groceries",
+			tone: "warning",
+		},
+		groceries: {
+			color: categoryRoleColors.warning,
+			icon: "groceries",
 			tone: "warning",
 		},
 		belanja: {
 			color: categoryRoleColors.warning,
-			icon: "wallets",
+			icon: "groceries",
 			tone: "warning",
 		},
 		bills: {
 			color: categoryRoleColors.danger,
-			icon: "file",
+			icon: "bills",
 			tone: "danger",
+		},
+		health: {
+			color: categoryRoleColors.info,
+			icon: "sport",
+			tone: "info",
+		},
+		kesehatan: {
+			color: categoryRoleColors.info,
+			icon: "sport",
+			tone: "info",
 		},
 		tagihan: {
 			color: categoryRoleColors.danger,
-			icon: "file",
+			icon: "bills",
 			tone: "danger",
 		},
 		entertainment: {
 			color: categoryRoleColors.info,
-			icon: "insight",
+			icon: "recreation",
 			tone: "info",
 		},
 		hiburan: {
 			color: categoryRoleColors.info,
-			icon: "insight",
+			icon: "recreation",
 			tone: "info",
 		},
-		other: { color: neutralCategoryColor, icon: "chart", tone: "neutral" },
-		lainnya: { color: neutralCategoryColor, icon: "chart", tone: "neutral" },
+		other: { color: neutralCategoryColor, icon: "otherExpenses", tone: "neutral" },
+		lainnya: { color: neutralCategoryColor, icon: "otherExpenses", tone: "neutral" },
 	};
 	const getCategoryVisualMeta = (categoryName: string): CategoryVisualMeta => {
 		const key = categoryName.trim().toLowerCase() || "other";
@@ -329,7 +354,7 @@ export default function ReportsScreen() {
 		const palette = fallbackCategoryColors[theme.mode];
 		return {
 			color: palette[stableCategoryIndex(key, palette.length)],
-			icon: "chart",
+			icon: "otherExpenses",
 			tone: "neutral",
 		};
 	};
@@ -381,8 +406,8 @@ export default function ReportsScreen() {
 				errorLogin: "Not logged in",
 				errorLoad: "Failed to load transaction data",
 				txFound: (n: number) => `${n} transaction${n !== 1 ? "s" : ""} found`,
-				trendTitle: "Period Trend",
-				trendSub: "Income vs expense (in millions Rp)",
+				trendTitle: "Cashflow Pulse",
+				trendSub: "Rhythm of income, spend, and net flow per selected period",
 				income: "Income",
 				expense: "Expense",
 				savings: "Savings",
@@ -432,8 +457,8 @@ export default function ReportsScreen() {
 				errorLogin: "Belum login",
 				errorLoad: "Gagal memuat data transaksi",
 				txFound: (n: number) => `${n} transaksi ditemukan`,
-				trendTitle: "Tren Periode",
-				trendSub: "Pemasukan vs pengeluaran (dalam jutaan Rp)",
+				trendTitle: "Ritme Kas",
+				trendSub: "Irama pemasukan, pengeluaran, dan sisa per periode",
 				income: "Pemasukan",
 				expense: "Pengeluaran",
 				savings: "Tabungan",
@@ -546,84 +571,140 @@ export default function ReportsScreen() {
 			? `${((summaryNet / summaryIncome) * 100).toLocaleString(isEn ? "en-US" : "id-ID", { maximumFractionDigits: 1 })}% ${isEn ? "saving rate" : "rasio tabungan"}`
 			: `0% ${isEn ? "saving rate" : "rasio tabungan"}`;
 	const chartData = useMemo(() => {
-		const monthLabels = isEn
-			? [
-					"Jan",
-					"Feb",
-					"Mar",
-					"Apr",
-					"May",
-					"Jun",
-					"Jul",
-					"Aug",
-					"Sep",
-					"Oct",
-					"Nov",
-					"Dec",
-				]
-			: [
-					"Jan",
-					"Feb",
-					"Mar",
-					"Apr",
-					"Mei",
-					"Jun",
-					"Jul",
-					"Agu",
-					"Sep",
-					"Okt",
-					"Nov",
-					"Des",
-				];
-		const grouped = new Map<
-			string,
-			{ income: number; expense: number; year: number; month: number }
-		>();
-		for (const transaction of reportTransactions) {
-			if (!transaction.date) continue;
-			const txDate = new Date(transaction.date);
-			if (Number.isNaN(txDate.getTime())) continue;
-			const year = txDate.getFullYear();
-			const month = txDate.getMonth() + 1;
-			const key = `${year}-${pad2(month)}`;
-			const bucket = grouped.get(key) ?? { income: 0, expense: 0, year, month };
-			if (transaction.transaction_type === "income")
-				bucket.income += transaction.amount || 0;
-			else bucket.expense += transaction.amount || 0;
-			grouped.set(key, bucket);
-		}
-		if (grouped.size === 0) {
-			const now = new Date();
-			return Array.from(
-				{ length: 6 },
-				(_, index) =>
-					new Date(now.getFullYear(), now.getMonth() - (5 - index), 1),
-			).reduce(
-				(acc, date) => {
-					acc.labels.push(monthLabels[date.getMonth()]);
-					acc.years.push(date.getFullYear());
-					acc.income.push(0);
-					acc.expense.push(0);
-					return acc;
-				},
-				{
-					labels: [] as string[],
-					years: [] as number[],
-					income: [] as number[],
-					expense: [] as number[],
-				},
-			);
-		}
-		const sorted = Array.from(grouped.values()).sort(
-			(a, b) => a.year - b.year || a.month - b.month,
-		);
-		return {
-			labels: sorted.map((bucket) => monthLabels[bucket.month - 1]),
-			years: sorted.map((bucket) => bucket.year),
-			income: sorted.map((bucket) => bucket.income / 1_000_000),
-			expense: sorted.map((bucket) => bucket.expense / 1_000_000),
+		const parseLocalDate = (value: string | null) => {
+			if (!value) return null;
+			const [year, month, day] = value.slice(0, 10).split("-").map(Number);
+			if (!year || !month || !day) return null;
+			return new Date(year, month - 1, day);
 		};
-	}, [isEn, reportTransactions]);
+		const sameDayOrAfter = (left: Date, right: Date) =>
+			dateKey(left.getFullYear(), left.getMonth() + 1, left.getDate()) >=
+			dateKey(right.getFullYear(), right.getMonth() + 1, right.getDate());
+		const sameDayOrBefore = (left: Date, right: Date) =>
+			dateKey(left.getFullYear(), left.getMonth() + 1, left.getDate()) <=
+			dateKey(right.getFullYear(), right.getMonth() + 1, right.getDate());
+		const now = new Date();
+		const monthLabel = (date: Date) => monthName(date.getMonth() + 1);
+		const buckets: Array<{
+			key: string;
+			label: string;
+			year: number;
+			start: Date;
+			end: Date;
+			income: number;
+			expense: number;
+		}> = [];
+
+		if (periodFilter === "month") {
+			const year = now.getFullYear();
+			const month = now.getMonth();
+			const lastDay = new Date(year, month + 1, 0).getDate();
+			for (let day = 1; day <= lastDay; day += 7) {
+				const endDay = Math.min(day + 6, lastDay);
+				buckets.push({
+					key: `${year}-${pad2(month + 1)}-${pad2(day)}`,
+					label: `${day}–${endDay}`,
+					year,
+					start: new Date(year, month, day),
+					end: new Date(year, month, endDay),
+					income: 0,
+					expense: 0,
+				});
+			}
+		} else if (periodFilter === "custom") {
+			const start = new Date(customStartYear, customStartMonth - 1, customStartDay);
+			const end = new Date(customEndYear, customEndMonth - 1, customEndDay);
+			const daySpan = Math.max(1, Math.round((end.getTime() - start.getTime()) / 86_400_000) + 1);
+			if (daySpan <= 31) {
+				const step = Math.max(1, Math.ceil(daySpan / 7));
+				for (let offset = 0; offset < daySpan; offset += step) {
+					const bucketStart = new Date(start);
+					bucketStart.setDate(start.getDate() + offset);
+					const bucketEnd = new Date(start);
+					bucketEnd.setDate(start.getDate() + Math.min(offset + step - 1, daySpan - 1));
+					buckets.push({
+						key: dateKey(bucketStart.getFullYear(), bucketStart.getMonth() + 1, bucketStart.getDate()),
+						label: step === 1 ? String(bucketStart.getDate()) : `${bucketStart.getDate()}–${bucketEnd.getDate()}`,
+						year: bucketStart.getFullYear(),
+						start: bucketStart,
+						end: bucketEnd,
+						income: 0,
+						expense: 0,
+					});
+				}
+			} else {
+				const cursor = new Date(start.getFullYear(), start.getMonth(), 1);
+				while (cursor <= end && buckets.length < 18) {
+					const bucketStart = new Date(cursor);
+					const bucketEnd = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 0);
+					buckets.push({
+						key: `${cursor.getFullYear()}-${pad2(cursor.getMonth() + 1)}`,
+						label: monthLabel(cursor),
+						year: cursor.getFullYear(),
+						start: bucketStart,
+						end: bucketEnd,
+						income: 0,
+						expense: 0,
+					});
+					cursor.setMonth(cursor.getMonth() + 1);
+				}
+			}
+		} else {
+			const monthsBack = periodFilter === "3month" ? 3 : periodFilter === "6month" ? 6 : 12;
+			for (let index = monthsBack - 1; index >= 0; index -= 1) {
+				const date = new Date(now.getFullYear(), now.getMonth() - index, 1);
+				buckets.push({
+					key: `${date.getFullYear()}-${pad2(date.getMonth() + 1)}`,
+					label: monthLabel(date),
+					year: date.getFullYear(),
+					start: date,
+					end: new Date(date.getFullYear(), date.getMonth() + 1, 0),
+					income: 0,
+					expense: 0,
+				});
+			}
+		}
+
+		for (const transaction of reportTransactions) {
+			const txDate = parseLocalDate(transaction.date);
+			if (!txDate) continue;
+			const bucket = buckets.find(
+				(item) => sameDayOrAfter(txDate, item.start) && sameDayOrBefore(txDate, item.end),
+			);
+			if (!bucket) continue;
+			if (transaction.transaction_type === "income") bucket.income += transaction.amount || 0;
+			else bucket.expense += transaction.amount || 0;
+		}
+
+		return {
+			keys: buckets.map((bucket) => bucket.key),
+			labels: buckets.map((bucket) => bucket.label),
+			years: buckets.map((bucket) => bucket.year),
+			income: buckets.map((bucket) => bucket.income / 1_000_000),
+			expense: buckets.map((bucket) => bucket.expense / 1_000_000),
+		};
+	}, [
+		customEndDay,
+		customEndMonth,
+		customEndYear,
+		customStartDay,
+		customStartMonth,
+		customStartYear,
+		periodFilter,
+		reportTransactions,
+	]);
+
+	useEffect(() => {
+		setSelectedBar(null);
+	}, [
+		customEndDay,
+		customEndMonth,
+		customEndYear,
+		customStartDay,
+		customStartMonth,
+		customStartYear,
+		periodFilter,
+	]);
 	const top5Expenses = useMemo(() => {
 		const grouped = new Map<string, number>();
 		for (const transaction of reportTransactions) {
@@ -642,21 +723,14 @@ export default function ReportsScreen() {
 			.slice(0, 5);
 	}, [isEn, reportTransactions]);
 	const maxVal = Math.max(1, ...chartData.income, ...chartData.expense);
-	const lineChartWidth = 340;
-	const lineChartHeight = 168;
-	const lineChartPaddingX = 18;
-	const lineChartPlotTop = 28;
-	const lineChartPlotHeight = 126;
-	const linePointFor = (value: number, idx: number) => {
-		const usableWidth = lineChartWidth - lineChartPaddingX * 2;
-		const x =
-			lineChartPaddingX +
-			(idx / Math.max(1, chartData.labels.length - 1)) * usableWidth;
-		const y = lineChartPlotTop + (1 - value / maxVal) * lineChartPlotHeight;
-		return `${Math.round(x)},${Math.round(y)}`;
+	const pulseMaxHeight = 58;
+	const pulseHeightFor = (value: number) => {
+		if (value <= 0) return 2;
+		return Math.max(8, Math.round((value / maxVal) * pulseMaxHeight));
 	};
-	const incomeLinePoints = chartData.income.map(linePointFor).join(" ");
-	const expenseLinePoints = chartData.expense.map(linePointFor).join(" ");
+	const netValueFor = (idx: number) =>
+		(chartData.income[idx] ?? 0) - (chartData.expense[idx] ?? 0);
+	const pulseAccessibilityLabel = `${tx.trendTitle}: ${periodDisplayLabel}`;
 	const donutSize = 180;
 	const donutCenter = donutSize / 2;
 	const donutRadius = 64;
@@ -1247,77 +1321,68 @@ export default function ReportsScreen() {
 							<Text style={styles.chartTitle}>{tx.trendTitle}</Text>
 							<Text style={styles.chartSub}>{tx.trendSub}</Text>
 
-							<View style={styles.lineChartArea}>
+							<View
+								testID="reports-pulse-chart"
+								style={styles.lineChartArea}
+							>
 								<View style={styles.lineGrid}>
 									<View testID="reports-line-guide-0" style={styles.gridLine} />
 									<View testID="reports-line-guide-1" style={styles.gridLine} />
 									<View testID="reports-line-guide-2" style={styles.gridLine} />
 								</View>
-								<View style={styles.lineGraphLayer}>
-									<Svg
-										testID="reports-line-chart-svg"
-										width="100%"
-										height={lineChartHeight}
-										viewBox={`0 0 ${lineChartWidth} ${lineChartHeight}`}
-										accessibilityRole="image"
-										accessibilityLabel="Tren pemasukan dan pengeluaran 6 bulan terakhir"
-										style={styles.lineSvgLayer}
-									>
-										<Polyline
-											testID="reports-line-path-income"
-											points={incomeLinePoints}
-											fill="none"
-											stroke={theme.colors.success}
-											strokeWidth={3}
-											strokeLinecap="round"
-											strokeLinejoin="round"
-										/>
-										<Polyline
-											testID="reports-line-path-expense"
-											points={expenseLinePoints}
-											fill="none"
-											stroke={theme.colors.danger}
-											strokeWidth={3}
-											strokeLinecap="round"
-											strokeLinejoin="round"
-										/>
-									</Svg>
+								<View
+									testID="reports-line-chart-svg"
+									accessibilityRole="image"
+									accessibilityLabel={pulseAccessibilityLabel}
+									style={styles.lineGraphLayer}
+								>
 									{chartData.labels.map((label, idx) => {
-										const incomeTop =
-											lineChartPlotTop +
-											(1 - (chartData.income[idx] ?? 0) / maxVal) *
-												lineChartPlotHeight;
-										const expenseTop =
-											lineChartPlotTop +
-											(1 - (chartData.expense[idx] ?? 0) / maxVal) *
-												lineChartPlotHeight;
+										const incomeHeight = pulseHeightFor(chartData.income[idx] ?? 0);
+										const expenseHeight = pulseHeightFor(chartData.expense[idx] ?? 0);
+										const netValue = netValueFor(idx);
 										return (
 											<Pressable
-												key={`${label}-${chartData.years[idx]}`}
+												key={chartData.keys[idx] ?? `${label}-${chartData.years[idx]}`}
+												testID={`reports-pulse-column-${idx}`}
 												accessibilityRole="button"
-												accessibilityLabel={`Lihat tren ${label} ${chartData.years[idx]}`}
+												accessibilityLabel={`Lihat ritme kas ${label} ${chartData.years[idx]}`}
 												accessibilityState={{ selected: selectedBar === idx }}
 												style={styles.lineColumn}
 												onPress={() =>
 													setSelectedBar(selectedBar === idx ? null : idx)
 												}
 											>
-												<View
-													testID={`reports-line-dot-income-${idx}`}
-													style={[
-														styles.lineDot,
-														styles.incomeDot,
-														{ top: incomeTop },
-													]}
-												/>
-												<View
-													testID={`reports-line-dot-expense-${idx}`}
-													style={[
-														styles.lineDot,
-														styles.expenseDot,
-														{ top: expenseTop },
-													]}
-												/>
+												<View style={styles.pulseStack}>
+													<View style={styles.pulseUpper}>
+														<View
+															testID={`reports-line-dot-income-${idx}`}
+															style={[
+																styles.pulseBar,
+																styles.incomePulse,
+																{ height: incomeHeight },
+															]}
+														/>
+													</View>
+													<View style={styles.pulseAxis}>
+														<View
+															testID={`reports-pulse-net-${idx}`}
+															style={[
+																styles.netDot,
+																netValue >= 0 ? styles.netDotPositive : styles.netDotNegative,
+															]}
+														/>
+													</View>
+													<View style={styles.pulseLower}>
+														<View
+															testID={`reports-line-dot-expense-${idx}`}
+															style={[
+																styles.pulseBar,
+																styles.expensePulse,
+																{ height: expenseHeight },
+															]}
+														/>
+													</View>
+												</View>
 												<Text style={styles.chartLabel}>{label}</Text>
 
 												{selectedBar === idx && (
@@ -1331,10 +1396,8 @@ export default function ReportsScreen() {
 																{ color: theme.colors.success },
 															]}
 														>
-															{tx.tooltipIncome}:{" "}
-															{formatCompactRupiah(
-																(chartData.income[idx] ?? 0) * 1_000_000,
-															)}
+															{tx.tooltipIncome}: {" "}
+															{formatCompactRupiah((chartData.income[idx] ?? 0) * 1_000_000)}
 														</Text>
 														<Text
 															style={[
@@ -1342,10 +1405,8 @@ export default function ReportsScreen() {
 																{ color: theme.colors.danger },
 															]}
 														>
-															{tx.tooltipExpense}:{" "}
-															{formatCompactRupiah(
-																(chartData.expense[idx] ?? 0) * 1_000_000,
-															)}
+															{tx.tooltipExpense}: {" "}
+															{formatCompactRupiah((chartData.expense[idx] ?? 0) * 1_000_000)}
 														</Text>
 													</View>
 												)}
@@ -2273,6 +2334,63 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			alignItems: "center",
 			height: "100%",
 			position: "relative",
+		},
+		pulseStack: {
+			width: "100%",
+			minHeight: 124,
+			alignItems: "center",
+			justifyContent: "center",
+		},
+		pulseUpper: {
+			height: 58,
+			justifyContent: "flex-end",
+			alignItems: "center",
+		},
+		pulseAxis: {
+			height: 18,
+			alignItems: "center",
+			justifyContent: "center",
+		},
+		pulseLower: {
+			height: 58,
+			justifyContent: "flex-start",
+			alignItems: "center",
+		},
+		pulseBar: {
+			width: 12,
+			borderRadius: 999,
+			borderWidth: 1,
+			borderColor:
+				theme.mode === "light"
+					? "rgba(255,255,255,0.78)"
+					: "rgba(10,10,10,0.45)",
+		},
+		incomePulse: {
+			backgroundColor: theme.colors.success,
+			shadowColor: theme.colors.success,
+			shadowOpacity: theme.mode === "light" ? 0.18 : 0.28,
+			shadowRadius: 8,
+			shadowOffset: { width: 0, height: 4 },
+		},
+		expensePulse: {
+			backgroundColor: theme.colors.danger,
+			shadowColor: theme.colors.danger,
+			shadowOpacity: theme.mode === "light" ? 0.12 : 0.26,
+			shadowRadius: 8,
+			shadowOffset: { width: 0, height: 4 },
+		},
+		netDot: {
+			width: 10,
+			height: 10,
+			borderRadius: 5,
+			borderWidth: 2,
+			borderColor: theme.colors.surface,
+		},
+		netDotPositive: {
+			backgroundColor: theme.colors.brandPrimary,
+		},
+		netDotNegative: {
+			backgroundColor: theme.colors.textPrimary,
 		},
 		lineDot: {
 			position: "absolute",

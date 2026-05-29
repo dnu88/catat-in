@@ -8,6 +8,7 @@ const mockGetTransaction = jest.fn();
 const mockCreateTransaction = jest.fn();
 const mockUpdateTransaction = jest.fn();
 const mockListWallets = jest.fn();
+const mockListCategories = jest.fn();
 let mockSearchParams: Record<string, string> = { transactionId: "tx-1" };
 let mockActiveContext:
 	| { type: "personal" }
@@ -30,9 +31,7 @@ jest.mock("../src/services/wallets", () => ({
 }));
 
 jest.mock("../src/services/categories", () => ({
-	listCategories: jest.fn(async () => [
-		{ id: "cat-1", name: "Makan", icon: "chart" },
-	]),
+	listCategories: (...args: unknown[]) => mockListCategories(...args),
 }));
 
 jest.mock("../src/services/transactions", () => ({
@@ -81,6 +80,9 @@ describe("transaction-new edit mode", () => {
 		mockListWallets.mockResolvedValue([
 			{ id: "wallet-1", name: "BCA", is_active: true },
 		]);
+		mockListCategories.mockResolvedValue([
+			{ id: "cat-1", name: "Makan", icon: "chart", is_default: true },
+		]);
 		mockCreateTransaction.mockResolvedValue({ id: "tx-new" });
 		mockGetTransaction.mockResolvedValue({
 			id: "tx-1",
@@ -121,6 +123,18 @@ describe("transaction-new edit mode", () => {
 		);
 		expect(mockReplace).not.toHaveBeenCalled();
 		expect(await screen.findByText("Perubahan transaksi tersimpan.")).toBeTruthy();
+	});
+
+	it("shows only default categories while editing a transaction", async () => {
+		mockListCategories.mockResolvedValueOnce([
+			{ id: "cat-1", name: "Makan", icon: "chart", is_default: true },
+			{ id: "cat-custom", name: "Nongkrong", icon: "coffee", is_default: false },
+		]);
+		const screen = renderScreen();
+
+		expect(await screen.findByLabelText("Pilih kategori Makan")).toBeTruthy();
+		expect(screen.queryByLabelText("Pilih kategori Nongkrong")).toBeNull();
+		expect(screen.queryByLabelText("Pilih kategori kustom")).toBeNull();
 	});
 
 	it("creates manual transactions in the active household context", async () => {
