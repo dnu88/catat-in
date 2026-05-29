@@ -26,7 +26,7 @@ import {
 } from "../../src/components/ui";
 import { LoadingState } from "../../src/components/ui/LoadingState";
 import { useTheme } from "../../src/theme/theme-context";
-import { getCategoryVisualMeta } from "../../src/theme/category-visuals";
+import { resolveCategoryVisual } from "../../src/theme/category-visuals";
 import { useI18n } from "../../src/i18n/i18n-context";
 import { useFinanceContext } from "../../src/state/finance-context";
 import {
@@ -34,6 +34,7 @@ import {
 	listTransactions,
 	type Transaction,
 } from "../../src/services/transactions";
+import { listCategories, type Category } from "../../src/services/categories";
 
 type Filter = "all" | "income" | "expense";
 type Period = "week" | "month" | "year";
@@ -155,6 +156,7 @@ type TransactionListItem = {
 	isEn: boolean;
 	theme: ReturnType<typeof useTheme>["theme"];
 	styles: ReturnType<typeof createStyles>;
+	categories: Category[];
 	onEdit: (item: Transaction) => void;
 	onDelete: (item: Transaction) => void;
 };
@@ -166,6 +168,7 @@ function TransactionRow({
 	isEn,
 	theme,
 	styles,
+	categories,
 	onEdit,
 	onDelete,
 }: TransactionListItem) {
@@ -182,11 +185,17 @@ function TransactionRow({
 		item.merchant ||
 		item.category ||
 		(isEn ? "Transaction" : "Transaksi");
-	const categoryVisual = getCategoryVisualMeta(item.category, theme.mode);
+	const categoryVisual = resolveCategoryVisual({
+		categoryName: item.category,
+		categories,
+		mode: theme.mode,
+	});
 	const rowIconName =
 		item.transaction_type === "income" ? "chart" : categoryVisual.icon;
 	const rowIconTone =
 		item.transaction_type === "income" ? "success" : categoryVisual.tone;
+	const rowIconColor =
+		item.transaction_type === "income" ? theme.colors.success : categoryVisual.color;
 
 	const translateX = useRef(new Animated.Value(0)).current;
 	const snapTo = useCallback(
@@ -273,7 +282,12 @@ function TransactionRow({
 					]}
 				>
 					<View style={styles.rowIcon}>
-						<IconBubble name={rowIconName} tone={rowIconTone} size={40} />
+						<IconBubble
+							name={rowIconName}
+							tone={rowIconTone}
+							color={rowIconColor}
+							size={40}
+						/>
 					</View>
 					<View style={styles.rowInfo}>
 						<Text
@@ -323,6 +337,7 @@ export default function TransactionsScreen() {
 	const [activeFilter, setActiveFilter] = useState<Filter>("all");
 	const [activePeriod, setActivePeriod] = useState<Period>("month");
 	const [transactions, setTransactions] = useState<Transaction[]>([]);
+	const [categoryOptions, setCategoryOptions] = useState<Category[]>([]);
 	const [loading, setLoading] = useState(true);
 	const [loadError, setLoadError] = useState<string | null>(null);
 	const loadRequestRef = useRef(0);
@@ -337,9 +352,13 @@ export default function TransactionsScreen() {
 		setLoading(true);
 		try {
 			setLoadError(null);
-			const data = await listTransactions(undefined, activeContext);
+			const [data, categories] = await Promise.all([
+				listTransactions(undefined, activeContext),
+				listCategories().catch(() => [] as Category[]),
+			]);
 			if (loadRequestRef.current !== requestId) return;
 			setTransactions(data);
+			setCategoryOptions(categories);
 		} catch (error) {
 			if (loadRequestRef.current !== requestId) return;
 			console.error("Error loading transactions:", error);
@@ -474,6 +493,7 @@ export default function TransactionsScreen() {
 			isEn={isEn}
 			theme={theme}
 			styles={styles}
+			categories={categoryOptions}
 			onEdit={handleEditTransaction}
 			onDelete={handleDeleteTransaction}
 		/>

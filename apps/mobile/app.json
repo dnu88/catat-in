@@ -10,7 +10,7 @@
     "splash": {
       "image": "./assets/splash.png",
       "resizeMode": "contain",
-      "backgroundColor": "#EAF1FF"
+      "backgroundColor": "#090B10"
     },
     "assetBundlePatterns": [
       "**/*"
@@ -22,7 +22,7 @@
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#EAF1FF"
+        "backgroundColor": "#090B10"
       },
       "package": "com.kaswise.app"
     },
@@ -33,8 +33,8 @@
       "name": "Kaswise",
       "shortName": "Kaswise",
       "description": "Aplikasi keuangan pribadi yang cerdas",
-      "themeColor": "#4A80F0",
-      "backgroundColor": "#EAF1FF"
+      "themeColor": "#090B10",
+      "backgroundColor": "#090B10"
     },
     "plugins": [
       "expo-router",

@@ -51,6 +51,19 @@ jest.mock("../src/services/transactions", () => ({
 	listTransactions: jest.fn(async () => mockTransactions),
 }));
 
+jest.mock("../src/services/categories", () => ({
+	listCategories: jest.fn(async () => [
+		{
+			id: "cat-groceries",
+			name: "Groceries",
+			icon: "groceries",
+			color: "#4A80F0",
+			type: "expense",
+			visual_locked_by_user: true,
+		},
+	]),
+}));
+
 jest.mock("../src/state/finance-context", () => ({
 	useFinanceContext: () => ({
 		activeContext: mockActiveContext,

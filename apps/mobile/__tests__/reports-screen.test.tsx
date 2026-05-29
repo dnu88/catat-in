@@ -102,18 +102,33 @@ jest.mock("../src/lib/supabase", () => {
 	};
 });
 
+jest.mock("../src/services/categories", () => ({
+	listCategories: jest.fn(async () => [
+		{
+			id: "cat-makan",
+			name: "makan",
+			icon: "food",
+			color: "#4A80F0",
+			type: "expense",
+			visual_locked_by_user: true,
+		},
+	]),
+}));
+
 jest.mock("../src/components/ui", () => ({
 	IconBubble: ({
 		name,
 		tone,
 		size,
+		color,
 	}: {
 		name: string;
 		tone: string;
 		size: number;
+		color?: string;
 	}) => {
 		const { Text } = require("react-native");
-		return <Text>{`${name}-${tone}-${size}`}</Text>;
+		return <Text>{color ? `${name}-${tone}-${size}-${color}` : `${name}-${tone}-${size}`}</Text>;
 	},
 }));
 
@@ -290,7 +305,7 @@ describe("ReportsScreen visual parity", () => {
 			"reports-donut-segment-kesehatan",
 		);
 
-		expect(getFlattenedStyle(foodFill).backgroundColor).toBe("#65A30D");
+		expect(getFlattenedStyle(foodFill).backgroundColor).toBe("#4A80F0");
 		expect(getFlattenedStyle(shoppingFill).backgroundColor).toBe("#B45309");
 		expect(getFlattenedStyle(transportFill).backgroundColor).toBe("#2A5DD0");
 		expect(getFlattenedStyle(customFill).backgroundColor).toMatch(

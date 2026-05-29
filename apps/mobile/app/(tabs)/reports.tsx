@@ -18,13 +18,13 @@ import { IconBubble } from "../../src/components/ui";
 import { PageEntrance, StaggeredEntrance } from "../../src/components/motion";
 import type { KaswiseIconName } from "../../src/components/icons/kaswise-icons";
 import {
-	getCategoryVisualMeta as getSharedCategoryVisualMeta,
+	resolveCategoryVisual,
 	type CategoryTone,
-	type CategoryVisualMeta,
 } from "../../src/theme/category-visuals";
 import { useI18n } from "../../src/i18n/i18n-context";
 import { useFinanceContext } from "../../src/state/finance-context";
 import { applyFinanceContextFilter } from "../../src/services/finance-context-query";
+import { listCategories, type Category } from "../../src/services/categories";
 import {
 	reportCategoryPalette,
 	reportCategoryRoleColors,
@@ -247,13 +247,12 @@ export default function ReportsScreen() {
 	const [reportTransactions, setReportTransactions] = useState<
 		ReportTransaction[]
 	>([]);
+	const [categoryOptions, setCategoryOptions] = useState<Category[]>([]);
 	const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(
 		null,
 	);
 
 	const categoryRoleColors = reportCategoryRoleColors[theme.mode];
-	const getCategoryVisualMeta = (categoryName: string): CategoryVisualMeta =>
-		getSharedCategoryVisualMeta(categoryName, theme.mode);
 
 	const colorForCategoryIndex = (categoryName: string, offset: number) => {
 		const palette = fallbackCategoryColors[theme.mode];
@@ -261,12 +260,12 @@ export default function ReportsScreen() {
 		return palette[(baseIndex + offset) % palette.length];
 	};
 
-	const withUniqueCategoryColors = <T extends { id: string; color: string }>(
-		items: T[],
-	) => {
+	const withUniqueCategoryColors = <
+		T extends { id: string; color: string; visualLocked?: boolean },
+	>(items: T[]) => {
 		const usedColors = new Set<string>();
 		return items.map((item) => {
-			if (!usedColors.has(item.color)) {
+			if (item.visualLocked || !usedColors.has(item.color)) {
 				usedColors.add(item.color);
 				return item;
 			}
@@ -815,6 +814,11 @@ export default function ReportsScreen() {
 					);
 				}
 
+				const loadedCategories = await listCategories().catch(
+					() => [] as Category[],
+				);
+				setCategoryOptions(loadedCategories);
+
 				let query = supabase.from("transactions").select("*");
 				query = applyFinanceContextFilter(
 					query as any,
@@ -859,7 +863,15 @@ export default function ReportsScreen() {
 								1,
 								Math.round((amount / totalExpense) * 100),
 							);
-							const categoryMeta = getCategoryVisualMeta(key);
+							const categorySource = loadedCategories.find(
+								(category) =>
+									(category.name || "").trim().toLowerCase() === key,
+							);
+							const categoryMeta = resolveCategoryVisual({
+								categoryName: key,
+								categories: loadedCategories,
+								mode: theme.mode,
+							});
 							return {
 								id: key,
 								label: key.charAt(0).toUpperCase() + key.slice(1),
@@ -869,6 +881,7 @@ export default function ReportsScreen() {
 								icon: categoryMeta.icon,
 								color: categoryMeta.color,
 								tone: categoryMeta.tone,
+								visualLocked: Boolean(categorySource?.color),
 							};
 						})
 						.sort((a, b) => b.percent - a.percent);
@@ -1468,7 +1481,7 @@ export default function ReportsScreen() {
 									onPress={() => setSelectedCategoryId(cat.id)}
 								>
 									<View style={styles.catLeft}>
-										<IconBubble name={cat.icon} tone={cat.tone} size={36} />
+										<IconBubble name={cat.icon} tone={cat.tone} color={cat.color} size={36} />
 										<View>
 											<Text style={styles.catName}>{cat.label}</Text>
 											<Text style={styles.catAmount}>{cat.amount}</Text>

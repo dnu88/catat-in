@@ -42,9 +42,14 @@ import {
 } from "../../src/services/budget-envelopes";
 import { useI18n } from "../../src/i18n/i18n-context";
 import { useFinanceContext } from "../../src/state/finance-context";
-import { listCategories, type Category } from "../../src/services/categories";
+import {
+	listCategories,
+	updateCategoryVisual,
+	type Category,
+} from "../../src/services/categories";
 import { useTheme } from "../../src/theme/theme-context";
 import { budgetEnvelopePalette } from "../../src/theme/report-palettes";
+import { resolveCategoryVisual } from "../../src/theme/category-visuals";
 
 type EnvelopeSummary = {
 	envelope: BudgetEnvelope;
@@ -55,6 +60,7 @@ type EnvelopeRowProps = {
 	item: EnvelopeSummary;
 	theme: ReturnType<typeof useTheme>["theme"];
 	styles: ReturnType<typeof createStyles>;
+	categories: Category[];
 	noCategoryLabel: string;
 	overLabel: string;
 	remainingLabel: string;
@@ -136,6 +142,7 @@ function EnvelopeRow({
 	item,
 	theme,
 	styles,
+	categories,
 	noCategoryLabel,
 	overLabel,
 	remainingLabel,
@@ -150,8 +157,16 @@ function EnvelopeRow({
 		: progress.is_near_limit
 			? theme.colors.warning
 			: theme.colors.brandPrimary;
-	const rowIcon = resolveBudgetIconName(envelope.icon);
-	const accentColor = resolveEnvelopeAccentColor(envelope.color, statusColor);
+	const categoryVisual = resolveCategoryVisual({
+		categoryId: envelope.parent_category_id,
+		categoryName: envelope.parent_category_name,
+		categories,
+		mode: theme.mode,
+		fallbackIcon: envelope.icon,
+		fallbackColor: envelope.color,
+	});
+	const rowIcon = resolveBudgetIconName(categoryVisual.icon);
+	const accentColor = resolveEnvelopeAccentColor(categoryVisual.color, statusColor);
 
 	return (
 		<View testID={`envelope-card-${envelope.id}`} style={styles.budgetCard}>
@@ -449,6 +464,18 @@ export default function BudgetsScreen() {
 	const selectedCategory =
 		categoryOptions.find((item) => item.id === selectedCategoryId) ?? null;
 
+	const applyCategoryVisualToForm = (category: Category | null) => {
+		if (!category) return;
+		const visual = resolveCategoryVisual({
+			categoryId: category.id,
+			categoryName: category.name,
+			categories: categoryOptions,
+			mode: theme.mode,
+		});
+		setIcon(resolveBudgetIconName(visual.icon));
+		setColor(category.color ?? "");
+	};
+
 	const resetEnvelopeForm = () => {
 		setShowCreateForm(false);
 		setEditingEnvelope(null);
@@ -476,11 +503,13 @@ export default function BudgetsScreen() {
 		setEditingEnvelope(null);
 		setName("");
 		setLimitAmount("");
-		setSelectedCategoryId(categoryOptions[0]?.id ?? null);
+		const defaultCategory = categoryOptions[0] ?? null;
+		setSelectedCategoryId(defaultCategory?.id ?? null);
 		setStartDay(range.start);
 		setEndDay(range.end);
 		setIcon("food");
 		setColor("");
+		applyCategoryVisualToForm(defaultCategory);
 		setNotes("");
 		setShowCreateForm(true);
 	};
@@ -500,8 +529,23 @@ export default function BudgetsScreen() {
 		);
 		setStartDay(dayFromDate(envelope.start_date, 1));
 		setEndDay(dayFromDate(envelope.end_date, 31));
-		setIcon((envelope.icon as KaswiseIconName | null) ?? "food");
-		setColor(envelope.color ?? "");
+		const resolvedEditCategory =
+			categoryOptions.find(
+				(category) =>
+					category.id === envelope.parent_category_id ||
+					normalizeLabel(category.name) ===
+						normalizeLabel(envelope.parent_category_name),
+			) ?? null;
+		const editVisual = resolveCategoryVisual({
+			categoryId: envelope.parent_category_id,
+			categoryName: envelope.parent_category_name,
+			categories: categoryOptions,
+			mode: theme.mode,
+			fallbackIcon: envelope.icon,
+			fallbackColor: envelope.color,
+		});
+		setIcon(resolveBudgetIconName(editVisual.icon));
+		setColor(resolvedEditCategory?.color ?? envelope.color ?? "");
 		setNotes(envelope.notes ?? "");
 		setShowIconOptions(false);
 		setShowColorOptions(false);
@@ -604,6 +648,12 @@ export default function BudgetsScreen() {
 				color: selectedColor,
 				notes: notes.trim() || null,
 			};
+
+			await updateCategoryVisual(selectedCategoryId, {
+				icon,
+				color: selectedColor,
+				visual_locked_by_user: true,
+			});
 
 			const savedEnvelope = editingEnvelope
 				? await updateBudgetEnvelope(
@@ -726,6 +776,7 @@ export default function BudgetsScreen() {
 			item={item}
 			theme={theme}
 			styles={styles}
+			categories={categoryOptions}
 			noCategoryLabel={tx.noCategory}
 			overLabel={tx.over}
 			remainingLabel={tx.remaining}
@@ -808,6 +859,7 @@ export default function BudgetsScreen() {
 										style={styles.optionRow}
 										onPress={() => {
 											setSelectedCategoryId(option.id);
+											applyCategoryVisualToForm(option);
 											setShowCategoryOptions(false);
 										}}
 									>

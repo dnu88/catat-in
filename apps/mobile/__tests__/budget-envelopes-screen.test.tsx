@@ -44,11 +44,35 @@ const mockUpdateBudgetEnvelope = jest.fn(
 const mockSyncEnvelopeAllocationsForBudgetEnvelope = jest.fn(async () => undefined);
 
 
+const mockUpdateCategoryVisual = jest.fn(async () => ({ id: "cat-food" }));
+
 jest.mock("../src/services/categories", () => ({
 	listCategories: jest.fn(async () => [
-		{ id: "cat-food", user_id: "user-1", name: "Makan & Minum", icon: "food", is_default: true, type: "expense", created_at: "" },
-		{ id: "cat-transport", user_id: "user-1", name: "Transportasi", icon: "transport", is_default: true, type: "expense", created_at: "" },
+		{
+			id: "cat-food",
+			user_id: "user-1",
+			name: "Makan & Minum",
+			icon: "food",
+			color: "#4A80F0",
+			visual_locked_by_user: true,
+			is_default: true,
+			type: "expense",
+			created_at: "",
+		},
+		{
+			id: "cat-transport",
+			user_id: "user-1",
+			name: "Transportasi",
+			icon: "transport",
+			color: null,
+			visual_locked_by_user: false,
+			is_default: true,
+			type: "expense",
+			created_at: "",
+		},
 	]),
+	updateCategoryVisual: (...args: any[]) =>
+		mockUpdateCategoryVisual.apply(null, args),
 }));
 
 jest.mock("../src/services/budget-envelopes", () => ({
@@ -245,6 +269,7 @@ describe("Budget envelopes screen", () => {
 		mockCreateBudgetEnvelope.mockClear();
 		mockUpdateBudgetEnvelope.mockClear();
 		mockSyncEnvelopeAllocationsForBudgetEnvelope.mockClear();
+		mockUpdateCategoryVisual.mockClear();
 	});
 
 	it("shows active, review, and archive envelope sections", async () => {
@@ -336,7 +361,7 @@ describe("Budget envelopes screen", () => {
 		const colorOptionIds = colorOptionNodes.map((node) => node.props.testID);
 		expect(colorOptionNodes).toHaveLength(8);
 		expect(new Set(colorOptionIds).size).toBe(colorOptionIds.length);
-		expect(colorOptionIds).not.toContain("budget-wallet-color-#65A30D");
+		expect(colorOptionIds).not.toContain("budget-wallet-color-#4A80F0");
 		expect(colorOptionIds).not.toContain("budget-wallet-color-#2563EB");
 		expect(colorOptionIds).not.toContain("budget-wallet-color-#9333EA");
 		expect(colorOptionIds).not.toContain("budget-wallet-color-#0891B2");
@@ -363,6 +388,8 @@ describe("Budget envelopes screen", () => {
 		);
 		expect(Number(mockCreateBudgetEnvelope.mock.calls[0][1].start_date.slice(8, 10))).toBe(selectedStartDay);
 		expect(Number(mockCreateBudgetEnvelope.mock.calls[0][1].end_date.slice(8, 10))).toBe(selectedEndDay);
+		expect(mockUpdateCategoryVisual).toHaveBeenCalledWith("cat-food",
+		expect.objectContaining({ color: expect.any(String), icon: expect.any(String) }));
 		expect(mockSyncEnvelopeAllocationsForBudgetEnvelope).toHaveBeenCalled();
 	});
 

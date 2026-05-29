@@ -1,4 +1,10 @@
-import { createCategory, listCategories, updateCategory, deleteCategory } from './categories';
+import {
+  createCategory,
+  listCategories,
+  updateCategory,
+  updateCategoryVisual,
+  deleteCategory,
+} from './categories';
 import { supabase } from '../lib/supabase';
 
 jest.mock('../lib/supabase');
@@ -45,6 +51,35 @@ describe('Category Service', () => {
     }));
   });
 
+  test('createCategory should include category-first visual fields when provided', async () => {
+    const mockCategory = {
+      id: 'cat-visual',
+      name: 'Food & Beverage',
+      icon: 'food',
+      color: '#4A80F0',
+      visual_locked_by_user: true,
+      type: 'expense',
+    };
+    const mockSingle = jest.fn().mockResolvedValue({ data: mockCategory, error: null });
+    const mockSelect = jest.fn().mockReturnValue({ single: mockSingle });
+    const mockInsert = jest.fn().mockReturnValue({ select: mockSelect });
+    (supabase.from as jest.Mock).mockReturnValue({ insert: mockInsert });
+
+    await createCategory({
+      name: 'Food & Beverage',
+      icon: 'food',
+      type: 'expense',
+      color: '#4A80F0',
+      visual_locked_by_user: true,
+    });
+
+    expect(mockInsert).toHaveBeenCalledWith(expect.objectContaining({
+      icon: 'food',
+      color: '#4A80F0',
+      visual_locked_by_user: true,
+    }));
+  });
+
   test('listCategories should return array ordered by name asc', async () => {
     const mockCategories = [
       { id: 'cat-1', name: 'Food' },
@@ -76,6 +111,33 @@ describe('Category Service', () => {
     expect(mockUpdate).toHaveBeenCalledWith({ name: 'Grocery' });
     expect(mockEq).toHaveBeenCalledWith('id', 'cat-1');
     expect(result.id).toBe('cat-1');
+  });
+
+  test('updateCategoryVisual should lock icon and color at category level', async () => {
+    const updated = {
+      id: 'cat-1',
+      name: 'Food & Beverage',
+      icon: 'food',
+      color: '#4A80F0',
+      visual_locked_by_user: true,
+    };
+    const mockSingle = jest.fn().mockResolvedValue({ data: updated, error: null });
+    const mockSelect = jest.fn().mockReturnValue({ single: mockSingle });
+    const mockEq = jest.fn().mockReturnValue({ select: mockSelect });
+    const mockUpdate = jest.fn().mockReturnValue({ eq: mockEq });
+    (supabase.from as jest.Mock).mockReturnValue({ update: mockUpdate });
+
+    const result = await updateCategoryVisual('cat-1', {
+      icon: 'food',
+      color: '#4A80F0',
+    });
+
+    expect(mockUpdate).toHaveBeenCalledWith({
+      icon: 'food',
+      color: '#4A80F0',
+      visual_locked_by_user: true,
+    });
+    expect(result.color).toBe('#4A80F0');
   });
 
   test('deleteCategory should hard-delete the record', async () => {

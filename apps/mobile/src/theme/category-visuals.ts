@@ -1,4 +1,7 @@
-import type { KaswiseIconName } from "../components/icons/kaswise-icons";
+import {
+	kaswiseIconNames,
+	type KaswiseIconName,
+} from "../components/icons/kaswise-icons";
 import type { ThemeMode } from "./tokens";
 import { reportCategoryPalette, reportCategoryRoleColors } from "./report-palettes";
 
@@ -16,12 +19,53 @@ export type CategoryVisualMeta = {
 	tone: CategoryTone;
 };
 
-function normalizeCategoryName(value: string | null | undefined) {
+export type CategoryVisualSource = {
+	id?: string | null;
+	name?: string | null;
+	icon?: string | null;
+	color?: string | null;
+	visual_locked_by_user?: boolean | null;
+};
+
+export type ResolveCategoryVisualInput = {
+	categoryId?: string | null;
+	categoryName?: string | null;
+	categories?: CategoryVisualSource[];
+	mode: ThemeMode;
+	fallbackIcon?: string | null;
+	fallbackColor?: string | null;
+};
+
+export function normalizeCategoryVisualName(value: string | null | undefined) {
 	return (value ?? "").trim().toLowerCase() || "other";
 }
 
+function isHexColor(value: string | null | undefined) {
+	return /^#[0-9a-f]{6}$/i.test(value ?? "");
+}
+
+function isKaswiseIconName(value: string | null | undefined): value is KaswiseIconName {
+	return kaswiseIconNames.includes(value as KaswiseIconName);
+}
+
+function findCategoryVisualSource(
+	categories: CategoryVisualSource[],
+	categoryId: string | null | undefined,
+	categoryName: string | null | undefined,
+) {
+	if (categoryId) {
+		const byId = categories.find((category) => category.id === categoryId);
+		if (byId) return byId;
+	}
+
+	const key = normalizeCategoryVisualName(categoryName);
+	return categories.find(
+		(category) => normalizeCategoryVisualName(category.name) === key,
+	);
+}
+
 function stableCategoryIndex(categoryName: string, paletteLength: number) {
-	const normalized = normalizeCategoryName(categoryName);
+	const normalized = normalizeCategoryVisualName(categoryName);
 	let hash = 0;
 	for (let index = 0; index < normalized.length; index += 1) {
 		hash = (hash * 31 + normalized.charCodeAt(index)) % paletteLength;
@@ -79,7 +123,7 @@ export function getCategoryVisualMeta(
 			tone: "neutral",
 		},
 	};
-	const key = normalizeCategoryName(categoryName);
+	const key = normalizeCategoryVisualName(categoryName);
 	const known = categoryColorByName[key];
 	if (known) return known;
 
@@ -88,5 +132,37 @@ export function getCategoryVisualMeta(
 		color: palette[stableCategoryIndex(key, palette.length)],
 		icon: "otherExpenses",
 		tone: "neutral",
+	};
+}
+
+
+export function resolveCategoryVisual({
+	categoryId,
+	categoryName,
+	categories = [],
+	mode,
+	fallbackIcon,
+	fallbackColor,
+}: ResolveCategoryVisualInput): CategoryVisualMeta {
+	const source = findCategoryVisualSource(categories, categoryId, categoryName);
+	const defaultVisual = getCategoryVisualMeta(
+		source?.name ?? categoryName,
+		mode,
+	);
+	const resolvedIcon = isKaswiseIconName(source?.icon)
+		? source.icon
+		: isKaswiseIconName(fallbackIcon)
+			? fallbackIcon
+			: defaultVisual.icon;
+	const resolvedColor = isHexColor(source?.color)
+		? (source?.color as string)
+		: isHexColor(fallbackColor)
+			? (fallbackColor as string)
+			: defaultVisual.color;
+
+	return {
+		...defaultVisual,
+		icon: resolvedIcon,
+		color: resolvedColor,
 	};
 }

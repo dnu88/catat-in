@@ -5,6 +5,14 @@ export interface CategoryCreate {
   name: string;
   icon?: string;
   type?: 'income' | 'expense' | null;
+  color?: string | null;
+  visual_locked_by_user?: boolean;
+}
+
+export interface CategoryVisualUpdate {
+  icon?: string | null;
+  color?: string | null;
+  visual_locked_by_user?: boolean;
 }
 
 export interface Category {
@@ -12,6 +20,8 @@ export interface Category {
   user_id: string;
   name: string;
   icon: string | null;
+  color: string | null;
+  visual_locked_by_user: boolean;
   is_default: boolean;
   type: 'income' | 'expense' | null;
   created_at: string;
@@ -31,19 +41,29 @@ const defaultCategories: Array<Required<Pick<CategoryCreate, 'name' | 'icon' | '
   { name: 'Freelance', icon: 'investment', type: 'income' },
 ];
 
-function isMissingTypeColumn(error: unknown) {
+function isMissingColumn(error: unknown, column: string) {
   const anyError = error as { code?: string; message?: string } | null;
   return (
     anyError?.code === '42703' ||
     anyError?.code === 'PGRST204' ||
-    /column .*type|type .*does not exist|schema cache/i.test(anyError?.message ?? '')
+    new RegExp(`column .*${column}|${column} .*does not exist|schema cache`, 'i').test(anyError?.message ?? '')
   );
+}
+
+function isMissingTypeColumn(error: unknown) {
+  return isMissingColumn(error, 'type');
+}
+
+function isMissingVisualColumn(error: unknown) {
+  return isMissingColumn(error, 'color') || isMissingColumn(error, 'visual_locked_by_user');
 }
 
 function normalizeCategory(row: any): Category {
   return {
     ...row,
     type: row.type ?? null,
+    color: row.color ?? null,
+    visual_locked_by_user: Boolean(row.visual_locked_by_user),
   } as Category;
 }
 
@@ -57,6 +77,10 @@ export async function createCategory(category: CategoryCreate): Promise<Category
     is_default: false,
   };
   if (category.type) payload.type = category.type;
+  if (category.color) payload.color = category.color;
+  if (typeof category.visual_locked_by_user === 'boolean') {
+    payload.visual_locked_by_user = category.visual_locked_by_user;
+  }
 
   let response = await supabase
     .from('categories')
@@ -64,8 +88,8 @@ export async function createCategory(category: CategoryCreate): Promise<Category
     .select()
     .single();
 
-  if (response.error && isMissingTypeColumn(response.error) && 'type' in payload) {
-    const { type: _type, ...fallbackPayload } = payload;
+  if (response.error && (isMissingTypeColumn(response.error) || isMissingVisualColumn(response.error))) {
+    const { type: _type, color: _color, visual_locked_by_user: _visualLocked, ...fallbackPayload } = payload;
     response = await supabase
       .from('categories')
       .insert(fallbackPayload)
@@ -92,7 +116,7 @@ async function seedDefaultCategories(): Promise<Category[]> {
     .insert(payloadWithType)
     .select();
 
-  if (response.error && isMissingTypeColumn(response.error)) {
+  if (response.error && (isMissingTypeColumn(response.error) || isMissingVisualColumn(response.error))) {
     const payloadWithoutType = payloadWithType.map(({ type: _type, ...item }) => item);
     response = await supabase
       .from('categories')
@@ -133,8 +157,8 @@ export async function updateCategory(id: string, updates: Partial<CategoryCreate
     .select()
     .single();
 
-  if (response.error && isMissingTypeColumn(response.error) && 'type' in updates) {
-    const { type: _type, ...fallbackUpdates } = updates;
+  if (response.error && (isMissingTypeColumn(response.error) || isMissingVisualColumn(response.error))) {
+    const { type: _type, color: _color, visual_locked_by_user: _visualLocked, ...fallbackUpdates } = updates;
     response = await supabase
       .from('categories')
       .update(fallbackUpdates)
@@ -145,6 +169,17 @@ export async function updateCategory(id: string, updates: Partial<CategoryCreate
 
   if (response.error) throw response.error;
   return normalizeCategory(response.data);
+}
+
+export async function updateCategoryVisual(
+  id: string,
+  visual: CategoryVisualUpdate,
+): Promise<Category> {
+  return updateCategory(id, {
+    icon: visual.icon ?? undefined,
+    color: visual.color ?? undefined,
+    visual_locked_by_user: visual.visual_locked_by_user ?? true,
+  });
 }
 
 export async function deleteCategory(id: string): Promise<void> {

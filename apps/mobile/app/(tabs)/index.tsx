@@ -21,6 +21,8 @@ import {
 	type Transaction,
 } from "../../src/services/transactions";
 import { listWallets, type Wallet } from "../../src/services/wallets";
+import { listCategories, type Category } from "../../src/services/categories";
+import { resolveCategoryVisual } from "../../src/theme/category-visuals";
 import { useFinanceContext } from "../../src/state/finance-context";
 import { useTheme } from "../../src/theme/theme-context";
 
@@ -48,6 +50,10 @@ function formatCompactAmount(
 
 function getFirstName(fullName: string) {
 	return fullName.trim().split(/\s+/)[0] ?? "";
+}
+
+function colorWithAlpha(color: string, alpha: string) {
+	return /^#[0-9a-f]{6}$/i.test(color) ? `${color}${alpha}` : color;
 }
 
 function getInitials(fullName: string) {
@@ -101,6 +107,7 @@ export default function DashboardScreen() {
 	const [recentTransactions, setRecentTransactions] = useState<Transaction[]>(
 		[],
 	);
+	const [categoryOptions, setCategoryOptions] = useState<Category[]>([]);
 	const [userName, setUserName] = useState("");
 	const [userEmail, setUserEmail] = useState("");
 
@@ -130,17 +137,19 @@ export default function DashboardScreen() {
 					setUserEmail(user.email ?? "");
 				}
 
-				const [envelopes, scopedWallets, scopedTransactions] =
+				const [envelopes, scopedWallets, scopedTransactions, categories] =
 					await Promise.all([
 						listBudgetEnvelopes(supabase, user.id, activeContext),
 						listWallets(activeContext),
 						listTransactions(undefined, activeContext),
+						listCategories().catch(() => [] as Category[]),
 					]);
 				if (mounted) {
 					setWallets(
 						scopedWallets.filter((wallet) => wallet.is_active !== false),
 					);
 					setRecentTransactions(scopedTransactions.slice(0, 3));
+					setCategoryOptions(categories);
 				}
 				const activeEnvelopes = envelopes.filter(
 					(envelope) => getEnvelopeStatus(envelope) === "active",
@@ -189,24 +198,34 @@ export default function DashboardScreen() {
 		(sum, wallet) => sum + Number(wallet.balance ?? 0),
 		0,
 	);
-	const displayedTransactions = recentTransactions.map((transaction) => ({
-		id: transaction.id,
-		title:
-			transaction.merchant ?? transaction.description ?? transaction.category,
-		meta: `${transaction.date ?? ""} · ${transaction.category}`,
-		amount: formatCompactAmount(
-			transaction.amount,
-			transaction.transaction_type,
-		),
-		amountTone:
-			transaction.transaction_type === "income"
-				? ("income" as const)
-				: ("expense" as const),
-		tone:
-			transaction.transaction_type === "income"
-				? ("info" as const)
-				: ("primary" as const),
-	}));
+	const displayedTransactions = recentTransactions.map((transaction) => {
+		const categoryVisual = resolveCategoryVisual({
+			categoryName: transaction.category,
+			categories: categoryOptions,
+			mode: theme.mode,
+		});
+
+		return {
+			id: transaction.id,
+			title:
+				transaction.merchant ?? transaction.description ?? transaction.category,
+			meta: `${transaction.date ?? ""} · ${transaction.category}`,
+			amount: formatCompactAmount(
+				transaction.amount,
+				transaction.transaction_type,
+			),
+			amountTone:
+				transaction.transaction_type === "income"
+					? ("income" as const)
+					: ("expense" as const),
+			icon:
+				transaction.transaction_type === "income" ? "chart" : categoryVisual.icon,
+			iconColor:
+				transaction.transaction_type === "income"
+					? theme.colors.success
+					: categoryVisual.color,
+		};
+	});
 
 	const firstName = userName ? getFirstName(userName) : "";
 	const greeting = firstName
@@ -396,15 +415,21 @@ export default function DashboardScreen() {
 										styles.txRowLast,
 								]}
 							>
-								<View style={[styles.txBubble, styles[`${item.tone}Bubble`]]}>
-									<Text
-										style={[
-											styles.txBubbleText,
-											styles[`${item.tone}BubbleText`],
-										]}
-									>
-										{item.title.slice(0, 1)}
-									</Text>
+								<View
+									style={[
+										styles.txBubble,
+										{
+											backgroundColor: colorWithAlpha(item.iconColor, "18"),
+											borderColor: colorWithAlpha(item.iconColor, "40"),
+										},
+									]}
+								>
+									<KaswiseIcon
+										name={item.icon}
+										color={item.iconColor}
+										size={18}
+										weight="bold"
+									/>
 								</View>
 								<View style={styles.txInfo}>
 									<Text style={styles.txTitle}>{item.title}</Text>

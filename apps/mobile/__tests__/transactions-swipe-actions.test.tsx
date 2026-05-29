@@ -80,6 +80,19 @@ jest.mock("../src/services/transactions", () => ({
 	deleteTransaction: (...args: unknown[]) => mockDeleteTransaction(...args),
 }));
 
+jest.mock("../src/services/categories", () => ({
+	listCategories: jest.fn(async () => [
+		{
+			id: "cat-food",
+			name: "Makan",
+			icon: "food",
+			color: "#4A80F0",
+			type: "expense",
+			visual_locked_by_user: true,
+		},
+	]),
+}));
+
 jest.mock("../src/state/finance-context", () => ({
 	useFinanceContext: () => ({
 		activeContext: mockActiveContext,
