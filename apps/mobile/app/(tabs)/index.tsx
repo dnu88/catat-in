@@ -198,6 +198,10 @@ export default function DashboardScreen() {
 			transaction.amount,
 			transaction.transaction_type,
 		),
+		amountTone:
+			transaction.transaction_type === "income"
+				? ("income" as const)
+				: ("expense" as const),
 		tone:
 			transaction.transaction_type === "income"
 				? ("info" as const)
@@ -406,7 +410,17 @@ export default function DashboardScreen() {
 									<Text style={styles.txTitle}>{item.title}</Text>
 									<Text style={styles.txMeta}>{item.meta}</Text>
 								</View>
-								<Text style={styles.txAmount}>{item.amount}</Text>
+								<Text
+									testID={`home-recent-amount-${item.id}`}
+									style={[
+										styles.txAmount,
+										item.amountTone === "income"
+											? styles.txAmountIncome
+											: styles.txAmountExpense,
+									]}
+								>
+									{item.amount}
+								</Text>
 							</View>
 						))
 					) : (
@@ -684,9 +698,14 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			marginTop: 2,
 		},
 		txAmount: {
-			color: theme.colors.danger,
 			fontSize: 13,
 			fontWeight: theme.typography.fontWeight.extrabold,
+		},
+		txAmountIncome: {
+			color: theme.colors.success,
+		},
+		txAmountExpense: {
+			color: theme.colors.danger,
 		},
 	});
 }

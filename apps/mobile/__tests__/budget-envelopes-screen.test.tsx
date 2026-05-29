@@ -5,7 +5,7 @@ import {
 	screen,
 	waitFor,
 } from "@testing-library/react-native";
-import { FlatList } from "react-native";
+import { FlatList, StyleSheet } from "react-native";
 
 import BudgetsScreen from "../app/(tabs)/budgets";
 import { I18nProvider, useI18n, type Language } from "../src/i18n/i18n-context";
@@ -147,13 +147,21 @@ jest.mock("../src/components/ui", () => ({
 		name,
 		tone,
 		size,
+		color,
 	}: {
 		name: string;
 		tone: string;
 		size: number;
+		color?: string;
 	}) => {
-		const { Text } = require("react-native");
-		return <Text>{`${name}-${tone}-${size}`}</Text>;
+		const { Text, View } = require("react-native");
+		const base = `${name}-${tone}-${size}`;
+		return (
+			<View>
+				<Text>{base}</Text>
+				{color ? <Text>{`${base}-${color}`}</Text> : null}
+			</View>
+		);
 	},
 	InputField: ({
 		label,
@@ -245,6 +253,11 @@ describe("Budget envelopes screen", () => {
 		await waitFor(() => expect(screen.getByText("Dompet Aktif")).toBeTruthy());
 		expect(screen.getByText("Kopi")).toBeTruthy();
 		expect(screen.getByText("food-danger-44")).toBeTruthy();
+		expect(screen.getByText("food-danger-44-#4A80F0")).toBeTruthy();
+		const progressFill = screen.getByTestId("envelope-progress-fill-env-kopi");
+		expect(StyleSheet.flatten(progressFill.props.style).backgroundColor).toBe(
+			"#4A80F0",
+		);
 		expect(screen.getByText("Perlu cek")).toBeTruthy();
 		expect(screen.getByText("Cafe dekat kampus")).toBeTruthy();
 		expect(screen.getByText("Arsip")).toBeTruthy();

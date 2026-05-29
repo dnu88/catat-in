@@ -117,6 +117,21 @@ function resolveBudgetIconName(value: string | null | undefined): KaswiseIconNam
 		: "budgets";
 }
 
+function isHexColor(value: string | null | undefined) {
+	return /^#[0-9a-f]{6}$/i.test(value ?? "");
+}
+
+function resolveEnvelopeAccentColor(
+	value: string | null | undefined,
+	fallback: string,
+) {
+	return isHexColor(value) ? (value as string) : fallback;
+}
+
+function colorWithAlpha(color: string, alpha: string) {
+	return isHexColor(color) ? `${color}${alpha}` : color;
+}
+
 function EnvelopeRow({
 	item,
 	theme,
@@ -130,12 +145,13 @@ function EnvelopeRow({
 	onEdit,
 }: EnvelopeRowProps) {
 	const { envelope, progress } = item;
-	const toneColor = progress.is_over_budget
+	const statusColor = progress.is_over_budget
 		? theme.colors.danger
 		: progress.is_near_limit
 			? theme.colors.warning
 			: theme.colors.brandPrimary;
 	const rowIcon = resolveBudgetIconName(envelope.icon);
+	const accentColor = resolveEnvelopeAccentColor(envelope.color, statusColor);
 
 	return (
 		<View testID={`envelope-card-${envelope.id}`} style={styles.budgetCard}>
@@ -150,6 +166,7 @@ function EnvelopeRow({
 									? "warning"
 									: "primary"
 						}
+						color={accentColor}
 						size={44}
 					/>
 					<View style={styles.budgetTextWrap}>
@@ -161,7 +178,9 @@ function EnvelopeRow({
 							{envelope.name}
 						</Text>
 						<Text style={styles.budgetMeta}>
-							{envelope.parent_category_name ?? noCategoryLabel} ·{" "}
+							{envelope.parent_category_name ?? noCategoryLabel}
+						</Text>
+						<Text style={styles.budgetPeriod}>
 							{envelope.start_date}–{envelope.end_date}
 						</Text>
 					</View>
@@ -170,24 +189,30 @@ function EnvelopeRow({
 					style={[
 						styles.budgetBadge,
 						{
-							backgroundColor: `${toneColor}15`,
-							borderColor: `${toneColor}40`,
+							backgroundColor: colorWithAlpha(statusColor, "15"),
+							borderColor: colorWithAlpha(statusColor, "40"),
 						},
 					]}
 				>
-					<Text style={[styles.budgetBadgeText, { color: toneColor }]}>
+					<Text style={[styles.budgetBadgeText, { color: statusColor }]}>
 						{progress.used_percentage}%
 					</Text>
 				</View>
 			</View>
 
-			<View style={styles.budgetBar}>
+			<View
+				style={[
+					styles.budgetBar,
+					{ backgroundColor: colorWithAlpha(accentColor, "20") },
+				]}
+			>
 				<View
+					testID={`envelope-progress-fill-${envelope.id}`}
 					style={[
 						styles.budgetBarFill,
 						{
 							width: `${Math.min(progress.used_percentage, 100)}%`,
-							backgroundColor: toneColor,
+							backgroundColor: accentColor,
 						},
 					]}
 				/>
@@ -1348,13 +1373,24 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			gap: 12,
 			flex: 1,
 		},
-		budgetTextWrap: { flex: 1 },
+		budgetTextWrap: { flex: 1, minWidth: 0 },
 		budgetCategory: {
 			color: theme.colors.textPrimary,
 			fontSize: 14,
 			fontWeight: "700",
 		},
-		budgetMeta: { color: theme.colors.textMuted, fontSize: 12, marginTop: 2 },
+		budgetMeta: {
+			color: theme.colors.textSecondary,
+			fontSize: 12,
+			fontWeight: "700",
+			marginTop: 2,
+		},
+		budgetPeriod: {
+			color: theme.colors.textMuted,
+			fontSize: 11,
+			fontWeight: "600",
+			marginTop: 2,
+		},
 		budgetBadge: {
 			borderWidth: 1,
 			borderRadius: 999,

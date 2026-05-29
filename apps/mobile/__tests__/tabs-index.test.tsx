@@ -1,6 +1,6 @@
 import { fireEvent, render, waitFor } from "@testing-library/react-native";
 import { StyleSheet, Text } from "react-native";
-import type { StyleProp, ViewStyle } from "react-native";
+import type { StyleProp, TextStyle, ViewStyle } from "react-native";
 import { ThemeProvider } from "../src/theme/theme-context";
 import { I18nProvider } from "../src/i18n/i18n-context";
 import DashboardScreen from "../app/(tabs)/index";
@@ -326,6 +326,15 @@ describe("DashboardScreen dark luxury Home parity", () => {
 				transaction_type: "expense",
 				date: "2026-05-20",
 			},
+			{
+				id: "tx-income",
+				merchant: "Payroll",
+				description: "Gaji",
+				category: "Salary",
+				amount: 1200000,
+				transaction_type: "income",
+				date: "2026-05-20",
+			},
 		];
 
 		const screen = renderDashboard();
@@ -337,6 +346,15 @@ describe("DashboardScreen dark luxury Home parity", () => {
 		);
 		expect(screen.queryByText("Family Wallet")).toBeNull();
 		expect(screen.getByText("Family Mart")).toBeTruthy();
+		expect(screen.getByText("Payroll")).toBeTruthy();
+		const expenseAmountStyle = StyleSheet.flatten(
+			screen.getByTestId("home-recent-amount-tx-family").props.style,
+		) as TextStyle;
+		const incomeAmountStyle = StyleSheet.flatten(
+			screen.getByTestId("home-recent-amount-tx-income").props.style,
+		) as TextStyle;
+		expect(expenseAmountStyle.color).toBe("#DC2626");
+		expect(incomeAmountStyle.color).toBe("#65A30D");
 		expect(listBudgetEnvelopes).toHaveBeenCalledWith(
 			expect.anything(),
 			"user-1",

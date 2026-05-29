@@ -16,9 +16,23 @@ type IconBubbleProps = {
   name: KaswiseIconName
   tone?: IconBubbleTone
   size?: number
+  color?: string
+  backgroundColor?: string
+  borderColor?: string
 }
 
-export function IconBubble({ name, tone = 'primary', size = 42 }: IconBubbleProps) {
+function withAlpha(color: string, alpha: string) {
+  return /^#[0-9a-f]{6}$/i.test(color) ? `${color}${alpha}` : color
+}
+
+export function IconBubble({
+  name,
+  tone = 'primary',
+  size = 42,
+  color,
+  backgroundColor,
+  borderColor,
+}: IconBubbleProps) {
   const { theme } = useTheme()
 
   let bubble
@@ -34,6 +48,9 @@ export function IconBubble({ name, tone = 'primary', size = 42 }: IconBubbleProp
     bubble = theme.iconBubbles[tone]
   }
 
+  const resolvedColor = color ?? bubble.color
+  const resolvedBackground = backgroundColor ?? (color ? withAlpha(color, '18') : bubble.background)
+  const resolvedBorder = borderColor ?? (color ? withAlpha(color, '40') : bubble.border)
   const iconSize = Math.round(size * 0.5)
 
   return (
@@ -43,13 +60,13 @@ export function IconBubble({ name, tone = 'primary', size = 42 }: IconBubbleProp
         height: size,
         borderRadius: size / 2,
         borderWidth: 1,
-        borderColor: bubble.border,
-        backgroundColor: bubble.background,
+        borderColor: resolvedBorder,
+        backgroundColor: resolvedBackground,
         alignItems: 'center',
         justifyContent: 'center',
       }}
     >
-      <KaswiseIcon name={name} color={bubble.color} size={iconSize} weight="bold" />
+      <KaswiseIcon name={name} color={resolvedColor} size={iconSize} weight="bold" />
     </View>
   )
 }

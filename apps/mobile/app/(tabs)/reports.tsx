@@ -17,6 +17,11 @@ import { useSupabase } from "../../src/lib/supabase";
 import { IconBubble } from "../../src/components/ui";
 import { PageEntrance, StaggeredEntrance } from "../../src/components/motion";
 import type { KaswiseIconName } from "../../src/components/icons/kaswise-icons";
+import {
+	getCategoryVisualMeta as getSharedCategoryVisualMeta,
+	type CategoryTone,
+	type CategoryVisualMeta,
+} from "../../src/theme/category-visuals";
 import { useI18n } from "../../src/i18n/i18n-context";
 import { useFinanceContext } from "../../src/state/finance-context";
 import { applyFinanceContextFilter } from "../../src/services/finance-context-query";
@@ -91,20 +96,6 @@ const categories = [
 
 type Tab = "overview" | "category" | "compare";
 type PeriodFilter = "month" | "3month" | "6month" | "year" | "custom";
-type CategoryTone =
-	| "success"
-	| "warning"
-	| "danger"
-	| "info"
-	| "navy"
-	| "neutral";
-
-type CategoryVisualMeta = {
-	color: string;
-	icon: KaswiseIconName;
-	tone: CategoryTone;
-};
-
 type ReportTransaction = {
 	amount: number;
 	transaction_type: "income" | "expense";
@@ -261,103 +252,8 @@ export default function ReportsScreen() {
 	);
 
 	const categoryRoleColors = reportCategoryRoleColors[theme.mode];
-	const neutralCategoryColor = categoryRoleColors.neutral;
-	const categoryColorByName: Record<string, CategoryVisualMeta> = {
-		food: {
-			color: categoryRoleColors.success,
-			icon: "food",
-			tone: "success",
-		},
-		"food & beverage": {
-			color: categoryRoleColors.success,
-			icon: "food",
-			tone: "success",
-		},
-		"makanan & minuman": {
-			color: categoryRoleColors.success,
-			icon: "food",
-			tone: "success",
-		},
-		makan: {
-			color: categoryRoleColors.success,
-			icon: "food",
-			tone: "success",
-		},
-		"makan & minum": {
-			color: categoryRoleColors.success,
-			icon: "food",
-			tone: "success",
-		},
-		transport: {
-			color: categoryRoleColors.navy,
-			icon: "transport",
-			tone: "navy",
-		},
-		transportasi: {
-			color: categoryRoleColors.navy,
-			icon: "transport",
-			tone: "navy",
-		},
-		shopping: {
-			color: categoryRoleColors.warning,
-			icon: "groceries",
-			tone: "warning",
-		},
-		groceries: {
-			color: categoryRoleColors.warning,
-			icon: "groceries",
-			tone: "warning",
-		},
-		belanja: {
-			color: categoryRoleColors.warning,
-			icon: "groceries",
-			tone: "warning",
-		},
-		bills: {
-			color: categoryRoleColors.danger,
-			icon: "bills",
-			tone: "danger",
-		},
-		health: {
-			color: categoryRoleColors.info,
-			icon: "sport",
-			tone: "info",
-		},
-		kesehatan: {
-			color: categoryRoleColors.info,
-			icon: "sport",
-			tone: "info",
-		},
-		tagihan: {
-			color: categoryRoleColors.danger,
-			icon: "bills",
-			tone: "danger",
-		},
-		entertainment: {
-			color: categoryRoleColors.info,
-			icon: "recreation",
-			tone: "info",
-		},
-		hiburan: {
-			color: categoryRoleColors.info,
-			icon: "recreation",
-			tone: "info",
-		},
-		other: { color: neutralCategoryColor, icon: "otherExpenses", tone: "neutral" },
-		lainnya: { color: neutralCategoryColor, icon: "otherExpenses", tone: "neutral" },
-	};
-	const getCategoryVisualMeta = (categoryName: string): CategoryVisualMeta => {
-		const key = categoryName.trim().toLowerCase() || "other";
-		const known = categoryColorByName[key];
-		if (known) return known;
-
-		const palette = fallbackCategoryColors[theme.mode];
-		return {
-			color: palette[stableCategoryIndex(key, palette.length)],
-			icon: "otherExpenses",
-			tone: "neutral",
-		};
-	};
+	const getCategoryVisualMeta = (categoryName: string): CategoryVisualMeta =>
+		getSharedCategoryVisualMeta(categoryName, theme.mode);
 
 	const colorForCategoryIndex = (categoryName: string, offset: number) => {
 		const palette = fallbackCategoryColors[theme.mode];

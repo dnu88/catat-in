@@ -10,6 +10,8 @@ const targetIndex = join(targetDir, 'index.html')
 const distIndex = join(distDir, 'index.html')
 const marker = '    <!-- Inject Expo config & Supabase env sebelum bundle dimuat -->'
 const metaMarker = '    <meta charset="utf-8"'
+const manifestLink = '<link rel="manifest" href="/manifest.json" />'
+const appleTouchIconLink = '<link rel="apple-touch-icon" href="/assets/icon.png" />'
 
 if (!existsSync(distIndex)) {
   throw new Error(`Missing ${distIndex}. Run "pnpm --filter mobile export:pwa" first.`)
@@ -36,10 +38,48 @@ function readExpoConfig() {
   return appJson.expo ?? appJson
 }
 
+
+function installManifest(expoConfig) {
+  const webConfig = expoConfig.web ?? {}
+  return {
+    name: webConfig.name || expoConfig.name || 'Kaswise',
+    short_name: webConfig.shortName || webConfig.name || expoConfig.name || 'Kaswise',
+    description: webConfig.description || 'Aplikasi keuangan pribadi yang cerdas',
+    start_url: '/',
+    scope: '/',
+    display: 'standalone',
+    orientation: expoConfig.orientation || 'portrait',
+    background_color: webConfig.backgroundColor || '#EAF1FF',
+    theme_color: webConfig.themeColor || '#4A80F0',
+    icons: [
+      {
+        src: '/assets/icon.png',
+        sizes: '1024x1024',
+        type: 'image/png',
+        purpose: 'any maskable',
+      },
+      {
+        src: '/assets/favicon.png',
+        sizes: '256x256',
+        type: 'image/png',
+        purpose: 'any',
+      },
+    ],
+  }
+}
+
+function withInstallMetadata(indexHtml) {
+  let nextHtml = indexHtml
+  if (!nextHtml.includes(manifestLink)) {
+    nextHtml = nextHtml.replace('</head>', `${manifestLink}
+${appleTouchIconLink}</head>`)
+  }
+  return nextHtml
+}
+
 function publicRuntimeConfigBlock() {
   const env = readEnvFile(join(appDir, '.env'))
-  const expoConfig = readExpoConfig()
-  const extra = expoConfig.extra ?? {}
+  const extra = readExpoConfig().extra ?? {}
   const supabaseUrl =
     process.env.EXPO_PUBLIC_SUPABASE_URL ||
     env.EXPO_PUBLIC_SUPABASE_URL ||
@@ -55,10 +95,11 @@ function publicRuntimeConfigBlock() {
     throw new Error('Missing public Supabase config for PWA deploy')
   }
 
+  const runtimeExpoConfig = readExpoConfig()
   const manifest = {
-    name: expoConfig.name,
-    slug: expoConfig.slug,
-    version: expoConfig.version,
+    name: runtimeExpoConfig.name,
+    slug: runtimeExpoConfig.slug,
+    version: runtimeExpoConfig.version,
     extra: {
       supabaseUrl,
       supabaseAnonKey,
@@ -77,14 +118,18 @@ function existingInjectBlock() {
   return currentIndex.slice(start, end)
 }
 
+const expoConfig = readExpoConfig()
 let indexHtml = readFileSync(distIndex, 'utf8')
 if (!indexHtml.includes(marker)) {
   const injectBlock = existingInjectBlock() ?? publicRuntimeConfigBlock()
   indexHtml = indexHtml.replace(metaMarker, `${injectBlock}${metaMarker}`)
 }
 
+indexHtml = withInstallMetadata(indexHtml)
+
 mkdirSync(targetDir, { recursive: true })
 writeFileSync(targetIndex, indexHtml)
+writeFileSync(join(targetDir, 'manifest.json'), `${JSON.stringify(installManifest(expoConfig), null, 2)}\n`)
 
 for (const name of ['metadata.json', 'favicon.ico']) {
   const source = join(distDir, name)
@@ -94,6 +139,14 @@ for (const name of ['metadata.json', 'favicon.ico']) {
 for (const name of ['_expo', 'assets']) {
   const source = join(distDir, name)
   if (existsSync(source)) cpSync(source, join(targetDir, name), { recursive: true })
+}
+
+const sourceAssetsDir = join(appDir, 'assets')
+const targetAssetsDir = join(targetDir, 'assets')
+mkdirSync(targetAssetsDir, { recursive: true })
+for (const name of ['icon.png', 'adaptive-icon.png', 'favicon.png']) {
+  const source = join(sourceAssetsDir, name)
+  if (existsSync(source)) cpSync(source, join(targetAssetsDir, name))
 }
 
 console.log(`Deployed mobile PWA dist to ${targetDir}`)

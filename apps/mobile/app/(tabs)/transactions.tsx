@@ -26,6 +26,7 @@ import {
 } from "../../src/components/ui";
 import { LoadingState } from "../../src/components/ui/LoadingState";
 import { useTheme } from "../../src/theme/theme-context";
+import { getCategoryVisualMeta } from "../../src/theme/category-visuals";
 import { useI18n } from "../../src/i18n/i18n-context";
 import { useFinanceContext } from "../../src/state/finance-context";
 import {
@@ -181,6 +182,11 @@ function TransactionRow({
 		item.merchant ||
 		item.category ||
 		(isEn ? "Transaction" : "Transaksi");
+	const categoryVisual = getCategoryVisualMeta(item.category, theme.mode);
+	const rowIconName =
+		item.transaction_type === "income" ? "chart" : categoryVisual.icon;
+	const rowIconTone =
+		item.transaction_type === "income" ? "success" : categoryVisual.tone;
 
 	const translateX = useRef(new Animated.Value(0)).current;
 	const snapTo = useCallback(
@@ -267,13 +273,7 @@ function TransactionRow({
 					]}
 				>
 					<View style={styles.rowIcon}>
-						<IconBubble
-							name={
-								item.transaction_type === "income" ? "chart" : "transactions"
-							}
-							tone={item.transaction_type === "income" ? "success" : "danger"}
-							size={40}
-						/>
+						<IconBubble name={rowIconName} tone={rowIconTone} size={40} />
 					</View>
 					<View style={styles.rowInfo}>
 						<Text
@@ -296,7 +296,7 @@ function TransactionRow({
 							styles.rowAmount,
 							item.transaction_type === "income"
 								? { color: theme.colors.success }
-								: { color: theme.colors.textPrimary },
+								: { color: theme.colors.danger },
 						]}
 					>
 						{item.transaction_type === "income" ? "+" : "-"} Rp{" "}
