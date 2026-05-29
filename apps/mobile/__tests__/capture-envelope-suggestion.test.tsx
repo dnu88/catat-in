@@ -79,6 +79,13 @@ jest.mock("../src/services/transactions", () => ({
 	createTransaction: (...args: unknown[]) => mockCreateTransaction(...args),
 }));
 
+jest.mock("../src/services/categories", () => ({
+	listCategories: jest.fn(async () => [
+		{ id: "cat-food", user_id: "user-1", name: "Food & Beverage", icon: "food", is_default: true, type: "expense", created_at: "" },
+		{ id: "cat-groceries", user_id: "user-1", name: "Groceries", icon: "wallet", is_default: true, type: "expense", created_at: "" },
+	]),
+}));
+
 jest.mock("../src/services/wallets", () => ({
 	listWallets: jest.fn(async () => []),
 }));
@@ -208,12 +215,17 @@ describe("Capture envelope suggestion", () => {
 				wallet_id: null,
 				transaction_type: "expense",
 				amount: 35000,
-				category: "Makanan & Minuman",
+				category: "Food & Beverage",
 				description: "Beli kopi 35rb",
 				note: "Beli kopi 35rb",
 				input_type: "text",
 				status: "done",
 				raw_input: "Beli kopi 35rb",
+				ai_extracted: expect.objectContaining({
+					category_id: "cat-food",
+					category_name: "Food & Beverage",
+					matched_keywords: expect.arrayContaining(["kopi"]),
+				}),
 			}),
 			mockActiveContext,
 		);

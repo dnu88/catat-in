@@ -23,6 +23,11 @@ import {
 } from "../../src/components/icons/kaswise-icons";
 import { createEnvelopeAllocation } from "../../src/services/budget-envelopes";
 import { createTransaction } from "../../src/services/transactions";
+import { listCategories, type Category } from "../../src/services/categories";
+import {
+	classifyTransactionText,
+	CLASSIFIER_HIGH_CONFIDENCE_THRESHOLD,
+} from "../../src/services/transaction-classifier";
 import { listWallets, type Wallet } from "../../src/services/wallets";
 import { useFinanceContext } from "../../src/state/finance-context";
 
@@ -52,106 +57,6 @@ const modes = [
 		helper: "Import mutasi bank & e-wallet",
 	},
 ] as const;
-
-type QuickTransactionDraft = {
-	transactionType: "income" | "expense";
-	amount: number;
-	category: string;
-	merchant: string | null;
-	note: string;
-	date: string;
-	confidence: number;
-};
-
-const categoryKeywords: Array<{ category: string; keywords: string[] }> = [
-	{ category: "Makanan & Minuman", keywords: ["makan", "kopi", "cafe", "kafe", "resto", "warteg", "nasi", "minum", "gofood", "grabfood"] },
-	{ category: "Transportasi", keywords: ["grab", "gojek", "taxi", "taksi", "bensin", "pertamina", "parkir", "tol", "ojek"] },
-	{ category: "Belanja", keywords: ["belanja", "indomaret", "alfamart", "supermarket", "shopee", "tokopedia", "mall"] },
-	{ category: "Tagihan", keywords: ["pln", "listrik", "air", "pdam", "internet", "wifi", "tagihan", "pulsa", "paket data"] },
-	{ category: "Kesehatan", keywords: ["obat", "dokter", "apotek", "vitamin", "klinik", "rumah sakit"] },
-	{ category: "Hiburan", keywords: ["netflix", "spotify", "bioskop", "game", "steam", "hiburan"] },
-	{ category: "Pendidikan", keywords: ["buku", "kursus", "sekolah", "kuliah", "kelas"] },
-];
-
-function dateKey(date = new Date()) {
-	return date.toISOString().slice(0, 10);
-}
-
-function normalizeNumber(rawValue: string) {
-	const normalized = rawValue.replace(/\s/g, "");
-	if (normalized.includes(",") && !normalized.includes(".")) {
-		return Number(normalized.replace(",", "."));
-	}
-	return Number(normalized.replace(/[.,]/g, ""));
-}
-
-function parseAmountFromText(value: string) {
-	const unitMatch = value.match(/(?:rp\s*)?(\d+(?:[.,]\d+)?)\s*(juta|jt|ribu|rb|k)\b/i);
-	if (unitMatch) {
-		const amount = Number(unitMatch[1].replace(",", "."));
-		const unit = unitMatch[2].toLowerCase();
-		if (unit === "juta" || unit === "jt") return Math.round(amount * 1_000_000);
-		return Math.round(amount * 1_000);
-	}
-
-	const rupiahMatch = value.match(/rp\s*([\d.,]+)/i);
-	if (rupiahMatch) return normalizeNumber(rupiahMatch[1]);
-
-	const plainMatch = value.match(/\b(\d[\d.]{3,}|\d{4,})\b/);
-	return plainMatch ? normalizeNumber(plainMatch[1]) : 0;
-}
-
-function inferTransactionType(value: string): "income" | "expense" {
-	return /\b(gaji|bonus|freelance|dibayar|bayaran|pemasukan|income|terima|masuk)\b/i.test(value)
-		? "income"
-		: "expense";
-}
-
-function inferCategory(value: string, transactionType: "income" | "expense") {
-	const lowered = value.toLowerCase();
-	if (transactionType === "income") {
-		if (/bonus/i.test(value)) return "Bonus";
-		if (/freelance|proyek|klien/i.test(value)) return "Freelance";
-		return "Gaji";
-	}
-
-	return categoryKeywords.find((item) =>
-		item.keywords.some((keyword) => lowered.includes(keyword)),
-	)?.category ?? "Lainnya";
-}
-
-function inferMerchant(value: string) {
-	const match = value.match(/\b(?:di|ke|dari)\s+([a-z0-9&.' -]{2,48})/i);
-	if (!match) return null;
-	const merchant = match[1]
-		.split(/\b(?:pakai|dengan|via|untuk|sebesar|tanggal|tgl)\b/i)[0]
-		.trim()
-		.replace(/[.,;:]+$/, "");
-	return merchant || null;
-}
-
-function buildQuickTransactionDraft(value: string): QuickTransactionDraft | null {
-	const amount = parseAmountFromText(value);
-	if (!Number.isFinite(amount) || amount <= 0) return null;
-
-	const transactionType = inferTransactionType(value);
-	const category = inferCategory(value, transactionType);
-	const merchant = inferMerchant(value);
-	const confidence = Math.min(
-		0.92,
-		0.68 + (merchant ? 0.08 : 0) + (category !== "Lainnya" ? 0.08 : 0),
-	);
-
-	return {
-		transactionType,
-		amount,
-		category,
-		merchant,
-		note: value,
-		date: dateKey(),
-		confidence,
-	};
-}
 
 type ModeId = (typeof modes)[number]["id"];
 
@@ -200,6 +105,7 @@ export default function CaptureScreen() {
 	const [textInput, setTextInput] = useState("");
 	const [transactionId, setTransactionId] = useState<string | null>(null);
 	const [wallets, setWallets] = useState<Wallet[]>([]);
+	const [categoryOptions, setCategoryOptions] = useState<Category[]>([]);
 	const [walletId, setWalletId] = useState<string | null>(null);
 	const [walletLoading, setWalletLoading] = useState(false);
 	const [submitting, setSubmitting] = useState(false);
@@ -214,17 +120,24 @@ export default function CaptureScreen() {
 	const loadWalletOptions = async () => {
 		setWalletLoading(true);
 		try {
-			const data = await listWallets(activeContext);
-			const activeWallets = data.filter((wallet) => wallet.is_active !== false);
+			const [walletData, categories] = await Promise.all([
+				listWallets(activeContext),
+				listCategories().catch(() => [] as Category[]),
+			]);
+			const activeWallets = walletData.filter((wallet) => wallet.is_active !== false);
 			setWallets(activeWallets);
+			setCategoryOptions(
+				categories.filter((category) => category.type !== "income"),
+			);
 			setWalletId((current) =>
 				current && activeWallets.some((wallet) => wallet.id === current)
 					? current
 					: (activeWallets[0]?.id ?? null),
 			);
 		} catch (error) {
-			console.error("Failed to load wallet options:", error);
+			console.error("Failed to load capture options:", error);
 			setWallets([]);
+			setCategoryOptions([]);
 			setWalletId(null);
 		} finally {
 			setWalletLoading(false);
@@ -238,12 +151,6 @@ export default function CaptureScreen() {
 	const submitText = async () => {
 		const value = textInput.trim();
 		if (!value || submitting) return;
-
-		const quickDraft = buildQuickTransactionDraft(value);
-		if (!quickDraft) {
-			setError(tx.amountRequired);
-			return;
-		}
 
 		setSubmitting(true);
 		setQueuedMessage(null);
@@ -261,12 +168,27 @@ export default function CaptureScreen() {
 				return;
 			}
 
+			const categoriesForClassification =
+				categoryOptions.length > 0
+					? categoryOptions
+					: await listCategories().catch(() => [] as Category[]);
+			const quickDraft = classifyTransactionText(
+				value,
+				categoriesForClassification,
+			);
+
+			if (!quickDraft) {
+				setError(tx.amountRequired);
+				setSubmitting(false);
+				return;
+			}
+
 			const createdTransaction = await createTransaction(
 				{
 					wallet_id: walletId,
 					transaction_type: quickDraft.transactionType,
 					amount: quickDraft.amount,
-					category: quickDraft.category,
+					category: quickDraft.categoryName,
 					description: quickDraft.note,
 					date: quickDraft.date,
 					note: quickDraft.note,
@@ -274,8 +196,15 @@ export default function CaptureScreen() {
 					input_type: "text",
 					status: "done",
 					raw_input: value,
-					review_required: quickDraft.confidence < 0.85,
+					review_required: quickDraft.confidence < CLASSIFIER_HIGH_CONFIDENCE_THRESHOLD,
 					confidence: quickDraft.confidence,
+					ai_confidence: quickDraft.confidence,
+					ai_extracted: {
+						category_id: quickDraft.categoryId,
+						category_name: quickDraft.categoryName,
+						matched_keywords: quickDraft.matchedKeywords,
+						matched_concept: quickDraft.matchedConcept,
+					},
 				},
 				activeContext,
 			);
@@ -288,8 +217,9 @@ export default function CaptureScreen() {
 				type: quickDraft.transactionType,
 				amount: quickDraft.amount,
 				nominal: quickDraft.amount,
-				category: quickDraft.category,
-				kategori: quickDraft.category,
+				category: quickDraft.categoryName,
+				kategori: quickDraft.categoryName,
+				category_id: quickDraft.categoryId,
 				description: quickDraft.note,
 				catatan: quickDraft.note,
 				merchant: quickDraft.merchant,
