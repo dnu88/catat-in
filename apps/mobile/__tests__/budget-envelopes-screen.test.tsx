@@ -42,6 +42,14 @@ const mockUpdateBudgetEnvelope = jest.fn(
 	}),
 );
 
+
+jest.mock("../src/services/categories", () => ({
+	listCategories: jest.fn(async () => [
+		{ id: "cat-food", user_id: "user-1", name: "Makan & Minum", icon: "food", is_default: true, type: "expense", created_at: "" },
+		{ id: "cat-transport", user_id: "user-1", name: "Transportasi", icon: "transport", is_default: true, type: "expense", created_at: "" },
+	]),
+}));
+
 jest.mock("../src/services/budget-envelopes", () => ({
 	listBudgetEnvelopes: jest.fn(async () => [
 		{
@@ -321,7 +329,7 @@ describe("Budget envelopes screen", () => {
 		expect(mockCreateBudgetEnvelope.mock.calls[0][1]).toEqual({
 			user_id: "user-1",
 			name: "Kopi",
-			parent_category_id: null,
+			parent_category_id: "cat-food",
 			limit_amount: 250000,
 			start_date: selectedStartDate,
 			end_date: selectedEndDate,
@@ -352,6 +360,7 @@ describe("Budget envelopes screen", () => {
 			expect.objectContaining({
 				name: "Kopi Bulanan",
 				limit_amount: 300000,
+				parent_category_id: "cat-food",
 				start_date: "2026-05-10",
 				end_date: "2026-05-31",
 			}),

@@ -152,6 +152,28 @@ export function getHomeEnvelopeAlerts(items: EnvelopeSummary[], maxItems = 3) {
 		.slice(0, maxItems);
 }
 
+function envelopeMatchesTransactionCategory(
+	categoryName: string | null | undefined,
+	envelope: BudgetEnvelope,
+) {
+	const normalizedCategory = normalize(categoryName);
+	if (!normalizedCategory) return false;
+
+	if (
+		envelope.parent_category_name &&
+		normalize(envelope.parent_category_name) === normalizedCategory
+	) {
+		return true;
+	}
+
+	// Backward compatibility for older budget wallets that were created before
+	// category selection existed. They can still sync when the wallet name is the
+	// exact transaction category.
+	return (
+		!envelope.parent_category_id && normalize(envelope.name) === normalizedCategory
+	);
+}
+
 function scoreEnvelopeForTransaction(
 	candidate: EnvelopeTransactionCandidate,
 	envelope: BudgetEnvelope,
@@ -449,27 +471,15 @@ export async function syncEnvelopeAllocationForTransaction(
 			toDateKey(envelope.end_date) >= transactionDate,
 	);
 
-	const matches = matchEnvelopesForTransaction(
-		{
-			description: transaction.description,
-			merchant: transaction.merchant,
-			categoryName: transaction.categoryName,
-			amount,
-		},
-		envelopes,
-	);
-	const allocations =
-		matches.length > 0
-			? matches
-			: envelopes.length === 1
-				? [
-					{
-						envelope: envelopes[0],
-						confidence: 0.55,
-						needs_review: true,
-					},
-				]
-				: [];
+	const allocations = envelopes
+		.filter((envelope) =>
+			envelopeMatchesTransactionCategory(transaction.categoryName, envelope),
+		)
+		.map((envelope) => ({
+			envelope,
+			confidence: 0.98,
+			needs_review: false,
+		}));
 
 	await deleteEnvelopeAllocationsForTransaction(supabase, transaction.id);
 

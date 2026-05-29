@@ -152,13 +152,18 @@ export default function TransactionNewScreen() {
 
 			if (transaction) {
 				const nextCategory = transaction.category || transaction.kategori || "";
+				const nextWalletId = activeWallets.some(
+					(wallet) => wallet.id === transaction?.wallet_id,
+				)
+					? (transaction.wallet_id ?? null)
+					: (activeWallets[0]?.id ?? null);
 				setTxType(
 					transaction.transaction_type || transaction.type || "expense",
 				);
 				setAmountInput(
 					formatAmount(Number(transaction.amount ?? transaction.nominal ?? 0)),
 				);
-				setWalletId(transaction.wallet_id ?? null);
+				setWalletId(nextWalletId);
 				if (categoryOptions.some((option) => option.name === nextCategory)) {
 					setCategory(nextCategory);
 					setCustomCategory("");

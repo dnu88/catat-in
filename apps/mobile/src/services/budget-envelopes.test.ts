@@ -373,7 +373,7 @@ describe("budget envelope service query builders", () => {
 		expect(calls.some((call) => call.includes('"amount":35000'))).toBe(true);
 	});
 
-	it("falls back to the only active envelope when no keyword matches", async () => {
+	it("does not allocate when no category matches", async () => {
 		const calls: string[] = [];
 		const envelopeRows = [
 			{
@@ -428,8 +428,7 @@ describe("budget envelope service query builders", () => {
 			"user-1",
 		);
 
-		expect(calls[0]).toContain('"envelope_id":"env-monthly"');
-		expect(calls[0]).toContain('"needs_review":true');
+		expect(calls).toEqual([]);
 	});
 
 	it("creates an envelope allocation for a suggested envelope", async () => {

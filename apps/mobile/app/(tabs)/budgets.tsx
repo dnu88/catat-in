@@ -6,6 +6,7 @@ import {
 	Platform,
 	Pressable,
 	RefreshControl,
+	ScrollView,
 	StyleSheet,
 	Text,
 	TextInput,
@@ -39,6 +40,7 @@ import {
 } from "../../src/services/budget-envelopes";
 import { useI18n } from "../../src/i18n/i18n-context";
 import { useFinanceContext } from "../../src/state/finance-context";
+import { listCategories, type Category } from "../../src/services/categories";
 import { useTheme } from "../../src/theme/theme-context";
 import { budgetEnvelopePalette } from "../../src/theme/report-palettes";
 
@@ -92,6 +94,10 @@ function formatLocalDate(date: Date) {
 	const month = String(date.getMonth() + 1).padStart(2, "0");
 	const day = String(date.getDate()).padStart(2, "0");
 	return `${year}-${month}-${day}`;
+}
+
+function normalizeLabel(value: string | null | undefined) {
+	return (value ?? "").trim().toLowerCase();
 }
 
 function EnvelopeRow({
@@ -217,6 +223,9 @@ export default function BudgetsScreen() {
 						namePlaceholder: "Wallet name",
 						limitLabel: "Limit",
 						limitPlaceholder: "Limit",
+						categoryLabel: "Expense category",
+						categoryPlaceholder: "Select category",
+						categoryDropdownLabel: "Select budget category",
 						startLabel: "Start date",
 						startPlaceholder: "Start date",
 						endLabel: "End date",
@@ -238,6 +247,7 @@ export default function BudgetsScreen() {
 						update: "Update budget wallet",
 						edit: "Edit",
 						dateDropdownLabel: "Choose date",
+						dateOptionHint: "Pick exact day and month",
 						delete: "Delete",
 						deleteConfirmTitle: "Delete budget wallet?",
 						deleteConfirmMessage: (name: string) =>
@@ -261,7 +271,7 @@ export default function BudgetsScreen() {
 						noCategory: "No category",
 						loadLogin: "Login session not found. Please sign in again.",
 						loadError: "Failed to load budget wallets. Try again shortly.",
-						validationError: "Fill name, limit, start date, and end date.",
+						validationError: "Fill name, category, limit, start date, and end date.",
 						saveError: "Failed to save budget wallet. Try again shortly.",
 					}
 				: {
@@ -275,6 +285,9 @@ export default function BudgetsScreen() {
 						namePlaceholder: "Nama dompet",
 						limitLabel: "Limit",
 						limitPlaceholder: "Limit",
+						categoryLabel: "Kategori pengeluaran",
+						categoryPlaceholder: "Pilih kategori",
+						categoryDropdownLabel: "Pilih kategori budget",
 						startLabel: "Tanggal mulai",
 						startPlaceholder: "Tanggal mulai",
 						endLabel: "Tanggal akhir",
@@ -296,6 +309,7 @@ export default function BudgetsScreen() {
 						update: "Perbarui dompet",
 						edit: "Edit",
 						dateDropdownLabel: "Pilih tanggal",
+						dateOptionHint: "Pilih tanggal dan bulan sesuai periode",
 						delete: "Hapus",
 						deleteConfirmTitle: "Hapus dompet budget?",
 						deleteConfirmMessage: (name: string) =>
@@ -320,7 +334,7 @@ export default function BudgetsScreen() {
 						loadLogin: "Sesi login tidak ditemukan. Silakan login ulang.",
 						loadError: "Gagal memuat data dompet. Coba lagi sebentar.",
 						validationError:
-							"Isi nama, limit, tanggal mulai, dan tanggal akhir.",
+							"Isi nama, kategori, limit, tanggal mulai, dan tanggal akhir.",
 						saveError: "Gagal menyimpan dompet. Coba lagi sebentar.",
 					},
 		[isEn],
@@ -337,12 +351,15 @@ export default function BudgetsScreen() {
 	const [showCreateForm, setShowCreateForm] = useState(false);
 	const [name, setName] = useState("");
 	const [limitAmount, setLimitAmount] = useState("");
+	const [categoryOptions, setCategoryOptions] = useState<Category[]>([]);
+	const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
 	const [startDate, setStartDate] = useState("");
 	const [endDate, setEndDate] = useState("");
 	const [icon, setIcon] = useState<KaswiseIconName>("food");
 	const [color, setColor] = useState("");
 	const [showIconOptions, setShowIconOptions] = useState(false);
 	const [showColorOptions, setShowColorOptions] = useState(false);
+	const [showCategoryOptions, setShowCategoryOptions] = useState(false);
 	const [showStartDateOptions, setShowStartDateOptions] = useState(false);
 	const [showEndDateOptions, setShowEndDateOptions] = useState(false);
 	const [editingEnvelope, setEditingEnvelope] = useState<BudgetEnvelope | null>(null);
@@ -366,28 +383,41 @@ export default function BudgetsScreen() {
 		};
 	};
 
-	const monthDateOptions = useMemo(() => {
+	const dateOptions = useMemo(() => {
 		const formatter = new Intl.DateTimeFormat(isEn ? "en-US" : "id-ID", {
+			day: "numeric",
 			month: "long",
 			year: "numeric",
 		});
-		const now = new Date();
-		return Array.from({ length: 18 }, (_, index) => {
-			const date = new Date(now.getFullYear(), now.getMonth() + index, 1);
-			const end = new Date(date.getFullYear(), date.getMonth() + 1, 0);
+		const today = new Date();
+		const firstOption = new Date(
+			today.getFullYear(),
+			today.getMonth(),
+			today.getDate() - 31,
+		);
+		return Array.from({ length: 427 }, (_, index) => {
+			const date = new Date(
+				firstOption.getFullYear(),
+				firstOption.getMonth(),
+				firstOption.getDate() + index,
+			);
+			const value = formatLocalDate(date);
 			return {
 				label: formatter.format(date),
-				start: formatLocalDate(date),
-				end: formatLocalDate(end),
+				value,
 			};
 		});
 	}, [isEn]);
+
+	const selectedCategory =
+		categoryOptions.find((item) => item.id === selectedCategoryId) ?? null;
 
 	const resetEnvelopeForm = () => {
 		setShowCreateForm(false);
 		setEditingEnvelope(null);
 		setName("");
 		setLimitAmount("");
+		setSelectedCategoryId(null);
 		setStartDate("");
 		setEndDate("");
 		setIcon("food");
@@ -395,6 +425,7 @@ export default function BudgetsScreen() {
 		setNotes("");
 		setShowIconOptions(false);
 		setShowColorOptions(false);
+		setShowCategoryOptions(false);
 		setShowStartDateOptions(false);
 		setShowEndDateOptions(false);
 	};
@@ -408,6 +439,7 @@ export default function BudgetsScreen() {
 		setEditingEnvelope(null);
 		setName("");
 		setLimitAmount("");
+		setSelectedCategoryId(categoryOptions[0]?.id ?? null);
 		setStartDate(range.start);
 		setEndDate(range.end);
 		setIcon("food");
@@ -420,6 +452,15 @@ export default function BudgetsScreen() {
 		setEditingEnvelope(envelope);
 		setName(envelope.name);
 		setLimitAmount(String(Number(envelope.limit_amount ?? 0)));
+		setSelectedCategoryId(
+			envelope.parent_category_id ??
+				categoryOptions.find(
+					(category) =>
+						normalizeLabel(category.name) ===
+						normalizeLabel(envelope.parent_category_name),
+				)?.id ??
+				null,
+		);
 		setStartDate(envelope.start_date);
 		setEndDate(envelope.end_date);
 		setIcon((envelope.icon as KaswiseIconName | null) ?? "food");
@@ -427,6 +468,7 @@ export default function BudgetsScreen() {
 		setNotes(envelope.notes ?? "");
 		setShowIconOptions(false);
 		setShowColorOptions(false);
+		setShowCategoryOptions(false);
 		setShowStartDateOptions(false);
 		setShowEndDateOptions(false);
 		setShowCreateForm(true);
@@ -450,10 +492,18 @@ export default function BudgetsScreen() {
 				return;
 			}
 
-			const envelopes = await listBudgetEnvelopes(
-				supabase,
-				user.id,
-				activeContext,
+			const [envelopes, categories] = await Promise.all([
+				listBudgetEnvelopes(supabase, user.id, activeContext),
+				listCategories().catch(() => [] as Category[]),
+			]);
+			const expenseCategories = categories.filter(
+				(category) => category.type !== "income",
+			);
+			setCategoryOptions(expenseCategories);
+			setSelectedCategoryId((current) =>
+				current && expenseCategories.some((category) => category.id === current)
+					? current
+					: (expenseCategories[0]?.id ?? null),
 			);
 			const allocations = await listEnvelopeAllocations(
 				supabase,
@@ -489,7 +539,13 @@ export default function BudgetsScreen() {
 		if (!userId || saving || !canCreate) return;
 		const trimmedName = name.trim();
 		const amount = Number(limitAmount.replace(/[^0-9]/g, ""));
-		if (!trimmedName || !amount || !startDate.trim() || !endDate.trim()) {
+		if (
+			!trimmedName ||
+			!selectedCategoryId ||
+			!amount ||
+			!startDate.trim() ||
+			!endDate.trim()
+		) {
 			setLoadError(tx.validationError);
 			return;
 		}
@@ -499,7 +555,7 @@ export default function BudgetsScreen() {
 			setLoadError(null);
 			const payload = {
 				name: trimmedName,
-				parent_category_id: null,
+				parent_category_id: selectedCategoryId,
 				limit_amount: amount,
 				start_date: startDate.trim(),
 				end_date: endDate.trim(),
@@ -660,6 +716,41 @@ export default function BudgetsScreen() {
 						onChangeText={setLimitAmount}
 						keyboardType="numeric"
 					/>
+					<View style={styles.dropdownWrap}>
+						<Text style={styles.fieldLabel}>{tx.categoryLabel}</Text>
+						<Pressable
+							testID="budget-category-dropdown"
+							accessibilityRole="button"
+							accessibilityLabel={tx.categoryDropdownLabel}
+							accessibilityState={{ expanded: showCategoryOptions }}
+							style={styles.selectButton}
+							onPress={() => setShowCategoryOptions((value) => !value)}
+						>
+							<Text style={styles.selectText}>
+								{selectedCategory?.name ?? tx.categoryPlaceholder}
+							</Text>
+							<Text style={styles.selectChevron}>⌄</Text>
+						</Pressable>
+						{showCategoryOptions ? (
+							<View testID="budget-category-options" style={styles.optionList}>
+								{categoryOptions.map((option) => (
+									<Pressable
+										key={option.id}
+										testID={`budget-category-option-${option.id}`}
+										accessibilityRole="button"
+										accessibilityLabel={`${tx.categoryLabel}: ${option.name}`}
+										style={styles.optionRow}
+										onPress={() => {
+											setSelectedCategoryId(option.id);
+											setShowCategoryOptions(false);
+										}}
+									>
+										<Text style={styles.optionText}>{option.name}</Text>
+									</Pressable>
+								))}
+							</View>
+						) : null}
+					</View>
 					<View style={styles.inputRow}>
 						<View style={styles.inputHalf}>
 							<Text style={styles.fieldLabel}>{tx.startLabel}</Text>
@@ -676,21 +767,24 @@ export default function BudgetsScreen() {
 							</Pressable>
 							{showStartDateOptions ? (
 								<View testID="budget-start-date-options" style={styles.optionList}>
-									{monthDateOptions.map((option) => (
-										<Pressable
-											key={option.start}
-											testID={`budget-start-date-option-${option.start}`}
-											accessibilityRole="button"
-											accessibilityLabel={`${tx.startLabel}: ${option.label}`}
-											style={styles.optionRow}
-											onPress={() => {
-												setStartDate(option.start);
-												setShowStartDateOptions(false);
-											}}
-										>
-											<Text style={styles.optionText}>{option.label} · {option.start}</Text>
-										</Pressable>
-									))}
+									<Text style={styles.optionHint}>{tx.dateOptionHint}</Text>
+									<ScrollView nestedScrollEnabled style={styles.dateOptionScroll}>
+										{dateOptions.map((option) => (
+											<Pressable
+												key={option.value}
+												testID={`budget-start-date-option-${option.value}`}
+												accessibilityRole="button"
+												accessibilityLabel={`${tx.startLabel}: ${option.label}`}
+												style={styles.optionRow}
+												onPress={() => {
+													setStartDate(option.value);
+													setShowStartDateOptions(false);
+												}}
+											>
+												<Text style={styles.optionText}>{option.label} · {option.value}</Text>
+											</Pressable>
+										))}
+									</ScrollView>
 								</View>
 							) : null}
 						</View>
@@ -709,21 +803,24 @@ export default function BudgetsScreen() {
 							</Pressable>
 							{showEndDateOptions ? (
 								<View testID="budget-end-date-options" style={styles.optionList}>
-									{monthDateOptions.map((option) => (
-										<Pressable
-											key={option.end}
-											testID={`budget-end-date-option-${option.end}`}
-											accessibilityRole="button"
-											accessibilityLabel={`${tx.endLabel}: ${option.label}`}
-											style={styles.optionRow}
-											onPress={() => {
-												setEndDate(option.end);
-												setShowEndDateOptions(false);
-											}}
-										>
-											<Text style={styles.optionText}>{option.label} · {option.end}</Text>
-										</Pressable>
-									))}
+									<Text style={styles.optionHint}>{tx.dateOptionHint}</Text>
+									<ScrollView nestedScrollEnabled style={styles.dateOptionScroll}>
+										{dateOptions.map((option) => (
+											<Pressable
+												key={option.value}
+												testID={`budget-end-date-option-${option.value}`}
+												accessibilityRole="button"
+												accessibilityLabel={`${tx.endLabel}: ${option.label}`}
+												style={styles.optionRow}
+												onPress={() => {
+													setEndDate(option.value);
+													setShowEndDateOptions(false);
+												}}
+											>
+												<Text style={styles.optionText}>{option.label} · {option.value}</Text>
+											</Pressable>
+										))}
+									</ScrollView>
 								</View>
 							) : null}
 						</View>
@@ -1065,6 +1162,15 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			borderWidth: 1,
 			borderColor: theme.colors.borderSoft,
 			overflow: "hidden",
+		},
+		dateOptionScroll: { maxHeight: 220 },
+		optionHint: {
+			color: theme.colors.textMuted,
+			fontSize: 11,
+			fontWeight: "700",
+			paddingHorizontal: 12,
+			paddingTop: 10,
+			paddingBottom: 4,
 		},
 		optionRow: {
 			flexDirection: "row",

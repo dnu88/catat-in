@@ -214,7 +214,7 @@ describe("transaction-new edit mode", () => {
 		);
 	});
 
-	it("blocks submit when the selected wallet is outside the active context", async () => {
+	it("replaces a stale edit wallet with an active wallet so edits can be saved", async () => {
 		mockListWallets.mockResolvedValue([
 			{ id: "wallet-current", name: "Current", is_active: true },
 		]);
@@ -232,14 +232,16 @@ describe("transaction-new edit mode", () => {
 		const screen = renderScreen();
 
 		expect(await screen.findByDisplayValue("Kopi sore")).toBeTruthy();
+		expect(screen.getByLabelText("Pilih dompet Current").props.accessibilityState).toMatchObject({ selected: true });
 		fireEvent.press(screen.getByLabelText("Simpan perubahan transaksi"));
 
 		await waitFor(() =>
-			expect(
-				screen.getByText("Pilih dompet yang valid untuk konteks aktif."),
-			).toBeTruthy(),
+			expect(mockUpdateTransaction).toHaveBeenCalledWith(
+				"tx-1",
+				expect.objectContaining({ wallet_id: "wallet-current" }),
+				{ type: "personal" },
+			),
 		);
-		expect(mockUpdateTransaction).not.toHaveBeenCalled();
 	});
 
 	it("keeps viewer household context read-only", async () => {
