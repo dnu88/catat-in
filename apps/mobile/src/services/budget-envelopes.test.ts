@@ -4,6 +4,7 @@ import {
 	getHomeEnvelopeAlerts,
 	createEnvelopeAllocation,
 	syncEnvelopeAllocationForTransaction,
+	syncEnvelopeAllocationsForBudgetEnvelope,
 	listBudgetEnvelopes,
 	listEnvelopeAllocations,
 	matchEnvelopeForTransaction,
@@ -371,6 +372,70 @@ describe("budget envelope service query builders", () => {
 		expect(calls).toContain("delete-eq:transaction_id:tx-1");
 		expect(calls.some((call) => call.includes('"envelope_id":"env-food"'))).toBe(true);
 		expect(calls.some((call) => call.includes('"amount":35000'))).toBe(true);
+	});
+
+	it("backfills existing matching transactions when a budget envelope is created later", async () => {
+		const calls: string[] = [];
+		const transactionRows = [
+			{
+				id: "tx-food",
+				type: "expense",
+				nominal: 75000,
+				kategori: "Makan & Minum",
+				tanggal: "2026-05-16",
+				catatan: "Kopi Kenangan",
+				merchant: "Kopi Kenangan",
+			},
+			{
+				id: "tx-transport",
+				type: "expense",
+				nominal: 50000,
+				kategori: "Transportasi",
+				tanggal: "2026-05-16",
+			},
+		];
+		const transactionChain: any = {
+			select: jest.fn(() => transactionChain),
+			is: jest.fn(() => transactionChain),
+			eq: jest.fn(() => transactionChain),
+			then: jest.fn((resolve, reject) =>
+				Promise.resolve({ data: transactionRows, error: null }).then(resolve, reject),
+			),
+		};
+		const deleteChain = {
+			eq: jest.fn((key: string, value: string) => {
+				calls.push(`delete:${key}:${value}`);
+				return Promise.resolve({ error: null });
+			}),
+		};
+		const allocationChain = {
+			delete: jest.fn(() => deleteChain),
+			upsert: jest.fn((rows) => {
+				calls.push(`upsert:${JSON.stringify(rows)}`);
+				return Promise.resolve({ error: null });
+			}),
+			insert: jest.fn(() => Promise.resolve({ error: null })),
+		};
+		const supabase = {
+			from: jest.fn((table: string) =>
+				table === "transactions" ? transactionChain : allocationChain,
+			),
+		};
+
+		await syncEnvelopeAllocationsForBudgetEnvelope(
+			supabase as never,
+			envelope({
+				id: "env-food",
+				parent_category_name: "Makan & Minum",
+				start_date: "2026-05-01",
+				end_date: "2026-05-31",
+			}),
+			"user-1",
+		);
+
+		expect(calls).toContain("delete:envelope_id:env-food");
+		expect(calls.some((call) => call.includes('"transaction_id":"tx-food"'))).toBe(true);
+		expect(calls.some((call) => call.includes('"transaction_id":"tx-transport"'))).toBe(false);
 	});
 
 	it("does not allocate when no category matches", async () => {

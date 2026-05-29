@@ -41,6 +41,7 @@ const mockUpdateBudgetEnvelope = jest.fn(
 		...input,
 	}),
 );
+const mockSyncEnvelopeAllocationsForBudgetEnvelope = jest.fn(async () => undefined);
 
 
 jest.mock("../src/services/categories", () => ({
@@ -61,7 +62,7 @@ jest.mock("../src/services/budget-envelopes", () => ({
 			limit_amount: 250000,
 			start_date: "2026-05-10",
 			end_date: "2026-05-31",
-			icon: "coffee",
+			icon: "food",
 			color: "#4A80F0",
 			notes: "Kopi Kenangan, Fore",
 			status: "active",
@@ -90,6 +91,8 @@ jest.mock("../src/services/budget-envelopes", () => ({
 	updateBudgetEnvelope: (...args: any[]) =>
 		mockUpdateBudgetEnvelope.apply(null, args),
 	deleteBudgetEnvelope: jest.fn(async () => undefined),
+	syncEnvelopeAllocationsForBudgetEnvelope: (...args: any[]) =>
+		mockSyncEnvelopeAllocationsForBudgetEnvelope.apply(null, args),
 	listEnvelopeAllocations: jest.fn(async () => [
 		{
 			id: "a1",
@@ -233,6 +236,7 @@ describe("Budget envelopes screen", () => {
 	beforeEach(() => {
 		mockCreateBudgetEnvelope.mockClear();
 		mockUpdateBudgetEnvelope.mockClear();
+		mockSyncEnvelopeAllocationsForBudgetEnvelope.mockClear();
 	});
 
 	it("shows active, review, and archive envelope sections", async () => {
@@ -240,6 +244,7 @@ describe("Budget envelopes screen", () => {
 
 		await waitFor(() => expect(screen.getByText("Dompet Aktif")).toBeTruthy());
 		expect(screen.getByText("Kopi")).toBeTruthy();
+		expect(screen.getByText("food-danger-44")).toBeTruthy();
 		expect(screen.getByText("Perlu cek")).toBeTruthy();
 		expect(screen.getByText("Cafe dekat kampus")).toBeTruthy();
 		expect(screen.getByText("Arsip")).toBeTruthy();
@@ -345,6 +350,7 @@ describe("Budget envelopes screen", () => {
 		);
 		expect(Number(mockCreateBudgetEnvelope.mock.calls[0][1].start_date.slice(8, 10))).toBe(selectedStartDay);
 		expect(Number(mockCreateBudgetEnvelope.mock.calls[0][1].end_date.slice(8, 10))).toBe(selectedEndDay);
+		expect(mockSyncEnvelopeAllocationsForBudgetEnvelope).toHaveBeenCalled();
 	});
 
 	it("can cancel create and edit an existing budget wallet", async () => {
@@ -372,6 +378,12 @@ describe("Budget envelopes screen", () => {
 				start_date: expect.stringMatching(/\d{4}-\d{2}-10/),
 				end_date: expect.stringMatching(/\d{4}-\d{2}-31/),
 			}),
+		);
+		expect(mockSyncEnvelopeAllocationsForBudgetEnvelope).toHaveBeenCalledWith(
+			expect.anything(),
+			expect.objectContaining({ id: "env-kopi" }),
+			"user-1",
+			expect.anything(),
 		);
 	});
 });

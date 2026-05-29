@@ -35,6 +35,7 @@ import {
 	listBudgetEnvelopes,
 	listEnvelopeAllocations,
 	resolveMonthlyEnvelopePeriod,
+	syncEnvelopeAllocationsForBudgetEnvelope,
 	type BudgetEnvelope,
 	type EnvelopeAllocation,
 	type EnvelopeProgress,
@@ -110,6 +111,12 @@ function formatDayLabel(day: number, isEn: boolean) {
 	return isEn ? `Day ${day}` : `Tanggal ${day}`;
 }
 
+function resolveBudgetIconName(value: string | null | undefined): KaswiseIconName {
+	return iconOptions.some((option) => option.value === value)
+		? (value as KaswiseIconName)
+		: "budgets";
+}
+
 function EnvelopeRow({
 	item,
 	theme,
@@ -128,13 +135,14 @@ function EnvelopeRow({
 		: progress.is_near_limit
 			? theme.colors.warning
 			: theme.colors.brandPrimary;
+	const rowIcon = resolveBudgetIconName(envelope.icon);
 
 	return (
 		<View testID={`envelope-card-${envelope.id}`} style={styles.budgetCard}>
 			<View style={styles.budgetTop}>
 				<View style={styles.budgetLeft}>
 					<IconBubble
-						name="budgets"
+						name={rowIcon}
 						tone={
 							progress.is_over_budget
 								? "danger"
@@ -391,6 +399,16 @@ export default function BudgetsScreen() {
 		};
 	};
 
+	const getSharedBudgetCycleDays = () => {
+		const source =
+			activeSummaries[0]?.envelope ?? archivedSummaries[0]?.envelope ?? null;
+		if (!source) return getDefaultDayRange();
+		return {
+			start: dayFromDate(source.start_date, 1),
+			end: dayFromDate(source.end_date, getDefaultDayRange().end),
+		};
+	};
+
 	const dayOptions = useMemo(
 		() =>
 			Array.from({ length: 31 }, (_, index) => {
@@ -429,7 +447,7 @@ export default function BudgetsScreen() {
 			resetEnvelopeForm();
 			return;
 		}
-		const range = getDefaultDayRange();
+		const range = getSharedBudgetCycleDays();
 		setEditingEnvelope(null);
 		setName("");
 		setLimitAmount("");
@@ -562,24 +580,49 @@ export default function BudgetsScreen() {
 				notes: notes.trim() || null,
 			};
 
-			if (editingEnvelope) {
-				await updateBudgetEnvelope(
-					supabase,
-					editingEnvelope.id,
-					payload,
-					userId,
-					activeContext,
-				);
-			} else {
-				await createBudgetEnvelope(
-					supabase,
-					{
-						user_id: userId,
-						...payload,
-					},
-					activeContext,
-				);
-			}
+			const savedEnvelope = editingEnvelope
+				? await updateBudgetEnvelope(
+						supabase,
+						editingEnvelope.id,
+						payload,
+						userId,
+						activeContext,
+					)
+				: await createBudgetEnvelope(
+						supabase,
+						{
+							user_id: userId,
+							...payload,
+						},
+						activeContext,
+					);
+
+			const activeEnvelopesToAlign = activeSummaries
+				.map((summary) => summary.envelope)
+				.filter((envelope) => envelope.id !== savedEnvelope.id);
+			const alignedEnvelopes = await Promise.all(
+				activeEnvelopesToAlign.map((envelope) =>
+					updateBudgetEnvelope(
+						supabase,
+						envelope.id,
+						{ start_date: cycle.start, end_date: cycle.end },
+						userId,
+						activeContext,
+					),
+				),
+			);
+
+			await Promise.all(
+				[savedEnvelope, ...alignedEnvelopes].map((envelope) =>
+					syncEnvelopeAllocationsForBudgetEnvelope(
+						supabase,
+						envelope,
+						userId,
+						activeContext,
+					),
+				),
+			);
+
 			resetEnvelopeForm();
 			await loadEnvelopes();
 		} catch (error) {

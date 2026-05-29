@@ -38,6 +38,8 @@ const categoryConcepts: CategoryConcept[] = [
 			"food",
 			"food beverage",
 			"food and beverage",
+			"fnb",
+			"f&b",
 			"makanan",
 			"makanan minuman",
 			"makan minum",
@@ -45,37 +47,53 @@ const categoryConcepts: CategoryConcept[] = [
 			"kuliner",
 		],
 		keywords: [
+			{ value: "siap saji", weight: 6 },
+			{ value: "siap santap", weight: 6 },
+			{ value: "pesan antar", weight: 5 },
+			{ value: "makan siang", weight: 5 },
+			{ value: "makan malam", weight: 5 },
+			{ value: "sarapan", weight: 4 },
 			{ value: "makan", weight: 3 },
 			{ value: "minum", weight: 3 },
 			{ value: "kopi", weight: 3 },
-			{ value: "sarapan", weight: 3 },
-			{ value: "makan siang", weight: 4 },
-			{ value: "makan malam", weight: 4 },
+			{ value: "kopi latte", weight: 6 },
+			{ value: "latte", weight: 5 },
+			{ value: "cappuccino", weight: 5 },
+			{ value: "americano", weight: 5 },
+			{ value: "espresso", weight: 5 },
+			{ value: "boba", weight: 4 },
+			{ value: "jajanan", weight: 4 },
+			{ value: "nasi goreng", weight: 5 },
+			{ value: "mie ayam", weight: 5 },
+			{ value: "ayam geprek", weight: 5 },
+			{ value: "bento", weight: 4 },
 			"warteg",
-			"warung",
+			"warung makan",
 			"resto",
 			"restaurant",
 			"restoran",
 			"cafe",
 			"kafe",
+			"coffee shop",
 			"gofood",
 			"grabfood",
 			"shopeefood",
-			"nasi",
-			"ayam",
 			"bakso",
-			"mie",
-			"boba",
+			"sate",
 			"teh",
 		],
 		merchants: [
-			{ value: "kopi kenangan", weight: 5 },
-			{ value: "fore", weight: 5 },
-			{ value: "starbucks", weight: 5 },
-			{ value: "janji jiwa", weight: 5 },
-			{ value: "mixue", weight: 5 },
-			{ value: "mcd", weight: 5 },
-			{ value: "kfc", weight: 5 },
+			{ value: "kopi kenangan", weight: 7 },
+			{ value: "fore coffee", weight: 7 },
+			{ value: "fore", weight: 6 },
+			{ value: "starbucks", weight: 7 },
+			{ value: "janji jiwa", weight: 7 },
+			{ value: "mixue", weight: 7 },
+			{ value: "mcd", weight: 7 },
+			{ value: "kfc", weight: 7 },
+			{ value: "gofood", weight: 7 },
+			{ value: "grabfood", weight: 7 },
+			{ value: "shopeefood", weight: 7 },
 		],
 	},
 	{
@@ -88,34 +106,61 @@ const categoryConcepts: CategoryConcept[] = [
 			"belanja",
 			"belanja bulanan",
 			"kebutuhan harian",
+			"kebutuhan rumah",
 			"sembako",
 		],
 		keywords: [
-			{ value: "belanja", weight: 3 },
-			{ value: "belanja bulanan", weight: 5 },
+			{ value: "belanja bulanan", weight: 6 },
+			{ value: "kebutuhan rumah", weight: 5 },
+			{ value: "bahan pokok", weight: 5 },
+			{ value: "bahan mentah", weight: 5 },
+			{ value: "stok rumah", weight: 5 },
+			{ value: "kopi bubuk", weight: 6 },
+			{ value: "kopi saset", weight: 6 },
+			{ value: "kopi sachet", weight: 6 },
+			{ value: "susu kotak", weight: 5 },
+			{ value: "susu uht", weight: 5 },
+			{ value: "mi instan", weight: 6 },
+			{ value: "mie instan", weight: 6 },
+			{ value: "aqua galon", weight: 6 },
+			{ value: "gas lpg", weight: 6 },
+			{ value: "minyak goreng", weight: 5 },
+			{ value: "daging mentah", weight: 5 },
+			{ value: "belanja", weight: 2 },
 			"grocery",
 			"groceries",
 			"supermarket",
 			"minimarket",
 			"pasar",
-			"sayur",
-			"buah",
+			"kelontong",
 			"beras",
+			"minyak",
 			"telur",
 			"susu",
 			"sembako",
 			"sabun",
 			"detergen",
+			"deterjen",
+			"tisu",
 			"shampoo",
+			"sampo",
+			"sayur",
+			"sayuran",
+			"buah",
+			"daging",
+			"ayam mentah",
+			"galon",
 		],
 		merchants: [
 			{ value: "indomaret", weight: 5 },
 			{ value: "alfamart", weight: 5 },
 			{ value: "alfamidi", weight: 5 },
-			{ value: "superindo", weight: 5 },
-			{ value: "hypermart", weight: 5 },
-			{ value: "ranch market", weight: 5 },
-			{ value: "lotte mart", weight: 5 },
+			{ value: "superindo", weight: 6 },
+			{ value: "hypermart", weight: 6 },
+			{ value: "ranch market", weight: 6 },
+			{ value: "lotte mart", weight: 6 },
+			{ value: "astro", weight: 6 },
+			{ value: "sayurbox", weight: 6 },
 		],
 	},
 	{
@@ -186,8 +231,17 @@ const categoryConcepts: CategoryConcept[] = [
 		id: "salary",
 		fallbackName: "Gaji",
 		type: "income",
-		aliases: ["gaji", "salary", "income", "pendapatan"],
-		keywords: ["gaji", "salary", "pemasukan", "income", "terima", "masuk"],
+		aliases: ["gaji", "salary", "income", "pendapatan", "penghasilan"],
+		keywords: [
+			"gaji",
+			"salary",
+			"pemasukan",
+			"income",
+			"pendapatan",
+			"penghasilan",
+			"terima",
+			"masuk",
+		],
 	},
 	{
 		id: "bonus",
@@ -204,7 +258,6 @@ const categoryConcepts: CategoryConcept[] = [
 		keywords: ["freelance", "proyek", "project", "klien", "client"],
 	},
 ];
-
 function todayKey(date = new Date()) {
 	return date.toISOString().slice(0, 10);
 }
@@ -244,6 +297,32 @@ export function parseAmountFromTransactionText(value: string) {
 
 	const plainMatch = value.match(/\b(\d[\d.]{3,}|\d{4,})\b/);
 	return plainMatch ? normalizeNumber(plainMatch[1]) : 0;
+}
+
+function findAmountMentions(value: string) {
+	const pattern =
+		/(?:rp\s*)?\d+(?:[.,]\d+)?\s*(?:juta|jt|ribu|rb|k)\b|rp\s*[\d.,]+|\b\d[\d.]{3,}\b|\b\d{4,}\b/gi;
+	return Array.from(value.matchAll(pattern)).map((match) => ({
+		text: match[0],
+		index: match.index ?? 0,
+		end: (match.index ?? 0) + match[0].length,
+	}));
+}
+
+function segmentTextAroundAmounts(value: string) {
+	const mentions = findAmountMentions(value);
+	if (mentions.length < 2) return [];
+
+	return mentions
+		.map((mention, index) => {
+			const start = index === 0 ? 0 : mentions[index - 1].end;
+			const end = index === mentions.length - 1 ? value.length : mention.end;
+			return value
+				.slice(start, end)
+				.replace(/^\s*(dan|lalu|terus|,|;|\+)\s*/i, "")
+				.trim();
+		})
+		.filter(Boolean);
 }
 
 function hasPhrase(source: string, phrase: string) {
@@ -294,7 +373,7 @@ function scoreConcept(source: string, concept: CategoryConcept) {
 }
 
 function inferTransactionType(source: string): TransactionType {
-	return /\b(gaji|bonus|freelance|dibayar|bayaran|pemasukan|income|terima|masuk|thr)\b/i.test(
+	return /\b(gaji|bonus|freelance|dibayar|bayaran|pemasukan|pendapatan|penghasilan|income|terima|masuk|thr)\b/i.test(
 		source,
 	)
 		? "income"
@@ -399,6 +478,29 @@ export function classifyTransactionText(
 		matchedKeywords,
 		matchedConcept: matchedConcept?.id ?? "unknown",
 	};
+}
+
+export function classifyTransactionTextBatch(
+	input: string,
+	categories: ClassificationCategory[] = [],
+	date = new Date(),
+): ClassifiedTransaction[] {
+	const fullDraft = classifyTransactionText(input, categories, date);
+	if (!fullDraft) return [];
+
+	const segments = segmentTextAroundAmounts(input);
+	if (segments.length < 2) return [fullDraft];
+
+	const segmentDrafts = segments
+		.map((segment) => classifyTransactionText(segment, categories, date))
+		.filter((draft): draft is ClassifiedTransaction => Boolean(draft));
+	const concepts = new Set(segmentDrafts.map((draft) => draft.matchedConcept));
+	const shouldSplitFoodAndGroceries =
+		segmentDrafts.length >= 2 &&
+		concepts.has("food_beverage") &&
+		concepts.has("groceries");
+
+	return shouldSplitFoodAndGroceries ? segmentDrafts : [fullDraft];
 }
 
 export { HIGH_CONFIDENCE as CLASSIFIER_HIGH_CONFIDENCE_THRESHOLD };

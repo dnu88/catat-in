@@ -1,5 +1,6 @@
 import {
 	classifyTransactionText,
+	classifyTransactionTextBatch,
 	parseAmountFromTransactionText,
 } from "./transaction-classifier";
 
@@ -70,13 +71,71 @@ describe("transaction text classifier", () => {
 
 	it("uses official Indonesian category names when that is what exists in DB", () => {
 		const result = classifyTransactionText(
-			"beli kopi 35rb",
+			"beli kopi latte 35rb",
 			[{ id: "cat-makan", name: "Makanan & Minuman", type: "expense" }],
 			fixedDate,
 		);
 
 		expect(result?.categoryId).toBe("cat-makan");
 		expect(result?.categoryName).toBe("Makanan & Minuman");
+	});
+
+
+	it("recognizes pendapatan, gaji, and penghasilan as income", () => {
+		expect(
+			classifyTransactionText("pendapatan proyek 2jt", categories, fixedDate),
+		).toMatchObject({
+			transactionType: "income",
+			amount: 2000000,
+			categoryId: "cat-salary",
+			categoryName: "Salary",
+		});
+		expect(
+			classifyTransactionText("penghasilan bulan ini 4jt", categories, fixedDate)
+				?.transactionType,
+		).toBe("income");
+	});
+
+	it("keeps stock groceries separate from ready-to-consume F&B", () => {
+		expect(
+			classifyTransactionText(
+				"beli kopi bubuk dan susu UHT di indomaret 85rb",
+				categories,
+				fixedDate,
+			),
+		).toMatchObject({
+			categoryName: "Groceries",
+			merchant: "indomaret",
+		});
+
+		expect(
+			classifyTransactionText(
+				"beli kopi latte siap minum di Kopi Kenangan 35rb",
+				categories,
+				fixedDate,
+			),
+		).toMatchObject({
+			categoryName: "Food & Beverage",
+			merchant: "kopi kenangan",
+		});
+	});
+
+	it("splits mixed grocery and F&B notes when each amount is available", () => {
+		const result = classifyTransactionTextBatch(
+			"belanja beras 100rb dan kopi latte siap minum 35rb",
+			categories,
+			fixedDate,
+		);
+
+		expect(result).toHaveLength(2);
+		expect(result[0]).toMatchObject({
+			amount: 100000,
+			categoryName: "Groceries",
+		});
+		expect(result[1]).toMatchObject({
+			amount: 35000,
+			categoryName: "Food & Beverage",
+		});
 	});
 
 	it("falls back to Other expenses with low confidence when unclear", () => {

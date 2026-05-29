@@ -351,6 +351,22 @@ type EnvelopeAllocationRow = {
 	} | null;
 };
 
+type BudgetSyncTransactionRow = {
+	id: string;
+	type?: string | null;
+	transaction_type?: string | null;
+	nominal?: number | string | null;
+	amount?: number | string | null;
+	kategori?: string | null;
+	category?: string | null;
+	tanggal?: string | null;
+	date?: string | null;
+	created_at?: string | null;
+	catatan?: string | null;
+	description?: string | null;
+	merchant?: string | null;
+};
+
 function mapBudgetEnvelope(row: BudgetEnvelopeRow): BudgetEnvelope {
 	const period = resolveMonthlyEnvelopePeriod(row.start_date, row.end_date);
 	return {
@@ -500,6 +516,97 @@ export async function deleteEnvelopeAllocationsForTransaction(
 		.eq("transaction_id", transactionId);
 
 	if (error) throw error;
+}
+
+export async function deleteEnvelopeAllocationsForEnvelope(
+	supabase: SupabaseLike,
+	envelopeId: string,
+): Promise<void> {
+	const { error } = await supabase
+		.from("transaction_envelope_allocations")
+		.delete()
+		.eq("envelope_id", envelopeId);
+
+	if (error) throw error;
+}
+
+function normalizeBudgetSyncTransaction(
+	row: BudgetSyncTransactionRow,
+): EnvelopeAllocationSyncTransaction {
+	return {
+		id: row.id,
+		transaction_type: row.transaction_type ?? row.type,
+		type: row.type,
+		amount: Number(row.amount ?? row.nominal ?? 0),
+		categoryName: row.category ?? row.kategori ?? null,
+		description: row.description ?? row.catatan ?? null,
+		merchant: row.merchant ?? null,
+		date: row.date ?? row.tanggal ?? null,
+		tanggal: row.tanggal ?? row.date ?? null,
+		created_at: row.created_at ?? null,
+	};
+}
+
+export async function syncEnvelopeAllocationsForBudgetEnvelope(
+	supabase: SupabaseLike,
+	envelope: BudgetEnvelope,
+	userId: string,
+	context: FinanceContext = defaultContext,
+): Promise<void> {
+	const start = toDateKey(envelope.start_date);
+	const end = toDateKey(envelope.end_date);
+	if (!start || !end || getEnvelopeStatus(envelope, end) !== "active") {
+		await deleteEnvelopeAllocationsForEnvelope(supabase, envelope.id);
+		return;
+	}
+
+	let query = supabase
+		.from("transactions")
+		.select("id,type,transaction_type,nominal,amount,kategori,category,tanggal,date,created_at,catatan,description,merchant");
+	query = applyFinanceContextFilter(query, context) as typeof query;
+	if (context.type === "personal") {
+		query = query.eq("user_id", userId) as typeof query;
+	}
+
+	const { data, error } = await query;
+	if (error) throw error;
+
+	const rows = ((data ?? []) as BudgetSyncTransactionRow[])
+		.map(normalizeBudgetSyncTransaction)
+		.filter((transaction) => {
+			const transactionType = transaction.transaction_type ?? transaction.type;
+			const transactionDate = toDateKey(
+				transaction.date ?? transaction.tanggal ?? transaction.created_at,
+			);
+			return (
+				transactionType === "expense" &&
+				Number(transaction.amount ?? 0) > 0 &&
+				transactionDate >= start &&
+				transactionDate <= end &&
+				envelopeMatchesTransactionCategory(transaction.categoryName, envelope)
+			);
+		})
+		.map((transaction) => ({
+			transaction_id: transaction.id,
+			envelope_id: envelope.id,
+			amount: Number(transaction.amount ?? 0),
+			confidence: 0.98,
+			needs_review: false,
+		}));
+
+	await deleteEnvelopeAllocationsForEnvelope(supabase, envelope.id);
+	if (rows.length === 0) return;
+
+	const { error: upsertError } = await supabase
+		.from("transaction_envelope_allocations")
+		.upsert(rows, { onConflict: "transaction_id,envelope_id" });
+
+	if (!upsertError) return;
+
+	const { error: insertError } = await supabase
+		.from("transaction_envelope_allocations")
+		.insert(rows);
+	if (insertError) throw insertError;
 }
 
 export async function syncEnvelopeAllocationForTransaction(

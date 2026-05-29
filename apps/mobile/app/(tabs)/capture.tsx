@@ -25,7 +25,7 @@ import { createEnvelopeAllocation } from "../../src/services/budget-envelopes";
 import { createTransaction } from "../../src/services/transactions";
 import { listCategories, type Category } from "../../src/services/categories";
 import {
-	classifyTransactionText,
+	classifyTransactionTextBatch,
 	CLASSIFIER_HIGH_CONFIDENCE_THRESHOLD,
 } from "../../src/services/transaction-classifier";
 import { listWallets, type Wallet } from "../../src/services/wallets";
@@ -126,9 +126,7 @@ export default function CaptureScreen() {
 			]);
 			const activeWallets = walletData.filter((wallet) => wallet.is_active !== false);
 			setWallets(activeWallets);
-			setCategoryOptions(
-				categories.filter((category) => category.type !== "income"),
-			);
+			setCategoryOptions(categories);
 			setWalletId((current) =>
 				current && activeWallets.some((wallet) => wallet.id === current)
 					? current
@@ -172,10 +170,11 @@ export default function CaptureScreen() {
 				categoryOptions.length > 0
 					? categoryOptions
 					: await listCategories().catch(() => [] as Category[]);
-			const quickDraft = classifyTransactionText(
+			const quickDrafts = classifyTransactionTextBatch(
 				value,
 				categoriesForClassification,
 			);
+			const quickDraft = quickDrafts[0] ?? null;
 
 			if (!quickDraft) {
 				setError(tx.amountRequired);
@@ -183,24 +182,30 @@ export default function CaptureScreen() {
 				return;
 			}
 
-			const createdTransaction = await createTransaction(
-				{
-					wallet_id: walletId,
-					transaction_type: quickDraft.transactionType,
-					amount: quickDraft.amount,
-					category: quickDraft.categoryName,
-					description: quickDraft.note,
-					date: quickDraft.date,
-					note: quickDraft.note,
-					merchant: quickDraft.merchant,
-					input_type: "text",
-					status: "done",
-					raw_input: value,
-					review_required: quickDraft.confidence < CLASSIFIER_HIGH_CONFIDENCE_THRESHOLD,
-					confidence: quickDraft.confidence,
-				},
-				activeContext,
+			const createdTransactions = await Promise.all(
+				quickDrafts.map((draft) =>
+					createTransaction(
+						{
+							wallet_id: walletId,
+							transaction_type: draft.transactionType,
+							amount: draft.amount,
+							category: draft.categoryName,
+							description: draft.note,
+							date: draft.date,
+							note: draft.note,
+							merchant: draft.merchant,
+							input_type: "text",
+							status: "done",
+							raw_input: value,
+							review_required:
+								draft.confidence < CLASSIFIER_HIGH_CONFIDENCE_THRESHOLD,
+							confidence: draft.confidence,
+						},
+						activeContext,
+					),
+				),
 			);
+			const createdTransaction = createdTransactions[0];
 
 			setOptimisticTransaction({
 				id: createdTransaction.id,
@@ -220,7 +225,11 @@ export default function CaptureScreen() {
 				tanggal: quickDraft.date,
 			});
 			setTransactionId(createdTransaction.id);
-			setQueuedMessage(tx.queued);
+			setQueuedMessage(
+				quickDrafts.length > 1
+					? `${quickDrafts.length} transaksi langsung disimpan dari satu catatan.`
+					: tx.queued,
+			);
 			setTextInput("");
 			setSubmitting(false);
 		} catch (e) {
