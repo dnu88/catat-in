@@ -22,8 +22,8 @@ import {
 	type KaswiseIconName,
 } from "../../src/components/icons/kaswise-icons";
 import { createEnvelopeAllocation } from "../../src/services/budget-envelopes";
+import { createTransaction } from "../../src/services/transactions";
 import { listWallets, type Wallet } from "../../src/services/wallets";
-import { buildFinanceInsertAudit } from "../../src/services/finance-context-query";
 import { useFinanceContext } from "../../src/state/finance-context";
 
 const modes = [
@@ -261,36 +261,27 @@ export default function CaptureScreen() {
 				return;
 			}
 
-			const insertPayload = {
-				...buildFinanceInsertAudit(activeContext, user.id),
-				...(walletId ? { wallet_id: walletId } : {}),
-				input_type: "text",
-				status: "done",
-				raw_input: value,
-				review_required: quickDraft.confidence < 0.85,
-				confidence: quickDraft.confidence,
-				type: quickDraft.transactionType,
-				nominal: quickDraft.amount,
-				kategori: quickDraft.category,
-				tanggal: quickDraft.date,
-				catatan: quickDraft.note,
-				merchant: quickDraft.merchant,
-			};
-
-			const { data, error: insertError } = await supabase
-				.from("transactions")
-				.insert(insertPayload)
-				.select("id")
-				.single();
-
-			if (insertError || !data?.id) {
-				setError("Gagal menyimpan transaksi. Coba lagi.");
-				setSubmitting(false);
-				return;
-			}
+			const createdTransaction = await createTransaction(
+				{
+					wallet_id: walletId,
+					transaction_type: quickDraft.transactionType,
+					amount: quickDraft.amount,
+					category: quickDraft.category,
+					description: quickDraft.note,
+					date: quickDraft.date,
+					note: quickDraft.note,
+					merchant: quickDraft.merchant,
+					input_type: "text",
+					status: "done",
+					raw_input: value,
+					review_required: quickDraft.confidence < 0.85,
+					confidence: quickDraft.confidence,
+				},
+				activeContext,
+			);
 
 			setOptimisticTransaction({
-				id: data.id,
+				id: createdTransaction.id,
 				status: "done",
 				confidence: quickDraft.confidence,
 				transaction_type: quickDraft.transactionType,
@@ -305,7 +296,7 @@ export default function CaptureScreen() {
 				date: quickDraft.date,
 				tanggal: quickDraft.date,
 			});
-			setTransactionId(data.id);
+			setTransactionId(createdTransaction.id);
 			setQueuedMessage(tx.queued);
 			setTextInput("");
 			setSubmitting(false);

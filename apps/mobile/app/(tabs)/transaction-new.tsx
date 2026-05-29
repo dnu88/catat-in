@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
 	ActivityIndicator,
-	Alert,
 	Pressable,
 	ScrollView,
 	StyleSheet,
@@ -241,16 +240,12 @@ export default function TransactionNewScreen() {
 		try {
 			if (isEditMode) {
 				await updateTransaction(transactionId, payload, activeContext);
-				Alert.alert("Berhasil", "Transaksi diperbarui.", [
-					{ text: "OK", onPress: () => router.replace("/(tabs)/transactions") },
-				]);
+				router.replace("/(tabs)/transactions");
 				return;
 			}
 
 			await createTransaction(payload, activeContext);
-			Alert.alert("Berhasil", "Transaksi tersimpan.", [
-				{ text: "OK", onPress: () => router.replace("/(tabs)/transactions") },
-			]);
+			router.replace("/(tabs)/transactions");
 		} catch (e) {
 			const message =
 				e instanceof Error

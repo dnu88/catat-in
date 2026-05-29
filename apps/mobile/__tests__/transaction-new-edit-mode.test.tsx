@@ -1,6 +1,4 @@
 import { act, fireEvent, render, waitFor } from "@testing-library/react-native";
-import { Alert } from "react-native";
-
 import TransactionNewScreen from "../app/(tabs)/transaction-new";
 import { I18nProvider } from "../src/i18n/i18n-context";
 import { ThemeProvider } from "../src/theme/theme-context";
@@ -99,7 +97,6 @@ describe("transaction-new edit mode", () => {
 	});
 
 	it("loads the selected transaction and saves edits", async () => {
-		const alertSpy = jest.spyOn(Alert, "alert");
 		const screen = renderScreen();
 
 		await waitFor(() =>
@@ -122,11 +119,7 @@ describe("transaction-new edit mode", () => {
 				{ type: "personal" },
 			),
 		);
-		expect(alertSpy).toHaveBeenCalledWith(
-			"Berhasil",
-			"Transaksi diperbarui.",
-			expect.any(Array),
-		);
+		expect(mockReplace).toHaveBeenCalledWith("/(tabs)/transactions");
 	});
 
 	it("creates manual transactions in the active household context", async () => {

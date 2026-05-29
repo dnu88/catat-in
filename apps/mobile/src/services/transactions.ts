@@ -34,6 +34,11 @@ export interface TransactionCreate {
 	visibility?: string | null;
 	ai_confidence?: number | null;
 	ai_extracted?: Record<string, unknown> | null;
+	input_type?: string | null;
+	status?: string | null;
+	raw_input?: string | null;
+	review_required?: boolean | null;
+	confidence?: number | null;
 }
 
 export interface Transaction {
@@ -101,6 +106,11 @@ function buildInsertPayload(tx: TransactionCreate, userId: string) {
 	if (tx.visibility != null) payload.visibility = tx.visibility;
 	if (tx.ai_confidence != null) payload.ai_confidence = tx.ai_confidence;
 	if (tx.ai_extracted != null) payload.ai_extracted = tx.ai_extracted;
+	if (tx.input_type != null) payload.input_type = tx.input_type;
+	if (tx.status != null) payload.status = tx.status;
+	if (tx.raw_input != null) payload.raw_input = tx.raw_input;
+	if (tx.review_required != null) payload.review_required = tx.review_required;
+	if (tx.confidence != null) payload.confidence = tx.confidence;
 
 	return payload;
 }
@@ -127,6 +137,12 @@ function buildUpdatePayload(updates: Partial<TransactionCreate>) {
 		payload.ai_confidence = updates.ai_confidence ?? null;
 	if ("ai_extracted" in updates)
 		payload.ai_extracted = updates.ai_extracted ?? null;
+	if ("input_type" in updates) payload.input_type = updates.input_type ?? null;
+	if ("status" in updates) payload.status = updates.status ?? null;
+	if ("raw_input" in updates) payload.raw_input = updates.raw_input ?? null;
+	if ("review_required" in updates)
+		payload.review_required = updates.review_required ?? null;
+	if ("confidence" in updates) payload.confidence = updates.confidence ?? null;
 
 	return payload;
 }
@@ -157,6 +173,16 @@ async function syncBudgetAllocationSafely(
 	} catch {
 		// Budget allocation must never block the transaction write.
 	}
+}
+
+function queueBudgetAllocationSync(
+	transaction: Transaction,
+	userId: string,
+	context: FinanceContext,
+) {
+	setTimeout(() => {
+		void syncBudgetAllocationSafely(transaction, userId, context);
+	}, 0);
 }
 
 async function deleteBudgetAllocationSafely(transactionId: string) {
@@ -198,7 +224,7 @@ export async function createTransaction(
 	if (error) throw error;
 
 	const created = normalizeTransaction(data);
-	await syncBudgetAllocationSafely(created, userId, context);
+	queueBudgetAllocationSync(created, userId, context);
 	return created;
 }
 
@@ -258,7 +284,7 @@ export async function updateTransaction(
 	if (error) throw error;
 
 	const updated = normalizeTransaction(data);
-	await syncBudgetAllocationSafely(updated, userId, context);
+	queueBudgetAllocationSync(updated, userId, context);
 	return updated;
 }
 

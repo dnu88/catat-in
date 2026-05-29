@@ -29,6 +29,7 @@ import {
 	buildEnvelopeProgress,
 	createBudgetEnvelope,
 	deleteBudgetEnvelope,
+	updateBudgetEnvelope,
 	getEnvelopeStatus,
 	listBudgetEnvelopes,
 	listEnvelopeAllocations,
@@ -54,7 +55,9 @@ type EnvelopeRowProps = {
 	overLabel: string;
 	remainingLabel: string;
 	deleteLabel: string;
+	editLabel: string;
 	onDelete: (envelope: BudgetEnvelope) => void;
+	onEdit: (envelope: BudgetEnvelope) => void;
 };
 
 const iconOptions: {
@@ -84,6 +87,13 @@ function formatRupiah(value: number) {
 	return `Rp ${Math.abs(value).toLocaleString("id-ID", { maximumFractionDigits: 0 })}`;
 }
 
+function formatLocalDate(date: Date) {
+	const year = date.getFullYear();
+	const month = String(date.getMonth() + 1).padStart(2, "0");
+	const day = String(date.getDate()).padStart(2, "0");
+	return `${year}-${month}-${day}`;
+}
+
 function EnvelopeRow({
 	item,
 	theme,
@@ -92,7 +102,9 @@ function EnvelopeRow({
 	overLabel,
 	remainingLabel,
 	deleteLabel,
+	editLabel,
 	onDelete,
+	onEdit,
 }: EnvelopeRowProps) {
 	const { envelope, progress } = item;
 	const toneColor = progress.is_over_budget
@@ -163,14 +175,24 @@ function EnvelopeRow({
 						? `${overLabel} ${formatRupiah(progress.over_budget_amount)}`
 						: `${remainingLabel} ${formatRupiah(Math.max(progress.remaining_amount, 0))}`}
 				</Text>
-				<Pressable
-					accessibilityRole="button"
-					accessibilityLabel={`${deleteLabel} ${envelope.name}`}
-					style={styles.deleteButton}
-					onPress={() => onDelete(envelope)}
-				>
-					<Text style={styles.deleteButtonText}>{deleteLabel}</Text>
-				</Pressable>
+				<View style={styles.budgetActionRow}>
+					<Pressable
+						accessibilityRole="button"
+						accessibilityLabel={`${editLabel} ${envelope.name}`}
+						style={styles.editButton}
+						onPress={() => onEdit(envelope)}
+					>
+						<Text style={styles.editButtonText}>{editLabel}</Text>
+					</Pressable>
+					<Pressable
+						accessibilityRole="button"
+						accessibilityLabel={`${deleteLabel} ${envelope.name}`}
+						style={styles.deleteButton}
+						onPress={() => onDelete(envelope)}
+					>
+						<Text style={styles.deleteButtonText}>{deleteLabel}</Text>
+					</Pressable>
+				</View>
 			</View>
 		</View>
 	);
@@ -190,6 +212,7 @@ export default function BudgetsScreen() {
 						subtitle: "Manage personal budget wallets under report categories.",
 						add: "+ New",
 						createTitle: "Create budget wallet",
+						editTitle: "Edit budget wallet",
 						nameLabel: "Wallet name",
 						namePlaceholder: "Wallet name",
 						limitLabel: "Limit",
@@ -212,6 +235,9 @@ export default function BudgetsScreen() {
 						contextPersonal: "Personal",
 						saving: "Saving...",
 						save: "Save budget wallet",
+						update: "Update budget wallet",
+						edit: "Edit",
+						dateDropdownLabel: "Choose date",
 						delete: "Delete",
 						deleteConfirmTitle: "Delete budget wallet?",
 						deleteConfirmMessage: (name: string) =>
@@ -244,6 +270,7 @@ export default function BudgetsScreen() {
 							"Kelola dompet budget personal di bawah kategori laporan.",
 						add: "+ Baru",
 						createTitle: "Buat dompet budget",
+						editTitle: "Edit dompet budget",
 						nameLabel: "Nama dompet",
 						namePlaceholder: "Nama dompet",
 						limitLabel: "Limit",
@@ -266,6 +293,9 @@ export default function BudgetsScreen() {
 						contextPersonal: "Pribadi",
 						saving: "Menyimpan...",
 						save: "Simpan dompet",
+						update: "Perbarui dompet",
+						edit: "Edit",
+						dateDropdownLabel: "Pilih tanggal",
 						delete: "Hapus",
 						deleteConfirmTitle: "Hapus dompet budget?",
 						deleteConfirmMessage: (name: string) =>
@@ -313,6 +343,9 @@ export default function BudgetsScreen() {
 	const [color, setColor] = useState("");
 	const [showIconOptions, setShowIconOptions] = useState(false);
 	const [showColorOptions, setShowColorOptions] = useState(false);
+	const [showStartDateOptions, setShowStartDateOptions] = useState(false);
+	const [showEndDateOptions, setShowEndDateOptions] = useState(false);
+	const [editingEnvelope, setEditingEnvelope] = useState<BudgetEnvelope | null>(null);
 	const [notes, setNotes] = useState("");
 	const [saving, setSaving] = useState(false);
 	const [loading, setLoading] = useState(true);
@@ -328,21 +361,75 @@ export default function BudgetsScreen() {
 		const start = new Date(now.getFullYear(), now.getMonth(), 1);
 		const end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
 		return {
-			start: start.toISOString().slice(0, 10),
-			end: end.toISOString().slice(0, 10),
+			start: formatLocalDate(start),
+			end: formatLocalDate(end),
 		};
 	};
 
-	const openCreateForm = () => {
-		setShowCreateForm((value) => {
-			const next = !value;
-			if (next && (!startDate || !endDate)) {
-				const range = getDefaultDateRange();
-				setStartDate(range.start);
-				setEndDate(range.end);
-			}
-			return next;
+	const monthDateOptions = useMemo(() => {
+		const formatter = new Intl.DateTimeFormat(isEn ? "en-US" : "id-ID", {
+			month: "long",
+			year: "numeric",
 		});
+		const now = new Date();
+		return Array.from({ length: 18 }, (_, index) => {
+			const date = new Date(now.getFullYear(), now.getMonth() + index, 1);
+			const end = new Date(date.getFullYear(), date.getMonth() + 1, 0);
+			return {
+				label: formatter.format(date),
+				start: formatLocalDate(date),
+				end: formatLocalDate(end),
+			};
+		});
+	}, [isEn]);
+
+	const resetEnvelopeForm = () => {
+		setShowCreateForm(false);
+		setEditingEnvelope(null);
+		setName("");
+		setLimitAmount("");
+		setStartDate("");
+		setEndDate("");
+		setIcon("food");
+		setColor("");
+		setNotes("");
+		setShowIconOptions(false);
+		setShowColorOptions(false);
+		setShowStartDateOptions(false);
+		setShowEndDateOptions(false);
+	};
+
+	const openCreateForm = () => {
+		if (showCreateForm && !editingEnvelope) {
+			resetEnvelopeForm();
+			return;
+		}
+		const range = getDefaultDateRange();
+		setEditingEnvelope(null);
+		setName("");
+		setLimitAmount("");
+		setStartDate(range.start);
+		setEndDate(range.end);
+		setIcon("food");
+		setColor("");
+		setNotes("");
+		setShowCreateForm(true);
+	};
+
+	const openEditForm = (envelope: BudgetEnvelope) => {
+		setEditingEnvelope(envelope);
+		setName(envelope.name);
+		setLimitAmount(String(Number(envelope.limit_amount ?? 0)));
+		setStartDate(envelope.start_date);
+		setEndDate(envelope.end_date);
+		setIcon((envelope.icon as KaswiseIconName | null) ?? "food");
+		setColor(envelope.color ?? "");
+		setNotes(envelope.notes ?? "");
+		setShowIconOptions(false);
+		setShowColorOptions(false);
+		setShowStartDateOptions(false);
+		setShowEndDateOptions(false);
+		setShowCreateForm(true);
 	};
 
 	const loadEnvelopes = async () => {
@@ -410,29 +497,36 @@ export default function BudgetsScreen() {
 		try {
 			setSaving(true);
 			setLoadError(null);
-			await createBudgetEnvelope(
-				supabase,
-				{
-					user_id: userId,
-					name: trimmedName,
-					parent_category_id: null,
-					limit_amount: amount,
-					start_date: startDate.trim(),
-					end_date: endDate.trim(),
-					icon,
-					color: selectedColor,
-					notes: notes.trim() || null,
-				},
-				activeContext,
-			);
-			setShowCreateForm(false);
-			setName("");
-			setLimitAmount("");
-			setStartDate("");
-			setEndDate("");
-			setIcon("food");
-			setColor("");
-			setNotes("");
+			const payload = {
+				name: trimmedName,
+				parent_category_id: null,
+				limit_amount: amount,
+				start_date: startDate.trim(),
+				end_date: endDate.trim(),
+				icon,
+				color: selectedColor,
+				notes: notes.trim() || null,
+			};
+
+			if (editingEnvelope) {
+				await updateBudgetEnvelope(
+					supabase,
+					editingEnvelope.id,
+					payload,
+					userId,
+					activeContext,
+				);
+			} else {
+				await createBudgetEnvelope(
+					supabase,
+					{
+						user_id: userId,
+						...payload,
+					},
+					activeContext,
+				);
+			}
+			resetEnvelopeForm();
 			await loadEnvelopes();
 		} catch (error) {
 			console.error("Error creating budget envelope:", error);
@@ -513,8 +607,10 @@ export default function BudgetsScreen() {
 			noCategoryLabel={tx.noCategory}
 			overLabel={tx.over}
 			remainingLabel={tx.remaining}
-		deleteLabel={tx.delete}
-		onDelete={confirmDeleteEnvelope}
+			deleteLabel={tx.delete}
+			editLabel={tx.edit}
+			onDelete={confirmDeleteEnvelope}
+			onEdit={openEditForm}
 		/>
 	);
 
@@ -550,7 +646,7 @@ export default function BudgetsScreen() {
 
 			{showCreateForm ? (
 				<View key="budgets-create-form" testID="envelope-create-form" style={styles.createCard}>
-					<Text style={styles.createTitle}>{tx.createTitle}</Text>
+					<Text style={styles.createTitle}>{editingEnvelope ? tx.editTitle : tx.createTitle}</Text>
 					<InputField
 						label={tx.nameLabel}
 						placeholder={tx.namePlaceholder}
@@ -567,25 +663,69 @@ export default function BudgetsScreen() {
 					<View style={styles.inputRow}>
 						<View style={styles.inputHalf}>
 							<Text style={styles.fieldLabel}>{tx.startLabel}</Text>
-							<TextInput
-								style={styles.input}
-								placeholder={tx.startPlaceholder}
-								placeholderTextColor={theme.colors.textMuted}
-								accessibilityLabel={tx.startLabel}
-								value={startDate}
-								onChangeText={setStartDate}
-							/>
+							<Pressable
+								testID="budget-start-date-dropdown"
+								accessibilityRole="button"
+								accessibilityLabel={`${tx.dateDropdownLabel}: ${tx.startLabel}`}
+								accessibilityState={{ expanded: showStartDateOptions }}
+								style={styles.selectButton}
+								onPress={() => setShowStartDateOptions((value) => !value)}
+							>
+								<Text style={styles.selectText}>{startDate || tx.startPlaceholder}</Text>
+								<Text style={styles.selectChevron}>⌄</Text>
+							</Pressable>
+							{showStartDateOptions ? (
+								<View testID="budget-start-date-options" style={styles.optionList}>
+									{monthDateOptions.map((option) => (
+										<Pressable
+											key={option.start}
+											testID={`budget-start-date-option-${option.start}`}
+											accessibilityRole="button"
+											accessibilityLabel={`${tx.startLabel}: ${option.label}`}
+											style={styles.optionRow}
+											onPress={() => {
+												setStartDate(option.start);
+												setShowStartDateOptions(false);
+											}}
+										>
+											<Text style={styles.optionText}>{option.label} · {option.start}</Text>
+										</Pressable>
+									))}
+								</View>
+							) : null}
 						</View>
 						<View style={styles.inputHalf}>
 							<Text style={styles.fieldLabel}>{tx.endLabel}</Text>
-							<TextInput
-								style={styles.input}
-								placeholder={tx.endPlaceholder}
-								placeholderTextColor={theme.colors.textMuted}
-								accessibilityLabel={tx.endLabel}
-								value={endDate}
-								onChangeText={setEndDate}
-							/>
+							<Pressable
+								testID="budget-end-date-dropdown"
+								accessibilityRole="button"
+								accessibilityLabel={`${tx.dateDropdownLabel}: ${tx.endLabel}`}
+								accessibilityState={{ expanded: showEndDateOptions }}
+								style={styles.selectButton}
+								onPress={() => setShowEndDateOptions((value) => !value)}
+							>
+								<Text style={styles.selectText}>{endDate || tx.endPlaceholder}</Text>
+								<Text style={styles.selectChevron}>⌄</Text>
+							</Pressable>
+							{showEndDateOptions ? (
+								<View testID="budget-end-date-options" style={styles.optionList}>
+									{monthDateOptions.map((option) => (
+										<Pressable
+											key={option.end}
+											testID={`budget-end-date-option-${option.end}`}
+											accessibilityRole="button"
+											accessibilityLabel={`${tx.endLabel}: ${option.label}`}
+											style={styles.optionRow}
+											onPress={() => {
+												setEndDate(option.end);
+												setShowEndDateOptions(false);
+											}}
+										>
+											<Text style={styles.optionText}>{option.label} · {option.end}</Text>
+										</Pressable>
+									))}
+								</View>
+							) : null}
 						</View>
 					</View>
 					<View style={styles.dropdownRow}>
@@ -711,18 +851,29 @@ export default function BudgetsScreen() {
 							multiline
 						/>
 					</View>
-					<Pressable
-						accessibilityRole="button"
-						accessibilityLabel={tx.save}
-						accessibilityState={{ disabled: saving, busy: saving }}
-						style={[styles.saveButton, saving && { opacity: 0.7 }]}
-						onPress={saveEnvelope}
-						disabled={saving}
-					>
-						<Text style={styles.saveButtonText}>
-							{saving ? tx.saving : tx.save}
-						</Text>
-					</Pressable>
+					<View style={styles.formActionRow}>
+						<Pressable
+							accessibilityRole="button"
+							accessibilityLabel={tx.cancel}
+							style={styles.cancelButton}
+							onPress={resetEnvelopeForm}
+							disabled={saving}
+						>
+							<Text style={styles.cancelButtonText}>{tx.cancel}</Text>
+						</Pressable>
+						<Pressable
+							accessibilityRole="button"
+							accessibilityLabel={editingEnvelope ? tx.update : tx.save}
+							accessibilityState={{ disabled: saving, busy: saving }}
+							style={[styles.saveButton, saving && { opacity: 0.7 }]}
+							onPress={saveEnvelope}
+							disabled={saving}
+						>
+							<Text style={styles.saveButtonText}>
+								{saving ? tx.saving : editingEnvelope ? tx.update : tx.save}
+							</Text>
+						</Pressable>
+					</View>
 				</View>
 			) : null}
 
@@ -952,11 +1103,30 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 		},
 		colorOptionSwatch: { width: 24, height: 24, borderRadius: 12 },
 		notesInput: { minHeight: 64, textAlignVertical: "top" },
+		formActionRow: { flexDirection: "row", gap: 10 },
+		cancelButton: {
+			flex: 1,
+			minHeight: 44,
+			borderRadius: 14,
+			borderWidth: 1,
+			borderColor: theme.colors.borderSoft,
+			backgroundColor: theme.colors.mutedSurface,
+			alignItems: "center",
+			justifyContent: "center",
+			paddingVertical: 12,
+		},
+		cancelButtonText: {
+			color: theme.colors.textSecondary,
+			fontSize: 13,
+			fontWeight: "800",
+		},
 		saveButton: {
+			flex: 1,
 			minHeight: 44,
 			backgroundColor: theme.colors.brandPrimary,
 			borderRadius: 14,
 			alignItems: "center",
+			justifyContent: "center",
 			paddingVertical: 12,
 		},
 		saveButtonText: {
@@ -1064,6 +1234,22 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			fontSize: 11,
 			fontWeight: "600",
 			flexShrink: 1,
+		},
+		budgetActionRow: { flexDirection: "row", gap: 8 },
+		editButton: {
+			minHeight: 36,
+			justifyContent: "center",
+			borderRadius: 999,
+			borderWidth: 1,
+			borderColor: `${theme.colors.brandPrimary}40`,
+			backgroundColor: `${theme.colors.brandPrimary}12`,
+			paddingHorizontal: 12,
+			paddingVertical: 6,
+		},
+		editButtonText: {
+			color: theme.colors.brandPrimary,
+			fontSize: 12,
+			fontWeight: "800",
 		},
 		deleteButton: {
 			minHeight: 36,

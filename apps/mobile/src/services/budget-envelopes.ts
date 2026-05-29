@@ -76,6 +76,10 @@ export type EnvelopeMatch = {
 	needs_review: boolean;
 };
 
+export type BudgetEnvelopeUpdateInput = Partial<
+	Omit<BudgetEnvelopeInput, "user_id">
+>;
+
 const NEAR_LIMIT_THRESHOLD = 80;
 const HIGH_CONFIDENCE_THRESHOLD = 0.85;
 
@@ -148,48 +152,70 @@ export function getHomeEnvelopeAlerts(items: EnvelopeSummary[], maxItems = 3) {
 		.slice(0, maxItems);
 }
 
+function scoreEnvelopeForTransaction(
+	candidate: EnvelopeTransactionCandidate,
+	envelope: BudgetEnvelope,
+) {
+	const sourceText = `${candidate.description ?? ""} ${candidate.merchant ?? ""}`;
+	const sourceTokens = new Set(tokenize(sourceText));
+	const sourceNormalized = normalize(sourceText);
+	let score = 0;
+	const envelopeName = normalize(envelope.name);
+	const noteTokens = tokenize(envelope.notes);
+
+	if (envelopeName && sourceTokens.has(envelopeName)) score += 4;
+	if (envelopeName && sourceNormalized.includes(envelopeName)) score += 2;
+
+	for (const token of noteTokens) {
+		if (sourceTokens.has(token)) score += 2;
+	}
+
+	if (
+		candidate.categoryName &&
+		envelope.parent_category_name &&
+		normalize(candidate.categoryName) === normalize(envelope.parent_category_name)
+	) {
+		score += 2;
+	}
+
+	// Users often name budget wallets after the same category they pick in transactions.
+	if (
+		candidate.categoryName &&
+		envelopeName &&
+		normalize(candidate.categoryName) === envelopeName
+	) {
+		score += 3;
+	}
+
+	return score;
+}
+
+export function matchEnvelopesForTransaction(
+	candidate: EnvelopeTransactionCandidate,
+	envelopes: BudgetEnvelope[],
+): EnvelopeMatch[] {
+	return envelopes
+		.map((envelope) => ({
+			envelope,
+			score: scoreEnvelopeForTransaction(candidate, envelope),
+		}))
+		.filter((item) => item.score > 0)
+		.sort((a, b) => b.score - a.score)
+		.map(({ envelope, score }) => {
+			const confidence = Math.min(0.98, 0.45 + score * 0.08);
+			return {
+				envelope,
+				confidence,
+				needs_review: confidence < HIGH_CONFIDENCE_THRESHOLD,
+			};
+		});
+}
+
 export function matchEnvelopeForTransaction(
 	candidate: EnvelopeTransactionCandidate,
 	envelopes: BudgetEnvelope[],
 ): EnvelopeMatch | null {
-	const sourceText = `${candidate.description ?? ""} ${candidate.merchant ?? ""}`;
-	const sourceTokens = new Set(tokenize(sourceText));
-	const sourceNormalized = normalize(sourceText);
-	let best: { envelope: BudgetEnvelope; score: number } | null = null;
-
-	for (const envelope of envelopes) {
-		let score = 0;
-		const envelopeName = normalize(envelope.name);
-		const noteTokens = tokenize(envelope.notes);
-
-		if (envelopeName && sourceTokens.has(envelopeName)) score += 4;
-		if (envelopeName && sourceNormalized.includes(envelopeName)) score += 2;
-
-		for (const token of noteTokens) {
-			if (sourceTokens.has(token)) score += 2;
-		}
-
-		if (
-			candidate.categoryName &&
-			envelope.parent_category_name &&
-			normalize(candidate.categoryName) ===
-				normalize(envelope.parent_category_name)
-		) {
-			score += 2;
-		}
-
-		if (!best || score > best.score) best = { envelope, score };
-	}
-
-	if (!best || best.score <= 0) return null;
-
-	const confidence = Math.min(0.98, 0.45 + best.score * 0.08);
-
-	return {
-		envelope: best.envelope,
-		confidence,
-		needs_review: confidence < HIGH_CONFIDENCE_THRESHOLD,
-	};
+	return matchEnvelopesForTransaction(candidate, envelopes)[0] ?? null;
 }
 
 type SupabaseLike = {
@@ -306,6 +332,28 @@ export async function createBudgetEnvelope(
 	return mapBudgetEnvelope(data);
 }
 
+export async function updateBudgetEnvelope(
+	supabase: SupabaseLike,
+	id: string,
+	updates: BudgetEnvelopeUpdateInput,
+	userId: string,
+	context: FinanceContext = defaultContext,
+): Promise<BudgetEnvelope> {
+	if (!canCreateInContext(context)) throw new Error("Akses lihat saja");
+	const { data, error } = await supabase
+		.from("budget_envelopes")
+		.update({
+			...updates,
+			updated_by: userId,
+		})
+		.eq("id", id)
+		.select("*, category:categories(id,name)")
+		.single();
+
+	if (error) throw error;
+	return mapBudgetEnvelope(data);
+}
+
 export async function deleteBudgetEnvelope(
 	supabase: SupabaseLike,
 	id: string,
@@ -401,7 +449,7 @@ export async function syncEnvelopeAllocationForTransaction(
 			toDateKey(envelope.end_date) >= transactionDate,
 	);
 
-	const match = matchEnvelopeForTransaction(
+	const matches = matchEnvelopesForTransaction(
 		{
 			description: transaction.description,
 			merchant: transaction.merchant,
@@ -410,20 +458,42 @@ export async function syncEnvelopeAllocationForTransaction(
 		},
 		envelopes,
 	);
+	const allocations =
+		matches.length > 0
+			? matches
+			: envelopes.length === 1
+				? [
+					{
+						envelope: envelopes[0],
+						confidence: 0.55,
+						needs_review: true,
+					},
+				]
+				: [];
 
 	await deleteEnvelopeAllocationsForTransaction(supabase, transaction.id);
 
-	if (!match) return;
+	if (allocations.length === 0) return;
+
+	const rows = allocations.map((match) => ({
+		transaction_id: transaction.id,
+		envelope_id: match.envelope.id,
+		amount,
+		confidence: match.confidence,
+		needs_review: match.needs_review,
+	}));
 
 	const { error } = await supabase
 		.from("transaction_envelope_allocations")
-		.insert({
-			transaction_id: transaction.id,
-			envelope_id: match.envelope.id,
-			amount,
-			confidence: match.confidence,
-			needs_review: match.needs_review,
-		});
+		.upsert(rows, { onConflict: "transaction_id,envelope_id" });
 
-	if (error) throw error;
+	if (!error) return;
+
+	// Some live databases may receive the app before the unique-index migration.
+	// Delete-first + insert keeps budget deduction working while the migration catches up.
+	const { error: insertError } = await supabase
+		.from("transaction_envelope_allocations")
+		.insert(rows);
+
+	if (insertError) throw insertError;
 }

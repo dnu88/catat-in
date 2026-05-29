@@ -13,9 +13,23 @@ import { ThemeProvider } from "../src/theme/theme-context";
 const mockCreateEnvelopeAllocation = jest.fn(async (..._args: unknown[]) => ({
 	id: "alloc-1",
 }));
+const mockCreateTransaction = jest.fn(async (...args: unknown[]) => {
+	const [input] = args as [Record<string, unknown>];
+	return {
+		id: "tx-created",
+		...input,
+	};
+});
 const mockInsert = jest.fn();
 const mockInvoke = jest.fn();
 const mockGetUser = jest.fn(async () => ({ data: { user: { id: "user-1" } } }));
+const mockSupabaseClient = {
+	auth: { getUser: mockGetUser },
+	from: jest.fn(() => ({
+		insert: mockInsert,
+	})),
+	functions: { invoke: mockInvoke },
+};
 let mockActiveContext:
 	| { type: "personal" }
 	| {
@@ -57,8 +71,13 @@ jest.mock("../src/hooks/useTransactionRealtime", () => ({
 jest.mock("../src/services/budget-envelopes", () => ({
 	createEnvelopeAllocation: (...args: unknown[]) =>
 		mockCreateEnvelopeAllocation.apply(null, args),
+	syncEnvelopeAllocationForTransaction: jest.fn(async () => undefined),
+	deleteEnvelopeAllocationsForTransaction: jest.fn(async () => undefined),
 }));
 
+jest.mock("../src/services/transactions", () => ({
+	createTransaction: (...args: unknown[]) => mockCreateTransaction(...args),
+}));
 
 jest.mock("../src/services/wallets", () => ({
 	listWallets: jest.fn(async () => []),
@@ -72,14 +91,9 @@ jest.mock("../src/state/finance-context", () => ({
 }));
 
 jest.mock("../src/lib/supabase", () => ({
+	supabase: mockSupabaseClient,
 	useSupabase: () => ({
-		supabase: {
-			auth: { getUser: mockGetUser },
-			from: jest.fn(() => ({
-				insert: mockInsert,
-			})),
-			functions: { invoke: mockInvoke },
-		},
+		supabase: mockSupabaseClient,
 	}),
 }));
 
@@ -100,14 +114,15 @@ function renderCapture() {
 describe("Capture envelope suggestion", () => {
 	beforeEach(() => {
 		mockCreateEnvelopeAllocation.mockClear();
+		mockCreateTransaction.mockClear();
 		mockInsert.mockReset();
 		mockInvoke.mockReset();
 		mockGetUser.mockClear();
-		mockInsert.mockReturnValue({
+		mockInsert.mockImplementation((payload) => ({
 			select: () => ({
-				single: async () => ({ data: { id: "tx-created" }, error: null }),
+				single: async () => ({ data: { id: "tx-created", ...payload }, error: null }),
 			}),
-		});
+		}));
 		mockInvoke.mockResolvedValue({ data: null, error: null });
 		mockActiveContext = { type: "personal" };
 		mockEnvelopeSuggestion = {
@@ -187,21 +202,20 @@ describe("Capture envelope suggestion", () => {
 		);
 		fireEvent.press(screen.getByText("Proses dengan AI"));
 
-		await waitFor(() => expect(mockInsert).toHaveBeenCalledTimes(1));
-		expect(mockInsert).toHaveBeenCalledWith(
+		await waitFor(() => expect(mockCreateTransaction).toHaveBeenCalledTimes(1));
+		expect(mockCreateTransaction).toHaveBeenCalledWith(
 			expect.objectContaining({
-				user_id: "user-1",
-				household_id: "hh-1",
-				created_by: "user-1",
-				updated_by: "user-1",
+				wallet_id: null,
+				transaction_type: "expense",
+				amount: 35000,
+				category: "Makanan & Minuman",
+				description: "Beli kopi 35rb",
+				note: "Beli kopi 35rb",
 				input_type: "text",
 				status: "done",
 				raw_input: "Beli kopi 35rb",
-				type: "expense",
-				nominal: 35000,
-				kategori: "Makanan & Minuman",
-				catatan: "Beli kopi 35rb",
 			}),
+			mockActiveContext,
 		);
 		expect(mockInvoke).not.toHaveBeenCalled();
 	});

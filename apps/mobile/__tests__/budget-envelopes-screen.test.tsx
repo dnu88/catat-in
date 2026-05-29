@@ -30,6 +30,17 @@ const mockCreateBudgetEnvelope = jest.fn(
 		...input,
 	}),
 );
+const mockUpdateBudgetEnvelope = jest.fn(
+	async (_supabase: unknown, id: string, input: any) => ({
+		id,
+		user_id: "user-1",
+		parent_category_name: null,
+		status: "active",
+		created_at: "",
+		updated_at: "",
+		...input,
+	}),
+);
 
 jest.mock("../src/services/budget-envelopes", () => ({
 	listBudgetEnvelopes: jest.fn(async () => [
@@ -41,7 +52,7 @@ jest.mock("../src/services/budget-envelopes", () => ({
 			parent_category_name: "Makan & Minum",
 			limit_amount: 250000,
 			start_date: "2026-05-10",
-			end_date: "2026-05-25",
+			end_date: "2026-05-31",
 			icon: "coffee",
 			color: "#4A80F0",
 			notes: "Kopi Kenangan, Fore",
@@ -68,6 +79,9 @@ jest.mock("../src/services/budget-envelopes", () => ({
 	]),
 	createBudgetEnvelope: (...args: any[]) =>
 		mockCreateBudgetEnvelope.apply(null, args),
+	updateBudgetEnvelope: (...args: any[]) =>
+		mockUpdateBudgetEnvelope.apply(null, args),
+	deleteBudgetEnvelope: jest.fn(async () => undefined),
 	listEnvelopeAllocations: jest.fn(async () => [
 		{
 			id: "a1",
@@ -208,6 +222,7 @@ function renderScreen(language: Language = "id") {
 describe("Budget envelopes screen", () => {
 	beforeEach(() => {
 		mockCreateBudgetEnvelope.mockClear();
+		mockUpdateBudgetEnvelope.mockClear();
 	});
 
 	it("shows active, review, and archive envelope sections", async () => {
@@ -256,14 +271,20 @@ describe("Budget envelopes screen", () => {
 
 		fireEvent.changeText(screen.getByPlaceholderText("Nama dompet"), "Kopi");
 		fireEvent.changeText(screen.getByPlaceholderText("Limit"), "250000");
-		fireEvent.changeText(
-			screen.getByPlaceholderText("Tanggal mulai"),
-			"2026-05-10",
+		fireEvent.press(screen.getByTestId("budget-start-date-dropdown"));
+		const startOption = screen.getAllByTestId(/^budget-start-date-option-/)[0];
+		const selectedStartDate = String(startOption.props.testID).replace(
+			"budget-start-date-option-",
+			"",
 		);
-		fireEvent.changeText(
-			screen.getByPlaceholderText("Tanggal akhir"),
-			"2026-05-25",
+		fireEvent.press(startOption);
+		fireEvent.press(screen.getByTestId("budget-end-date-dropdown"));
+		const endOption = screen.getAllByTestId(/^budget-end-date-option-/)[0];
+		const selectedEndDate = String(endOption.props.testID).replace(
+			"budget-end-date-option-",
+			"",
 		);
+		fireEvent.press(endOption);
 		fireEvent.press(screen.getByTestId("budget-wallet-icon-dropdown"));
 		expect(
 			screen.getAllByText("Makanan & Minuman").length,
@@ -302,11 +323,38 @@ describe("Budget envelopes screen", () => {
 			name: "Kopi",
 			parent_category_id: null,
 			limit_amount: 250000,
-			start_date: "2026-05-10",
-			end_date: "2026-05-25",
+			start_date: selectedStartDate,
+			end_date: selectedEndDate,
 			icon: "food",
 			color: "#DB2777",
 			notes: "Kopi Kenangan, Fore",
 		});
+	});
+
+	it("can cancel create and edit an existing budget wallet", async () => {
+		renderScreen();
+
+		await waitFor(() => expect(screen.getByText("+ Baru")).toBeTruthy());
+		fireEvent.press(screen.getByText("+ Baru"));
+		fireEvent.changeText(screen.getByPlaceholderText("Nama dompet"), "Batal");
+		fireEvent.press(screen.getByText("Batal"));
+		expect(screen.queryByPlaceholderText("Nama dompet")).toBeNull();
+
+		fireEvent.press(screen.getByLabelText("Edit Kopi"));
+		expect(screen.getByText("Edit dompet budget")).toBeTruthy();
+		fireEvent.changeText(screen.getByPlaceholderText("Nama dompet"), "Kopi Bulanan");
+		fireEvent.changeText(screen.getByPlaceholderText("Limit"), "300000");
+		fireEvent.press(screen.getByText("Perbarui dompet"));
+
+		await waitFor(() => expect(mockUpdateBudgetEnvelope).toHaveBeenCalled());
+		expect(mockUpdateBudgetEnvelope.mock.calls[0][1]).toBe("env-kopi");
+		expect(mockUpdateBudgetEnvelope.mock.calls[0][2]).toEqual(
+			expect.objectContaining({
+				name: "Kopi Bulanan",
+				limit_amount: 300000,
+				start_date: "2026-05-10",
+				end_date: "2026-05-31",
+			}),
+		);
 	});
 });

@@ -339,6 +339,10 @@ describe("budget envelope service query builders", () => {
 		};
 		const allocationChain = {
 			delete: jest.fn(() => deleteChain),
+			upsert: jest.fn((value, options) => {
+				calls.push(`upsert:${JSON.stringify(value)}:${options.onConflict}`);
+				return Promise.resolve({ error: null });
+			}),
 			insert: jest.fn((value) => {
 				calls.push(`insert:${JSON.stringify(value)}`);
 				return Promise.resolve({ error: null });
@@ -367,6 +371,65 @@ describe("budget envelope service query builders", () => {
 		expect(calls).toContain("delete-eq:transaction_id:tx-1");
 		expect(calls.some((call) => call.includes('"envelope_id":"env-food"'))).toBe(true);
 		expect(calls.some((call) => call.includes('"amount":35000'))).toBe(true);
+	});
+
+	it("falls back to the only active envelope when no keyword matches", async () => {
+		const calls: string[] = [];
+		const envelopeRows = [
+			{
+				id: "env-monthly",
+				user_id: "user-1",
+				name: "Budget Mei",
+				parent_category_id: null,
+				limit_amount: 500000,
+				start_date: "2026-05-01",
+				end_date: "2026-05-31",
+				icon: null,
+				color: null,
+				notes: null,
+				status: "active",
+				created_at: "2026-05-01T00:00:00Z",
+				updated_at: "2026-05-01T00:00:00Z",
+				category: null,
+			},
+		];
+		const deleteChain = {
+			eq: jest.fn(() => Promise.resolve({ error: null })),
+		};
+		const envelopeChain = {
+			select: jest.fn(() => envelopeChain),
+			is: jest.fn(() => envelopeChain),
+			eq: jest.fn(() => envelopeChain),
+			order: jest.fn(() => Promise.resolve({ data: envelopeRows, error: null })),
+		};
+		const allocationChain = {
+			delete: jest.fn(() => deleteChain),
+			upsert: jest.fn((value) => {
+				calls.push(JSON.stringify(value));
+				return Promise.resolve({ error: null });
+			}),
+		};
+		const supabase = {
+			from: jest.fn((table: string) =>
+				table === "budget_envelopes" ? envelopeChain : allocationChain,
+			),
+		};
+
+		await syncEnvelopeAllocationForTransaction(
+			supabase as never,
+			{
+				id: "tx-any",
+				transaction_type: "expense",
+				amount: 50000,
+				categoryName: "Lainnya",
+				description: "Biaya admin",
+				date: "2026-05-12",
+			},
+			"user-1",
+		);
+
+		expect(calls[0]).toContain('"envelope_id":"env-monthly"');
+		expect(calls[0]).toContain('"needs_review":true');
 	});
 
 	it("creates an envelope allocation for a suggested envelope", async () => {
