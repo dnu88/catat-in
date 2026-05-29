@@ -34,6 +34,7 @@ import {
 	getEnvelopeStatus,
 	listBudgetEnvelopes,
 	listEnvelopeAllocations,
+	resolveMonthlyEnvelopePeriod,
 	type BudgetEnvelope,
 	type EnvelopeAllocation,
 	type EnvelopeProgress,
@@ -98,6 +99,15 @@ function formatLocalDate(date: Date) {
 
 function normalizeLabel(value: string | null | undefined) {
 	return (value ?? "").trim().toLowerCase();
+}
+
+function dayFromDate(value: string | null | undefined, fallback: number) {
+	const day = Number((value ?? "").slice(8, 10));
+	return Number.isFinite(day) && day >= 1 && day <= 31 ? day : fallback;
+}
+
+function formatDayLabel(day: number, isEn: boolean) {
+	return isEn ? `Day ${day}` : `Tanggal ${day}`;
 }
 
 function EnvelopeRow({
@@ -226,10 +236,10 @@ export default function BudgetsScreen() {
 						categoryLabel: "Expense category",
 						categoryPlaceholder: "Select category",
 						categoryDropdownLabel: "Select budget category",
-						startLabel: "Start date",
-						startPlaceholder: "Start date",
-						endLabel: "End date",
-						endPlaceholder: "End date",
+						startLabel: "Start day",
+						startPlaceholder: "Start day",
+						endLabel: "End day",
+						endPlaceholder: "End day",
 						iconLabel: "Icon",
 						colorLabel: "Color",
 						notesLabel: "Notes",
@@ -247,7 +257,7 @@ export default function BudgetsScreen() {
 						update: "Update budget wallet",
 						edit: "Edit",
 						dateDropdownLabel: "Choose date",
-						dateOptionHint: "Pick exact day and month",
+						dateOptionHint: "Pick day of month; Kaswise detects this month automatically.",
 						delete: "Delete",
 						deleteConfirmTitle: "Delete budget wallet?",
 						deleteConfirmMessage: (name: string) =>
@@ -271,7 +281,7 @@ export default function BudgetsScreen() {
 						noCategory: "No category",
 						loadLogin: "Login session not found. Please sign in again.",
 						loadError: "Failed to load budget wallets. Try again shortly.",
-						validationError: "Fill name, category, limit, start date, and end date.",
+						validationError: "Fill name, category, limit, start day, and end day.",
 						saveError: "Failed to save budget wallet. Try again shortly.",
 					}
 				: {
@@ -289,9 +299,9 @@ export default function BudgetsScreen() {
 						categoryPlaceholder: "Pilih kategori",
 						categoryDropdownLabel: "Pilih kategori budget",
 						startLabel: "Tanggal mulai",
-						startPlaceholder: "Tanggal mulai",
+						startPlaceholder: "Pilih tanggal",
 						endLabel: "Tanggal akhir",
-						endPlaceholder: "Tanggal akhir",
+						endPlaceholder: "Pilih tanggal",
 						iconLabel: "Ikon",
 						colorLabel: "Warna",
 						notesLabel: "Catatan",
@@ -309,7 +319,7 @@ export default function BudgetsScreen() {
 						update: "Perbarui dompet",
 						edit: "Edit",
 						dateDropdownLabel: "Pilih tanggal",
-						dateOptionHint: "Pilih tanggal dan bulan sesuai periode",
+						dateOptionHint: "Pilih tanggal saja; bulan dan tahun berjalan otomatis terdeteksi.",
 						delete: "Hapus",
 						deleteConfirmTitle: "Hapus dompet budget?",
 						deleteConfirmMessage: (name: string) =>
@@ -353,8 +363,8 @@ export default function BudgetsScreen() {
 	const [limitAmount, setLimitAmount] = useState("");
 	const [categoryOptions, setCategoryOptions] = useState<Category[]>([]);
 	const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
-	const [startDate, setStartDate] = useState("");
-	const [endDate, setEndDate] = useState("");
+	const [startDay, setStartDay] = useState<number | null>(null);
+	const [endDay, setEndDay] = useState<number | null>(null);
 	const [icon, setIcon] = useState<KaswiseIconName>("food");
 	const [color, setColor] = useState("");
 	const [showIconOptions, setShowIconOptions] = useState(false);
@@ -373,41 +383,25 @@ export default function BudgetsScreen() {
 		loadEnvelopes();
 	}, [activeContext]);
 
-	const getDefaultDateRange = () => {
+	const getDefaultDayRange = () => {
 		const now = new Date();
-		const start = new Date(now.getFullYear(), now.getMonth(), 1);
-		const end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
 		return {
-			start: formatLocalDate(start),
-			end: formatLocalDate(end),
+			start: 1,
+			end: new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate(),
 		};
 	};
 
-	const dateOptions = useMemo(() => {
-		const formatter = new Intl.DateTimeFormat(isEn ? "en-US" : "id-ID", {
-			day: "numeric",
-			month: "long",
-			year: "numeric",
-		});
-		const today = new Date();
-		const firstOption = new Date(
-			today.getFullYear(),
-			today.getMonth(),
-			today.getDate() - 31,
-		);
-		return Array.from({ length: 427 }, (_, index) => {
-			const date = new Date(
-				firstOption.getFullYear(),
-				firstOption.getMonth(),
-				firstOption.getDate() + index,
-			);
-			const value = formatLocalDate(date);
-			return {
-				label: formatter.format(date),
-				value,
-			};
-		});
-	}, [isEn]);
+	const dayOptions = useMemo(
+		() =>
+			Array.from({ length: 31 }, (_, index) => {
+				const value = index + 1;
+				return {
+					label: formatDayLabel(value, isEn),
+					value,
+				};
+			}),
+		[isEn],
+	);
 
 	const selectedCategory =
 		categoryOptions.find((item) => item.id === selectedCategoryId) ?? null;
@@ -418,8 +412,8 @@ export default function BudgetsScreen() {
 		setName("");
 		setLimitAmount("");
 		setSelectedCategoryId(null);
-		setStartDate("");
-		setEndDate("");
+		setStartDay(null);
+		setEndDay(null);
 		setIcon("food");
 		setColor("");
 		setNotes("");
@@ -435,13 +429,13 @@ export default function BudgetsScreen() {
 			resetEnvelopeForm();
 			return;
 		}
-		const range = getDefaultDateRange();
+		const range = getDefaultDayRange();
 		setEditingEnvelope(null);
 		setName("");
 		setLimitAmount("");
 		setSelectedCategoryId(categoryOptions[0]?.id ?? null);
-		setStartDate(range.start);
-		setEndDate(range.end);
+		setStartDay(range.start);
+		setEndDay(range.end);
 		setIcon("food");
 		setColor("");
 		setNotes("");
@@ -461,8 +455,8 @@ export default function BudgetsScreen() {
 				)?.id ??
 				null,
 		);
-		setStartDate(envelope.start_date);
-		setEndDate(envelope.end_date);
+		setStartDay(dayFromDate(envelope.start_date, 1));
+		setEndDay(dayFromDate(envelope.end_date, 31));
 		setIcon((envelope.icon as KaswiseIconName | null) ?? "food");
 		setColor(envelope.color ?? "");
 		setNotes(envelope.notes ?? "");
@@ -543,8 +537,8 @@ export default function BudgetsScreen() {
 			!trimmedName ||
 			!selectedCategoryId ||
 			!amount ||
-			!startDate.trim() ||
-			!endDate.trim()
+			!startDay ||
+			!endDay
 		) {
 			setLoadError(tx.validationError);
 			return;
@@ -553,12 +547,16 @@ export default function BudgetsScreen() {
 		try {
 			setSaving(true);
 			setLoadError(null);
+			const cycle = resolveMonthlyEnvelopePeriod(
+				formatLocalDate(new Date(2000, 0, startDay)),
+				formatLocalDate(new Date(2000, 0, endDay)),
+			);
 			const payload = {
 				name: trimmedName,
 				parent_category_id: selectedCategoryId,
 				limit_amount: amount,
-				start_date: startDate.trim(),
-				end_date: endDate.trim(),
+				start_date: cycle.start,
+				end_date: cycle.end,
 				icon,
 				color: selectedColor,
 				notes: notes.trim() || null,
@@ -762,14 +760,14 @@ export default function BudgetsScreen() {
 								style={styles.selectButton}
 								onPress={() => setShowStartDateOptions((value) => !value)}
 							>
-								<Text style={styles.selectText}>{startDate || tx.startPlaceholder}</Text>
+								<Text style={styles.selectText}>{startDay ? formatDayLabel(startDay, isEn) : tx.startPlaceholder}</Text>
 								<Text style={styles.selectChevron}>⌄</Text>
 							</Pressable>
 							{showStartDateOptions ? (
 								<View testID="budget-start-date-options" style={styles.optionList}>
 									<Text style={styles.optionHint}>{tx.dateOptionHint}</Text>
 									<ScrollView nestedScrollEnabled style={styles.dateOptionScroll}>
-										{dateOptions.map((option) => (
+										{dayOptions.map((option) => (
 											<Pressable
 												key={option.value}
 												testID={`budget-start-date-option-${option.value}`}
@@ -777,11 +775,11 @@ export default function BudgetsScreen() {
 												accessibilityLabel={`${tx.startLabel}: ${option.label}`}
 												style={styles.optionRow}
 												onPress={() => {
-													setStartDate(option.value);
+													setStartDay(option.value);
 													setShowStartDateOptions(false);
 												}}
 											>
-												<Text style={styles.optionText}>{option.label} · {option.value}</Text>
+												<Text style={styles.optionText}>{option.label}</Text>
 											</Pressable>
 										))}
 									</ScrollView>
@@ -798,14 +796,14 @@ export default function BudgetsScreen() {
 								style={styles.selectButton}
 								onPress={() => setShowEndDateOptions((value) => !value)}
 							>
-								<Text style={styles.selectText}>{endDate || tx.endPlaceholder}</Text>
+								<Text style={styles.selectText}>{endDay ? formatDayLabel(endDay, isEn) : tx.endPlaceholder}</Text>
 								<Text style={styles.selectChevron}>⌄</Text>
 							</Pressable>
 							{showEndDateOptions ? (
 								<View testID="budget-end-date-options" style={styles.optionList}>
 									<Text style={styles.optionHint}>{tx.dateOptionHint}</Text>
 									<ScrollView nestedScrollEnabled style={styles.dateOptionScroll}>
-										{dateOptions.map((option) => (
+										{dayOptions.map((option) => (
 											<Pressable
 												key={option.value}
 												testID={`budget-end-date-option-${option.value}`}
@@ -813,11 +811,11 @@ export default function BudgetsScreen() {
 												accessibilityLabel={`${tx.endLabel}: ${option.label}`}
 												style={styles.optionRow}
 												onPress={() => {
-													setEndDate(option.value);
+													setEndDay(option.value);
 													setShowEndDateOptions(false);
 												}}
 											>
-												<Text style={styles.optionText}>{option.label} · {option.value}</Text>
+												<Text style={styles.optionText}>{option.label}</Text>
 											</Pressable>
 										))}
 									</ScrollView>

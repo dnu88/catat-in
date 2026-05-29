@@ -87,6 +87,60 @@ function toDateKey(value: string | null | undefined) {
 	return value ? value.slice(0, 10) : "";
 }
 
+function formatLocalDate(date: Date) {
+	const year = date.getFullYear();
+	const month = String(date.getMonth() + 1).padStart(2, "0");
+	const day = String(date.getDate()).padStart(2, "0");
+	return `${year}-${month}-${day}`;
+}
+
+function clampDay(year: number, monthIndex: number, day: number) {
+	const lastDay = new Date(year, monthIndex + 1, 0).getDate();
+	return Math.min(Math.max(day, 1), lastDay);
+}
+
+function dateFromDay(year: number, monthIndex: number, day: number) {
+	return new Date(year, monthIndex, clampDay(year, monthIndex, day));
+}
+
+export function resolveMonthlyEnvelopePeriod(
+	startDate: string,
+	endDate: string,
+	reference = new Date(),
+) {
+	const startDay = Number(startDate.slice(8, 10)) || 1;
+	const endDay = Number(endDate.slice(8, 10)) || startDay;
+	let startMonth = reference.getMonth();
+	let startYear = reference.getFullYear();
+	let endMonth = startMonth;
+	let endYear = startYear;
+
+	if (startDay > endDay) {
+		if (reference.getDate() < startDay) {
+			startMonth -= 1;
+			if (startMonth < 0) {
+				startMonth = 11;
+				startYear -= 1;
+			}
+			endMonth = reference.getMonth();
+			endYear = reference.getFullYear();
+		} else {
+			endMonth += 1;
+			if (endMonth > 11) {
+				endMonth = 0;
+				endYear += 1;
+			}
+		}
+	}
+
+	return {
+		start: formatLocalDate(dateFromDay(startYear, startMonth, startDay)),
+		end: formatLocalDate(dateFromDay(endYear, endMonth, endDay)),
+		startDay,
+		endDay,
+	};
+}
+
 function normalize(value: string | null | undefined) {
 	return (value ?? "").trim().toLowerCase();
 }
@@ -298,6 +352,7 @@ type EnvelopeAllocationRow = {
 };
 
 function mapBudgetEnvelope(row: BudgetEnvelopeRow): BudgetEnvelope {
+	const period = resolveMonthlyEnvelopePeriod(row.start_date, row.end_date);
 	return {
 		id: row.id,
 		user_id: row.user_id,
@@ -305,8 +360,8 @@ function mapBudgetEnvelope(row: BudgetEnvelopeRow): BudgetEnvelope {
 		parent_category_id: row.parent_category_id,
 		parent_category_name: row.category?.name ?? null,
 		limit_amount: Number(row.limit_amount ?? 0),
-		start_date: row.start_date,
-		end_date: row.end_date,
+		start_date: period.start,
+		end_date: period.end,
 		icon: row.icon,
 		color: row.color,
 		notes: row.notes,

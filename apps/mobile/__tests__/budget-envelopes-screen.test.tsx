@@ -120,6 +120,8 @@ jest.mock("../src/services/budget-envelopes", () => ({
 		.buildEnvelopeProgress,
 	getEnvelopeStatus: jest.requireActual("../src/services/budget-envelopes")
 		.getEnvelopeStatus,
+	resolveMonthlyEnvelopePeriod: jest.requireActual("../src/services/budget-envelopes")
+		.resolveMonthlyEnvelopePeriod,
 }));
 
 jest.mock("../src/components/ui", () => ({
@@ -281,16 +283,20 @@ describe("Budget envelopes screen", () => {
 		fireEvent.changeText(screen.getByPlaceholderText("Limit"), "250000");
 		fireEvent.press(screen.getByTestId("budget-start-date-dropdown"));
 		const startOption = screen.getAllByTestId(/^budget-start-date-option-/)[0];
-		const selectedStartDate = String(startOption.props.testID).replace(
-			"budget-start-date-option-",
-			"",
+		const selectedStartDay = Number(
+			String(startOption.props.testID).replace(
+				"budget-start-date-option-",
+				"",
+			),
 		);
 		fireEvent.press(startOption);
 		fireEvent.press(screen.getByTestId("budget-end-date-dropdown"));
 		const endOption = screen.getAllByTestId(/^budget-end-date-option-/)[0];
-		const selectedEndDate = String(endOption.props.testID).replace(
-			"budget-end-date-option-",
-			"",
+		const selectedEndDay = Number(
+			String(endOption.props.testID).replace(
+				"budget-end-date-option-",
+				"",
+			),
 		);
 		fireEvent.press(endOption);
 		fireEvent.press(screen.getByTestId("budget-wallet-icon-dropdown"));
@@ -326,17 +332,19 @@ describe("Budget envelopes screen", () => {
 		fireEvent.press(screen.getByText("Simpan dompet"));
 
 		await waitFor(() => expect(mockCreateBudgetEnvelope).toHaveBeenCalled());
-		expect(mockCreateBudgetEnvelope.mock.calls[0][1]).toEqual({
-			user_id: "user-1",
-			name: "Kopi",
-			parent_category_id: "cat-food",
-			limit_amount: 250000,
-			start_date: selectedStartDate,
-			end_date: selectedEndDate,
-			icon: "food",
-			color: "#DB2777",
-			notes: "Kopi Kenangan, Fore",
-		});
+		expect(mockCreateBudgetEnvelope.mock.calls[0][1]).toEqual(
+			expect.objectContaining({
+				user_id: "user-1",
+				name: "Kopi",
+				parent_category_id: "cat-food",
+				limit_amount: 250000,
+				icon: "food",
+				color: "#DB2777",
+				notes: "Kopi Kenangan, Fore",
+			}),
+		);
+		expect(Number(mockCreateBudgetEnvelope.mock.calls[0][1].start_date.slice(8, 10))).toBe(selectedStartDay);
+		expect(Number(mockCreateBudgetEnvelope.mock.calls[0][1].end_date.slice(8, 10))).toBe(selectedEndDay);
 	});
 
 	it("can cancel create and edit an existing budget wallet", async () => {
@@ -361,8 +369,8 @@ describe("Budget envelopes screen", () => {
 				name: "Kopi Bulanan",
 				limit_amount: 300000,
 				parent_category_id: "cat-food",
-				start_date: "2026-05-10",
-				end_date: "2026-05-31",
+				start_date: expect.stringMatching(/\d{4}-\d{2}-10/),
+				end_date: expect.stringMatching(/\d{4}-\d{2}-31/),
 			}),
 		);
 	});

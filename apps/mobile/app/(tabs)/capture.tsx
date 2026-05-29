@@ -198,13 +198,6 @@ export default function CaptureScreen() {
 					raw_input: value,
 					review_required: quickDraft.confidence < CLASSIFIER_HIGH_CONFIDENCE_THRESHOLD,
 					confidence: quickDraft.confidence,
-					ai_confidence: quickDraft.confidence,
-					ai_extracted: {
-						category_id: quickDraft.categoryId,
-						category_name: quickDraft.categoryName,
-						matched_keywords: quickDraft.matchedKeywords,
-						matched_concept: quickDraft.matchedConcept,
-					},
 				},
 				activeContext,
 			);

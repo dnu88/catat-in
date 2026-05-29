@@ -221,11 +221,6 @@ describe("Capture envelope suggestion", () => {
 				input_type: "text",
 				status: "done",
 				raw_input: "Beli kopi 35rb",
-				ai_extracted: expect.objectContaining({
-					category_id: "cat-food",
-					category_name: "Food & Beverage",
-					matched_keywords: expect.arrayContaining(["kopi"]),
-				}),
 			}),
 			mockActiveContext,
 		);

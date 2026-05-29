@@ -119,7 +119,8 @@ describe("transaction-new edit mode", () => {
 				{ type: "personal" },
 			),
 		);
-		expect(mockReplace).toHaveBeenCalledWith("/(tabs)/transactions");
+		expect(mockReplace).not.toHaveBeenCalled();
+		expect(await screen.findByText("Perubahan transaksi tersimpan.")).toBeTruthy();
 	});
 
 	it("creates manual transactions in the active household context", async () => {

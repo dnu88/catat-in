@@ -89,6 +89,7 @@ export default function TransactionNewScreen() {
 	const [loading, setLoading] = useState(true);
 	const [submitting, setSubmitting] = useState(false);
 	const [error, setError] = useState<string | null>(null);
+	const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
 	const [txType, setTxType] = useState<TransactionType>("expense");
 	const [amountInput, setAmountInput] = useState("");
@@ -108,6 +109,7 @@ export default function TransactionNewScreen() {
 
 		setLoading(true);
 		setError(null);
+		setSuccessMessage(null);
 		try {
 			const [walletData, categoryData] = await Promise.all([
 				listWallets(activeContext),
@@ -232,6 +234,7 @@ export default function TransactionNewScreen() {
 
 		setSubmitting(true);
 		setError(null);
+		setSuccessMessage(null);
 		const payload = {
 			wallet_id: walletId,
 			transaction_type: txType,
@@ -245,7 +248,8 @@ export default function TransactionNewScreen() {
 		try {
 			if (isEditMode) {
 				await updateTransaction(transactionId, payload, activeContext);
-				router.replace("/(tabs)/transactions");
+				setSuccessMessage("Perubahan transaksi tersimpan.");
+				setSubmitting(false);
 				return;
 			}
 
@@ -536,6 +540,7 @@ export default function TransactionNewScreen() {
 				</View>
 
 				{error && <Text key="transaction-form-error" testID="transaction-form-error" style={styles.errorText}>{error}</Text>}
+				{successMessage && <Text key="transaction-form-success" testID="transaction-form-success" style={styles.successText}>{successMessage}</Text>}
 
 				<Pressable
 					key="transaction-form-submit"
@@ -679,6 +684,14 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			fontSize: 12,
 			fontWeight: "600",
 			backgroundColor: `${theme.colors.danger}10`,
+			padding: 10,
+			borderRadius: 10,
+		},
+		successText: {
+			color: theme.colors.success,
+			fontSize: 12,
+			fontWeight: "700",
+			backgroundColor: `${theme.colors.success}12`,
 			padding: 10,
 			borderRadius: 10,
 		},
