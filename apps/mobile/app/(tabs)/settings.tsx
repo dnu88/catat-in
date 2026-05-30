@@ -163,15 +163,29 @@ function colorWithAlpha(color: string, alpha: string) {
 }
 
 function readProfileVisualMetadata(metadata: Record<string, unknown>) {
+	const avatarUrl = typeof metadata.avatar_url === "string" ? metadata.avatar_url : "";
+	const providerPicture = typeof metadata.picture === "string" ? metadata.picture : "";
+	const avatarKey = typeof metadata.avatar_key === "string" ? metadata.avatar_key : "";
+	const avatarPath = typeof metadata.avatar_path === "string" ? metadata.avatar_path : "";
+	const visualMode =
+		metadata.profile_visual_mode === "photo" ||
+		metadata.profile_visual_mode === "avatar" ||
+		metadata.profile_visual_mode === "none"
+			? metadata.profile_visual_mode
+			: "";
+
+	if (visualMode === "avatar" || (!visualMode && avatarKey)) {
+		return { photoUrl: "", avatarKey, avatarPath };
+	}
+
+	if (visualMode === "none") {
+		return { photoUrl: "", avatarKey: "", avatarPath: "" };
+	}
+
 	return {
-		photoUrl:
-			(typeof metadata.avatar_url === "string" && metadata.avatar_url) ||
-			(typeof metadata.picture === "string" && metadata.picture) ||
-			"",
-		avatarKey:
-			typeof metadata.avatar_key === "string" ? metadata.avatar_key : "",
-		avatarPath:
-			typeof metadata.avatar_path === "string" ? metadata.avatar_path : "",
+		photoUrl: avatarUrl || (!visualMode ? providerPicture : ""),
+		avatarKey,
+		avatarPath,
 	};
 }
 
@@ -583,8 +597,10 @@ export default function SettingsScreen() {
 			let nextPhotoUrl = "";
 			let nextAvatarKey = "";
 			let nextAvatarPath = "";
+			let nextVisualMode: ProfileVisualMode = "none";
 
 			if (draftVisualMode === "photo" && draftPhotoUri) {
+				nextVisualMode = "photo";
 				if (/^https?:\/\//i.test(draftPhotoUri)) {
 					nextPhotoUrl = draftPhotoUri;
 					nextAvatarPath = profileAvatarPath;
@@ -604,6 +620,7 @@ export default function SettingsScreen() {
 				}
 			} else if (draftVisualMode === "avatar" && draftAvatarKey) {
 				nextAvatarKey = draftAvatarKey;
+				nextVisualMode = "avatar";
 			} else {
 				nextPhotoUrl = "";
 				nextAvatarKey = "";
@@ -615,6 +632,8 @@ export default function SettingsScreen() {
 					avatar_url: nextPhotoUrl || null,
 					avatar_path: nextAvatarPath || null,
 					avatar_key: nextAvatarKey || null,
+					profile_visual_mode: nextVisualMode,
+					profile_visual_updated_at: new Date().toISOString(),
 				},
 			});
 			if (updateError) throw updateError;

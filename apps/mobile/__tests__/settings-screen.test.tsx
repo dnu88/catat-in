@@ -131,6 +131,7 @@ describe('SettingsScreen honest controls', () => {
         data: expect.objectContaining({
           avatar_key: 'sari-hijab',
           avatar_url: null,
+          profile_visual_mode: 'avatar',
         }),
       })
       expect(screen.getByText('Foto profil tersimpan.')).toBeTruthy()
@@ -142,6 +143,30 @@ describe('SettingsScreen honest controls', () => {
 
     expect(screen.queryByText('Foto profil tersimpan.')).toBeNull()
     jest.useRealTimers()
+  })
+
+
+  it('keeps the last selected avatar after logout and login even when provider picture exists', async () => {
+    mockGetUser.mockResolvedValue({
+      data: {
+        user: {
+          id: 'user-1',
+          email: 'dania@kaswise.com',
+          user_metadata: {
+            full_name: 'Dania',
+            picture: 'https://accounts.google.com/default-picture.png',
+            avatar_key: 'sari-hijab',
+            avatar_url: null,
+            profile_visual_mode: 'avatar',
+          },
+        },
+      },
+    } as any)
+
+    const screen = renderSettings()
+
+    await waitFor(() => expect(screen.getByText('dania@kaswise.com')).toBeTruthy())
+    expect(screen.getByLabelText('Sari berhijab')).toBeTruthy()
   })
 
   it('still lets language and logout controls work', async () => {
