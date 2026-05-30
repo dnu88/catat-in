@@ -156,6 +156,8 @@ const AVATAR_FILTERS: Array<{ key: AvatarGroup; labelId: string; labelEn: string
 	{ key: "other", labelId: "Lainnya", labelEn: "Other" },
 ];
 
+const PROFILE_MESSAGE_AUTO_HIDE_MS = 3000;
+
 function colorWithAlpha(color: string, alpha: string) {
 	return /^#[0-9a-f]{6}$/i.test(color) ? `${color}${alpha}` : color;
 }
@@ -392,6 +394,29 @@ export default function SettingsScreen() {
 	const [refreshing, setRefreshing] = useState(false);
 	const [logoutLoading, setLogoutLoading] = useState(false);
 	const logoutScale = useRef(new Animated.Value(1)).current;
+	const profileMessageTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+	const clearProfileMessageTimer = () => {
+		if (profileMessageTimerRef.current) {
+			clearTimeout(profileMessageTimerRef.current);
+			profileMessageTimerRef.current = null;
+		}
+	};
+
+	const showTemporaryProfileSuccess = (message: string) => {
+		clearProfileMessageTimer();
+		setProfileMessage({ type: "success", message });
+		profileMessageTimerRef.current = setTimeout(() => {
+			setProfileMessage((current) =>
+				current?.type === "success" && current.message === message ? null : current,
+			);
+			profileMessageTimerRef.current = null;
+		}, PROFILE_MESSAGE_AUTO_HIDE_MS);
+	};
+
+	useEffect(() => () => {
+		clearProfileMessageTimer();
+	}, []);
 
 	useEffect(() => {
 		let active = true;
@@ -496,11 +521,13 @@ export default function SettingsScreen() {
 		setDraftPhotoUri(profilePhotoUrl || null);
 		setDraftAvatarKey(profileAvatarKey || null);
 		setDraftVisualMode(profilePhotoUrl ? "photo" : profileAvatarKey ? "avatar" : "none");
+		clearProfileMessageTimer();
 		setProfileMessage(null);
 		setProfileSheetVisible(true);
 	};
 
 	const pickProfilePhoto = async (source: "camera" | "library") => {
+		clearProfileMessageTimer();
 		setProfileMessage(null);
 		const permission =
 			source === "camera"
@@ -541,6 +568,7 @@ export default function SettingsScreen() {
 	const saveProfileVisual = async () => {
 		if (profileSaving) return;
 		setProfileSaving(true);
+		clearProfileMessageTimer();
 		setProfileMessage(null);
 
 		try {
@@ -599,10 +627,9 @@ export default function SettingsScreen() {
 			setProfileAvatarKey(nextAvatarKey);
 			setProfileAvatarPath(nextAvatarPath);
 			setProfileSheetVisible(false);
-			setProfileMessage({
-				type: "success",
-				message: language === "id" ? "Foto profil tersimpan." : "Profile photo saved.",
-			});
+			showTemporaryProfileSuccess(
+				language === "id" ? "Foto profil tersimpan." : "Profile photo saved.",
+			);
 		} catch (error) {
 			setProfileMessage({
 				type: "error",

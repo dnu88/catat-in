@@ -1,4 +1,4 @@
-import { fireEvent, render, waitFor } from '@testing-library/react-native'
+import { act, fireEvent, render, waitFor } from '@testing-library/react-native'
 
 import SettingsScreen from '../app/(tabs)/settings'
 import { I18nProvider } from '../src/i18n/i18n-context'
@@ -108,7 +108,8 @@ describe('SettingsScreen honest controls', () => {
     })
   })
 
-  it('saves a selected default avatar to user metadata', async () => {
+  it('saves a selected default avatar to user metadata and hides the success message automatically', async () => {
+    jest.useFakeTimers()
     mockGetUser.mockResolvedValue({
       data: {
         user: {
@@ -134,6 +135,13 @@ describe('SettingsScreen honest controls', () => {
       })
       expect(screen.getByText('Foto profil tersimpan.')).toBeTruthy()
     })
+
+    act(() => {
+      jest.advanceTimersByTime(3000)
+    })
+
+    expect(screen.queryByText('Foto profil tersimpan.')).toBeNull()
+    jest.useRealTimers()
   })
 
   it('still lets language and logout controls work', async () => {
