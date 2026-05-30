@@ -1,11 +1,35 @@
 import * as Linking from 'expo-linking'
+import { Platform } from 'react-native'
+
+function getWebRedirectUrl(path: string) {
+  if (Platform.OS !== 'web' || typeof window === 'undefined' || !window.location?.origin) {
+    return null
+  }
+
+  return new URL(path, window.location.origin).toString()
+}
+
+export function isStandaloneWebApp() {
+  if (Platform.OS !== 'web' || typeof window === 'undefined') {
+    return false
+  }
+
+  const mediaMatch = typeof window.matchMedia === 'function'
+    ? window.matchMedia('(display-mode: standalone)').matches
+    : false
+  const navigatorStandalone = Boolean(
+    (window.navigator as Navigator & { standalone?: boolean }).standalone,
+  )
+
+  return mediaMatch || navigatorStandalone
+}
 
 export function getAuthCallbackRedirectTo() {
-  return Linking.createURL('/callback')
+  return getWebRedirectUrl('/callback') ?? Linking.createURL('/callback')
 }
 
 export function getPasswordResetRedirectTo() {
-  return Linking.createURL('/reset-password')
+  return getWebRedirectUrl('/reset-password') ?? Linking.createURL('/reset-password')
 }
 
 export function getStringParam(value: string | string[] | undefined | null) {

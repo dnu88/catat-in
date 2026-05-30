@@ -1,11 +1,14 @@
 import { router } from "expo-router";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ActivityIndicator, Animated, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Animated, Image, Modal, Pressable, RefreshControl, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { PageEntrance, StaggeredStack } from "../../src/components/motion";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import * as ImagePicker from "expo-image-picker";
+import Svg, { Circle, Path, Rect } from "react-native-svg";
 
 import { useSupabase } from "../../src/lib/supabase";
 import type { KaswiseIconName } from "../../src/components/icons/kaswise-icons";
+import { KaswiseIcon } from "../../src/components/icons/kaswise-icons";
 import { KaswiseLogoMark } from "../../src/components/brand/KaswiseLogoMark";
 import { IconBubble } from "../../src/components/ui";
 import { useTheme } from "../../src/theme/theme-context";
@@ -120,6 +123,62 @@ type BudgetInsert = {
 	created_by: string;
 	household_id: string | null;
 };
+
+
+type AvatarGroup = "all" | "men" | "women" | "other";
+type ProfileVisualMode = "photo" | "avatar" | "none";
+
+type ProfileAvatarPreset = {
+	id: string;
+	group: Exclude<AvatarGroup, "all">;
+	label: string;
+	background: "primary" | "navy" | "success" | "warning" | "danger" | "info";
+	hair: "short" | "wave" | "hijab" | "bun" | "cap";
+	accessory?: "glasses" | "tie" | "earring";
+};
+
+const PROFILE_AVATARS: ProfileAvatarPreset[] = [
+	{ id: "rafi-casual", group: "men", label: "Rafi casual", background: "primary", hair: "short" },
+	{ id: "arya-glasses", group: "men", label: "Arya berkacamata", background: "navy", hair: "wave", accessory: "glasses" },
+	{ id: "dimas-pro", group: "men", label: "Dimas profesional", background: "info", hair: "short", accessory: "tie" },
+	{ id: "dania-casual", group: "women", label: "Dania casual", background: "success", hair: "wave", accessory: "earring" },
+	{ id: "sari-hijab", group: "women", label: "Sari berhijab", background: "warning", hair: "hijab" },
+	{ id: "maya-pro", group: "women", label: "Maya profesional", background: "danger", hair: "bun", accessory: "glasses" },
+	{ id: "nara-clean", group: "other", label: "Nara clean", background: "primary", hair: "cap" },
+	{ id: "bima-playful", group: "other", label: "Bima playful", background: "info", hair: "wave" },
+	{ id: "raya-modern", group: "other", label: "Raya modern", background: "navy", hair: "short", accessory: "glasses" },
+];
+
+const AVATAR_FILTERS: Array<{ key: AvatarGroup; labelId: string; labelEn: string }> = [
+	{ key: "all", labelId: "Semua", labelEn: "All" },
+	{ key: "men", labelId: "Pria", labelEn: "Men" },
+	{ key: "women", labelId: "Wanita", labelEn: "Women" },
+	{ key: "other", labelId: "Lainnya", labelEn: "Other" },
+];
+
+function colorWithAlpha(color: string, alpha: string) {
+	return /^#[0-9a-f]{6}$/i.test(color) ? `${color}${alpha}` : color;
+}
+
+function readProfileVisualMetadata(metadata: Record<string, unknown>) {
+	return {
+		photoUrl:
+			(typeof metadata.avatar_url === "string" && metadata.avatar_url) ||
+			(typeof metadata.picture === "string" && metadata.picture) ||
+			"",
+		avatarKey:
+			typeof metadata.avatar_key === "string" ? metadata.avatar_key : "",
+		avatarPath:
+			typeof metadata.avatar_path === "string" ? metadata.avatar_path : "",
+	};
+}
+
+function getFileExtension(uri: string, mimeType?: string | null) {
+	if (mimeType?.includes("png")) return "png";
+	if (mimeType?.includes("webp")) return "webp";
+	const match = uri.match(/\.([a-z0-9]+)(?:\?|#|$)/i);
+	return match?.[1]?.toLowerCase() || "jpg";
+}
 
 function seededRandom(seed: number) {
 	const raw = Math.sin(seed) * 10000;
@@ -313,6 +372,21 @@ export default function SettingsScreen() {
 	const [profileLoading, setProfileLoading] = useState(true);
 	const [profileName, setProfileName] = useState("");
 	const [profileEmail, setProfileEmail] = useState("");
+	const [profilePhotoUrl, setProfilePhotoUrl] = useState("");
+	const [profileAvatarKey, setProfileAvatarKey] = useState("");
+	const [profileAvatarPath, setProfileAvatarPath] = useState("");
+	const [profileSheetVisible, setProfileSheetVisible] = useState(false);
+	const [avatarFilter, setAvatarFilter] = useState<AvatarGroup>("all");
+	const [draftPhotoUri, setDraftPhotoUri] = useState<string | null>(null);
+	const [draftAvatarKey, setDraftAvatarKey] = useState<string | null>(null);
+	const [draftVisualMode, setDraftVisualMode] = useState<ProfileVisualMode>("none");
+	const [profileSaving, setProfileSaving] = useState(false);
+	const [profileMessage, setProfileMessage] = useState<SeedResultState | null>(null);
+	const [passwordExpanded, setPasswordExpanded] = useState(false);
+	const [newPassword, setNewPassword] = useState("");
+	const [confirmPassword, setConfirmPassword] = useState("");
+	const [passwordSaving, setPasswordSaving] = useState(false);
+	const [passwordMessage, setPasswordMessage] = useState<SeedResultState | null>(null);
 	const [seedLoading, setSeedLoading] = useState(false);
 	const [seedResult, setSeedResult] = useState<SeedResultState | null>(null);
 	const [refreshing, setRefreshing] = useState(false);
@@ -332,8 +406,12 @@ export default function SettingsScreen() {
 				(typeof metadata.full_name === "string" && metadata.full_name) ||
 				(typeof metadata.name === "string" && metadata.name) ||
 				"";
+			const visual = readProfileVisualMetadata(metadata);
 			setProfileEmail(email);
 			setProfileName(name);
+			setProfilePhotoUrl(visual.photoUrl);
+			setProfileAvatarKey(visual.avatarKey);
+			setProfileAvatarPath(visual.avatarPath);
 			setProfileLoading(false);
 		};
 		loadProfile();
@@ -380,6 +458,15 @@ export default function SettingsScreen() {
 				.slice(0, 2)
 				.map((part) => part.charAt(0).toUpperCase())
 				.join("") || "?";
+	const selectedAvatar = PROFILE_AVATARS.find(
+		(avatar) => avatar.id === profileAvatarKey,
+	);
+	const draftSelectedAvatar = PROFILE_AVATARS.find(
+		(avatar) => avatar.id === draftAvatarKey,
+	);
+	const filteredAvatars = PROFILE_AVATARS.filter(
+		(avatar) => avatarFilter === "all" || avatar.group === avatarFilter,
+	);
 
 	const toggleDailyReminder = () => {
 		setDailyReminder((v) => {
@@ -403,6 +490,171 @@ export default function SettingsScreen() {
 			AsyncStorage.setItem(NOTIFICATION_KEYS.budgetAlert, String(next));
 			return next;
 		});
+	};
+
+	const openProfileSheet = () => {
+		setDraftPhotoUri(profilePhotoUrl || null);
+		setDraftAvatarKey(profileAvatarKey || null);
+		setDraftVisualMode(profilePhotoUrl ? "photo" : profileAvatarKey ? "avatar" : "none");
+		setProfileMessage(null);
+		setProfileSheetVisible(true);
+	};
+
+	const pickProfilePhoto = async (source: "camera" | "library") => {
+		setProfileMessage(null);
+		const permission =
+			source === "camera"
+				? await ImagePicker.requestCameraPermissionsAsync()
+				: await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+		if (!permission.granted) {
+			setProfileMessage({
+				type: "error",
+				message:
+					language === "id"
+						? "Izin akses foto belum diberikan."
+						: "Photo permission was not granted.",
+			});
+			return;
+		}
+
+		const result =
+			source === "camera"
+				? await ImagePicker.launchCameraAsync({
+					allowsEditing: true,
+					aspect: [1, 1],
+					quality: 0.72,
+				})
+				: await ImagePicker.launchImageLibraryAsync({
+					mediaTypes: ImagePicker.MediaTypeOptions.Images,
+					allowsEditing: true,
+					aspect: [1, 1],
+					quality: 0.72,
+				});
+
+		if (result.canceled || !result.assets[0]?.uri) return;
+		setDraftPhotoUri(result.assets[0].uri);
+		setDraftAvatarKey(null);
+		setDraftVisualMode("photo");
+	};
+
+	const saveProfileVisual = async () => {
+		if (profileSaving) return;
+		setProfileSaving(true);
+		setProfileMessage(null);
+
+		try {
+			const {
+				data: { user },
+				error: userError,
+			} = await supabase.auth.getUser();
+			if (userError) throw userError;
+			if (!user) throw new Error(language === "id" ? "Pengguna tidak ditemukan." : "User not found.");
+
+			const currentMetadata = (user.user_metadata ?? {}) as Record<string, unknown>;
+			let nextPhotoUrl = "";
+			let nextAvatarKey = "";
+			let nextAvatarPath = "";
+
+			if (draftVisualMode === "photo" && draftPhotoUri) {
+				if (/^https?:\/\//i.test(draftPhotoUri)) {
+					nextPhotoUrl = draftPhotoUri;
+					nextAvatarPath = profileAvatarPath;
+				} else {
+					const response = await fetch(draftPhotoUri);
+					const blob = await response.blob();
+					const mimeType = blob.type || "image/jpeg";
+					const extension = getFileExtension(draftPhotoUri, mimeType);
+					const path = `${user.id}/avatar-${Date.now()}.${extension}`;
+					const { error: uploadError } = await supabase.storage
+						.from("avatars")
+						.upload(path, blob, { contentType: mimeType, upsert: true });
+					if (uploadError) throw uploadError;
+					const { data } = supabase.storage.from("avatars").getPublicUrl(path);
+					nextPhotoUrl = data.publicUrl;
+					nextAvatarPath = path;
+				}
+			} else if (draftVisualMode === "avatar" && draftAvatarKey) {
+				nextAvatarKey = draftAvatarKey;
+			} else {
+				nextPhotoUrl = "";
+				nextAvatarKey = "";
+			}
+
+			const { error: updateError } = await supabase.auth.updateUser({
+				data: {
+					...currentMetadata,
+					avatar_url: nextPhotoUrl || null,
+					avatar_path: nextAvatarPath || null,
+					avatar_key: nextAvatarKey || null,
+				},
+			});
+			if (updateError) throw updateError;
+
+			if (profileAvatarPath && profileAvatarPath !== nextAvatarPath) {
+				void supabase.storage.from("avatars").remove([profileAvatarPath]);
+			}
+
+			setProfilePhotoUrl(nextPhotoUrl);
+			setProfileAvatarKey(nextAvatarKey);
+			setProfileAvatarPath(nextAvatarPath);
+			setProfileSheetVisible(false);
+			setProfileMessage({
+				type: "success",
+				message: language === "id" ? "Foto profil tersimpan." : "Profile photo saved.",
+			});
+		} catch (error) {
+			setProfileMessage({
+				type: "error",
+				message:
+					language === "id"
+						? "Gagal menyimpan foto profil. Coba lagi."
+						: "Failed to save profile photo. Try again.",
+			});
+		} finally {
+			setProfileSaving(false);
+		}
+	};
+
+	const onChangePassword = async () => {
+		setPasswordMessage(null);
+		if (newPassword.length < 8) {
+			setPasswordMessage({
+				type: "error",
+				message: language === "id" ? "Password minimal 8 karakter." : "Password must be at least 8 characters.",
+			});
+			return;
+		}
+		if (newPassword !== confirmPassword) {
+			setPasswordMessage({
+				type: "error",
+				message: language === "id" ? "Konfirmasi password belum sama." : "Password confirmation does not match.",
+			});
+			return;
+		}
+
+		setPasswordSaving(true);
+		try {
+			const { error } = await supabase.auth.updateUser({ password: newPassword });
+			if (error) throw error;
+			setNewPassword("");
+			setConfirmPassword("");
+			setPasswordExpanded(false);
+			setPasswordMessage({
+				type: "success",
+				message: language === "id" ? "Password berhasil diganti." : "Password updated.",
+			});
+		} catch (error) {
+			setPasswordMessage({
+				type: "error",
+				message:
+					language === "id"
+						? "Gagal mengganti password. Login ulang jika diminta."
+						: "Failed to update password. Sign in again if prompted.",
+			});
+		} finally {
+			setPasswordSaving(false);
+		}
 	};
 
 	const onSeedSampleData = async () => {
@@ -568,12 +820,16 @@ export default function SettingsScreen() {
 			} = await supabase.auth.getUser();
 			const email = user?.email ?? "";
 			const metadata = (user?.user_metadata ?? {}) as Record<string, unknown>;
+			const visual = readProfileVisualMetadata(metadata);
 			setProfileEmail(email);
 			setProfileName(
 				(typeof metadata.full_name === "string" && metadata.full_name) ||
 					(typeof metadata.name === "string" && metadata.name) ||
 					"",
 			);
+			setProfilePhotoUrl(visual.photoUrl);
+			setProfileAvatarKey(visual.avatarKey);
+			setProfileAvatarPath(visual.avatarPath);
 		} finally {
 			setRefreshing(false);
 		}
@@ -634,14 +890,111 @@ export default function SettingsScreen() {
 				{/* Profile Card */}
 				<View key="settings-profile" testID="settings-profile" style={styles.profileCard}>
 					<View style={styles.profileAvatar}>
-						<Text style={styles.profileAvatarText}>{avatarInitials}</Text>
+						{profilePhotoUrl ? (
+							<Image source={{ uri: profilePhotoUrl }} style={styles.profileAvatarImage} />
+						) : selectedAvatar ? (
+							<ProfileAvatarIllustration preset={selectedAvatar} theme={theme} size={68} />
+						) : (
+							<Text style={styles.profileAvatarText}>{avatarInitials}</Text>
+						)}
 					</View>
 					<View style={styles.profileInfo}>
 						<Text style={styles.profileName}>{displayName}</Text>
 						{displayEmail ? (
 							<Text style={styles.profileEmail}>{displayEmail}</Text>
 						) : null}
+						<Pressable
+							testID="settings-change-profile-photo"
+							accessibilityRole="button"
+							accessibilityLabel={language === "id" ? "Ubah foto profil" : "Change profile photo"}
+							onPress={openProfileSheet}
+							style={styles.profilePhotoButton}
+						>
+							<Text style={styles.profilePhotoButtonText}>
+								{language === "id" ? "Ubah Foto Profil" : "Change Profile Photo"}
+							</Text>
+						</Pressable>
+						{profileMessage ? (
+							<Text style={[styles.inlineMessage, profileMessage.type === "error" && styles.inlineMessageError]}>
+								{profileMessage.message}
+							</Text>
+						) : null}
 					</View>
+				</View>
+
+				{/* Account Security */}
+				<View key="settings-account-security" testID="settings-account-security" style={styles.sectionCard}>
+					<Text style={styles.sectionTitle}>
+						{language === "id" ? "Akun & Keamanan" : "Account & Security"}
+					</Text>
+					<Text style={styles.sectionSub}>
+						{language === "id"
+							? "Kelola akses akun dan password login."
+							: "Manage account access and login password."}
+					</Text>
+					<Pressable
+						testID="settings-password-toggle"
+						accessibilityRole="button"
+						accessibilityLabel={language === "id" ? "Ubah password" : "Change password"}
+						style={styles.navigationRow}
+						onPress={() => setPasswordExpanded((value) => !value)}
+					>
+						<View style={styles.navigationCopy}>
+							<IconBubble name="lock" tone="primary" size={32} />
+							<View style={styles.navigationTextBlock}>
+								<Text style={styles.navigationTitle}>{language === "id" ? "Ubah Password" : "Change Password"}</Text>
+								<Text style={styles.navigationHelper}>
+									{language === "id" ? "Gunakan minimal 8 karakter." : "Use at least 8 characters."}
+								</Text>
+							</View>
+						</View>
+						<Text style={styles.navigationChevron}>{passwordExpanded ? "⌃" : "›"}</Text>
+					</Pressable>
+					{passwordExpanded ? (
+						<View style={styles.passwordForm}>
+							<TextInput
+								testID="settings-new-password"
+								value={newPassword}
+								onChangeText={setNewPassword}
+								placeholder={language === "id" ? "Password baru" : "New password"}
+								placeholderTextColor={theme.colors.textDim}
+								secureTextEntry
+								style={styles.textInput}
+							/>
+							<TextInput
+								testID="settings-confirm-password"
+								value={confirmPassword}
+								onChangeText={setConfirmPassword}
+								placeholder={language === "id" ? "Konfirmasi password" : "Confirm password"}
+								placeholderTextColor={theme.colors.textDim}
+								secureTextEntry
+								style={styles.textInput}
+							/>
+							{passwordMessage ? (
+								<Text style={[styles.inlineMessage, passwordMessage.type === "error" && styles.inlineMessageError]}>
+									{passwordMessage.message}
+								</Text>
+							) : null}
+							<Pressable
+								testID="settings-save-password"
+								accessibilityRole="button"
+								accessibilityState={{ busy: passwordSaving, disabled: passwordSaving }}
+								disabled={passwordSaving}
+								style={[styles.primaryButton, passwordSaving && styles.buttonDisabled]}
+								onPress={onChangePassword}
+							>
+								{passwordSaving ? (
+									<ActivityIndicator color={theme.colors.buttonPrimaryText} />
+								) : (
+									<Text style={styles.primaryButtonText}>{language === "id" ? "Simpan Password" : "Save Password"}</Text>
+								)}
+							</Pressable>
+						</View>
+					) : passwordMessage ? (
+						<Text style={[styles.inlineMessage, passwordMessage.type === "error" && styles.inlineMessageError]}>
+							{passwordMessage.message}
+						</Text>
+					) : null}
 				</View>
 
 				{/* Family Section */}
@@ -863,7 +1216,234 @@ export default function SettingsScreen() {
 
 				<View style={{ height: 100 }} />
 			</ScrollView>
+			<Modal
+				visible={profileSheetVisible}
+				transparent
+				animationType="slide"
+				onRequestClose={() => setProfileSheetVisible(false)}
+			>
+				<View style={styles.sheetOverlay}>
+					<Pressable style={styles.sheetBackdrop} onPress={() => setProfileSheetVisible(false)} />
+					<View style={styles.bottomSheet}>
+						<View style={styles.sheetHeader}>
+							<Text style={styles.sheetTitle}>{language === "id" ? "Ubah Foto Profil" : "Change Profile Photo"}</Text>
+							<Pressable
+								testID="settings-profile-sheet-close"
+								accessibilityRole="button"
+								accessibilityLabel={language === "id" ? "Tutup" : "Close"}
+								style={styles.closeButton}
+								onPress={() => setProfileSheetVisible(false)}
+							>
+								<KaswiseIcon name="close" size={18} color={theme.colors.textPrimary} />
+							</Pressable>
+						</View>
+
+						<ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.sheetContent}>
+							<View style={styles.profileActionRow}>
+								<ProfilePhotoAction icon="camera" label={language === "id" ? "Ambil Foto" : "Camera"} onPress={() => pickProfilePhoto("camera")} theme={theme} />
+								<ProfilePhotoAction icon="image" label={language === "id" ? "Galeri" : "Gallery"} onPress={() => pickProfilePhoto("library")} theme={theme} />
+								<ProfilePhotoAction
+									icon="trash"
+									label={language === "id" ? "Hapus Foto" : "Remove"}
+									onPress={() => {
+										setDraftPhotoUri(null);
+										setDraftAvatarKey(null);
+										setDraftVisualMode("none");
+									}}
+									theme={theme}
+								/>
+							</View>
+
+							<View style={styles.sheetPreviewRow}>
+								<View style={styles.sheetPreviewAvatar}>
+									{draftVisualMode === "photo" && draftPhotoUri ? (
+										<Image source={{ uri: draftPhotoUri }} style={styles.sheetPreviewImage} />
+									) : draftVisualMode === "avatar" && draftSelectedAvatar ? (
+										<ProfileAvatarIllustration preset={draftSelectedAvatar} theme={theme} size={72} />
+									) : (
+										<Text style={styles.profileAvatarText}>{avatarInitials}</Text>
+									)}
+								</View>
+								<Text style={styles.sheetPreviewText}>
+									{language === "id" ? "Preview profil" : "Profile preview"}
+								</Text>
+							</View>
+
+							<Text style={styles.avatarSectionTitle}>{language === "id" ? "Pilih Avatar" : "Choose Avatar"}</Text>
+							<View style={styles.avatarTabs}>
+								{AVATAR_FILTERS.map((filter) => {
+									const active = avatarFilter === filter.key;
+									return (
+										<Pressable
+											key={filter.key}
+											testID={`settings-avatar-filter-${filter.key}`}
+											accessibilityRole="button"
+											accessibilityState={{ selected: active }}
+											style={styles.avatarTab}
+											onPress={() => setAvatarFilter(filter.key)}
+										>
+											<Text style={[styles.avatarTabText, active && styles.avatarTabTextActive]}>
+												{language === "id" ? filter.labelId : filter.labelEn}
+											</Text>
+											<View style={[styles.avatarTabUnderline, active && styles.avatarTabUnderlineActive]} />
+										</Pressable>
+									);
+								})}
+							</View>
+
+							<View style={styles.avatarGrid}>
+								{filteredAvatars.map((avatar) => {
+									const selected = draftVisualMode === "avatar" && draftAvatarKey === avatar.id;
+									return (
+										<Pressable
+											key={avatar.id}
+											testID={`settings-avatar-option-${avatar.id}`}
+											accessibilityRole="button"
+											accessibilityLabel={avatar.label}
+											accessibilityState={{ selected }}
+											style={[styles.avatarOption, selected && styles.avatarOptionSelected]}
+											onPress={() => {
+											setDraftPhotoUri(null);
+											setDraftAvatarKey(avatar.id);
+											setDraftVisualMode("avatar");
+										}}
+										>
+											<ProfileAvatarIllustration preset={avatar} theme={theme} size={88} />
+											{selected ? (
+												<View style={styles.avatarCheck}>
+													<KaswiseIcon name="check" size={14} weight="fill" color={theme.colors.buttonPrimaryText} />
+												</View>
+											) : null}
+										</Pressable>
+									);
+								})}
+							</View>
+						</ScrollView>
+
+						<View style={styles.sheetFooter}>
+							{profileMessage && profileSheetVisible ? (
+								<Text style={[styles.inlineMessage, profileMessage.type === "error" && styles.inlineMessageError]}>
+									{profileMessage.message}
+								</Text>
+							) : null}
+							<Pressable
+								testID="settings-save-profile-photo"
+								accessibilityRole="button"
+								accessibilityState={{ busy: profileSaving, disabled: profileSaving }}
+								disabled={profileSaving}
+								style={[styles.primaryButton, profileSaving && styles.buttonDisabled]}
+								onPress={saveProfileVisual}
+							>
+								{profileSaving ? (
+									<ActivityIndicator color={theme.colors.buttonPrimaryText} />
+								) : (
+									<Text style={styles.primaryButtonText}>{language === "id" ? "Simpan" : "Save"}</Text>
+								)}
+							</Pressable>
+						</View>
+					</View>
+				</View>
+			</Modal>
 		</PageEntrance>
+	);
+}
+
+function getAvatarToneColor(preset: ProfileAvatarPreset, theme: ReturnType<typeof useTheme>["theme"]) {
+	if (preset.background === "primary") return theme.colors.brandPrimary;
+	if (preset.background === "navy") return theme.colors.brandSecondary;
+	return theme.colors[preset.background];
+}
+
+function ProfileAvatarIllustration({
+	preset,
+	theme,
+	size,
+}: {
+	preset: ProfileAvatarPreset;
+	theme: ReturnType<typeof useTheme>["theme"];
+	size: number;
+}) {
+	const accent = getAvatarToneColor(preset, theme);
+	const softAccent = colorWithAlpha(accent, theme.mode === "dark" ? "30" : "24");
+	const face = theme.mode === "dark" ? theme.colors.warning : theme.iconBubbles.warning.background;
+	const hair = preset.hair === "hijab" ? theme.colors.brandSecondary : theme.colors.textSecondary;
+	const body = preset.accessory === "tie" ? theme.colors.brandSecondary : theme.colors.brandPrimary;
+	const cheek = colorWithAlpha(theme.colors.danger, "30");
+
+	return (
+		<Svg width={size} height={size} viewBox="0 0 96 96" accessibilityLabel={preset.label}>
+			<Circle cx="48" cy="48" r="46" fill={softAccent} />
+			<Circle cx="34" cy="26" r="8" fill={colorWithAlpha(theme.colors.surfaceElevated, "88")} />
+			<Circle cx="68" cy="28" r="5" fill={colorWithAlpha(accent, "55")} />
+			<Path d="M22 82c4-18 16-28 26-28s22 10 26 28" fill={body} />
+			<Path d="M30 82c4-10 12-15 18-15s14 5 18 15" fill={colorWithAlpha(theme.colors.surface, "72")} />
+			{preset.accessory === "tie" ? <Path d="M45 65h6l4 17-7 8-7-8 4-17z" fill={theme.colors.danger} /> : null}
+			<Circle cx="48" cy="43" r="22" fill={face} />
+			{preset.hair === "hijab" ? (
+				<Path d="M24 48c0-22 11-34 25-34 15 0 25 12 25 34 0 15-8 27-26 31-17-4-24-16-24-31z" fill={hair} />
+			) : preset.hair === "bun" ? (
+				<>
+					<Circle cx="69" cy="28" r="10" fill={hair} />
+					<Path d="M25 38c4-17 16-25 30-21 10 3 16 11 17 23-15-6-30-6-47-2z" fill={hair} />
+				</>
+			) : preset.hair === "cap" ? (
+				<>
+					<Path d="M25 34c7-14 33-17 47 2-13 5-30 4-47-2z" fill={accent} />
+					<Rect x="56" y="32" width="20" height="7" rx="4" fill={colorWithAlpha(accent, "99")} />
+				</>
+			) : preset.hair === "wave" ? (
+				<Path d="M24 39c4-18 18-28 33-21 10 5 15 13 14 25-8-8-17-11-26-8-8 2-14 2-21 4z" fill={hair} />
+			) : (
+				<Path d="M25 37c5-17 18-24 33-18 8 3 13 10 14 21-16-6-31-7-47-3z" fill={hair} />
+			)}
+			{preset.hair === "hijab" ? <Circle cx="48" cy="45" r="18" fill={face} /> : null}
+			<Circle cx="39" cy="45" r="2.5" fill={theme.colors.textPrimary} />
+			<Circle cx="57" cy="45" r="2.5" fill={theme.colors.textPrimary} />
+			<Path d="M41 57c5 5 10 5 15 0" stroke={theme.colors.textPrimary} strokeWidth="3" strokeLinecap="round" fill="none" />
+			<Circle cx="33" cy="53" r="4" fill={cheek} />
+			<Circle cx="63" cy="53" r="4" fill={cheek} />
+			{preset.accessory === "glasses" ? (
+				<>
+					<Circle cx="39" cy="45" r="7" stroke={theme.colors.textPrimary} strokeWidth="2" fill="none" />
+					<Circle cx="57" cy="45" r="7" stroke={theme.colors.textPrimary} strokeWidth="2" fill="none" />
+					<Path d="M46 45h4" stroke={theme.colors.textPrimary} strokeWidth="2" />
+				</>
+			) : null}
+			{preset.accessory === "earring" ? <Circle cx="70" cy="51" r="3" fill={accent} /> : null}
+			<Circle cx="34" cy="30" r="3" fill={colorWithAlpha(theme.colors.textInverse, "70")} />
+		</Svg>
+	);
+}
+
+function ProfilePhotoAction({
+	icon,
+	label,
+	onPress,
+	theme,
+}: {
+	icon: KaswiseIconName;
+	label: string;
+	onPress: () => void;
+	theme: ReturnType<typeof useTheme>["theme"];
+}) {
+	return (
+		<Pressable accessibilityRole="button" onPress={onPress} style={{ flex: 1, alignItems: "center", gap: 8 }}>
+			<View
+				style={{
+					width: 48,
+					height: 48,
+					borderRadius: 24,
+					alignItems: "center",
+					justifyContent: "center",
+					backgroundColor: colorWithAlpha(theme.colors.brandPrimary, theme.mode === "dark" ? "18" : "14"),
+					borderWidth: 1,
+					borderColor: colorWithAlpha(theme.colors.brandPrimary, "55"),
+				}}
+			>
+				<KaswiseIcon name={icon} color={theme.colors.brandPrimary} size={22} />
+			</View>
+			<Text style={{ color: theme.colors.textSecondary, fontSize: 11, fontWeight: "800", textAlign: "center" }}>{label}</Text>
+		</Pressable>
 	);
 }
 
@@ -984,15 +1564,21 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			padding: 14,
 			flexDirection: "row",
 			alignItems: "center",
-			gap: 12,
+			gap: 14,
 		},
 		profileAvatar: {
-			width: 50,
-			height: 50,
-			borderRadius: 25,
+			width: 68,
+			height: 68,
+			borderRadius: 34,
 			backgroundColor: theme.colors.mutedSurface,
 			alignItems: "center",
 			justifyContent: "center",
+			overflow: "hidden",
+		},
+		profileAvatarImage: {
+			width: 68,
+			height: 68,
+			borderRadius: 34,
 		},
 		profileAvatarText: {
 			color: theme.colors.textPrimary,
@@ -1010,6 +1596,19 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			fontSize: theme.typography.fontSize.sm,
 			marginTop: 2,
 		},
+		profilePhotoButton: { alignSelf: "flex-start", marginTop: 8 },
+		profilePhotoButtonText: {
+			color: theme.colors.brandPrimary,
+			fontSize: 12,
+			fontWeight: "800",
+		},
+		inlineMessage: {
+			color: theme.colors.success,
+			fontSize: 11,
+			fontWeight: "700",
+			marginTop: 6,
+		},
+		inlineMessageError: { color: theme.colors.danger },
 		sectionCard: {
 			backgroundColor: theme.colors.surface,
 			borderRadius: 18,
@@ -1073,6 +1672,33 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			fontSize: 24,
 			fontWeight: "700",
 		},
+		passwordForm: { gap: 10, paddingTop: 2 },
+		textInput: {
+			minHeight: 46,
+			borderRadius: 14,
+			borderWidth: 1,
+			borderColor: theme.colors.borderSoft,
+			backgroundColor: theme.colors.mutedSurface,
+			color: theme.colors.textPrimary,
+			paddingHorizontal: 14,
+			fontSize: 14,
+			fontWeight: "600",
+		},
+		primaryButton: {
+			minHeight: 48,
+			borderRadius: 14,
+			backgroundColor: theme.colors.buttonPrimaryBg,
+			alignItems: "center",
+			justifyContent: "center",
+			paddingHorizontal: 16,
+			paddingVertical: 12,
+		},
+		buttonDisabled: { opacity: 0.68 },
+		primaryButtonText: {
+			color: theme.colors.buttonPrimaryText,
+			fontSize: 14,
+			fontWeight: "800",
+		},
 		appInfo: { alignItems: "center", paddingVertical: 10, gap: 4 },
 		appName: { color: theme.colors.textMuted, fontSize: 13, fontWeight: "700" },
 		appTagline: { color: theme.colors.textMuted, fontSize: 11 },
@@ -1109,5 +1735,118 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			alignItems: "center",
 		},
 		logoutText: { color: theme.colors.danger, fontSize: 14, fontWeight: "700" },
+		sheetOverlay: {
+			flex: 1,
+			justifyContent: "flex-end",
+			backgroundColor: colorWithAlpha(theme.colors.background, theme.mode === "dark" ? "CC" : "AA"),
+		},
+		sheetBackdrop: { ...StyleSheet.absoluteFillObject },
+		bottomSheet: {
+			maxHeight: "90%",
+			backgroundColor: theme.colors.surface,
+			borderTopLeftRadius: 30,
+			borderTopRightRadius: 30,
+			borderWidth: 1,
+			borderColor: theme.colors.borderSoft,
+			overflow: "hidden",
+			shadowColor: theme.colors.textPrimary,
+			shadowOpacity: theme.mode === "dark" ? 0.34 : 0.14,
+			shadowRadius: 24,
+			elevation: 18,
+		},
+		sheetHeader: {
+			paddingHorizontal: 20,
+			paddingTop: 18,
+			paddingBottom: 12,
+			flexDirection: "row",
+			alignItems: "center",
+			justifyContent: "space-between",
+		},
+		sheetTitle: {
+			color: theme.colors.textPrimary,
+			fontSize: 18,
+			fontWeight: "800",
+		},
+		closeButton: {
+			width: 36,
+			height: 36,
+			borderRadius: 18,
+			alignItems: "center",
+			justifyContent: "center",
+			backgroundColor: theme.colors.mutedSurface,
+		},
+		sheetContent: { paddingHorizontal: 20, paddingBottom: 16, gap: 16 },
+		profileActionRow: { flexDirection: "row", gap: 10 },
+		sheetPreviewRow: {
+			alignItems: "center",
+			gap: 8,
+			paddingVertical: 6,
+		},
+		sheetPreviewAvatar: {
+			width: 76,
+			height: 76,
+			borderRadius: 38,
+			backgroundColor: theme.colors.mutedSurface,
+			alignItems: "center",
+			justifyContent: "center",
+			overflow: "hidden",
+		},
+		sheetPreviewImage: { width: 76, height: 76, borderRadius: 38 },
+		sheetPreviewText: { color: theme.colors.textMuted, fontSize: 11, fontWeight: "700" },
+		avatarSectionTitle: {
+			color: theme.colors.textPrimary,
+			fontSize: 15,
+			fontWeight: "800",
+		},
+		avatarTabs: { flexDirection: "row", alignItems: "flex-end", gap: 12 },
+		avatarTab: { paddingBottom: 6, gap: 6 },
+		avatarTabText: { color: theme.colors.textMuted, fontSize: 12, fontWeight: "800" },
+		avatarTabTextActive: { color: theme.colors.textPrimary },
+		avatarTabUnderline: { height: 2, borderRadius: 999, backgroundColor: "transparent" },
+		avatarTabUnderlineActive: { backgroundColor: theme.colors.brandPrimary },
+		avatarGrid: {
+			flexDirection: "row",
+			flexWrap: "wrap",
+			justifyContent: "space-between",
+			rowGap: 14,
+		},
+		avatarOption: {
+			width: "31%",
+			aspectRatio: 1,
+			borderRadius: 999,
+			alignItems: "center",
+			justifyContent: "center",
+			borderWidth: 2,
+			borderColor: "transparent",
+			backgroundColor: theme.colors.mutedSurface,
+		},
+		avatarOptionSelected: {
+			borderColor: theme.colors.brandPrimary,
+			shadowColor: theme.colors.brandPrimary,
+			shadowOpacity: theme.mode === "dark" ? 0.34 : 0.20,
+			shadowRadius: 12,
+			elevation: 7,
+		},
+		avatarCheck: {
+			position: "absolute",
+			right: 4,
+			bottom: 6,
+			width: 24,
+			height: 24,
+			borderRadius: 12,
+			alignItems: "center",
+			justifyContent: "center",
+			backgroundColor: theme.colors.buttonPrimaryBg,
+			borderWidth: 2,
+			borderColor: theme.colors.surface,
+		},
+		sheetFooter: {
+			padding: 20,
+			paddingTop: 12,
+			borderTopWidth: 1,
+			borderTopColor: theme.colors.borderSoft,
+			backgroundColor: theme.colors.surface,
+			gap: 8,
+		},
 	});
 }

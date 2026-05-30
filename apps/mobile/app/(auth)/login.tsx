@@ -1,13 +1,14 @@
 import { router } from 'expo-router'
 import * as WebBrowser from 'expo-web-browser'
 import { useState } from 'react'
+import { Platform } from 'react-native'
 import { StaggeredStack } from "../../src/components/motion";
 
 import { AuthButton, AuthFooter, AuthFormCard, AuthHeroPanel, AuthLink, AuthScreenLayout } from '../../src/components/ui'
 import { InputField, StateMessage } from '../../src/components/ui'
 import { KaswiseLogoMark } from '../../src/components/brand/KaswiseLogoMark'
 import { useI18n } from '../../src/i18n/i18n-context'
-import { getAuthCallbackRedirectTo, getAuthCodeFromUrl } from '../../src/lib/auth-redirects'
+import { getAuthCallbackRedirectTo, getAuthCodeFromUrl, isStandaloneWebApp } from '../../src/lib/auth-redirects'
 import { useSupabase } from '../../src/lib/supabase'
 
 WebBrowser.maybeCompleteAuthSession()
@@ -46,17 +47,25 @@ export default function LoginScreen() {
     setGoogleLoading(true)
 
     const redirectTo = getAuthCallbackRedirectTo()
+    const shouldUseFullRedirect = Platform.OS === 'web' && isStandaloneWebApp()
     const { data, error: oauthError } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
         redirectTo,
-        skipBrowserRedirect: true,
+        skipBrowserRedirect: !shouldUseFullRedirect,
       },
     })
 
     if (oauthError || !data.url) {
       setGoogleLoading(false)
       setError(t('googleLoginFailed'))
+      return
+    }
+
+    if (shouldUseFullRedirect) {
+      if (typeof window !== 'undefined') {
+        window.location.assign(data.url)
+      }
       return
     }
 

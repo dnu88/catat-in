@@ -8,6 +8,8 @@ import { ThemeProvider } from '../src/theme/theme-context'
 const mockReplace = jest.fn()
 const mockPush = jest.fn()
 const mockSignOut = jest.fn(async () => ({ error: null }))
+const mockUpdateUser = jest.fn(async () => ({ data: { user: null }, error: null }))
+const mockGetUser = jest.fn(async () => ({ data: { user: null } }))
 
 jest.mock('expo-router', () => ({
   router: {
@@ -22,7 +24,15 @@ jest.mock('../src/lib/supabase', () => ({
     supabase: {
       auth: {
         signOut: mockSignOut,
-        getUser: jest.fn(async () => ({ data: { user: null } })),
+        getUser: mockGetUser,
+        updateUser: mockUpdateUser,
+      },
+      storage: {
+        from: () => ({
+          upload: jest.fn(async () => ({ error: null })),
+          getPublicUrl: jest.fn(() => ({ data: { publicUrl: 'https://kaswise.com/avatar.png' } })),
+          remove: jest.fn(async () => ({ error: null })),
+        }),
       },
     },
   }),
@@ -46,6 +56,9 @@ describe('SettingsScreen honest controls', () => {
     mockReplace.mockClear()
     mockPush.mockClear()
     mockSignOut.mockClear()
+    mockUpdateUser.mockClear()
+    mockGetUser.mockReset()
+    mockGetUser.mockResolvedValue({ data: { user: null } })
   })
 
   it('keeps working settings controls and removes dead taps', () => {
@@ -67,8 +80,8 @@ describe('SettingsScreen honest controls', () => {
     expect(screen.queryByText('Tagihan')).toBeNull()
     expect(screen.queryByText('Grup')).toBeNull()
     expect(screen.queryByText('Import')).toBeNull()
-    expect(screen.queryByText('Akun & Keamanan')).toBeNull()
-    expect(screen.queryByText('Ubah Password')).toBeNull()
+    expect(screen.getByText('Akun & Keamanan')).toBeTruthy()
+    expect(screen.getByText('Ubah Password')).toBeTruthy()
     expect(screen.queryByText('Kebijakan Privasi')).toBeNull()
   })
 
@@ -78,6 +91,49 @@ describe('SettingsScreen honest controls', () => {
     fireEvent.press(screen.getByTestId('settings-family-center'))
 
     expect(mockPush).toHaveBeenCalledWith('/(tabs)/groups')
+  })
+
+
+  it('updates password from account security settings', async () => {
+    const screen = renderSettings()
+
+    fireEvent.press(screen.getByTestId('settings-password-toggle'))
+    fireEvent.changeText(screen.getByTestId('settings-new-password'), 'password-baru')
+    fireEvent.changeText(screen.getByTestId('settings-confirm-password'), 'password-baru')
+    fireEvent.press(screen.getByTestId('settings-save-password'))
+
+    await waitFor(() => {
+      expect(mockUpdateUser).toHaveBeenCalledWith({ password: 'password-baru' })
+      expect(screen.getByText('Password berhasil diganti.')).toBeTruthy()
+    })
+  })
+
+  it('saves a selected default avatar to user metadata', async () => {
+    mockGetUser.mockResolvedValue({
+      data: {
+        user: {
+          id: 'user-1',
+          email: 'dania@kaswise.com',
+          user_metadata: { full_name: 'Dania' },
+        },
+      },
+    } as any)
+    const screen = renderSettings()
+
+    await waitFor(() => expect(screen.getByText('dania@kaswise.com')).toBeTruthy())
+    fireEvent.press(screen.getByTestId('settings-change-profile-photo'))
+    fireEvent.press(screen.getByTestId('settings-avatar-option-sari-hijab'))
+    fireEvent.press(screen.getByTestId('settings-save-profile-photo'))
+
+    await waitFor(() => {
+      expect(mockUpdateUser).toHaveBeenCalledWith({
+        data: expect.objectContaining({
+          avatar_key: 'sari-hijab',
+          avatar_url: null,
+        }),
+      })
+      expect(screen.getByText('Foto profil tersimpan.')).toBeTruthy()
+    })
   })
 
   it('still lets language and logout controls work', async () => {
