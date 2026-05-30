@@ -1,9 +1,13 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.4'
 
+const allowedOrigin = Deno.env.get('KASWISE_ALLOWED_ORIGIN') ?? 'https://kaswise.com'
+
 const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Origin': allowedOrigin,
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Vary': 'Origin',
 }
 
 type ProcessImageRequest = {
@@ -27,6 +31,22 @@ type ProcessImageResponse = {
   review_required: boolean
   fields: ExtractedFields
   error_message?: string
+}
+
+function isTrustedStorageImageUrl(imageUrl: string, supabaseUrl: string): boolean {
+  try {
+    const parsedUrl = new URL(imageUrl)
+    const parsedSupabaseUrl = new URL(supabaseUrl)
+
+    return (
+      parsedUrl.protocol === 'https:' &&
+      parsedUrl.hostname === parsedSupabaseUrl.hostname &&
+      parsedUrl.pathname.includes('/storage/v1/object/') &&
+      !parsedUrl.pathname.includes('..')
+    )
+  } catch {
+    return false
+  }
 }
 
 async function assertProcessableTransaction(
@@ -169,6 +189,13 @@ serve(async (req) => {
       return new Response(
         JSON.stringify({ error: 'transaction_id and image_url are required' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+      )
+    }
+
+    if (!isTrustedStorageImageUrl(image_url, supabaseUrl)) {
+      return new Response(
+        JSON.stringify({ error: 'image_url must point to Kaswise Supabase storage' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
       )
     }
 

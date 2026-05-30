@@ -23,11 +23,15 @@ _LIST_FIELDS_NO_JSON_DECODE = {"ALLOWED_ORIGINS", "ALLOWED_HOSTS"}
 
 _REQUIRED_ALLOWED_ORIGINS: list[str] = [
     "https://catat-in-nine.vercel.app",
+    "https://kaswise.com",
+    "https://www.kaswise.com",
 ]
 
 _REQUIRED_ALLOWED_HOSTS = [
     "localhost",
     "127.0.0.1",
+    "kaswise.com",
+    "www.kaswise.com",
 ]
 
 
@@ -88,7 +92,8 @@ class Settings(BaseSettings):
         "http://localhost:3000",
         "http://localhost:3001",
     ]
-    ALLOWED_HOSTS: List[str] = ["localhost", "127.0.0.1"]
+    ALLOWED_HOSTS: List[str] = ["localhost", "127.0.0.1", "kaswise.com", "www.kaswise.com"]
+    CORS_ALLOW_CREDENTIALS: bool = False
 
     # Storage
     STORAGE_BUCKET_RECEIPTS: str = "receipts"
@@ -109,7 +114,7 @@ class Settings(BaseSettings):
     GROUP_MAX_MEMBERS: int = 10
     INVITE_LINK_EXPIRE_DAYS: int = 7
 
-    @field_validator("DEBUG", "MIDTRANS_IS_PRODUCTION", mode="before")
+    @field_validator("DEBUG", "MIDTRANS_IS_PRODUCTION", "CORS_ALLOW_CREDENTIALS", mode="before")
     @classmethod
     def parse_bool_like_values(cls, value):
         if isinstance(value, bool):

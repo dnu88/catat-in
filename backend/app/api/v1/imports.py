@@ -3,10 +3,13 @@ Catat.in - Import Router (Supabase)
 Endpoint untuk import mutasi bank via CSV/Excel.
 """
 
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
+from decimal import Decimal
+from typing import Literal
+from uuid import UUID
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, conlist
 
 from app.core.auth import get_current_user
 from app.core.config import settings
@@ -29,9 +32,20 @@ class ImportPreviewResponse(BaseModel):
     bank_name: str
 
 
+class ImportTransactionIn(BaseModel):
+    date: date
+    description: str = Field(min_length=1, max_length=200)
+    type: Literal["income", "expense"]
+    amount: Decimal = Field(gt=0, max_digits=14, decimal_places=2)
+    category: str = Field(default="other", min_length=1, max_length=50)
+    hash: str | None = Field(default=None, pattern=r"^[a-f0-9]{32}$")
+    is_duplicate: bool = False
+    row_number: int | None = Field(default=None, ge=1, le=MAX_ROWS)
+
+
 class ConfirmImportRequest(BaseModel):
-    transactions: list[dict]
-    wallet_id: str
+    transactions: conlist(ImportTransactionIn, min_length=1, max_length=MAX_ROWS)
+    wallet_id: UUID
     skip_duplicates: bool = True
 
 
@@ -123,15 +137,9 @@ async def confirm_import(
     body: ConfirmImportRequest,
     current_user: dict = Depends(get_current_user),
 ):
-    if not body.transactions:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Tidak ada transaksi untuk diimpor.",
-        )
-
     to_import = [
         tx for tx in body.transactions
-        if not (body.skip_duplicates and tx.get("is_duplicate"))
+        if not (body.skip_duplicates and tx.is_duplicate)
     ]
 
     if not to_import:
@@ -152,7 +160,8 @@ async def confirm_import(
     user_id = current_user["user_id"]
 
     # Verify wallet exists and is active.
-    wallet_result = client.table("wallets").select("id,is_active,balance").eq("id", body.wallet_id).eq("user_id", user_id).single().execute()
+    wallet_id = str(body.wallet_id)
+    wallet_result = client.table("wallets").select("id,is_active").eq("id", wallet_id).eq("user_id", user_id).single().execute()
     if not wallet_result.data:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Wallet tidak ditemukan")
     if wallet_result.data.get("is_active") is False:
@@ -160,36 +169,33 @@ async def confirm_import(
 
     now = datetime.now(timezone.utc).isoformat()
     records = []
-    balance_delta = 0.0
-
     for tx in to_import:
-        tx_type = tx.get("type", "expense")
-        amount = float(tx.get("amount", 0))
-        description = (tx.get("description") or "").strip()
+        amount = float(tx.amount)
+        description = tx.description.strip()
 
         records.append({
-            "wallet_id": body.wallet_id,
+            "wallet_id": wallet_id,
             "user_id": user_id,
-            "type": tx_type,
+            "type": tx.type,
             "nominal": amount,
-            "kategori": tx.get("category", "other"),
+            "kategori": tx.category,
             "catatan": description or None,
             "merchant": description[:100] if description else None,
-            "tanggal": tx.get("date"),
+            "tanggal": tx.date.isoformat(),
             "input_type": "import",
             "status": "done",
             "is_verified": True,
             "created_at": now,
         })
 
-        balance_delta += amount if tx_type == "income" else -amount
-
-    # Bulk insert transactions.
-    client.table("transactions").insert(records).execute()
-
-    # Update wallet balance.
-    wallet_bal = float((wallet_result.data or {}).get("balance", 0))
-    client.table("wallets").update({"balance": wallet_bal + balance_delta}).eq("id", body.wallet_id).execute()
+    # Bulk insert transactions. Wallet balance is maintained by database trigger/RPC,
+    # not manually here, to avoid double-counting financial movements.
+    insert_result = client.table("transactions").insert(records).execute()
+    if getattr(insert_result, "error", None):
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Gagal mengimpor transaksi.",
+        )
 
     return {
         "success": True,
