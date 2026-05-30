@@ -237,6 +237,10 @@ describe("DashboardScreen dark luxury Home parity", () => {
 			expect(screen.getByText("Halo, Dania")).toBeTruthy();
 		});
 		expect(screen.getByLabelText("Sari berhijab")).toBeTruthy();
+		const avatarStyle = getFlattenedStyle(screen.getByTestId("home-avatar"));
+		expect(avatarStyle.width).toBe(40);
+		expect(avatarStyle.borderWidth).toBe(2);
+		expect(avatarStyle.backgroundColor).not.toBe("#A3FF12");
 		expect(screen.queryByText("DB")).toBeNull();
 	});
 
@@ -443,9 +447,11 @@ describe("DashboardScreen dark luxury Home parity", () => {
 
 		const avatar = screen.getByTestId("home-avatar");
 		const avatarStyle = getFlattenedStyle(avatar);
-		expect(avatarStyle.width).toBe(36);
-		expect(avatarStyle.height).toBe(36);
-		expect(avatarStyle.backgroundColor).toBe("#3F6212");
+		expect(avatarStyle.width).toBe(40);
+		expect(avatarStyle.height).toBe(40);
+		expect(avatarStyle.borderWidth).toBe(2);
+		expect(avatarStyle.backgroundColor).toBe("#FFFFFF");
+		expect(avatarStyle.backgroundColor).not.toBe("#3F6212");
 
 		const hero = screen.getByTestId("home-hero-card");
 		const heroStyle = getFlattenedStyle(hero);

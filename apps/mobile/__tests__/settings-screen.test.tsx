@@ -1,3 +1,4 @@
+import AsyncStorage from '@react-native-async-storage/async-storage'
 import { act, fireEvent, render, waitFor } from '@testing-library/react-native'
 
 import SettingsScreen from '../app/(tabs)/settings'
@@ -59,6 +60,9 @@ describe('SettingsScreen honest controls', () => {
     mockUpdateUser.mockClear()
     mockGetUser.mockReset()
     mockGetUser.mockResolvedValue({ data: { user: null } })
+    jest.mocked(AsyncStorage.getItem).mockReset()
+    jest.mocked(AsyncStorage.getItem).mockResolvedValue(null)
+    jest.mocked(AsyncStorage.setItem).mockClear()
   })
 
   it('keeps working settings controls and removes dead taps', () => {
@@ -167,6 +171,32 @@ describe('SettingsScreen honest controls', () => {
 
     await waitFor(() => expect(screen.getByText('dania@kaswise.com')).toBeTruthy())
     expect(screen.getByLabelText('Sari berhijab')).toBeTruthy()
+  })
+
+
+  it('persists selected language and theme across app reopen', async () => {
+    const firstSession = renderSettings()
+
+    fireEvent.press(firstSession.getByTestId('settings-language-en'))
+    fireEvent.press(firstSession.getByTestId('settings-theme-dark'))
+
+    expect(AsyncStorage.setItem).toHaveBeenCalledWith('kaswise:language-preference', 'en')
+    expect(AsyncStorage.setItem).toHaveBeenCalledWith('kaswise:theme-preference', 'dark')
+
+    firstSession.unmount()
+    jest.mocked(AsyncStorage.getItem).mockImplementation(async (key) => {
+      if (key === 'kaswise:language-preference') return 'en'
+      if (key === 'kaswise:theme-preference') return 'dark'
+      return null
+    })
+
+    const reopenedSession = renderSettings()
+
+    await waitFor(() => {
+      expect(reopenedSession.getByText('Settings')).toBeTruthy()
+      expect(reopenedSession.getByTestId('settings-language-en').props.accessibilityState.selected).toBe(true)
+      expect(reopenedSession.getByTestId('settings-theme-dark').props.accessibilityState.selected).toBe(true)
+    })
   })
 
   it('still lets language and logout controls work', async () => {

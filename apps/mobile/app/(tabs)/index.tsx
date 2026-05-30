@@ -291,7 +291,7 @@ export default function DashboardScreen() {
 									style={styles.avatarImage}
 								/>
 							) : selectedProfileAvatar ? (
-								<ProfileAvatarIllustration preset={selectedProfileAvatar} theme={theme} size={36} />
+								<ProfileAvatarIllustration preset={selectedProfileAvatar} theme={theme} size={34} />
 							) : (
 								<Text style={styles.avatarText}>{avatarInitials}</Text>
 							)}
@@ -537,18 +537,22 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			minWidth: 0,
 		},
 		avatarWrap: {
-			width: 36,
-			height: 36,
-			borderRadius: 18,
-			backgroundColor: theme.colors.brandPrimary,
+			width: 40,
+			height: 40,
+			borderRadius: 20,
+			backgroundColor: theme.colors.surfaceElevated,
+			borderWidth: 2,
+			borderColor: theme.mode === "dark"
+				? colorWithAlpha(theme.colors.textInverse, "D9")
+				: colorWithAlpha(theme.colors.textPrimary, "24"),
 			alignItems: "center",
 			justifyContent: "center",
 			overflow: "hidden",
 		},
 		avatarImage: {
-			width: 36,
-			height: 36,
-			borderRadius: 18,
+			width: 34,
+			height: 34,
+			borderRadius: 17,
 		},
 		avatarText: {
 			color: theme.colors.textInverse,

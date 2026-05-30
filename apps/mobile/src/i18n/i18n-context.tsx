@@ -1,4 +1,5 @@
-import { createContext, useContext, useMemo, useState } from 'react'
+import { createContext, useContext, useEffect, useMemo, useState } from 'react'
+import AsyncStorage from '@react-native-async-storage/async-storage'
 
 export type Language = 'id' | 'en'
 type TranslationKey = keyof typeof translations.id
@@ -168,15 +169,40 @@ const translations = {
   },
 } as const
 
+const I18N_STORAGE_KEY = 'kaswise:language-preference'
+
+function isLanguage(value: unknown): value is Language {
+  return value === 'id' || value === 'en'
+}
+
 const I18nContext = createContext<I18nContextValue | null>(null)
 
 export function I18nProvider({ children }: { children: React.ReactNode }) {
-  const [language, setLanguage] = useState<Language>('id')
+  const [language, setLanguageState] = useState<Language>('id')
+
+  useEffect(() => {
+    let active = true
+
+    AsyncStorage.getItem(I18N_STORAGE_KEY)
+      .then((stored) => {
+        if (active && isLanguage(stored)) {
+          setLanguageState(stored)
+        }
+      })
+      .catch(() => {})
+
+    return () => {
+      active = false
+    }
+  }, [])
 
   const value = useMemo<I18nContextValue>(
     () => ({
       language,
-      setLanguage,
+      setLanguage: (nextLanguage) => {
+        setLanguageState(nextLanguage)
+        AsyncStorage.setItem(I18N_STORAGE_KEY, nextLanguage).catch(() => {})
+      },
       t: (key) => translations[language][key],
     }),
     [language],
