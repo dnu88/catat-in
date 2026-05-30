@@ -5,6 +5,7 @@
 .env.golive
 apps/mobile/.env.golive
 .tmp/
+tmp/
 .claude/
 .superpowers/
 .worktrees/
@@ -68,6 +69,8 @@ coverage/
 apps/web/test-results/
 apps/mobile/test-results/
 apps/mobile/playwright-report/
+apps/mobile/tmp/
+testsprite_tests/tmp/
 
 # ── DOCKER ───────────────────────────────────────────────────
 docker-compose.override.yml
