@@ -35,6 +35,7 @@ import {
 	type Transaction,
 } from "../../src/services/transactions";
 import { listCategories, type Category } from "../../src/services/categories";
+import { getLocalizedCategoryName } from "../../src/services/category-taxonomy";
 
 type Filter = "all" | "income" | "expense";
 type Period = "week" | "month" | "year";
@@ -185,6 +186,9 @@ function TransactionRow({
 		item.merchant ||
 		item.category ||
 		(isEn ? "Transaction" : "Transaksi");
+	const localizedCategoryName = item.category
+		? getLocalizedCategoryName(item.category, isEn ? "en" : "id")
+		: "";
 	const categoryVisual = resolveCategoryVisual({
 		categoryName: item.category,
 		categories,
@@ -301,7 +305,7 @@ function TransactionRow({
 							<Text style={styles.rowMerchant}>{item.merchant}</Text>
 						)}
 						<Text style={styles.rowSub}>
-							{item.category || "-"} • {formattedDate}
+							{localizedCategoryName || "-"} • {formattedDate}
 						</Text>
 					</View>
 					<Text

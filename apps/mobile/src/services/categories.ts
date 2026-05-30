@@ -1,5 +1,6 @@
 import { supabase } from '../lib/supabase';
 import { getCurrentUserId } from './currentUser';
+import { getDefaultCategoryCreates, getMissingDefaultCategoryCreates } from './category-taxonomy';
 
 export interface CategoryCreate {
   name: string;
@@ -27,19 +28,7 @@ export interface Category {
   created_at: string;
 }
 
-const defaultCategories: Array<Required<Pick<CategoryCreate, 'name' | 'icon' | 'type'>>> = [
-  { name: 'Food & Beverage', icon: 'food', type: 'expense' },
-  { name: 'Groceries', icon: 'groceries', type: 'expense' },
-  { name: 'Transport', icon: 'transport', type: 'expense' },
-  { name: 'Bills', icon: 'bills', type: 'expense' },
-  { name: 'Health', icon: 'health', type: 'expense' },
-  { name: 'Entertainment', icon: 'recreation', type: 'expense' },
-  { name: 'Education', icon: 'file', type: 'expense' },
-  { name: 'Other expenses', icon: 'otherExpenses', type: 'expense' },
-  { name: 'Salary', icon: 'card', type: 'income' },
-  { name: 'Bonus', icon: 'gift', type: 'income' },
-  { name: 'Freelance', icon: 'investment', type: 'income' },
-];
+const defaultCategories: Array<Required<Pick<CategoryCreate, 'name' | 'icon' | 'type'>>> = getDefaultCategoryCreates();
 
 function isMissingColumn(error: unknown, column: string) {
   const anyError = error as { code?: string; message?: string } | null;
@@ -101,9 +90,10 @@ export async function createCategory(category: CategoryCreate): Promise<Category
   return normalizeCategory(response.data);
 }
 
-async function seedDefaultCategories(): Promise<Category[]> {
+async function insertDefaultCategories(categoriesToInsert = defaultCategories): Promise<Category[]> {
+  if (categoriesToInsert.length === 0) return [];
   const userId = await getCurrentUserId();
-  const payloadWithType = defaultCategories.map((category) => ({
+  const payloadWithType = categoriesToInsert.map((category) => ({
     user_id: userId,
     name: category.name,
     icon: category.icon,
@@ -144,9 +134,21 @@ export async function listCategories(): Promise<Category[]> {
   if (response.error) throw response.error;
 
   const categories = (response.data ?? []).map(normalizeCategory);
-  if (categories.length > 0) return categories;
+  if (categories.length > 0) {
+    const defaultNames = categories
+      .filter((category) => category.is_default === true)
+      .map((category) => category.name);
+    if (defaultNames.length === 0) return categories;
 
-  return seedDefaultCategories();
+    const missingDefaults = getMissingDefaultCategoryCreates(defaultNames);
+    if (missingDefaults.length === 0) return categories;
+    const inserted = await insertDefaultCategories(missingDefaults);
+    return [...categories, ...inserted].sort((left, right) =>
+      left.name.localeCompare(right.name),
+    );
+  }
+
+  return insertDefaultCategories();
 }
 
 export async function updateCategory(id: string, updates: Partial<CategoryCreate>): Promise<Category> {

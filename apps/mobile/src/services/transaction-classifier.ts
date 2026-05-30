@@ -1,5 +1,6 @@
 import type { Category } from "./categories";
 import type { TransactionType } from "./transactions";
+import { getCategoryCanonicalId } from "./category-taxonomy";
 
 export type ClassificationCategory = Pick<Category, "id" | "name" | "type">;
 
@@ -32,7 +33,7 @@ const HIGH_CONFIDENCE = 0.85;
 const categoryConcepts: CategoryConcept[] = [
 	{
 		id: "food_beverage",
-		fallbackName: "Makanan & Minuman",
+		fallbackName: "Makan & Minum",
 		type: "expense",
 		aliases: [
 			"food",
@@ -98,12 +99,11 @@ const categoryConcepts: CategoryConcept[] = [
 	},
 	{
 		id: "groceries",
-		fallbackName: "Groceries",
+		fallbackName: "Belanja Bulanan",
 		type: "expense",
 		aliases: [
 			"groceries",
 			"grocery",
-			"belanja",
 			"belanja bulanan",
 			"kebutuhan harian",
 			"kebutuhan rumah",
@@ -161,6 +161,42 @@ const categoryConcepts: CategoryConcept[] = [
 			{ value: "lotte mart", weight: 6 },
 			{ value: "astro", weight: 6 },
 			{ value: "sayurbox", weight: 6 },
+		],
+	},
+	{
+		id: "personal_shopping",
+		fallbackName: "Belanja Pribadi",
+		type: "expense",
+		aliases: [
+			"belanja pribadi",
+			"personal shopping",
+			"shopping",
+			"belanja",
+			"marketplace",
+		],
+		keywords: [
+			{ value: "belanja pribadi", weight: 6 },
+			{ value: "belanja online", weight: 5 },
+			{ value: "beli baju", weight: 6 },
+			{ value: "beli sepatu", weight: 6 },
+			{ value: "skincare", weight: 5 },
+			{ value: "case hp", weight: 5 },
+			{ value: "charger", weight: 4 },
+			"baju",
+			"sepatu",
+			"tas",
+			"parfum",
+			"kosmetik",
+			"aksesoris",
+			"fashion",
+			"gadget",
+			"marketplace",
+		],
+		merchants: [
+			{ value: "shopee", weight: 5 },
+			{ value: "tokopedia", weight: 5 },
+			{ value: "lazada", weight: 5 },
+			{ value: "zalora", weight: 6 },
 		],
 	},
 	{
@@ -226,6 +262,20 @@ const categoryConcepts: CategoryConcept[] = [
 		type: "expense",
 		aliases: ["pendidikan", "education", "school"],
 		keywords: ["buku", "kursus", "sekolah", "kuliah", "kelas", "udemy"],
+	},
+	{
+		id: "sport",
+		fallbackName: "Olahraga",
+		type: "expense",
+		aliases: ["olahraga", "sport", "sports", "gym", "fitness"],
+		keywords: ["olahraga", "gym", "fitness", "futsal", "badminton", "renang", "yoga"],
+	},
+	{
+		id: "gifts_donations",
+		fallbackName: "Hadiah & Donasi",
+		type: "expense",
+		aliases: ["hadiah", "donasi", "gift", "gifts", "donation", "kado", "sedekah"],
+		keywords: ["hadiah", "donasi", "kado", "sedekah", "amal", "bantuan", "sumbangan"],
 	},
 	{
 		id: "salary",
@@ -404,6 +454,12 @@ function resolveCategory(
 	);
 
 	if (concept) {
+		const conceptId = getCategoryCanonicalId(concept.fallbackName);
+		const canonical = compatibleCategories.find(
+			(category) => getCategoryCanonicalId(category.name) === conceptId,
+		);
+		if (canonical) return { id: canonical.id, name: canonical.name };
+
 		const aliasSet = new Set([
 			normalize(concept.fallbackName),
 			...concept.aliases.map(normalize),
@@ -424,10 +480,8 @@ function resolveCategory(
 		return { id: null, name: concept.fallbackName };
 	}
 
-	const fallback = compatibleCategories.find((category) =>
-		["lainnya", "other", "other expenses", "uncategorized"].includes(
-			normalize(category.name),
-		),
+	const fallback = compatibleCategories.find(
+		(category) => getCategoryCanonicalId(category.name) === "other_expenses",
 	);
 	return { id: fallback?.id ?? null, name: fallback?.name ?? "Lainnya" };
 }

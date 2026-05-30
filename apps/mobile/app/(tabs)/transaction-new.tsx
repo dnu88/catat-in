@@ -16,6 +16,7 @@ import type { KaswiseIconName } from "../../src/components/icons/kaswise-icons";
 import { IconBubble } from "../../src/components/ui";
 import { LoadingState } from "../../src/components/ui/LoadingState";
 import { useTheme } from "../../src/theme/theme-context";
+import { useI18n } from "../../src/i18n/i18n-context";
 import { useFinanceContext } from "../../src/state/finance-context";
 import {
 	createTransaction,
@@ -25,6 +26,7 @@ import {
 } from "../../src/services/transactions";
 import { listWallets, type Wallet } from "../../src/services/wallets";
 import { listCategories, type Category } from "../../src/services/categories";
+import { areCategoryNamesEquivalent, getLocalizedCategoryName } from "../../src/services/category-taxonomy";
 
 type CategoryOption = { name: string; icon: KaswiseIconName };
 
@@ -36,7 +38,10 @@ const categoryIcons: Record<string, KaswiseIconName> = {
 	Transport: "transport",
 	Transportasi: "transport",
 	Belanja: "groceries",
+	"Belanja Bulanan": "groceries",
+	"Belanja Pribadi": "groceries",
 	Groceries: "groceries",
+	"Personal Shopping": "groceries",
 	Hiburan: "recreation",
 	Entertainment: "recreation",
 	Tagihan: "bills",
@@ -53,17 +58,22 @@ const categoryIcons: Record<string, KaswiseIconName> = {
 	"Other expenses": "otherExpenses",
 };
 
-const fallbackCategories: CategoryOption[] = [
-	{ name: "Makan", icon: "food" },
-	{ name: "Transport", icon: "transport" },
-	{ name: "Belanja", icon: "groceries" },
-	{ name: "Hiburan", icon: "recreation" },
-	{ name: "Tagihan", icon: "bills" },
-	{ name: "Kesehatan", icon: "sport" },
-	{ name: "Pendidikan", icon: "file" },
-	{ name: "Pendapatan", icon: "card" },
-	{ name: "Lainnya", icon: "otherExpenses" },
-];
+function fallbackCategories(isEn: boolean): CategoryOption[] {
+	return [
+		{ name: isEn ? "Food & Beverage" : "Makan & Minum", icon: "food" },
+		{ name: isEn ? "Groceries" : "Belanja Bulanan", icon: "groceries" },
+		{ name: isEn ? "Personal Shopping" : "Belanja Pribadi", icon: "groceries" },
+		{ name: isEn ? "Transport" : "Transportasi", icon: "transport" },
+		{ name: isEn ? "Bills" : "Tagihan", icon: "bills" },
+		{ name: isEn ? "Entertainment" : "Hiburan", icon: "recreation" },
+		{ name: isEn ? "Health" : "Kesehatan", icon: "sport" },
+		{ name: isEn ? "Education" : "Pendidikan", icon: "file" },
+		{ name: isEn ? "Salary" : "Gaji", icon: "card" },
+		{ name: "Bonus", icon: "gift" },
+		{ name: "Freelance", icon: "investment" },
+		{ name: isEn ? "Other expenses" : "Lainnya", icon: "otherExpenses" },
+	];
+}
 
 function normalizeCategoryIcon(icon: string | null | undefined, name: string): KaswiseIconName {
 	if (categoryIcons[name]) return categoryIcons[name];
@@ -111,6 +121,8 @@ function formatAmount(value: number): string {
 
 export default function TransactionNewScreen() {
 	const { theme } = useTheme();
+	const { language } = useI18n();
+	const isEn = language === "en";
 	const { activeContext, canCreate } = useFinanceContext();
 	const router = ExpoRouter.useRouter();
 	const rawParams = (ExpoRouter as any).useLocalSearchParams?.() ?? {};
@@ -127,7 +139,7 @@ export default function TransactionNewScreen() {
 
 	const [wallets, setWallets] = useState<Wallet[]>([]);
 	const [categories, setCategories] =
-		useState<CategoryOption[]>(fallbackCategories);
+		useState<CategoryOption[]>(() => fallbackCategories(isEn));
 	const [loading, setLoading] = useState(true);
 	const [submitting, setSubmitting] = useState(false);
 	const [error, setError] = useState<string | null>(null);
@@ -160,15 +172,18 @@ export default function TransactionNewScreen() {
 			if (!isCurrentRequest()) return;
 
 			const activeWallets = walletData.filter((w) => w.is_active !== false);
-			let categoryOptions = fallbackCategories;
+			let categoryOptions = fallbackCategories(isEn);
 			const defaultCategoryData = categoryData.filter(
 				(c) => c.is_default !== false,
 			);
 			if (defaultCategoryData.length > 0) {
-				categoryOptions = defaultCategoryData.map((c) => ({
-					name: c.name,
-					icon: normalizeCategoryIcon(c.icon, c.name),
-				}));
+				categoryOptions = defaultCategoryData.map((c) => {
+					const localizedName = getLocalizedCategoryName(c.name, isEn ? "en" : "id");
+					return {
+						name: localizedName,
+						icon: normalizeCategoryIcon(c.icon, localizedName),
+					};
+				});
 			}
 
 			let transaction: Awaited<ReturnType<typeof getTransaction>> = null;
@@ -202,8 +217,11 @@ export default function TransactionNewScreen() {
 					formatAmount(Number(transaction.amount ?? transaction.nominal ?? 0)),
 				);
 				setWalletId(nextWalletId);
-				if (categoryOptions.some((option) => option.name === nextCategory)) {
-					setCategory(nextCategory);
+				const matchedCategoryOption = categoryOptions.find((option) =>
+					areCategoryNamesEquivalent(option.name, nextCategory),
+				);
+				if (matchedCategoryOption) {
+					setCategory(matchedCategoryOption.name);
 					setCustomCategory("");
 				} else if (nextCategory) {
 					setCategory("__custom__");
@@ -227,7 +245,7 @@ export default function TransactionNewScreen() {
 		} finally {
 			if (isCurrentRequest()) setLoading(false);
 		}
-	}, [activeContext, activeContextKey, isEditMode, transactionId]);
+	}, [activeContext, activeContextKey, isEditMode, transactionId, isEn]);
 
 	useEffect(() => {
 		void loadInitialData();

@@ -24,6 +24,7 @@ import {
 import { createEnvelopeAllocation } from "../../src/services/budget-envelopes";
 import { createTransaction } from "../../src/services/transactions";
 import { listCategories, type Category } from "../../src/services/categories";
+import { getLocalizedCategoryName } from "../../src/services/category-taxonomy";
 import {
 	classifyTransactionTextBatch,
 	CLASSIFIER_HIGH_CONFIDENCE_THRESHOLD,
@@ -170,9 +171,13 @@ export default function CaptureScreen() {
 				categoryOptions.length > 0
 					? categoryOptions
 					: await listCategories().catch(() => [] as Category[]);
+			const localizedCategoriesForClassification = categoriesForClassification.map((category) => ({
+				...category,
+				name: getLocalizedCategoryName(category.name, isEn ? "en" : "id"),
+			}));
 			const quickDrafts = classifyTransactionTextBatch(
 				value,
-				categoriesForClassification,
+				localizedCategoriesForClassification,
 			);
 			const quickDraft = quickDrafts[0] ?? null;
 

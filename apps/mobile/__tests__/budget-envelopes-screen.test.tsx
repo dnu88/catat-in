@@ -344,16 +344,16 @@ describe("Budget envelopes screen", () => {
 		fireEvent.press(endOption);
 		fireEvent.press(screen.getByTestId("budget-wallet-icon-dropdown"));
 		expect(
-			screen.getAllByText("Makanan & Minuman").length,
+			screen.getAllByText("Makan & Minum").length,
 		).toBeGreaterThanOrEqual(1);
 		expect(screen.getByText("Transportasi")).toBeTruthy();
 		expect(screen.getByText("Olahraga")).toBeTruthy();
 		expect(screen.getByText("Rekreasi")).toBeTruthy();
-		expect(screen.getByText("Groceries")).toBeTruthy();
+		expect(screen.getByText("Belanja Bulanan")).toBeTruthy();
 		expect(screen.getByText("Investasi")).toBeTruthy();
 		expect(screen.getByText("Hadiah")).toBeTruthy();
-		expect(screen.getByText("Other expenses")).toBeTruthy();
-		fireEvent.press(screen.getAllByText("Makanan & Minuman")[0]);
+		expect(screen.getByText("Lainnya")).toBeTruthy();
+		fireEvent.press(screen.getAllByText("Makan & Minum")[0]);
 		fireEvent.press(screen.getByTestId("budget-wallet-color-dropdown"));
 		const colorOptionNodes = screen.getAllByTestId(
 			/^budget-wallet-color-#[0-9A-F]{6}$/,

@@ -89,7 +89,7 @@ describe("transaction-new edit mode", () => {
 			wallet_id: "wallet-1",
 			transaction_type: "expense",
 			amount: 35000,
-			category: "Makan",
+			category: "Makan & Minum",
 			description: "Kopi sore",
 			merchant: "Kopi Kenangan",
 			date: "2026-05-20",
@@ -132,7 +132,7 @@ describe("transaction-new edit mode", () => {
 		]);
 		const screen = renderScreen();
 
-		expect(await screen.findByLabelText("Pilih kategori Makan")).toBeTruthy();
+		expect(await screen.findByLabelText("Pilih kategori Makan & Minum")).toBeTruthy();
 		expect(screen.queryByLabelText("Pilih kategori Nongkrong")).toBeNull();
 		expect(screen.queryByLabelText("Pilih kategori kustom")).toBeNull();
 	});
@@ -153,14 +153,14 @@ describe("transaction-new edit mode", () => {
 			screen.getByLabelText("Deskripsi transaksi"),
 			"Makan siang",
 		);
-		fireEvent.press(screen.getByLabelText("Pilih kategori Makan"));
+		fireEvent.press(screen.getByLabelText("Pilih kategori Makan & Minum"));
 		fireEvent.press(screen.getByLabelText("Simpan transaksi manual"));
 
 		await waitFor(() =>
 			expect(mockCreateTransaction).toHaveBeenCalledWith(
 				expect.objectContaining({
 					amount: 50000,
-					category: "Makan",
+					category: "Makan & Minum",
 					description: "Makan siang",
 					wallet_id: "wallet-1",
 				}),
@@ -218,7 +218,7 @@ describe("transaction-new edit mode", () => {
 			screen.getByLabelText("Deskripsi transaksi"),
 			"Belanja rumah",
 		);
-		fireEvent.press(screen.getByLabelText("Pilih kategori Makan"));
+		fireEvent.press(screen.getByLabelText("Pilih kategori Makan & Minum"));
 		fireEvent.press(screen.getByLabelText("Simpan transaksi manual"));
 
 		await waitFor(() =>
@@ -238,7 +238,7 @@ describe("transaction-new edit mode", () => {
 			wallet_id: "wallet-stale",
 			transaction_type: "expense",
 			amount: 35000,
-			category: "Makan",
+			category: "Makan & Minum",
 			description: "Kopi sore",
 			merchant: "Kopi Kenangan",
 			date: "2026-05-20",

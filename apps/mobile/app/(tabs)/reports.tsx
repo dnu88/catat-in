@@ -25,6 +25,7 @@ import { useI18n } from "../../src/i18n/i18n-context";
 import { useFinanceContext } from "../../src/state/finance-context";
 import { applyFinanceContextFilter } from "../../src/services/finance-context-query";
 import { listCategories, type Category } from "../../src/services/categories";
+import { getCategoryCanonicalId, getLocalizedCategoryName } from "../../src/services/category-taxonomy";
 import {
 	reportCategoryPalette,
 	reportCategoryRoleColors,
@@ -243,7 +244,7 @@ export default function ReportsScreen() {
 				color: string;
 				tone: CategoryTone;
 			}>
-		>(categories);
+		>([]);
 	const [reportTransactions, setReportTransactions] = useState<
 		ReportTransaction[]
 	>([]);
@@ -251,6 +252,11 @@ export default function ReportsScreen() {
 	const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(
 		null,
 	);
+
+	const otherCategoryPercent = dynamicCategories.find(
+		(category) => category.id === "other_expenses" || getCategoryCanonicalId(category.label) === "other_expenses",
+	)?.percent ?? 0;
+	const shouldShowOtherCategoryInsight = otherCategoryPercent >= 10;
 
 	const categoryRoleColors = reportCategoryRoleColors[theme.mode];
 
@@ -329,6 +335,8 @@ export default function ReportsScreen() {
 				modalApply: "Apply",
 				detailTitle: "Transactions",
 				noCategoryTransactions: "No transactions in this category.",
+				otherCategoryInsight: (percent: number) =>
+					`Other expenses are ${percent}% of spending. Review these transactions so reports stay accurate.`,
 				shareTitle: "Financial Report",
 				shareIncome: "Income",
 				shareExpense: "Expense",
@@ -380,6 +388,8 @@ export default function ReportsScreen() {
 				modalApply: "Terapkan",
 				detailTitle: "Transaksi",
 				noCategoryTransactions: "Belum ada transaksi di kategori ini.",
+				otherCategoryInsight: (percent: number) =>
+					`Lainnya mencapai ${percent}% pengeluaran. Rapikan kategori agar laporan lebih akurat.`,
 				shareTitle: "Laporan Keuangan",
 				shareIncome: "Pemasukan",
 				shareExpense: "Pengeluaran",
@@ -601,19 +611,24 @@ export default function ReportsScreen() {
 		periodFilter,
 	]);
 	const top5Expenses = useMemo(() => {
-		const grouped = new Map<string, number>();
+		const grouped = new Map<string, { amount: number; sourceName: string }>();
 		for (const transaction of reportTransactions) {
 			if (transaction.transaction_type !== "expense") continue;
-			const category =
+			const sourceName =
 				(transaction.category || "").toString().trim() ||
-				(isEn ? "Other" : "Lainnya");
-			grouped.set(
-				category,
-				(grouped.get(category) || 0) + (transaction.amount || 0),
-			);
+				(isEn ? "Other expenses" : "Lainnya");
+			const key = getCategoryCanonicalId(sourceName) || "other_expenses";
+			const current = grouped.get(key);
+			grouped.set(key, {
+				amount: (current?.amount || 0) + (transaction.amount || 0),
+				sourceName: current?.sourceName ?? sourceName,
+			});
 		}
 		return Array.from(grouped.entries())
-			.map(([category, amount]) => ({ category, amount }))
+			.map(([_, group]) => ({
+				category: getLocalizedCategoryName(group.sourceName, isEn ? "en" : "id"),
+				amount: group.amount,
+			}))
 			.sort((a, b) => b.amount - a.amount)
 			.slice(0, 5);
 	}, [isEn, reportTransactions]);
@@ -679,10 +694,8 @@ export default function ReportsScreen() {
 				.filter((transaction) => transaction.transaction_type === "expense")
 				.filter(
 					(transaction) =>
-						((transaction.category || "other")
-							.toString()
-							.trim()
-							.toLowerCase() || "other") === selectedCategoryId,
+						(getCategoryCanonicalId(transaction.category || "other") || "other_expenses") ===
+						selectedCategoryId,
 				)
 				.sort((a, b) => (b.date || "").localeCompare(a.date || ""))
 		: [];
@@ -850,31 +863,35 @@ export default function ReportsScreen() {
 					0,
 				);
 				if (expenseTx.length > 0 && totalExpense > 0) {
-					const grouped = new Map<string, number>();
+					const grouped = new Map<string, { amount: number; sourceName: string }>();
 					for (const t of expenseTx) {
-						const key =
-							(t.category || "other").toString().trim().toLowerCase() ||
-							"other";
-						grouped.set(key, (grouped.get(key) || 0) + (t.amount || 0));
+						const sourceName = (t.category || "other").toString().trim() || "other";
+						const key = getCategoryCanonicalId(sourceName) || "other_expenses";
+						const current = grouped.get(key);
+						grouped.set(key, {
+							amount: (current?.amount || 0) + (t.amount || 0),
+							sourceName: current?.sourceName ?? sourceName,
+						});
 					}
 					const generated = Array.from(grouped.entries())
-						.map(([key, amount]) => {
+						.map(([key, group]) => {
+							const amount = group.amount;
 							const percent = Math.max(
 								1,
 								Math.round((amount / totalExpense) * 100),
 							);
 							const categorySource = loadedCategories.find(
-								(category) =>
-									(category.name || "").trim().toLowerCase() === key,
+								(category) => getCategoryCanonicalId(category.name) === key,
 							);
+							const categoryName = categorySource?.name ?? group.sourceName;
 							const categoryMeta = resolveCategoryVisual({
-								categoryName: key,
+								categoryName,
 								categories: loadedCategories,
 								mode: theme.mode,
 							});
 							return {
 								id: key,
-								label: key.charAt(0).toUpperCase() + key.slice(1),
+								label: getLocalizedCategoryName(categoryName, isEn ? "en" : "id"),
 								percent,
 								value: amount,
 								amount: `Rp ${amount.toLocaleString("id-ID")}`,
@@ -1383,6 +1400,11 @@ export default function ReportsScreen() {
 							<Text
 								style={styles.categoryCardSub}
 							>{`${tx.breakdownSub} ${periodDisplayLabel}`}</Text>
+							{shouldShowOtherCategoryInsight ? (
+								<View testID="reports-other-category-insight" style={styles.otherInsightCard}>
+									<Text style={styles.otherInsightText}>{tx.otherCategoryInsight(otherCategoryPercent)}</Text>
+								</View>
+							) : null}
 
 							<View style={styles.ringArea}>
 								<View style={styles.donutChart}>
@@ -2380,6 +2402,19 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			fontWeight: "800",
 		},
 		categoryCardSub: { color: theme.colors.textSecondary, fontSize: 12 },
+		otherInsightCard: {
+			backgroundColor: theme.colors.mutedSurface,
+			borderWidth: 1,
+			borderColor: theme.colors.borderSoft,
+			borderRadius: 14,
+			padding: 12,
+		},
+		otherInsightText: {
+			color: theme.colors.textSecondary,
+			fontSize: 12,
+			fontWeight: "700",
+			lineHeight: 17,
+		},
 		top5Card: {
 			backgroundColor: theme.colors.surface,
 			borderRadius: 20,

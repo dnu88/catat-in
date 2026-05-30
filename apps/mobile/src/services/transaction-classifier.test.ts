@@ -138,6 +138,29 @@ describe("transaction text classifier", () => {
 		});
 	});
 
+
+	it("supports localized Indonesian category names for capture", () => {
+		const localizedCategories = [
+			{ id: "cat-food", name: "Makan & Minum", type: "expense" as const },
+			{ id: "cat-groceries", name: "Belanja Bulanan", type: "expense" as const },
+			{ id: "cat-shopping", name: "Belanja Pribadi", type: "expense" as const },
+			{ id: "cat-other", name: "Lainnya", type: "expense" as const },
+		];
+
+		expect(
+			classifyTransactionText("belanja beras dan sabun 120rb", localizedCategories, fixedDate),
+		).toMatchObject({
+			categoryId: "cat-groceries",
+			categoryName: "Belanja Bulanan",
+		});
+		expect(
+			classifyTransactionText("beli skincare di shopee 180rb", localizedCategories, fixedDate),
+		).toMatchObject({
+			categoryId: "cat-shopping",
+			categoryName: "Belanja Pribadi",
+		});
+	});
+
 	it("falls back to Other expenses with low confidence when unclear", () => {
 		const result = classifyTransactionText("bayar sesuatu 50000", categories, fixedDate);
 

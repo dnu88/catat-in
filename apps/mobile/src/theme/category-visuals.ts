@@ -2,6 +2,7 @@ import {
 	kaswiseIconNames,
 	type KaswiseIconName,
 } from "../components/icons/kaswise-icons";
+import { getCategoryDefinitionByName } from "../services/category-taxonomy";
 import type { ThemeMode } from "./tokens";
 import { reportCategoryPalette, reportCategoryRoleColors } from "./report-palettes";
 
@@ -101,6 +102,9 @@ export function getCategoryVisualMeta(
 		transportasi: { color: roleColors.navy, icon: "transport", tone: "navy" },
 		shopping: { color: roleColors.warning, icon: "groceries", tone: "warning" },
 		groceries: { color: roleColors.warning, icon: "groceries", tone: "warning" },
+		"belanja bulanan": { color: roleColors.warning, icon: "groceries", tone: "warning" },
+		"belanja pribadi": { color: roleColors.warning, icon: "groceries", tone: "warning" },
+		"personal shopping": { color: roleColors.warning, icon: "groceries", tone: "warning" },
 		belanja: { color: roleColors.warning, icon: "groceries", tone: "warning" },
 		bills: { color: roleColors.danger, icon: "bills", tone: "danger" },
 		tagihan: { color: roleColors.danger, icon: "bills", tone: "danger" },
@@ -112,6 +116,10 @@ export function getCategoryVisualMeta(
 			tone: "info",
 		},
 		hiburan: { color: roleColors.info, icon: "recreation", tone: "info" },
+		olahraga: { color: roleColors.info, icon: "sport", tone: "info" },
+		sport: { color: roleColors.info, icon: "sport", tone: "info" },
+		"hadiah & donasi": { color: roleColors.danger, icon: "gift", tone: "danger" },
+		"gifts & donations": { color: roleColors.danger, icon: "gift", tone: "danger" },
 		other: {
 			color: neutralCategoryColor,
 			icon: "otherExpenses",
@@ -123,8 +131,10 @@ export function getCategoryVisualMeta(
 			tone: "neutral",
 		},
 	};
-	const key = normalizeCategoryVisualName(categoryName);
-	const known = categoryColorByName[key];
+	const definition = getCategoryDefinitionByName(categoryName);
+	const key = normalizeCategoryVisualName(definition?.labels.en ?? categoryName);
+	const localizedKey = normalizeCategoryVisualName(categoryName);
+	const known = categoryColorByName[localizedKey] ?? categoryColorByName[key];
 	if (known) return known;
 
 	const palette = reportCategoryPalette[mode];

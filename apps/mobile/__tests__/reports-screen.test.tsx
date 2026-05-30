@@ -253,13 +253,13 @@ describe("ReportsScreen visual parity", () => {
 		renderReports();
 
 		fireEvent.press(screen.getByText("Kategori"));
-		await screen.findByTestId("reports-category-fill-makan");
+		await screen.findByTestId("reports-category-fill-food_beverage");
 
 		const chain = (globalThis as any).__reportsQueryChain;
 		expect(chain.select).toHaveBeenCalledWith("*");
 		expect(chain.gte).not.toHaveBeenCalled();
 		expect(chain.lte).not.toHaveBeenCalled();
-		expect(screen.getByTestId("reports-category-fill-makan")).toBeTruthy();
+		expect(screen.getByTestId("reports-category-fill-food_beverage")).toBeTruthy();
 	});
 
 	it("does not additionally filter household report transactions by current user", async () => {
@@ -282,27 +282,27 @@ describe("ReportsScreen visual parity", () => {
 
 		fireEvent.press(screen.getByText("Kategori"));
 
-		const foodFill = await screen.findByTestId("reports-category-fill-makan");
+		const foodFill = await screen.findByTestId("reports-category-fill-food_beverage");
 		const shoppingFill = await screen.findByTestId(
-			"reports-category-fill-belanja",
+			"reports-category-fill-personal_shopping",
 		);
 		const transportFill = await screen.findByTestId(
 			"reports-category-fill-transport",
 		);
 		const customFill = await screen.findByTestId(
-			"reports-category-fill-kesehatan",
+			"reports-category-fill-health",
 		);
 		const foodSegment = await screen.findByTestId(
-			"reports-donut-segment-makan",
+			"reports-donut-segment-food_beverage",
 		);
 		const shoppingSegment = await screen.findByTestId(
-			"reports-donut-segment-belanja",
+			"reports-donut-segment-personal_shopping",
 		);
 		const transportSegment = await screen.findByTestId(
 			"reports-donut-segment-transport",
 		);
 		const customSegment = await screen.findByTestId(
-			"reports-donut-segment-kesehatan",
+			"reports-donut-segment-health",
 		);
 
 		expect(getFlattenedStyle(foodFill).backgroundColor).toBe("#4A80F0");
@@ -352,12 +352,12 @@ describe("ReportsScreen visual parity", () => {
 		const screen = renderReports();
 
 		fireEvent.press(screen.getByText("Kategori"));
-		fireEvent.press(await screen.findByTestId("reports-category-row-makan"));
+		fireEvent.press(await screen.findByTestId("reports-category-row-food_beverage"));
 
 		expect(
 			await screen.findByTestId("reports-category-detail-modal"),
 		).toBeTruthy();
-		expect(screen.getAllByText("Makan").length).toBeGreaterThan(0);
+		expect(screen.getAllByText("Makan & Minum").length).toBeGreaterThan(0);
 		expect(screen.getByText("Nasi padang")).toBeTruthy();
 		expect(screen.getByText("RM Sederhana")).toBeTruthy();
 		expect(screen.getAllByText("Rp 500.000").length).toBeGreaterThan(0);
@@ -374,9 +374,9 @@ describe("ReportsScreen visual parity", () => {
 		fireEvent.press(screen.getByText("Kategori"));
 
 		const foodSegment = await screen.findByTestId(
-			"reports-donut-segment-makan",
+			"reports-donut-segment-food_beverage",
 		);
-		const foodGlow = await screen.findByTestId("reports-donut-glow-makan");
+		const foodGlow = await screen.findByTestId("reports-donut-glow-food_beverage");
 
 		expect(foodSegment.props.strokeLinecap).toBe(0);
 		expect(foodSegment.props.strokeWidth).toBeGreaterThanOrEqual(17);
@@ -399,10 +399,10 @@ describe("ReportsScreen visual parity", () => {
 		fireEvent.press(screen.getByText("Kategori"));
 
 		const foodSegment = await screen.findByTestId(
-			"reports-donut-segment-makan",
+			"reports-donut-segment-food_beverage",
 		);
 		const shoppingSegment = await screen.findByTestId(
-			"reports-donut-segment-belanja",
+			"reports-donut-segment-personal_shopping",
 		);
 		const circumference = 2 * Math.PI * Number(foodSegment.props.r);
 		const total = 500000 + 350000 + 200000 + 150000;
@@ -429,10 +429,10 @@ describe("ReportsScreen visual parity", () => {
 		fireEvent.press(screen.getByText("Kategori"));
 
 		const segments = await Promise.all([
-			screen.findByTestId("reports-donut-segment-makan"),
-			screen.findByTestId("reports-donut-segment-belanja"),
+			screen.findByTestId("reports-donut-segment-food_beverage"),
+			screen.findByTestId("reports-donut-segment-personal_shopping"),
 			screen.findByTestId("reports-donut-segment-transport"),
-			screen.findByTestId("reports-donut-segment-kesehatan"),
+			screen.findByTestId("reports-donut-segment-health"),
 		]);
 		const colors = segments.map(
 			(segment: { props: { stroke: string } }) => segment.props.stroke,
@@ -447,7 +447,7 @@ describe("ReportsScreen visual parity", () => {
 		fireEvent.press(screen.getByText("Kategori"));
 
 		const donutSvg = await screen.findByTestId("reports-donut-svg");
-		const foodGlow = await screen.findByTestId("reports-donut-glow-makan");
+		const foodGlow = await screen.findByTestId("reports-donut-glow-food_beverage");
 		const center = Number(foodGlow.props.cx);
 		const outerEdge =
 			Number(foodGlow.props.r) + Number(foodGlow.props.strokeWidth) / 2;

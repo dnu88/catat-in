@@ -1,4 +1,7 @@
 import {
+	areCategoryNamesEquivalent,
+} from "./category-taxonomy";
+import {
 	applyFinanceContextFilter,
 	buildFinanceInsertAudit,
 	canCreateInContext,
@@ -215,7 +218,7 @@ function envelopeMatchesTransactionCategory(
 
 	if (
 		envelope.parent_category_name &&
-		normalize(envelope.parent_category_name) === normalizedCategory
+		areCategoryNamesEquivalent(envelope.parent_category_name, categoryName)
 	) {
 		return true;
 	}
@@ -249,7 +252,7 @@ function scoreEnvelopeForTransaction(
 	if (
 		candidate.categoryName &&
 		envelope.parent_category_name &&
-		normalize(candidate.categoryName) === normalize(envelope.parent_category_name)
+		areCategoryNamesEquivalent(candidate.categoryName, envelope.parent_category_name)
 	) {
 		score += 2;
 	}
@@ -258,7 +261,8 @@ function scoreEnvelopeForTransaction(
 	if (
 		candidate.categoryName &&
 		envelopeName &&
-		normalize(candidate.categoryName) === envelopeName
+		(areCategoryNamesEquivalent(candidate.categoryName, envelope.name) ||
+			normalize(candidate.categoryName) === envelopeName)
 	) {
 		score += 3;
 	}

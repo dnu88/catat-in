@@ -50,6 +50,7 @@ import {
 import { useTheme } from "../../src/theme/theme-context";
 import { budgetEnvelopePalette } from "../../src/theme/report-palettes";
 import { resolveCategoryVisual } from "../../src/theme/category-visuals";
+import { areCategoryNamesEquivalent, getLocalizedCategoryHelper, getLocalizedCategoryName } from "../../src/services/category-taxonomy";
 
 type EnvelopeSummary = {
 	envelope: BudgetEnvelope;
@@ -57,6 +58,7 @@ type EnvelopeSummary = {
 };
 
 type EnvelopeRowProps = {
+	isEn: boolean;
 	item: EnvelopeSummary;
 	theme: ReturnType<typeof useTheme>["theme"];
 	styles: ReturnType<typeof createStyles>;
@@ -75,17 +77,17 @@ const iconOptions: {
 	labelId: string;
 	labelEn: string;
 }[] = [
-	{ value: "food", labelId: "Makanan & Minuman", labelEn: "Food & Beverage" },
+	{ value: "food", labelId: "Makan & Minum", labelEn: "Food & Beverage" },
 	{ value: "transport", labelId: "Transportasi", labelEn: "Transport" },
 	{ value: "sport", labelId: "Olahraga", labelEn: "Sport" },
 	{ value: "recreation", labelId: "Rekreasi", labelEn: "Recreation" },
 	{ value: "bills", labelId: "Tagihan", labelEn: "Bills" },
-	{ value: "groceries", labelId: "Groceries", labelEn: "Groceries" },
+	{ value: "groceries", labelId: "Belanja Bulanan", labelEn: "Groceries" },
 	{ value: "investment", labelId: "Investasi", labelEn: "Investment" },
 	{ value: "gift", labelId: "Hadiah", labelEn: "Gift" },
 	{
 		value: "otherExpenses",
-		labelId: "Other expenses",
+		labelId: "Lainnya",
 		labelEn: "Other expenses",
 	},
 ];
@@ -139,6 +141,7 @@ function colorWithAlpha(color: string, alpha: string) {
 }
 
 function EnvelopeRow({
+	isEn,
 	item,
 	theme,
 	styles,
@@ -167,6 +170,9 @@ function EnvelopeRow({
 	});
 	const rowIcon = resolveBudgetIconName(categoryVisual.icon);
 	const accentColor = resolveEnvelopeAccentColor(categoryVisual.color, statusColor);
+	const categoryDisplayName = envelope.parent_category_name
+		? getLocalizedCategoryName(envelope.parent_category_name, isEn ? "en" : "id")
+		: noCategoryLabel;
 
 	return (
 		<View testID={`envelope-card-${envelope.id}`} style={styles.budgetCard}>
@@ -193,7 +199,7 @@ function EnvelopeRow({
 							{envelope.name}
 						</Text>
 						<Text style={styles.budgetMeta}>
-							{envelope.parent_category_name ?? noCategoryLabel}
+							{categoryDisplayName}
 						</Text>
 						<Text style={styles.budgetPeriod}>
 							{envelope.start_date}–{envelope.end_date}
@@ -520,10 +526,8 @@ export default function BudgetsScreen() {
 		setLimitAmount(String(Number(envelope.limit_amount ?? 0)));
 		setSelectedCategoryId(
 			envelope.parent_category_id ??
-				categoryOptions.find(
-					(category) =>
-						normalizeLabel(category.name) ===
-						normalizeLabel(envelope.parent_category_name),
+				categoryOptions.find((category) =>
+					areCategoryNamesEquivalent(category.name, envelope.parent_category_name),
 				)?.id ??
 				null,
 		);
@@ -533,8 +537,7 @@ export default function BudgetsScreen() {
 			categoryOptions.find(
 				(category) =>
 					category.id === envelope.parent_category_id ||
-					normalizeLabel(category.name) ===
-						normalizeLabel(envelope.parent_category_name),
+					areCategoryNamesEquivalent(category.name, envelope.parent_category_name),
 			) ?? null;
 		const editVisual = resolveCategoryVisual({
 			categoryId: envelope.parent_category_id,
@@ -773,6 +776,7 @@ export default function BudgetsScreen() {
 
 	const renderEnvelope = ({ item }: { item: EnvelopeSummary }) => (
 		<EnvelopeRow
+			isEn={isEn}
 			item={item}
 			theme={theme}
 			styles={styles}
@@ -844,7 +848,7 @@ export default function BudgetsScreen() {
 							onPress={() => setShowCategoryOptions((value) => !value)}
 						>
 							<Text style={styles.selectText}>
-								{selectedCategory?.name ?? tx.categoryPlaceholder}
+								{selectedCategory ? getLocalizedCategoryName(selectedCategory.name, isEn ? "en" : "id") : tx.categoryPlaceholder}
 							</Text>
 							<Text style={styles.selectChevron}>⌄</Text>
 						</Pressable>
@@ -855,7 +859,7 @@ export default function BudgetsScreen() {
 										key={option.id}
 										testID={`budget-category-option-${option.id}`}
 										accessibilityRole="button"
-										accessibilityLabel={`${tx.categoryLabel}: ${option.name}`}
+										accessibilityLabel={`${tx.categoryLabel}: ${getLocalizedCategoryName(option.name, isEn ? "en" : "id")}`}
 										style={styles.optionRow}
 										onPress={() => {
 											setSelectedCategoryId(option.id);
@@ -863,7 +867,10 @@ export default function BudgetsScreen() {
 											setShowCategoryOptions(false);
 										}}
 									>
-										<Text style={styles.optionText}>{option.name}</Text>
+										<Text style={styles.optionText}>{getLocalizedCategoryName(option.name, isEn ? "en" : "id")}</Text>
+									{getLocalizedCategoryHelper(option.name, isEn ? "en" : "id") ? (
+										<Text style={styles.optionHint}>{getLocalizedCategoryHelper(option.name, isEn ? "en" : "id")}</Text>
+									) : null}
 									</Pressable>
 								))}
 							</View>

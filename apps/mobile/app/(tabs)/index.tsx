@@ -22,6 +22,7 @@ import {
 } from "../../src/services/transactions";
 import { listWallets, type Wallet } from "../../src/services/wallets";
 import { listCategories, type Category } from "../../src/services/categories";
+import { getLocalizedCategoryName } from "../../src/services/category-taxonomy";
 import { resolveCategoryVisual } from "../../src/theme/category-visuals";
 import { useFinanceContext } from "../../src/state/finance-context";
 import { useTheme } from "../../src/theme/theme-context";
@@ -205,11 +206,16 @@ export default function DashboardScreen() {
 			mode: theme.mode,
 		});
 
+		const localizedCategoryName = getLocalizedCategoryName(
+			transaction.category,
+			isEn ? "en" : "id",
+		);
+
 		return {
 			id: transaction.id,
 			title:
 				transaction.merchant ?? transaction.description ?? transaction.category,
-			meta: `${transaction.date ?? ""} · ${transaction.category}`,
+			meta: `${transaction.date ?? ""} · ${localizedCategoryName}`,
 			amount: formatCompactAmount(
 				transaction.amount,
 				transaction.transaction_type,

@@ -215,7 +215,7 @@ describe("Capture envelope suggestion", () => {
 				wallet_id: null,
 				transaction_type: "expense",
 				amount: 35000,
-				category: "Food & Beverage",
+				category: "Makan & Minum",
 				description: "Beli kopi 35rb",
 				note: "Beli kopi 35rb",
 				input_type: "text",
