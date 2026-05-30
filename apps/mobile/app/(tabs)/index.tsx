@@ -1,10 +1,11 @@
 import { useCallback, useMemo, useState } from "react";
-import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Image, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useFocusEffect, useRouter } from "expo-router";
 
 import { FinanceContextSwitcher } from "../../src/components/FinanceContextSwitcher";
 import { PageEntrance, StaggeredEntrance } from "../../src/components/motion";
 import { KaswiseIcon } from "../../src/components/icons/kaswise-icons";
+import { PROFILE_AVATARS, ProfileAvatarIllustration, readProfileVisualMetadata } from "../../src/components/profile/ProfileAvatar";
 import { EmptyState } from "../../src/components/ui";
 import { useI18n } from "../../src/i18n/i18n-context";
 import { useSupabase } from "../../src/lib/supabase";
@@ -111,6 +112,8 @@ export default function DashboardScreen() {
 	const [categoryOptions, setCategoryOptions] = useState<Category[]>([]);
 	const [userName, setUserName] = useState("");
 	const [userEmail, setUserEmail] = useState("");
+	const [profilePhotoUrl, setProfilePhotoUrl] = useState("");
+	const [profileAvatarKey, setProfileAvatarKey] = useState("");
 
 	const [refreshing, setRefreshing] = useState(false);
 
@@ -124,18 +127,23 @@ export default function DashboardScreen() {
 						setEnvelopeAlerts([]);
 						setUserName("");
 						setUserEmail("");
+						setProfilePhotoUrl("");
+						setProfileAvatarKey("");
 					}
 					return;
 				}
 
 				if (mounted) {
-					const metadata = user.user_metadata ?? {};
+					const metadata = (user.user_metadata ?? {}) as Record<string, unknown>;
 					const resolvedName =
 						(typeof metadata.full_name === "string" && metadata.full_name) ||
 						(typeof metadata.name === "string" && metadata.name) ||
 						"";
+					const visual = readProfileVisualMetadata(metadata);
 					setUserName(resolvedName);
 					setUserEmail(user.email ?? "");
+					setProfilePhotoUrl(visual.photoUrl);
+					setProfileAvatarKey(visual.avatarKey);
 				}
 
 				const [envelopes, scopedWallets, scopedTransactions, categories] =
@@ -246,6 +254,9 @@ export default function DashboardScreen() {
 		: userEmail
 			? userEmail.slice(0, 1).toUpperCase()
 			: "?";
+	const selectedProfileAvatar = PROFILE_AVATARS.find(
+		(avatar) => avatar.id === profileAvatarKey,
+	);
 	const now = new Date();
 	const dateText = now.toLocaleDateString(isEn ? "en-US" : "id-ID", {
 		month: "long",
@@ -273,7 +284,17 @@ export default function DashboardScreen() {
 					</View>
 					<View style={styles.headerActions}>
 						<View testID="home-avatar" style={styles.avatarWrap}>
-							<Text style={styles.avatarText}>{avatarInitials}</Text>
+							{profilePhotoUrl ? (
+								<Image
+									testID="home-avatar-image"
+									source={{ uri: profilePhotoUrl }}
+									style={styles.avatarImage}
+								/>
+							) : selectedProfileAvatar ? (
+								<ProfileAvatarIllustration preset={selectedProfileAvatar} theme={theme} size={36} />
+							) : (
+								<Text style={styles.avatarText}>{avatarInitials}</Text>
+							)}
 						</View>
 					</View>
 				</View>
@@ -522,6 +543,12 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			backgroundColor: theme.colors.brandPrimary,
 			alignItems: "center",
 			justifyContent: "center",
+			overflow: "hidden",
+		},
+		avatarImage: {
+			width: 36,
+			height: 36,
+			borderRadius: 18,
 		},
 		avatarText: {
 			color: theme.colors.textInverse,

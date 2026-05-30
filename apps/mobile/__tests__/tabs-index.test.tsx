@@ -10,6 +10,7 @@ let mockEnvelopes: any[] = [];
 let mockAllocations: any[] = [];
 let mockWallets: any[] = [];
 let mockTransactions: any[] = [];
+let mockAuthUser: any = { id: "user-1" };
 let mockActiveContext:
 	| { type: "personal" }
 	| { type: "household"; householdId: string; role: "admin" } = {
@@ -28,7 +29,7 @@ jest.mock("../src/lib/supabase", () => ({
 	useSupabase: () => ({
 		supabase: {
 			auth: {
-				getUser: jest.fn(async () => ({ data: { user: { id: "user-1" } } })),
+				getUser: jest.fn(async () => ({ data: { user: mockAuthUser } })),
 			},
 		},
 	}),
@@ -178,6 +179,7 @@ const SOFT_GREEN_BORDERS = [
 describe("DashboardScreen dark luxury Home parity", () => {
 	beforeEach(() => {
 		mockPush.mockClear();
+		mockAuthUser = { id: "user-1" };
 		mockActiveContext = { type: "personal" };
 		mockWallets = [];
 		mockTransactions = [];
@@ -213,6 +215,50 @@ describe("DashboardScreen dark luxury Home parity", () => {
 				updated_at: "",
 			},
 		];
+	});
+
+
+	it("uses the saved Settings profile avatar instead of initials", async () => {
+		mockAuthUser = {
+			id: "user-1",
+			email: "dania@kaswise.com",
+			user_metadata: {
+				full_name: "Dania Bestari",
+				picture: "https://accounts.google.com/default-picture.png",
+				avatar_key: "sari-hijab",
+				avatar_url: null,
+				profile_visual_mode: "avatar",
+			},
+		};
+
+		const screen = renderDashboard();
+
+		await waitFor(() => {
+			expect(screen.getByText("Halo, Dania")).toBeTruthy();
+		});
+		expect(screen.getByLabelText("Sari berhijab")).toBeTruthy();
+		expect(screen.queryByText("DB")).toBeNull();
+	});
+
+	it("uses the saved Settings profile photo on the dashboard avatar", async () => {
+		mockAuthUser = {
+			id: "user-1",
+			email: "dania@kaswise.com",
+			user_metadata: {
+				full_name: "Dania Bestari",
+				avatar_url: "https://kaswise.com/avatar.png",
+				profile_visual_mode: "photo",
+			},
+		};
+
+		const screen = renderDashboard();
+
+		await waitFor(() => {
+			expect(screen.getByTestId("home-avatar-image").props.source).toEqual({
+				uri: "https://kaswise.com/avatar.png",
+			});
+		});
+		expect(screen.queryByText("DB")).toBeNull();
 	});
 
 	it("renders the honest Home section order and labels", async () => {
