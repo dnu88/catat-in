@@ -262,8 +262,8 @@ Expense → danger/red
 Impeccable context was loaded:
 
 ```text
-PRODUCT.md
-DESIGN.md
+docs/product/PRODUCT.md
+docs/design/DESIGN.md
 reference/product.md
 reference/brand.md
 ```

@@ -3,7 +3,7 @@
 **Date:** 2026-05-09  
 **Status:** Draft  
 **Owner:** ThinkPad  
-**Related:** PLAN-003-web-supabase-migration.md, PRD_Kaswise_v1.md
+**Related:** PLAN-003-web-supabase-migration.md, docs/prd/PRD_Kaswise_v1.md
 
 ## Executive Summary
 

@@ -14,7 +14,15 @@ backend/       Backend API service
 packages/
   shared/      Shared types/theme primitives
 supabase/      Migrations, tests, and edge functions
-docs/          Product, plans, ADRs, handoffs, cleanup notes
+docs/          Canonical documentation home
+  audit/       Audit reports
+  changelog/   Phase changelogs
+  deployment/  Deployment, local testing, go-live docs
+  design/      Design system notes
+  product/     Product overview
+  prd/         PRDs
+  security/    Security hardening and operations docs
+  status/      Snapshots and sign-offs
 ```
 
 ## Mobile App Shape
@@ -62,10 +70,11 @@ apps/web/src/
 
 ## Known Follow-up Candidates
 
-These are candidates for future cleanup after go-live stability, not phase-1 runtime changes:
+Cleanup Phase 2 completed the root-docs move into `docs/*` while keeping `CLAUDE.md` at repo root as an agent/tooling entrypoint.
 
-1. Move root markdown docs into `docs/product`, `docs/deployment`, `docs/audit`, and `docs/changelog`.
-2. Move `Kaswise Design System/` to `docs/design-system/` or `packages/design-system/` and remove spaces from the folder name.
-3. Split large mobile screens, especially `apps/mobile/app/(tabs)/settings.tsx`, into feature components/hooks.
-4. Consider `apps/mobile/src/features/*` once mobile behavior is stable.
-5. Make backend root scripts cross-platform instead of Windows-venv specific.
+Remaining candidates for future cleanup after go-live stability:
+
+1. Move `Kaswise Design System/` to `docs/design-system/` or `packages/design-system/` and remove spaces from the folder name.
+2. Split large mobile screens, especially `apps/mobile/app/(tabs)/settings.tsx`, into feature components/hooks.
+3. Consider `apps/mobile/src/features/*` once mobile behavior is stable.
+4. Make backend root scripts cross-platform instead of Windows-venv specific.

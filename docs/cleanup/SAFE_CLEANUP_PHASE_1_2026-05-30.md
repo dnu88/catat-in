@@ -55,23 +55,13 @@ apps/web/dist/
 supabase/.temp/
 ```
 
-Root markdown files still located at repo root:
+Root markdown files were intentionally not moved in Phase 1 to avoid breaking external references or team habits.
+
+Cleanup Phase 2 later moved them into canonical `docs/*` locations, except `CLAUDE.md`, which remains at repo root as an agent/tooling entrypoint. See:
 
 ```text
-AUDIT_REPORT_APPS_WEB.md
-CLAUDE.md
-DEPLOYMENT.md
-DEPLOY_VPS_HANDOVER.md
-DESIGN.md
-LOCAL_TESTING_GUIDE.md
-MOBILE_GOLIVE.md
-PHASE_0_CHANGELOG.md
-PHASE_1_CHANGELOG.md
-PRD_Kaswise_v1.md
-PRODUCT.md
+docs/cleanup/SAFE_CLEANUP_PHASE_2_DOCS_2026-05-31.md
 ```
-
-These were not moved in Phase 1 to avoid breaking external references or team habits.
 
 ## Explicitly Not Changed
 

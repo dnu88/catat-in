@@ -69,8 +69,8 @@ clean, modern, premium fintech, rounded cards, soft elevation, mobile-first
 For UI/design work, review:
 
 ```text
-PRODUCT.md
-DESIGN.md
+docs/product/PRODUCT.md
+docs/design/DESIGN.md
 /home/Danu88/.agents/skills/impeccable/SKILL.md
 ```
 

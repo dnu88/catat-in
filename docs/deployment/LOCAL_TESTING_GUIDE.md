@@ -333,5 +333,5 @@ Expected:
 Jika stuck:
 1. Check `supabase/README.md` untuk setup detail
 2. Check `CLAUDE.md` untuk konteks project
-3. Check `PHASE_0_CHANGELOG.md` dan `PHASE_1_CHANGELOG.md` untuk perubahan terkini
+3. Check `docs/changelog/PHASE_0_CHANGELOG.md` dan `docs/changelog/PHASE_1_CHANGELOG.md` untuk perubahan terkini
 4. Run `pnpm --filter mobile type-check` untuk verify TypeScript errors

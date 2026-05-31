@@ -169,7 +169,7 @@ Go-live decision harus eksplisit memilih Mode A atau Mode B dan mengikuti accept
 2. Flow groups lulus sesuai mode rilis:
    - Mode A (Firebase-only): tidak ada group write baru; UI/akses grup yang ditampilkan tidak menimbulkan error blocker.
    - Mode B (Firebase+Backend): flow create/join/manage group dan mutasi transaksi grup wajib lewat backend endpoint (bukan Firestore direct) dan lulus E2E internal.
-3. Semua env production minimum terisi dan tervalidasi (acu ke `DEPLOYMENT.md`, section env frontend/backend) dengan evidence:
+3. Semua env production minimum terisi dan tervalidasi (acu ke `docs/deployment/DEPLOYMENT.md`, section env frontend/backend) dengan evidence:
    - Mode A: checklist env frontend + Firebase authorized domains.
    - Mode B: checklist env frontend+backend + output health check backend (`GET /health`).
 4. Tidak ada P0/P1 open bug saat beta gate.

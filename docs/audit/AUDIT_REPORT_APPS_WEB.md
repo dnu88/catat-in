@@ -3,7 +3,7 @@
 **Target:** `apps/web`  
 **Date:** 2026-05-10  
 **Auditor:** Claude Code (impeccable/audit)  
-**PRODUCT.md:** ✅ Loaded (register: product)
+**docs/product/PRODUCT.md:** ✅ Loaded (register: product)
 
 ## Audit Health Score
 

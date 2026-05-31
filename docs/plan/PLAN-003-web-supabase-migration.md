@@ -4,7 +4,7 @@ status: "Draft"
 owner: "ThinkPad"
 last_updated: "2026-05-06"
 related_prd:
-  - "PRD_Kaswise_v1.md"
+  - "docs/prd/PRD_Kaswise_v1.md"
 ---
 
 # Tujuan
