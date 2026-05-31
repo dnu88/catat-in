@@ -42,7 +42,7 @@
     ],
     "extra": {
       "supabaseUrl": "https://xqvtsgfakuehjwdmenuw.supabase.co",
-      "supabaseAnonKey": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhxdnRzZ2Zha3VlaGp3ZG1lbnV3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYwOTAwNTcsImV4cCI6MjA5MTY2NjA1N30.9GfVlqwI1xTFolIS18i9n-ErM_s9h8R4n4Bx54pn0sE"
+      "supabaseAnonKey": "sb_publishable_5wHtNuoACq4r8OQRwf0wTQ_TJEJakPM"
     }
   }
 }

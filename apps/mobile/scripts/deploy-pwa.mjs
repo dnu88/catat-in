@@ -82,14 +82,14 @@ function publicRuntimeConfigBlock() {
   const extra = readExpoConfig().extra ?? {}
   const supabaseUrl =
     process.env.EXPO_PUBLIC_SUPABASE_URL ||
-    env.EXPO_PUBLIC_SUPABASE_URL ||
     extra.supabaseUrl ||
-    extra.EXPO_PUBLIC_SUPABASE_URL
+    extra.EXPO_PUBLIC_SUPABASE_URL ||
+    env.EXPO_PUBLIC_SUPABASE_URL
   const supabaseAnonKey =
     process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ||
-    env.EXPO_PUBLIC_SUPABASE_ANON_KEY ||
     extra.supabaseAnonKey ||
-    extra.EXPO_PUBLIC_SUPABASE_ANON_KEY
+    extra.EXPO_PUBLIC_SUPABASE_ANON_KEY ||
+    env.EXPO_PUBLIC_SUPABASE_ANON_KEY
 
   if (!supabaseUrl || !supabaseAnonKey) {
     throw new Error('Missing public Supabase config for PWA deploy')
@@ -121,8 +121,7 @@ function existingInjectBlock() {
 const expoConfig = readExpoConfig()
 let indexHtml = readFileSync(distIndex, 'utf8')
 if (!indexHtml.includes(marker)) {
-  const injectBlock = existingInjectBlock() ?? publicRuntimeConfigBlock()
-  indexHtml = indexHtml.replace(metaMarker, `${injectBlock}${metaMarker}`)
+  indexHtml = indexHtml.replace(metaMarker, `${publicRuntimeConfigBlock()}${metaMarker}`)
 }
 
 indexHtml = withInstallMetadata(indexHtml)
