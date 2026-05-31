@@ -21,7 +21,7 @@ export function todayKey(date = new Date()) {
 export function currentMonthRange(date = new Date()) {
   const start = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), 1));
   const end = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + 1, 0));
-  return { start: todayKey(start), end: todayKey(end) };
+  return { start: todayKey(start), end: todayKey(end), startDay: 1, endDay: end.getUTCDate() };
 }
 
 function byName(page: Page, name: string | RegExp): Locator {
@@ -109,9 +109,13 @@ export async function createBudget(page: Page, name = testData.budgetName) {
   await expect(page.getByTestId('envelope-create-form')).toBeVisible();
   await page.getByLabel(/Nama dompet|Wallet name/i).first().fill(name);
   await page.getByLabel(/Limit/i).first().fill(testData.budgetLimit);
+  await page.getByTestId('budget-category-dropdown').click();
+  await page.getByRole('button', { name: /Kategori: Makan|Category: Food|Food & Beverage|Makan & Minum/i }).first().click();
   const range = currentMonthRange();
-  await page.getByLabel(/Tanggal mulai|Start date/i).first().fill(range.start);
-  await page.getByLabel(/Tanggal akhir|End date/i).first().fill(range.end);
+  await page.getByTestId('budget-start-date-dropdown').click();
+  await page.getByTestId(`budget-start-date-option-${range.startDay}`).click();
+  await page.getByTestId('budget-end-date-dropdown').click();
+  await page.getByTestId(`budget-end-date-option-${range.endDay}`).click();
   await page.getByLabel(/Catatan|Notes/i).first().fill('makan kopi gofood nasi ayam');
   await page.getByRole('button', { name: /Simpan dompet|Save budget wallet/i }).click();
   await expect(page.getByText(name).first()).toBeVisible({ timeout: 30_000 });
@@ -167,7 +171,7 @@ export async function createManualExpense(page: Page) {
   await openManualTransaction(page);
   await page.getByLabel('Nominal transaksi').fill(testData.manualAmount);
   await page.getByLabel('Deskripsi transaksi').fill(testData.manualDescription);
-  await page.getByRole('button', { name: new RegExp(`Pilih dompet ${testData.walletName}`) }).click();
+  await page.getByRole('button', { name: new RegExp(`Pilih dompet ${testData.walletName}`) }).first().click();
   await page.getByRole('button', { name: /Pilih kategori Makan/i }).click();
   await page.getByLabel('Tanggal transaksi').fill(todayKey());
   await page.getByLabel('Merchant transaksi opsional').fill('GoLive Warteg');
@@ -191,7 +195,7 @@ export async function createManualExpense(page: Page) {
 export async function createCaptureExpense(page: Page) {
   await gotoApp(page, '/capture');
   await expect(page.getByTestId('capture-input')).toBeVisible();
-  const walletChip = page.getByRole('button', { name: new RegExp(`Dompet.*${testData.walletName}|Wallet.*${testData.walletName}`) });
+  const walletChip = page.getByRole('button', { name: new RegExp(`Dompet.*${testData.walletName}|Wallet.*${testData.walletName}`) }).first();
   if (await walletChip.isVisible().catch(() => false)) await walletChip.click();
   await page.getByLabel(/Input teks transaksi|Transaction text input/i).fill(testData.captureDescription);
   await page.getByRole('button', { name: /Proses transaksi dengan AI|Process transaction with AI/i }).click();
@@ -215,7 +219,7 @@ export async function editFirstTransactionViaSwipe(page: Page) {
   const editButton = page.getByRole('button', {
     name: new RegExp(`Edit transaksi.*${testData.manualDescription}|Edit transaction.*${testData.manualDescription}`),
   });
-  await expect(editButton).toBeVisible();
+  await expect(editButton.first()).toBeVisible();
 }
 
 export async function clickAny(page: Page, name: string | RegExp) {

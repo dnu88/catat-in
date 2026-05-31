@@ -410,11 +410,10 @@ describe("budget envelope service query builders", () => {
 		};
 		const allocationChain = {
 			delete: jest.fn(() => deleteChain),
-			upsert: jest.fn((rows) => {
-				calls.push(`upsert:${JSON.stringify(rows)}`);
+			insert: jest.fn((rows) => {
+				calls.push(`insert:${JSON.stringify(rows)}`);
 				return Promise.resolve({ error: null });
 			}),
-			insert: jest.fn(() => Promise.resolve({ error: null })),
 		};
 		const supabase = {
 			from: jest.fn((table: string) =>

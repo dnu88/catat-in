@@ -117,13 +117,13 @@ export default function DashboardScreen() {
 
 	const [refreshing, setRefreshing] = useState(false);
 
-	const loadDashboard = useCallback(async (mounted = true) => {
+	const loadDashboard = useCallback(async (isMounted: () => boolean = () => true) => {
 			try {
 				const {
 					data: { user },
 				} = await supabase.auth.getUser();
 				if (!user) {
-					if (mounted) {
+					if (isMounted()) {
 						setEnvelopeAlerts([]);
 						setUserName("");
 						setUserEmail("");
@@ -133,7 +133,7 @@ export default function DashboardScreen() {
 					return;
 				}
 
-				if (mounted) {
+				if (isMounted()) {
 					const metadata = (user.user_metadata ?? {}) as Record<string, unknown>;
 					const resolvedName =
 						(typeof metadata.full_name === "string" && metadata.full_name) ||
@@ -153,7 +153,7 @@ export default function DashboardScreen() {
 						listTransactions(undefined, activeContext),
 						listCategories().catch(() => [] as Category[]),
 					]);
-				if (mounted) {
+				if (isMounted()) {
 					setWallets(
 						scopedWallets.filter((wallet) => wallet.is_active !== false),
 					);
@@ -176,17 +176,19 @@ export default function DashboardScreen() {
 					).length,
 				}));
 
-				if (mounted) setEnvelopeAlerts(getHomeEnvelopeAlerts(summaries));
+				if (isMounted()) setEnvelopeAlerts(getHomeEnvelopeAlerts(summaries));
 			} catch (error) {
-				console.error("Error loading home envelope alerts:", error);
-				if (mounted) setEnvelopeAlerts([]);
+				if (isMounted()) {
+					console.error("Error loading home envelope alerts:", error);
+					setEnvelopeAlerts([]);
+				}
 			}
 	}, [supabase, activeContext]);
 
 	useFocusEffect(
 		useCallback(() => {
 			let mounted = true;
-			void loadDashboard(mounted);
+			void loadDashboard(() => mounted);
 			return () => {
 				mounted = false;
 			};
@@ -196,7 +198,7 @@ export default function DashboardScreen() {
 	const onRefresh = useCallback(async () => {
 		setRefreshing(true);
 		try {
-			await loadDashboard(true);
+			await loadDashboard();
 		} finally {
 			setRefreshing(false);
 		}

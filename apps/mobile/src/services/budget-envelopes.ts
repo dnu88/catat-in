@@ -601,12 +601,6 @@ export async function syncEnvelopeAllocationsForBudgetEnvelope(
 	await deleteEnvelopeAllocationsForEnvelope(supabase, envelope.id);
 	if (rows.length === 0) return;
 
-	const { error: upsertError } = await supabase
-		.from("transaction_envelope_allocations")
-		.upsert(rows, { onConflict: "transaction_id,envelope_id" });
-
-	if (!upsertError) return;
-
 	const { error: insertError } = await supabase
 		.from("transaction_envelope_allocations")
 		.insert(rows);
@@ -659,14 +653,8 @@ export async function syncEnvelopeAllocationForTransaction(
 		needs_review: match.needs_review,
 	}));
 
-	const { error } = await supabase
-		.from("transaction_envelope_allocations")
-		.upsert(rows, { onConflict: "transaction_id,envelope_id" });
-
-	if (!error) return;
-
-	// Some live databases may receive the app before the unique-index migration.
-	// Delete-first + insert keeps budget deduction working while the migration catches up.
+	// Delete-first + insert avoids noisy browser 400s on live databases that do not
+	// yet have the unique constraint required by PostgREST upsert on this table.
 	const { error: insertError } = await supabase
 		.from("transaction_envelope_allocations")
 		.insert(rows);

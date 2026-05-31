@@ -175,15 +175,6 @@ async function syncBudgetAllocationSafely(
 	}
 }
 
-function queueBudgetAllocationSync(
-	transaction: Transaction,
-	userId: string,
-	context: FinanceContext,
-) {
-	setTimeout(() => {
-		void syncBudgetAllocationSafely(transaction, userId, context);
-	}, 0);
-}
 
 async function deleteBudgetAllocationSafely(transactionId: string) {
 	try {
@@ -224,7 +215,7 @@ export async function createTransaction(
 	if (error) throw error;
 
 	const created = normalizeTransaction(data);
-	queueBudgetAllocationSync(created, userId, context);
+	await syncBudgetAllocationSafely(created, userId, context);
 	return created;
 }
 
@@ -284,7 +275,7 @@ export async function updateTransaction(
 	if (error) throw error;
 
 	const updated = normalizeTransaction(data);
-	queueBudgetAllocationSync(updated, userId, context);
+	await syncBudgetAllocationSafely(updated, userId, context);
 	return updated;
 }
 
