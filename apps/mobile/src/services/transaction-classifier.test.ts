@@ -9,6 +9,7 @@ const categories = [
 	{ id: "cat-groceries", name: "Groceries", type: "expense" as const },
 	{ id: "cat-transport", name: "Transport", type: "expense" as const },
 	{ id: "cat-bills", name: "Bills", type: "expense" as const },
+	{ id: "cat-gifts", name: "Gifts & Donations", type: "expense" as const },
 	{ id: "cat-other", name: "Other expenses", type: "expense" as const },
 	{ id: "cat-salary", name: "Salary", type: "income" as const },
 ];
@@ -65,6 +66,43 @@ describe("transaction text classifier", () => {
 		).toBe("Transport");
 		expect(
 			classifyTransactionText("bayar listrik pln 300rb", categories, fixedDate)
+				?.categoryName,
+		).toBe("Bills");
+	});
+
+
+	it("classifies gift and donation phrases as Gifts & Donations", () => {
+		expect(
+			classifyTransactionText("kasih uang buat adik 100rb", categories, fixedDate),
+		).toMatchObject({
+			amount: 100000,
+			categoryId: "cat-gifts",
+			categoryName: "Gifts & Donations",
+			transactionType: "expense",
+		});
+
+		expect(
+			classifyTransactionText("gift ulang tahun teman 250rb", categories, fixedDate),
+		).toMatchObject({
+			categoryId: "cat-gifts",
+			categoryName: "Gifts & Donations",
+		});
+
+		expect(
+			classifyTransactionText("zakat dan sedekah 500rb", categories, fixedDate),
+		).toMatchObject({
+			categoryId: "cat-gifts",
+			categoryName: "Gifts & Donations",
+		});
+	});
+
+	it("recognizes broader default category keywords", () => {
+		expect(
+			classifyTransactionText("top up e toll 200rb", categories, fixedDate)
+				?.categoryName,
+		).toBe("Transport");
+		expect(
+			classifyTransactionText("token listrik 100rb", categories, fixedDate)
 				?.categoryName,
 		).toBe("Bills");
 	});

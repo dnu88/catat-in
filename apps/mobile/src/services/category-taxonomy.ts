@@ -114,7 +114,7 @@ export const categoryDefinitions: CategoryDefinition[] = [
     helper: { id: 'Kado, donasi, sedekah, bantuan.', en: 'Gifts, donations, charity, support.' },
     icon: 'gift',
     type: 'expense',
-    aliases: ['hadiah', 'donasi', 'gift', 'gifts', 'donation', 'donations', 'kado', 'sedekah', 'amal', 'bantuan'],
+    aliases: ['hadiah', 'donasi', 'gift', 'gifts', 'donation', 'donations', 'kado', 'sedekah', 'amal', 'bantuan', 'sumbangan', 'zakat', 'infak', 'infaq', 'angpao', 'amplop', 'kasih uang', 'ngasih uang', 'beri uang', 'memberi uang', 'charity'],
   },
   {
     id: 'other_expenses',
