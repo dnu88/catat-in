@@ -17,10 +17,18 @@ Latest go-live smoke command:
 corepack pnpm --filter mobile test:golive
 ```
 
-Result:
+Primary result:
 
 ```text
 5 passed
+1 skipped
+```
+
+Post-migration rerun result after applying `202605310002` also exited successfully:
+
+```text
+4 passed
+1 flaky recovered on retry
 1 skipped
 ```
 
@@ -44,6 +52,7 @@ Additional validation after sign-off hardening:
 ```text
 mobile type-check ✅
 budget-envelopes Jest test ✅
+post-migration go-live smoke exit code 0 ✅
 Supabase migration dry-run: Remote database is up to date ✅
 API health: {"status":"ok","version":"0.1.0","environment":"production"} ✅
 PWA security headers: CSP/HSTS/X-Frame-Options present ✅
