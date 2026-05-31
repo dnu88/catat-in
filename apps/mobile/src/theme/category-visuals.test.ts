@@ -40,4 +40,26 @@ describe("category visuals", () => {
 			color: "#4A80F0",
 		});
 	});
+
+	it("uses saved category color when localized labels differ", () => {
+		expect(
+			resolveCategoryVisual({
+				categoryName: "Hadiah & Donasi",
+				mode: "light",
+				categories: [
+					{
+						id: "cat-gifts",
+						name: "Gifts & Donations",
+						icon: "gift",
+						color: "#D946EF",
+						visual_locked_by_user: true,
+					},
+				],
+			}),
+		).toMatchObject({
+			icon: "gift",
+			color: "#D946EF",
+		});
+	});
+
 });

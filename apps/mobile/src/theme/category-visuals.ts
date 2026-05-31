@@ -2,7 +2,7 @@ import {
 	kaswiseIconNames,
 	type KaswiseIconName,
 } from "../components/icons/kaswise-icons";
-import { getCategoryDefinitionByName } from "../services/category-taxonomy";
+import { getCategoryDefinitionByName, getCategoryCanonicalId } from "../services/category-taxonomy";
 import type { ThemeMode } from "./tokens";
 import { reportCategoryPalette, reportCategoryRoleColors } from "./report-palettes";
 
@@ -60,8 +60,14 @@ function findCategoryVisualSource(
 	}
 
 	const key = normalizeCategoryVisualName(categoryName);
-	return categories.find(
+	const exact = categories.find(
 		(category) => normalizeCategoryVisualName(category.name) === key,
+	);
+	if (exact) return exact;
+
+	const canonicalKey = getCategoryCanonicalId(categoryName);
+	return categories.find(
+		(category) => getCategoryCanonicalId(category.name) === canonicalKey,
 	);
 }
 
