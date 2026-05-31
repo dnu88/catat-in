@@ -18,6 +18,11 @@ export default defineConfig({
       '@kaswise/shared/theme': resolve(__dirname, '../../packages/shared/theme/index.ts'),
     },
   },
+  preview: {
+    host: '0.0.0.0',
+    port: 4173,
+    allowedHosts: ['www.kaswise.com', 'preview.kaswise.com'],
+  },
   server: {
     host: '0.0.0.0',
     port: 3000,
