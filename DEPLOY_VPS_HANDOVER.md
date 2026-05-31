@@ -152,9 +152,9 @@ Container `kaswise-placeholder` menjalankan Python SPA server (`server.py`) yang
 cd /home/Danu88/catat-in/apps/mobile
 
 # Build web
-EXPO_PUBLIC_SUPABASE_URL="https://xqvtsgfakuehjwdmenuw.supabase.co" \
-EXPO_PUBLIC_SUPABASE_ANON_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhxdnRzZ2Zha3VlaGp3ZG1lbnV3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYwOTAwNTcsImV4cCI6MjA5MTY2NjA1N30.9GfVlqwI1xTFolIS18i9n-ErM_s9h8R4n4Bx54pn0sE" \
-./node_modules/.bin/expo export --platform web
+# Build dan deploy PWA dengan config publik dari app.json / env runtime
+corepack pnpm --filter mobile export:pwa
+corepack pnpm --filter mobile deploy:pwa
 
 # Deploy ke placeholder (jangan hapus server.py dan manifest.json!)
 cp dist/index.html /home/Danu88/nginx-proxy-manager/placeholder/

@@ -127,7 +127,7 @@ apps/web/src/
 ```bash
 # Supabase
 VITE_SUPABASE_URL=https://your-project-ref.supabase.co
-VITE_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+VITE_SUPABASE_ANON_KEY=<supabase-publishable-or-anon-key>
 
 # Data provider (firebase | supabase)
 VITE_DATA_PROVIDER=firebase

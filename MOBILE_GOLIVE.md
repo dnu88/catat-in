@@ -59,10 +59,10 @@ eas secret:create --scope project --name EXPO_PUBLIC_SUPABASE_URL \
   --value "https://xqvtsgfakuehjwdmenuw.supabase.co"
 
 eas secret:create --scope project --name EXPO_PUBLIC_SUPABASE_ANON_KEY \
-  --value "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+  --value "sb_publishable_xxx"
 ```
 
-> ⚠️ Nilai SUPABASE_ANON_KEY ada di `/home/Danu88/catat-in/apps/mobile/.env`
+> ⚠️ Gunakan Supabase publishable key (`sb_publishable_...`) untuk build/runtime publik. Jangan commit nilai key asli ke repo.
 
 ### Step 3 — Build APK preview (test dulu)
 ```bash

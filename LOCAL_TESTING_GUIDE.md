@@ -43,7 +43,7 @@ supabase start
 
 ### Option B: Supabase Cloud (Production-like)
 1. Buat project di [supabase.com](https://supabase.com)
-2. Note project URL dan anon key dari Settings → API
+2. Note project URL dan publishable/anon key dari Settings → API
 3. Link project:
    ```bash
    supabase link --project-ref your-project-ref
@@ -80,7 +80,7 @@ cp .env.example apps/mobile/.env.local
 
 # Edit apps/mobile/.env.local
 EXPO_PUBLIC_SUPABASE_URL=http://localhost:54321  # atau URL cloud
-EXPO_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...  # dari supabase start atau dashboard
+EXPO_PUBLIC_SUPABASE_ANON_KEY=<local-anon-key-or-sb_publishable_key>  # dari supabase start/dashboard; jangan commit nilai asli
 EXPO_PUBLIC_ANTHROPIC_API_KEY=sk-ant-...  # opsional untuk client-side (jika perlu)
 EXPO_PUBLIC_OPENAI_API_KEY=sk-...         # opsional untuk client-side
 ```

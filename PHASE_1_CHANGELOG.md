@@ -129,7 +129,7 @@ OPENAI_API_KEY=sk-...
 
 # Supabase (auto-injected oleh platform)
 SUPABASE_URL=https://your-project-ref.supabase.co
-SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+SUPABASE_SERVICE_ROLE_KEY=<service-role-key>  # secret server-side; jangan commit nilai asli
 ```
 
 Set via Supabase CLI:

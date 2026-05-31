@@ -29,13 +29,13 @@ All tables have RLS enabled with policies ensuring users can only access their o
 
 ### 1. Create Supabase Project
 1. Go to [supabase.com](https://supabase.com) and create a new project
-2. Note the project URL and anon key from Settings → API
+2. Note the project URL and publishable/anon key from Settings → API
 
 ### 2. Configure Environment
 Add to `.env` or `.env.local`:
 ```
 EXPO_PUBLIC_SUPABASE_URL=https://your-project-ref.supabase.co
-EXPO_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+EXPO_PUBLIC_SUPABASE_ANON_KEY=<local-anon-key-or-sb_publishable_key>
 ```
 
 ### 3. Apply Migrations
@@ -108,7 +108,7 @@ Edge Functions are implemented in `supabase/functions/`:
 ANTHROPIC_API_KEY=sk-ant-...
 OPENAI_API_KEY=sk-...
 SUPABASE_URL=https://your-project-ref.supabase.co
-SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+SUPABASE_SERVICE_ROLE_KEY=<service-role-key>  # secret server-side; never commit
 ```
 
 ### Deployment
