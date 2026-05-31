@@ -114,8 +114,14 @@ def _get_signing_key(token: str) -> tuple[object, list[str]]:
         )
 
     key_type = signing_key.get("kty")
+    key_alg = signing_key.get("alg")
     if key_type == "RSA":
-        return jwk.construct(signing_key, algorithm="RS256").to_pem(), ["RS256"]
+        algorithm = key_alg if key_alg in {"RS256", "RS384", "RS512"} else "RS256"
+        return jwk.construct(signing_key, algorithm=algorithm).to_pem(), [algorithm]
+
+    if key_type == "EC":
+        algorithm = key_alg if key_alg in {"ES256", "ES384", "ES512"} else "ES256"
+        return jwk.construct(signing_key, algorithm=algorithm).to_pem(), [algorithm]
 
     if key_type == "oct":
         encoded_key = signing_key.get("k")
@@ -133,7 +139,7 @@ def _get_signing_key(token: str) -> tuple[object, list[str]]:
 
 
 def _expected_issuer() -> str:
-    return os.getenv("SUPABASE_JWT_ISSUER", f"{_supabase_url()}/auth/v1")
+    return os.getenv("SUPABASE_JWT_ISSUER") or f"{_supabase_url()}/auth/v1"
 
 
 def get_current_user(

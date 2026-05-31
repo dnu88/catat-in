@@ -21,9 +21,13 @@ services:
       - SUPABASE_URL=${SUPABASE_URL}
       - SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY}
       - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
+      - SUPABASE_JWT_AUDIENCE=${SUPABASE_JWT_AUDIENCE:-authenticated}
+      - SUPABASE_JWT_ISSUER=${SUPABASE_JWT_ISSUER:-}
+      - SUPABASE_JWT_SECRET=${SUPABASE_JWT_SECRET:-}
       # ── CORS ──────────────────────────────────────────
       - ALLOWED_ORIGINS=${ALLOWED_ORIGINS}
       - ALLOWED_HOSTS=${ALLOWED_HOSTS}
+      - CORS_ALLOW_CREDENTIALS=${CORS_ALLOW_CREDENTIALS:-false}
       # ── AI ────────────────────────────────────────────
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
       - ANTHROPIC_MODEL=${ANTHROPIC_MODEL:-claude-sonnet-4-6}
