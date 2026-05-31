@@ -15,8 +15,9 @@ describe('web theme adapter', () => {
   it('maps shared tokens into css vars', () => {
     const vars = buildCssVariables('dark')
 
-    expect(vars['--ks-bg-base']).toBe('#050C1B')
-    expect(vars['--ks-brand-primary']).toBe('#4F46E5')
-    expect(vars['--ks-radius-md']).toBe('14px')
+    expect(vars['--ks-bg-base']).toBe(kaswiseTokens.dark.color.bg.base)
+    expect(vars['--ks-brand-primary']).toBe(kaswiseTokens.dark.color.brand.primary)
+    expect(vars['--ks-brand-secondary']).toBe(kaswiseTokens.dark.color.brand.secondary)
+    expect(vars['--ks-radius-md']).toBe(`${kaswiseTokens.dark.radius.md}px`)
   })
 })
