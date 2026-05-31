@@ -27,7 +27,7 @@ Adds trigger:
 prevent_profile_server_managed_field_change
 ```
 
-Also removes direct client mutation policies for:
+Also removes direct client mutation policies if the table exists for:
 
 ```text
 usage_counters insert/update/delete
@@ -190,3 +190,34 @@ Recommended next hardening phase:
 4. Add audit logs for transaction/wallet/profile billing changes.
 5. Add DB constraints for financial values if not already present.
 6. Add automated RLS regression tests for BOLA prevention.
+
+## Live Supabase Application Notes
+
+Applied to linked live Supabase project on 2026-05-31:
+
+```text
+project ref: xqvtsgfakuehjwdmenuw
+migration: 202605310001_security_hardening_phase1.sql
+```
+
+Application method:
+
+```bash
+supabase db query --linked --file supabase/migrations/202605310001_security_hardening_phase1.sql
+supabase migration repair --linked --status applied 202605310001
+```
+
+Verification:
+
+```text
+prevent_profile_server_managed_field_change trigger exists ✅
+prevent_profile_server_managed_field_change function exists ✅
+usage_counters table is absent on this live DB, so guarded usage counter policy cleanup was skipped safely ✅
+remote migration history marks 202605310001 as applied ✅
+```
+
+Important note:
+
+```text
+supabase migration list --linked still shows older local timestamp migrations as not recorded remotely, because this live project has legacy remote migration entries 001..008. Do not run blanket supabase db push without first reconciling migration history.
+```

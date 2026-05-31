@@ -23,11 +23,16 @@ for each row execute function public.prevent_profile_server_managed_field_change
 
 -- Usage counters drive free-tier quota and must not be mutable by clients.
 -- Service role/backend jobs still bypass RLS and can manage these rows.
-drop policy if exists "usage_counters_insert_own" on public.usage_counters;
-drop policy if exists "usage_counters_update_own" on public.usage_counters;
-drop policy if exists "usage_counters_delete_own" on public.usage_counters;
+-- Some live environments may not have this legacy table, so guard with to_regclass.
+do $$
+begin
+  if to_regclass('public.usage_counters') is not null then
+    execute 'drop policy if exists "usage_counters_insert_own" on public.usage_counters';
+    execute 'drop policy if exists "usage_counters_update_own" on public.usage_counters';
+    execute 'drop policy if exists "usage_counters_delete_own" on public.usage_counters';
 
--- Ensure the read policy remains present for user-facing quota display.
-drop policy if exists "usage_counters_select_own" on public.usage_counters;
-create policy "usage_counters_select_own" on public.usage_counters
-  for select using (auth.uid() = user_id);
+    -- Ensure the read policy remains present for user-facing quota display.
+    execute 'drop policy if exists "usage_counters_select_own" on public.usage_counters';
+    execute 'create policy "usage_counters_select_own" on public.usage_counters for select using (auth.uid() = user_id)';
+  end if;
+end $$;
