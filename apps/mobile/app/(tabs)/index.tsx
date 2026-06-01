@@ -82,6 +82,17 @@ export default function DashboardScreen() {
 				? {
 						budget: "Budgets",
 						view: "View →",
+						onboardingEyebrow: "First steps",
+						onboardingTitle: "Start with one wallet and one transaction.",
+						onboardingBody: "Kaswise works best after it knows where your money lives and has one daily transaction to read.",
+						onboardingPrimaryNoWallet: "Create first wallet",
+						onboardingPrimaryTransaction: "Record first transaction",
+						onboardingSecondary: "Open budgets",
+						onboardingSteps: [
+							"Create a wallet for cash, bank, or e-wallet balance.",
+							"Type a transaction like: bought coffee 35k.",
+							"Add a category budget after your first transaction.",
+						],
 						over: "over budget",
 						near: "almost used up",
 						overUntil: (amount: number, day: string, month: string) =>
@@ -93,6 +104,17 @@ export default function DashboardScreen() {
 				: {
 						budget: "Anggaran",
 						view: "Lihat →",
+						onboardingEyebrow: "Langkah awal",
+						onboardingTitle: "Mulai dari satu dompet dan satu transaksi.",
+						onboardingBody: "Kaswise paling terasa setelah tahu uangmu ada di mana dan punya satu transaksi harian untuk dibaca.",
+						onboardingPrimaryNoWallet: "Buat dompet pertama",
+						onboardingPrimaryTransaction: "Catat transaksi pertama",
+						onboardingSecondary: "Buka budget",
+						onboardingSteps: [
+							"Buat dompet untuk saldo tunai, bank, atau e-wallet.",
+							"Tulis transaksi seperti: beli kopi 35rb.",
+							"Tambahkan budget kategori setelah transaksi pertama.",
+						],
 						over: "lewat budget",
 						near: "hampir habis",
 						overUntil: (amount: number, day: string, month: string) =>
@@ -116,6 +138,7 @@ export default function DashboardScreen() {
 	const [profileAvatarKey, setProfileAvatarKey] = useState("");
 
 	const [refreshing, setRefreshing] = useState(false);
+	const [dashboardReady, setDashboardReady] = useState(false);
 
 	const loadDashboard = useCallback(async (isMounted: () => boolean = () => true) => {
 			try {
@@ -182,12 +205,15 @@ export default function DashboardScreen() {
 					console.error("Error loading home envelope alerts:", error);
 					setEnvelopeAlerts([]);
 				}
+			} finally {
+				if (isMounted()) setDashboardReady(true);
 			}
 	}, [supabase, activeContext]);
 
 	useFocusEffect(
 		useCallback(() => {
 			let mounted = true;
+			setDashboardReady(false);
 			void loadDashboard(() => mounted);
 			return () => {
 				mounted = false;
@@ -264,6 +290,14 @@ export default function DashboardScreen() {
 		month: "long",
 		year: "numeric",
 	});
+	const showFirstUseGuide =
+		dashboardReady && (wallets.length === 0 || recentTransactions.length === 0);
+	const firstUsePrimaryLabel =
+		wallets.length === 0
+			? tx.onboardingPrimaryNoWallet
+			: tx.onboardingPrimaryTransaction;
+	const firstUsePrimaryRoute =
+		wallets.length === 0 ? "/(tabs)/wallets" : "/(tabs)/capture";
 
 	return (
 		<PageEntrance testID="home-page-entrance" style={styles.screen}>
@@ -361,7 +395,60 @@ export default function DashboardScreen() {
 					</View>
 				</StaggeredEntrance>
 
-				<StaggeredEntrance index={2} testID="home-entrance-budget">
+
+				{showFirstUseGuide ? (
+					<StaggeredEntrance index={2} testID="home-entrance-first-use">
+						<View testID="home-first-use-card" style={styles.firstUseCard}>
+							<View style={styles.firstUseTopRow}>
+								<View style={styles.firstUseCopy}>
+									<Text style={styles.firstUseEyebrow}>{tx.onboardingEyebrow}</Text>
+									<Text style={styles.firstUseTitle}>{tx.onboardingTitle}</Text>
+									<Text style={styles.firstUseBody}>{tx.onboardingBody}</Text>
+								</View>
+								<View style={[styles.iconBubble, styles.primaryBubble]}>
+									<KaswiseIcon
+										name="capture"
+										size={18}
+										weight="bold"
+										color={theme.iconBubbles.primary.color}
+									/>
+								</View>
+							</View>
+
+							<View style={styles.firstUseStepList}>
+								{tx.onboardingSteps.map((step, index) => (
+									<View key={step} style={styles.firstUseStepRow}>
+										<Text style={styles.firstUseStepNumber}>0{index + 1}</Text>
+										<Text style={styles.firstUseStepText}>{step}</Text>
+									</View>
+								))}
+							</View>
+
+							<View style={styles.firstUseActionRow}>
+								<Pressable
+									testID="home-first-use-primary"
+									accessibilityRole="button"
+									accessibilityLabel={firstUsePrimaryLabel}
+									style={styles.firstUsePrimaryButton}
+									onPress={() => router.push(firstUsePrimaryRoute as never)}
+								>
+									<Text style={styles.firstUsePrimaryText}>{firstUsePrimaryLabel}</Text>
+								</Pressable>
+								<Pressable
+									testID="home-first-use-secondary"
+									accessibilityRole="button"
+									accessibilityLabel={tx.onboardingSecondary}
+									style={styles.firstUseSecondaryButton}
+									onPress={() => router.push("/(tabs)/budgets" as never)}
+								>
+									<Text style={styles.firstUseSecondaryText}>{tx.onboardingSecondary}</Text>
+								</Pressable>
+							</View>
+						</View>
+					</StaggeredEntrance>
+				) : null}
+
+				<StaggeredEntrance index={3} testID="home-entrance-budget">
 					<View testID="home-budget-section" style={styles.sectionCard}>
 					<View style={styles.sectionTopRow}>
 						<Text style={styles.sectionTitle}>{tx.budget}</Text>
@@ -421,7 +508,7 @@ export default function DashboardScreen() {
 					</View>
 				</StaggeredEntrance>
 
-				<StaggeredEntrance index={3} testID="home-entrance-recent">
+				<StaggeredEntrance index={4} testID="home-entrance-recent">
 					<View style={styles.sectionCard}>
 						<View style={styles.sectionTopRow}>
 							<Text style={styles.sectionTitle}>Terakhir</Text>
@@ -656,6 +743,102 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 		quickActionLabel: {
 			color: theme.colors.textSecondary,
 			fontSize: 11,
+			fontWeight: theme.typography.fontWeight.bold,
+		},
+		firstUseCard: {
+			backgroundColor: theme.colors.surface,
+			borderRadius: 20,
+			borderWidth: 1,
+			borderColor: theme.colors.borderSoft,
+			padding: 16,
+			gap: 14,
+		},
+		firstUseTopRow: {
+			flexDirection: "row",
+			justifyContent: "space-between",
+			alignItems: "flex-start",
+			gap: 12,
+		},
+		firstUseCopy: { flex: 1, gap: 6 },
+		firstUseEyebrow: {
+			color: theme.colors.brandPrimary,
+			fontSize: 11,
+			fontWeight: theme.typography.fontWeight.extrabold,
+			letterSpacing: 0.5,
+			textTransform: "uppercase",
+		},
+		firstUseTitle: {
+			color: theme.colors.textPrimary,
+			fontSize: 18,
+			fontWeight: theme.typography.fontWeight.extrabold,
+			letterSpacing: -0.3,
+			lineHeight: 23,
+		},
+		firstUseBody: {
+			color: theme.colors.textSecondary,
+			fontSize: 13,
+			lineHeight: 20,
+		},
+		firstUseStepList: { gap: 8 },
+		firstUseStepRow: {
+			flexDirection: "row",
+			alignItems: "center",
+			gap: 10,
+			minHeight: 36,
+		},
+		firstUseStepNumber: {
+			width: 30,
+			height: 30,
+			borderRadius: 10,
+			backgroundColor: theme.iconBubbles.primary.background,
+			borderWidth: 1,
+			borderColor: theme.iconBubbles.primary.border,
+			color: theme.iconBubbles.primary.color,
+			fontSize: 11,
+			fontWeight: theme.typography.fontWeight.extrabold,
+			textAlign: "center",
+			textAlignVertical: "center",
+			lineHeight: 28,
+		},
+		firstUseStepText: {
+			flex: 1,
+			color: theme.colors.textSecondary,
+			fontSize: 12,
+			fontWeight: theme.typography.fontWeight.semibold,
+			lineHeight: 18,
+		},
+		firstUseActionRow: {
+			flexDirection: "row",
+			gap: 10,
+			flexWrap: "wrap",
+		},
+		firstUsePrimaryButton: {
+			flexGrow: 1,
+			minHeight: 44,
+			borderRadius: theme.radius.sm,
+			backgroundColor: theme.colors.brandPrimary,
+			alignItems: "center",
+			justifyContent: "center",
+			paddingHorizontal: 14,
+		},
+		firstUsePrimaryText: {
+			color: theme.colors.textInverse,
+			fontSize: 13,
+			fontWeight: theme.typography.fontWeight.extrabold,
+		},
+		firstUseSecondaryButton: {
+			minHeight: 44,
+			borderRadius: theme.radius.sm,
+			borderWidth: 1,
+			borderColor: theme.colors.borderStrong,
+			backgroundColor: theme.colors.mutedSurface,
+			alignItems: "center",
+			justifyContent: "center",
+			paddingHorizontal: 14,
+		},
+		firstUseSecondaryText: {
+			color: theme.colors.textPrimary,
+			fontSize: 13,
 			fontWeight: theme.typography.fontWeight.bold,
 		},
 		sectionCard: {

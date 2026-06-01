@@ -97,6 +97,10 @@ function formatLocalDate(date: Date) {
 	return `${year}-${month}-${day}`;
 }
 
+function dateFromDateKey(dateKey: string) {
+	return new Date(`${dateKey}T12:00:00`);
+}
+
 function clampDay(year: number, monthIndex: number, day: number) {
 	const lastDay = new Date(year, monthIndex + 1, 0).getDate();
 	return Math.min(Math.max(day, 1), lastDay);
@@ -371,8 +375,8 @@ type BudgetSyncTransactionRow = {
 	merchant?: string | null;
 };
 
-function mapBudgetEnvelope(row: BudgetEnvelopeRow): BudgetEnvelope {
-	const period = resolveMonthlyEnvelopePeriod(row.start_date, row.end_date);
+function mapBudgetEnvelope(row: BudgetEnvelopeRow, referenceDate = new Date()): BudgetEnvelope {
+	const period = resolveMonthlyEnvelopePeriod(row.start_date, row.end_date, referenceDate);
 	return {
 		id: row.id,
 		user_id: row.user_id,
@@ -395,6 +399,7 @@ export async function listBudgetEnvelopes(
 	supabase: SupabaseLike,
 	userId: string,
 	context: FinanceContext = defaultContext,
+	referenceDate = new Date(),
 ): Promise<BudgetEnvelope[]> {
 	let query = supabase
 		.from("budget_envelopes")
@@ -406,7 +411,7 @@ export async function listBudgetEnvelopes(
 	const { data, error } = await query.order("end_date");
 
 	if (error) throw error;
-	return (data ?? []).map(mapBudgetEnvelope);
+	return ((data ?? []) as BudgetEnvelopeRow[]).map((row) => mapBudgetEnvelope(row, referenceDate));
 }
 
 export async function createBudgetEnvelope(
@@ -624,7 +629,14 @@ export async function syncEnvelopeAllocationForTransaction(
 		return;
 	}
 
-	const envelopes = (await listBudgetEnvelopes(supabase, userId, context)).filter(
+	const envelopes = (
+		await listBudgetEnvelopes(
+			supabase,
+			userId,
+			context,
+			dateFromDateKey(transactionDate),
+		)
+	).filter(
 		(envelope) =>
 			getEnvelopeStatus(envelope, transactionDate) === "active" &&
 			toDateKey(envelope.start_date) <= transactionDate &&
