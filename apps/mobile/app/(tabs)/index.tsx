@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Image, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useFocusEffect, useRouter } from "expo-router";
 
@@ -88,6 +88,10 @@ export default function DashboardScreen() {
 						onboardingPrimaryNoWallet: "Create first wallet",
 						onboardingPrimaryTransaction: "Record first transaction",
 						onboardingSecondary: "Open budgets",
+						guideNext: "Next",
+						guideStepCounter: (current: number, total: number) => `Step ${current} of ${total}`,
+						guideComplete: "Done",
+						guideOpenMenu: "Open menu",
 						onboardingSteps: [
 							"Create a wallet for cash, bank, or e-wallet balance.",
 							"Type a transaction like: bought coffee 35k.",
@@ -110,6 +114,10 @@ export default function DashboardScreen() {
 						onboardingPrimaryNoWallet: "Buat dompet pertama",
 						onboardingPrimaryTransaction: "Catat transaksi pertama",
 						onboardingSecondary: "Buka budget",
+						guideNext: "Lanjut",
+						guideStepCounter: (current: number, total: number) => `Langkah ${current} dari ${total}`,
+						guideComplete: "Selesai",
+						guideOpenMenu: "Buka menu",
 						onboardingSteps: [
 							"Buat dompet untuk saldo tunai, bank, atau e-wallet.",
 							"Tulis transaksi seperti: beli kopi 35rb.",
@@ -139,6 +147,8 @@ export default function DashboardScreen() {
 
 	const [refreshing, setRefreshing] = useState(false);
 	const [dashboardReady, setDashboardReady] = useState(false);
+	const [activeBudgetCount, setActiveBudgetCount] = useState(0);
+	const [currentGuideStep, setCurrentGuideStep] = useState(0);
 
 	const loadDashboard = useCallback(async (isMounted: () => boolean = () => true) => {
 			try {
@@ -152,6 +162,10 @@ export default function DashboardScreen() {
 						setUserEmail("");
 						setProfilePhotoUrl("");
 						setProfileAvatarKey("");
+						setWallets([]);
+						setRecentTransactions([]);
+						setCategoryOptions([]);
+						setActiveBudgetCount(0);
 					}
 					return;
 				}
@@ -186,6 +200,7 @@ export default function DashboardScreen() {
 				const activeEnvelopes = envelopes.filter(
 					(envelope) => getEnvelopeStatus(envelope) === "active",
 				);
+				if (isMounted()) setActiveBudgetCount(activeEnvelopes.length);
 				const allocations = await listEnvelopeAllocations(
 					supabase,
 					activeEnvelopes.map((envelope) => envelope.id),
@@ -204,6 +219,7 @@ export default function DashboardScreen() {
 				if (isMounted()) {
 					console.error("Error loading home envelope alerts:", error);
 					setEnvelopeAlerts([]);
+					setActiveBudgetCount(0);
 				}
 			} finally {
 				if (isMounted()) setDashboardReady(true);
@@ -290,14 +306,66 @@ export default function DashboardScreen() {
 		month: "long",
 		year: "numeric",
 	});
+	const guideSteps = useMemo(
+		() => [
+			{
+				id: "wallet",
+				title: isEn ? "Create your first wallet" : "Buat dompet pertama",
+				body: isEn
+					? "Set where your money lives: cash, bank, or e-wallet."
+					: "Tentukan uangmu ada di mana: tunai, bank, atau e-wallet.",
+				action: isEn ? "Open Wallets" : "Buka Dompet",
+				route: "/(tabs)/wallets",
+				isComplete: wallets.length > 0,
+			},
+			{
+				id: "capture",
+				title: isEn ? "Record one real transaction" : "Catat satu transaksi nyata",
+				body: isEn
+					? "Use a short sentence, for example: bought coffee 35k."
+					: "Pakai kalimat pendek, misalnya: beli kopi 35rb.",
+				action: isEn ? "Open Capture" : "Buka Catat",
+				route: "/(tabs)/capture",
+				isComplete: recentTransactions.length > 0,
+			},
+			{
+				id: "budget",
+				title: isEn ? "Add a category budget" : "Buat budget kategori",
+				body: isEn
+					? "Start with one recurring category like food, transport, or bills."
+					: "Mulai dari satu kategori rutin seperti makan, transport, atau tagihan.",
+				action: isEn ? "Open Budgets" : "Buka Budget",
+				route: "/(tabs)/budgets",
+				isComplete: activeBudgetCount > 0,
+			},
+			{
+				id: "reports",
+				title: isEn ? "Check the first report" : "Cek laporan pertama",
+				body: isEn
+					? "Use Reports to see how transactions affect cashflow and categories."
+					: "Gunakan Laporan untuk melihat dampak transaksi ke arus kas dan kategori.",
+				action: isEn ? "Open Reports" : "Buka Laporan",
+				route: "/(tabs)/reports",
+				isComplete: recentTransactions.length > 0,
+			},
+		],
+		[activeBudgetCount, isEn, recentTransactions.length, wallets.length],
+	);
+	const guideCompletionKey = guideSteps
+		.map((step) => `${step.id}:${step.isComplete ? "1" : "0"}`)
+		.join("|");
 	const showFirstUseGuide =
-		dashboardReady && (wallets.length === 0 || recentTransactions.length === 0);
-	const firstUsePrimaryLabel =
-		wallets.length === 0
-			? tx.onboardingPrimaryNoWallet
-			: tx.onboardingPrimaryTransaction;
-	const firstUsePrimaryRoute =
-		wallets.length === 0 ? "/(tabs)/wallets" : "/(tabs)/capture";
+		dashboardReady && guideSteps.some((step) => !step.isComplete);
+	const activeGuideStep = guideSteps[currentGuideStep] ?? guideSteps[0];
+	const canMoveGuideNext = currentGuideStep < guideSteps.length - 1;
+
+	useEffect(() => {
+		if (!dashboardReady) return;
+		const firstIncompleteIndex = guideSteps.findIndex((step) => !step.isComplete);
+		if (firstIncompleteIndex >= 0) {
+			setCurrentGuideStep(firstIncompleteIndex);
+		}
+	}, [dashboardReady, guideCompletionKey, guideSteps]);
 
 	return (
 		<PageEntrance testID="home-page-entrance" style={styles.screen}>
@@ -402,12 +470,15 @@ export default function DashboardScreen() {
 							<View style={styles.firstUseTopRow}>
 								<View style={styles.firstUseCopy}>
 									<Text style={styles.firstUseEyebrow}>{tx.onboardingEyebrow}</Text>
-									<Text style={styles.firstUseTitle}>{tx.onboardingTitle}</Text>
-									<Text style={styles.firstUseBody}>{tx.onboardingBody}</Text>
+									<Text style={styles.firstUseCounter}>
+										{tx.guideStepCounter(currentGuideStep + 1, guideSteps.length)}
+									</Text>
+									<Text style={styles.firstUseTitle}>{activeGuideStep.title}</Text>
+									<Text style={styles.firstUseBody}>{activeGuideStep.body}</Text>
 								</View>
 								<View style={[styles.iconBubble, styles.primaryBubble]}>
 									<KaswiseIcon
-										name="capture"
+										name={activeGuideStep.id === "wallet" ? "wallets" : activeGuideStep.id === "budget" ? "budgets" : activeGuideStep.id === "reports" ? "chart" : "capture"}
 										size={18}
 										weight="bold"
 										color={theme.iconBubbles.primary.color}
@@ -416,11 +487,34 @@ export default function DashboardScreen() {
 							</View>
 
 							<View style={styles.firstUseStepList}>
-								{tx.onboardingSteps.map((step, index) => (
-									<View key={step} style={styles.firstUseStepRow}>
-										<Text style={styles.firstUseStepNumber}>0{index + 1}</Text>
-										<Text style={styles.firstUseStepText}>{step}</Text>
-									</View>
+								{guideSteps.map((step, index) => (
+									<Pressable
+										key={step.id}
+										testID={`home-first-use-step-${step.id}`}
+										accessibilityRole="button"
+										accessibilityLabel={step.title}
+										accessibilityState={{ selected: index === currentGuideStep }}
+										style={[
+											styles.firstUseStepRow,
+											index === currentGuideStep && styles.firstUseStepRowActive,
+										]}
+										onPress={() => setCurrentGuideStep(index)}
+									>
+										<Text
+											style={[
+												styles.firstUseStepNumber,
+												step.isComplete && styles.firstUseStepNumberDone,
+											]}
+										>
+											{step.isComplete ? "✓" : `0${index + 1}`}
+										</Text>
+										<View style={styles.firstUseStepCopy}>
+											<Text style={styles.firstUseStepText}>{step.title}</Text>
+											<Text style={styles.firstUseStepMeta}>
+												{step.isComplete ? tx.guideComplete : step.action}
+											</Text>
+										</View>
+									</Pressable>
 								))}
 							</View>
 
@@ -428,21 +522,23 @@ export default function DashboardScreen() {
 								<Pressable
 									testID="home-first-use-primary"
 									accessibilityRole="button"
-									accessibilityLabel={firstUsePrimaryLabel}
+									accessibilityLabel={`${tx.guideOpenMenu}: ${activeGuideStep.action}`}
 									style={styles.firstUsePrimaryButton}
-									onPress={() => router.push(firstUsePrimaryRoute as never)}
+									onPress={() => router.push(activeGuideStep.route as never)}
 								>
-									<Text style={styles.firstUsePrimaryText}>{firstUsePrimaryLabel}</Text>
+									<Text style={styles.firstUsePrimaryText}>{activeGuideStep.action}</Text>
 								</Pressable>
-								<Pressable
-									testID="home-first-use-secondary"
-									accessibilityRole="button"
-									accessibilityLabel={tx.onboardingSecondary}
-									style={styles.firstUseSecondaryButton}
-									onPress={() => router.push("/(tabs)/budgets" as never)}
-								>
-									<Text style={styles.firstUseSecondaryText}>{tx.onboardingSecondary}</Text>
-								</Pressable>
+								{canMoveGuideNext ? (
+									<Pressable
+										testID="home-first-use-next"
+										accessibilityRole="button"
+										accessibilityLabel={tx.guideNext}
+										style={styles.firstUseSecondaryButton}
+										onPress={() => setCurrentGuideStep((step) => Math.min(step + 1, guideSteps.length - 1))}
+									>
+										<Text style={styles.firstUseSecondaryText}>{tx.guideNext}</Text>
+									</Pressable>
+								) : null}
 							</View>
 						</View>
 					</StaggeredEntrance>
@@ -767,6 +863,11 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			letterSpacing: 0.5,
 			textTransform: "uppercase",
 		},
+		firstUseCounter: {
+			color: theme.colors.textMuted,
+			fontSize: 11,
+			fontWeight: theme.typography.fontWeight.bold,
+		},
 		firstUseTitle: {
 			color: theme.colors.textPrimary,
 			fontSize: 18,
@@ -784,7 +885,12 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			flexDirection: "row",
 			alignItems: "center",
 			gap: 10,
-			minHeight: 36,
+			minHeight: 44,
+			borderRadius: 14,
+			padding: 8,
+		},
+		firstUseStepRowActive: {
+			backgroundColor: theme.colors.mutedSurface,
 		},
 		firstUseStepNumber: {
 			width: 30,
@@ -800,12 +906,22 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			textAlignVertical: "center",
 			lineHeight: 28,
 		},
+		firstUseStepNumberDone: {
+			backgroundColor: theme.colors.brandPrimary,
+			borderColor: theme.colors.brandPrimary,
+			color: theme.colors.textInverse,
+		},
+		firstUseStepCopy: { flex: 1, gap: 2 },
 		firstUseStepText: {
-			flex: 1,
-			color: theme.colors.textSecondary,
+			color: theme.colors.textPrimary,
 			fontSize: 12,
-			fontWeight: theme.typography.fontWeight.semibold,
+			fontWeight: theme.typography.fontWeight.bold,
 			lineHeight: 18,
+		},
+		firstUseStepMeta: {
+			color: theme.colors.textMuted,
+			fontSize: 11,
+			fontWeight: theme.typography.fontWeight.semibold,
 		},
 		firstUseActionRow: {
 			flexDirection: "row",
