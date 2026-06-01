@@ -1,6 +1,6 @@
 import { router, useLocalSearchParams } from 'expo-router'
 import * as Linking from 'expo-linking'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 import { StaggeredStack } from '../../src/components/motion'
 import { AuthFormCard, AuthHeroPanel, AuthScreenLayout } from '../../src/components/ui'
@@ -15,6 +15,7 @@ export default function AuthCallbackScreen() {
   const params = useLocalSearchParams<Record<string, string | string[]>>()
   const [message, setMessage] = useState(t('authCallbackLoading'))
   const [isError, setIsError] = useState(false)
+  const processedCodeRef = useRef<string | null>(null)
 
   useEffect(() => {
     let mounted = true
@@ -24,12 +25,26 @@ export default function AuthCallbackScreen() {
       const code = getStringParam(params.code) ?? (initialUrl ? getAuthCodeFromUrl(initialUrl) : null)
 
       if (!code) {
-        if (mounted) {
-          setIsError(true)
-          setMessage(t('authCallbackFailed'))
+        const {
+          data: { session },
+        } = await supabase.auth.getSession()
+
+        if (!mounted) return
+
+        if (session) {
+          router.replace('/(tabs)')
+          return
         }
+
+        setIsError(true)
+        setMessage(t('authCallbackFailed'))
         return
       }
+
+      if (processedCodeRef.current === code) {
+        return
+      }
+      processedCodeRef.current = code
 
       const { error } = await supabase.auth.exchangeCodeForSession(code)
 
@@ -38,6 +53,21 @@ export default function AuthCallbackScreen() {
       }
 
       if (error) {
+        // OAuth callbacks can be rendered more than once on web/PWA while the
+        // session was already written by the first successful exchange. Treat
+        // an existing session as success so users do not see a false failure.
+        const {
+          data: { session },
+        } = await supabase.auth.getSession()
+
+        if (!mounted) return
+
+        if (session) {
+          router.replace('/(tabs)')
+          return
+        }
+
+        processedCodeRef.current = null
         setIsError(true)
         setMessage(t('authCallbackFailed'))
         return
@@ -51,7 +81,7 @@ export default function AuthCallbackScreen() {
     return () => {
       mounted = false
     }
-  }, [params.code, supabase, t])
+  }, [params.code, supabase])
 
   return (
     <AuthScreenLayout>

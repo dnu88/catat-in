@@ -47,15 +47,15 @@ export default function LoginScreen() {
     setGoogleLoading(true)
 
     const redirectTo = getAuthCallbackRedirectTo()
-    // On web, keep Google OAuth in the same browser context.
-    // Mobile Chrome/iOS PWA can lose the PKCE verifier when Expo WebBrowser
-    // opens a separate auth session, causing /callback to show "Login could not be completed".
+    // Always ask Supabase for the OAuth URL and perform the redirect ourselves.
+    // On web/PWA this keeps the PKCE verifier in the same browser origin while
+    // avoiding an implicit Supabase redirect plus our own redirect racing each other.
     const shouldUseFullRedirect = Platform.OS === 'web'
     const { data, error: oauthError } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
         redirectTo,
-        skipBrowserRedirect: !shouldUseFullRedirect,
+        skipBrowserRedirect: true,
       },
     })
 

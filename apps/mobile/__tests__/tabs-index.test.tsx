@@ -1,4 +1,5 @@
 import { fireEvent, render, waitFor } from "@testing-library/react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { StyleSheet, Text } from "react-native";
 import type { StyleProp, TextStyle, ViewStyle } from "react-native";
 import { ThemeProvider } from "../src/theme/theme-context";
@@ -16,6 +17,11 @@ let mockActiveContext:
 	| { type: "household"; householdId: string; role: "admin" } = {
 	type: "personal",
 };
+const mockSupabase = {
+	auth: {
+		getUser: jest.fn(async () => ({ data: { user: mockAuthUser } })),
+	},
+};
 
 jest.mock("expo-router", () => ({
 	useFocusEffect: (callback: () => void | (() => void)) => {
@@ -26,13 +32,7 @@ jest.mock("expo-router", () => ({
 }));
 
 jest.mock("../src/lib/supabase", () => ({
-	useSupabase: () => ({
-		supabase: {
-			auth: {
-				getUser: jest.fn(async () => ({ data: { user: mockAuthUser } })),
-			},
-		},
-	}),
+	useSupabase: () => ({ supabase: mockSupabase }),
 }));
 
 jest.mock("../src/services/budget-envelopes", () => {
@@ -179,6 +179,9 @@ const SOFT_GREEN_BORDERS = [
 describe("DashboardScreen dark luxury Home parity", () => {
 	beforeEach(() => {
 		mockPush.mockClear();
+		jest.mocked(AsyncStorage.getItem).mockReset();
+		jest.mocked(AsyncStorage.getItem).mockResolvedValue(null);
+		jest.mocked(AsyncStorage.setItem).mockClear();
 		mockAuthUser = { id: "user-1" };
 		mockActiveContext = { type: "personal" };
 		mockWallets = [];
@@ -360,6 +363,68 @@ describe("DashboardScreen dark luxury Home parity", () => {
 		);
 		expect(screen.queryByText(/perlu cek/i)).toBeNull();
 		expect(screen.queryByText(/Kopi hampir habis/i)).toBeNull();
+	});
+
+	it("guides a new user to create the first wallet and persists guide progress", async () => {
+		const screen = renderDashboard();
+
+		await waitFor(() =>
+			expect(screen.getByTestId("home-first-use-card")).toBeTruthy(),
+		);
+		expect(screen.getAllByText("Buat dompet pertama").length).toBeGreaterThan(0);
+		expect(screen.getAllByText("Buka Dompet").length).toBeGreaterThan(0);
+
+		fireEvent.press(screen.getByTestId("home-first-use-primary"));
+		expect(mockPush).toHaveBeenLastCalledWith("/(tabs)/wallets");
+
+		fireEvent.press(screen.getByTestId("home-first-use-next"));
+		await waitFor(() =>
+			expect(AsyncStorage.setItem).toHaveBeenCalledWith(
+				"first-use-guide:v1:user-1",
+				expect.stringContaining('"lastStep":1'),
+			),
+		);
+		expect(screen.getAllByText("Catat satu transaksi nyata").length).toBeGreaterThan(0);
+	});
+
+	it("uses persisted report visit state before completing the Reports setup step", async () => {
+		mockWallets = [{ id: "wallet-1", name: "Cash", balance: 100000, is_active: true }];
+		mockTransactions = [
+			{
+				id: "tx-1",
+				merchant: "Kopi",
+				description: "Kopi",
+				category: "Groceries",
+				amount: 25000,
+				transaction_type: "expense",
+				date: "2026-05-20",
+			},
+		];
+
+		const screen = renderDashboard();
+
+		await waitFor(() =>
+			expect(screen.getAllByText("Cek laporan pertama").length).toBeGreaterThan(0),
+		);
+		expect(screen.getAllByText("Buka Laporan").length).toBeGreaterThan(0);
+		expect(screen.getByTestId("home-first-use-card")).toBeTruthy();
+	});
+
+	it("hides the first-use guide after dismissal and persists the choice", async () => {
+		const screen = renderDashboard();
+
+		await waitFor(() =>
+			expect(screen.getByTestId("home-first-use-card")).toBeTruthy(),
+		);
+		fireEvent.press(screen.getByTestId("home-first-use-dismiss"));
+
+		await waitFor(() =>
+			expect(screen.queryByTestId("home-first-use-card")).toBeNull(),
+		);
+		expect(AsyncStorage.setItem).toHaveBeenCalledWith(
+			"first-use-guide:v1:user-1",
+			expect.stringContaining('"dismissed":true'),
+		);
 	});
 
 	it("loads dashboard wallet, transactions, and budget alerts for the active finance context", async () => {

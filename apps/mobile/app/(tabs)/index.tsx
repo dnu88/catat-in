@@ -26,6 +26,11 @@ import { listCategories, type Category } from "../../src/services/categories";
 import { getLocalizedCategoryName } from "../../src/services/category-taxonomy";
 import { resolveCategoryVisual } from "../../src/theme/category-visuals";
 import { useFinanceContext } from "../../src/state/finance-context";
+import {
+	readFirstUseGuideState,
+	saveFirstUseGuideState,
+	type FirstUseGuideState,
+} from "../../src/services/first-use-guide";
 import { useTheme } from "../../src/theme/theme-context";
 
 const quickActions = [
@@ -89,6 +94,7 @@ export default function DashboardScreen() {
 						onboardingPrimaryTransaction: "Record first transaction",
 						onboardingSecondary: "Open budgets",
 						guideNext: "Next",
+						guideHide: "Hide",
 						guideStepCounter: (current: number, total: number) => `Step ${current} of ${total}`,
 						guideComplete: "Done",
 						guideOpenMenu: "Open menu",
@@ -115,6 +121,7 @@ export default function DashboardScreen() {
 						onboardingPrimaryTransaction: "Catat transaksi pertama",
 						onboardingSecondary: "Buka budget",
 						guideNext: "Lanjut",
+						guideHide: "Sembunyikan",
 						guideStepCounter: (current: number, total: number) => `Langkah ${current} dari ${total}`,
 						guideComplete: "Selesai",
 						guideOpenMenu: "Buka menu",
@@ -147,6 +154,10 @@ export default function DashboardScreen() {
 
 	const [refreshing, setRefreshing] = useState(false);
 	const [dashboardReady, setDashboardReady] = useState(false);
+	const [guideStateReady, setGuideStateReady] = useState(false);
+	const [guideUserId, setGuideUserId] = useState("");
+	const [firstUseGuideState, setFirstUseGuideState] =
+		useState<FirstUseGuideState>({});
 	const [activeBudgetCount, setActiveBudgetCount] = useState(0);
 	const [currentGuideStep, setCurrentGuideStep] = useState(0);
 
@@ -165,12 +176,20 @@ export default function DashboardScreen() {
 						setWallets([]);
 						setRecentTransactions([]);
 						setCategoryOptions([]);
+						setGuideUserId("");
+						setFirstUseGuideState({});
+						setGuideStateReady(true);
 						setActiveBudgetCount(0);
 					}
 					return;
 				}
 
+				const persistedGuideState = await readFirstUseGuideState(user.id);
+
 				if (isMounted()) {
+					setGuideUserId(user.id);
+					setFirstUseGuideState(persistedGuideState);
+					setGuideStateReady(true);
 					const metadata = (user.user_metadata ?? {}) as Record<string, unknown>;
 					const resolvedName =
 						(typeof metadata.full_name === "string" && metadata.full_name) ||
@@ -219,6 +238,7 @@ export default function DashboardScreen() {
 				if (isMounted()) {
 					console.error("Error loading home envelope alerts:", error);
 					setEnvelopeAlerts([]);
+					setGuideStateReady(true);
 					setActiveBudgetCount(0);
 				}
 			} finally {
@@ -230,6 +250,7 @@ export default function DashboardScreen() {
 		useCallback(() => {
 			let mounted = true;
 			setDashboardReady(false);
+			setGuideStateReady(false);
 			void loadDashboard(() => mounted);
 			return () => {
 				mounted = false;
@@ -346,26 +367,79 @@ export default function DashboardScreen() {
 					: "Gunakan Laporan untuk melihat dampak transaksi ke arus kas dan kategori.",
 				action: isEn ? "Open Reports" : "Buka Laporan",
 				route: "/(tabs)/reports",
-				isComplete: recentTransactions.length > 0,
+				isComplete: recentTransactions.length > 0 && Boolean(firstUseGuideState.reportsVisited),
 			},
 		],
-		[activeBudgetCount, isEn, recentTransactions.length, wallets.length],
+		[
+			activeBudgetCount,
+			firstUseGuideState.reportsVisited,
+			isEn,
+			recentTransactions.length,
+			wallets.length,
+		],
 	);
 	const guideCompletionKey = guideSteps
 		.map((step) => `${step.id}:${step.isComplete ? "1" : "0"}`)
 		.join("|");
 	const showFirstUseGuide =
-		dashboardReady && guideSteps.some((step) => !step.isComplete);
+		dashboardReady &&
+		guideStateReady &&
+		!firstUseGuideState.dismissed &&
+		guideSteps.some((step) => !step.isComplete);
 	const activeGuideStep = guideSteps[currentGuideStep] ?? guideSteps[0];
 	const canMoveGuideNext = currentGuideStep < guideSteps.length - 1;
 
 	useEffect(() => {
-		if (!dashboardReady) return;
+		if (!dashboardReady || !guideStateReady) return;
 		const firstIncompleteIndex = guideSteps.findIndex((step) => !step.isComplete);
-		if (firstIncompleteIndex >= 0) {
-			setCurrentGuideStep(firstIncompleteIndex);
+		setCurrentGuideStep((currentStep) => {
+			const savedStep =
+				typeof firstUseGuideState.lastStep === "number"
+					? firstUseGuideState.lastStep
+					: currentStep;
+			const clampedStep = Math.max(
+				0,
+				Math.min(savedStep, guideSteps.length - 1),
+			);
+			if (!guideSteps[clampedStep]?.isComplete) return clampedStep;
+			return firstIncompleteIndex >= 0 ? firstIncompleteIndex : clampedStep;
+		});
+	}, [
+		dashboardReady,
+		firstUseGuideState.lastStep,
+		guideCompletionKey,
+		guideStateReady,
+		guideSteps,
+	]);
+
+	const updateGuideStep = useCallback(
+		(nextStep: number) => {
+			const clampedStep = Math.max(
+				0,
+				Math.min(nextStep, guideSteps.length - 1),
+			);
+			setCurrentGuideStep(clampedStep);
+			setFirstUseGuideState((state) => ({
+				...state,
+				lastStep: clampedStep,
+			}));
+			if (guideUserId) {
+				void saveFirstUseGuideState(guideUserId, { lastStep: clampedStep })
+					.then(setFirstUseGuideState)
+					.catch(() => undefined);
+			}
+		},
+		[guideSteps.length, guideUserId],
+	);
+
+	const dismissGuide = useCallback(() => {
+		setFirstUseGuideState((state) => ({ ...state, dismissed: true }));
+		if (guideUserId) {
+			void saveFirstUseGuideState(guideUserId, { dismissed: true })
+				.then(setFirstUseGuideState)
+				.catch(() => undefined);
 		}
-	}, [dashboardReady, guideCompletionKey, guideSteps]);
+	}, [guideUserId]);
 
 	return (
 		<PageEntrance testID="home-page-entrance" style={styles.screen}>
@@ -476,13 +550,25 @@ export default function DashboardScreen() {
 									<Text style={styles.firstUseTitle}>{activeGuideStep.title}</Text>
 									<Text style={styles.firstUseBody}>{activeGuideStep.body}</Text>
 								</View>
-								<View style={[styles.iconBubble, styles.primaryBubble]}>
-									<KaswiseIcon
-										name={activeGuideStep.id === "wallet" ? "wallets" : activeGuideStep.id === "budget" ? "budgets" : activeGuideStep.id === "reports" ? "chart" : "capture"}
-										size={18}
-										weight="bold"
-										color={theme.iconBubbles.primary.color}
-									/>
+								<View style={styles.firstUseTopActions}>
+									<Pressable
+										testID="home-first-use-dismiss"
+										accessibilityRole="button"
+										accessibilityLabel={tx.guideHide}
+										hitSlop={10}
+										style={styles.firstUseDismissButton}
+										onPress={dismissGuide}
+									>
+										<Text style={styles.firstUseDismissText}>{tx.guideHide}</Text>
+									</Pressable>
+									<View style={[styles.iconBubble, styles.primaryBubble]}>
+										<KaswiseIcon
+											name={activeGuideStep.id === "wallet" ? "wallets" : activeGuideStep.id === "budget" ? "budgets" : activeGuideStep.id === "reports" ? "chart" : "capture"}
+											size={18}
+											weight="bold"
+											color={theme.iconBubbles.primary.color}
+										/>
+									</View>
 								</View>
 							</View>
 
@@ -498,7 +584,7 @@ export default function DashboardScreen() {
 											styles.firstUseStepRow,
 											index === currentGuideStep && styles.firstUseStepRowActive,
 										]}
-										onPress={() => setCurrentGuideStep(index)}
+										onPress={() => updateGuideStep(index)}
 									>
 										<Text
 											style={[
@@ -534,7 +620,7 @@ export default function DashboardScreen() {
 										accessibilityRole="button"
 										accessibilityLabel={tx.guideNext}
 										style={styles.firstUseSecondaryButton}
-										onPress={() => setCurrentGuideStep((step) => Math.min(step + 1, guideSteps.length - 1))}
+										onPress={() => updateGuideStep(currentGuideStep + 1)}
 									>
 										<Text style={styles.firstUseSecondaryText}>{tx.guideNext}</Text>
 									</Pressable>
@@ -856,6 +942,23 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			gap: 12,
 		},
 		firstUseCopy: { flex: 1, gap: 6 },
+		firstUseTopActions: {
+			alignItems: "flex-end",
+			gap: 10,
+		},
+		firstUseDismissButton: {
+			minHeight: 32,
+			borderRadius: 999,
+			backgroundColor: theme.colors.mutedSurface,
+			paddingHorizontal: 10,
+			alignItems: "center",
+			justifyContent: "center",
+		},
+		firstUseDismissText: {
+			color: theme.colors.textMuted,
+			fontSize: 11,
+			fontWeight: theme.typography.fontWeight.bold,
+		},
 		firstUseEyebrow: {
 			color: theme.colors.brandPrimary,
 			fontSize: 11,

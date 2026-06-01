@@ -25,6 +25,7 @@ import { useI18n } from "../../src/i18n/i18n-context";
 import { useFinanceContext } from "../../src/state/finance-context";
 import { applyFinanceContextFilter } from "../../src/services/finance-context-query";
 import { listCategories, type Category } from "../../src/services/categories";
+import { markFirstUseReportsVisited } from "../../src/services/first-use-guide";
 import { getCategoryCanonicalId, getLocalizedCategoryName } from "../../src/services/category-taxonomy";
 import {
 	reportCategoryPalette,
@@ -737,13 +738,27 @@ export default function ReportsScreen() {
 
 	useFocusEffect(
 		useCallback(() => {
+			let active = true;
+			void supabase.auth
+				.getUser()
+				.then(({ data: { user } }) => {
+					if (active && user?.id) {
+						void markFirstUseReportsVisited(user.id);
+					}
+				})
+				.catch(() => undefined);
+
 			if (!hasFocusedOnceRef.current) {
 				hasFocusedOnceRef.current = true;
-				return undefined;
+				return () => {
+					active = false;
+				};
 			}
 
 			setRefreshTick((value) => value + 1);
-			return undefined;
+			return () => {
+				active = false;
+			};
 		}, []),
 	);
 
