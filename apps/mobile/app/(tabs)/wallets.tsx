@@ -243,7 +243,6 @@ export default function WalletsScreen() {
 				{
 					name: editName.trim(),
 					type: editType,
-					balance: Number(editBalance || 0),
 				},
 				contextForWallet(editingWallet),
 			);

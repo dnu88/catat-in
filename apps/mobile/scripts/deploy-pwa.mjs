@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const appDir = resolve(__dirname, '..')
+const repoDir = resolve(appDir, '..', '..')
 const distDir = join(appDir, 'dist')
 const targetDir = process.env.KASWISE_PWA_TARGET || '/home/Danu88/nginx-proxy-manager/placeholder'
 const targetIndex = join(targetDir, 'index.html')
@@ -147,5 +148,8 @@ for (const name of ['icon.png', 'adaptive-icon.png', 'favicon.png']) {
   const source = join(sourceAssetsDir, name)
   if (existsSync(source)) cpSync(source, join(targetAssetsDir, name))
 }
+
+const safeServerSource = join(repoDir, 'ops', 'pwa', 'server.py')
+if (existsSync(safeServerSource)) cpSync(safeServerSource, join(targetDir, 'server.py'))
 
 console.log(`Deployed mobile PWA dist to ${targetDir}`)

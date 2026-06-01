@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
+from threading import Lock
 import os
 import time
 from uuid import UUID
@@ -15,8 +16,9 @@ from jose.utils import base64url_decode
 from app.core.config import settings
 
 _bearer = HTTPBearer(auto_error=False)
-_JWKS_CACHE_SECONDS = int(os.getenv("SUPABASE_JWKS_CACHE_SECONDS", "3600"))
 _jwks_cache: dict[str, object] = {"keys": [], "expires_at": 0.0}
+_jwks_negative_kid_cache: dict[str, float] = {}
+_jwks_lock = Lock()
 
 
 def _supabase_url() -> str:
@@ -42,10 +44,11 @@ def _fetch_jwks_keys() -> list[dict]:
         try:
             response = httpx.get(jwks_url, timeout=3.0)
             response.raise_for_status()
-            keys = response.json().get("keys", [])
+            payload = response.json()
+            keys = payload.get("keys", []) if isinstance(payload, dict) else []
             if isinstance(keys, list):
                 return keys
-        except httpx.HTTPError as exc:
+        except (httpx.HTTPError, ValueError) as exc:
             last_error = exc
 
     raise HTTPException(
@@ -54,18 +57,38 @@ def _fetch_jwks_keys() -> list[dict]:
     ) from last_error
 
 
-def _get_jwks_keys() -> list[dict]:
+def _get_jwks_keys(force_refresh: bool = False) -> list[dict]:
     now = time.time()
-    cached_keys = _jwks_cache.get("keys")
-    cached_expiry = float(_jwks_cache.get("expires_at") or 0)
+    with _jwks_lock:
+        cached_keys = _jwks_cache.get("keys")
+        cached_expiry = float(_jwks_cache.get("expires_at") or 0)
 
-    if isinstance(cached_keys, list) and cached_keys and cached_expiry > now:
-        return cached_keys
+        if (
+            not force_refresh
+            and isinstance(cached_keys, list)
+            and cached_keys
+            and cached_expiry > now
+        ):
+            return cached_keys
 
-    keys = _fetch_jwks_keys()
-    _jwks_cache["keys"] = keys
-    _jwks_cache["expires_at"] = now + _JWKS_CACHE_SECONDS
-    return keys
+        keys = _fetch_jwks_keys()
+        _jwks_cache["keys"] = keys
+        _jwks_cache["expires_at"] = now + settings.SUPABASE_JWKS_CACHE_SECONDS
+        return keys
+
+
+def _is_kid_negatively_cached(kid: str) -> bool:
+    expires_at = _jwks_negative_kid_cache.get(kid, 0.0)
+    if expires_at > time.time():
+        return True
+    _jwks_negative_kid_cache.pop(kid, None)
+    return False
+
+
+def _remember_unknown_kid(kid: str) -> None:
+    _jwks_negative_kid_cache[kid] = (
+        time.time() + settings.SUPABASE_JWKS_NEGATIVE_CACHE_SECONDS
+    )
 
 
 def _get_unverified_header(token: str) -> dict:
@@ -78,52 +101,84 @@ def _get_unverified_header(token: str) -> dict:
         ) from exc
 
 
+def _allowed_algorithms() -> set[str]:
+    return {alg.upper() for alg in settings.SUPABASE_JWT_ALLOWED_ALGORITHMS}
+
+
+def _reject_disallowed_algorithm(algorithm: str | None) -> str:
+    normalized = (algorithm or "").upper()
+    if not normalized or normalized not in _allowed_algorithms():
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Algoritma token tidak diizinkan.",
+        )
+    return normalized
+
+
 def _get_signing_key(token: str) -> tuple[object, list[str]]:
     header = _get_unverified_header(token)
+    algorithm = _reject_disallowed_algorithm(header.get("alg"))
     token_kid = header.get("kid")
 
-    if not token_kid:
+    if algorithm == "HS256":
+        if not settings.SUPABASE_LEGACY_HS256_ENABLED:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Token tidak valid.",
+            )
         jwt_secret = os.getenv("SUPABASE_JWT_SECRET")
-        if header.get("alg") == "HS256" and jwt_secret:
+        if jwt_secret:
             return jwt_secret, ["HS256"]
+
+    if not token_kid:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Token tidak valid.",
         )
 
-    if header.get("alg") == "HS256" and os.getenv("SUPABASE_JWT_SECRET"):
-        return os.getenv("SUPABASE_JWT_SECRET"), ["HS256"]
+    if _is_kid_negatively_cached(str(token_kid)):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token tidak valid.",
+        )
 
-    signing_key = next(
-        (key for key in _get_jwks_keys() if key.get("kid") == token_kid),
-        None,
-    )
+    keys = _get_jwks_keys()
+    signing_key = next((key for key in keys if key.get("kid") == token_kid), None)
 
     if not signing_key:
-        # One refresh handles key rotation without doing network I/O on every request.
-        _jwks_cache["keys"] = []
+        # One bounded refresh handles key rotation without allowing every random
+        # unknown kid to force outbound JWKS requests.
         signing_key = next(
-            (key for key in _get_jwks_keys() if key.get("kid") == token_kid),
+            (key for key in _get_jwks_keys(force_refresh=True) if key.get("kid") == token_kid),
             None,
         )
 
     if not signing_key:
+        _remember_unknown_kid(str(token_kid))
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Token tidak valid.",
         )
 
     key_type = signing_key.get("kty")
-    key_alg = signing_key.get("alg")
+    key_alg = str(signing_key.get("alg") or algorithm).upper()
+    if key_alg != algorithm:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token tidak valid.",
+        )
+
     if key_type == "RSA":
-        algorithm = key_alg if key_alg in {"RS256", "RS384", "RS512"} else "RS256"
+        if algorithm not in {"RS256", "RS384", "RS512"}:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token tidak valid.")
         return jwk.construct(signing_key, algorithm=algorithm).to_pem(), [algorithm]
 
     if key_type == "EC":
-        algorithm = key_alg if key_alg in {"ES256", "ES384", "ES512"} else "ES256"
+        if algorithm not in {"ES256", "ES384", "ES512"}:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token tidak valid.")
         return jwk.construct(signing_key, algorithm=algorithm).to_pem(), [algorithm]
 
-    if key_type == "oct":
+    if key_type == "oct" and algorithm == "HS256" and settings.SUPABASE_LEGACY_HS256_ENABLED:
         encoded_key = signing_key.get("k")
         if not encoded_key:
             raise HTTPException(
@@ -139,7 +194,7 @@ def _get_signing_key(token: str) -> tuple[object, list[str]]:
 
 
 def _expected_issuer() -> str:
-    return os.getenv("SUPABASE_JWT_ISSUER") or f"{_supabase_url()}/auth/v1"
+    return settings.SUPABASE_JWT_ISSUER or f"{_supabase_url()}/auth/v1"
 
 
 def get_current_user(
@@ -158,7 +213,7 @@ def get_current_user(
             token,
             key=key,
             algorithms=algorithms,
-            audience=os.getenv("SUPABASE_JWT_AUDIENCE", "authenticated"),
+            audience=settings.SUPABASE_JWT_AUDIENCE,
             issuer=_expected_issuer(),
             options={"verify_iat": True},
         )

@@ -187,7 +187,7 @@ describe("WalletsScreen", () => {
 		await waitFor(() =>
 			expect(mockUpdateWallet).toHaveBeenCalledWith(
 				"wallet-family",
-				{ name: "Dompet Rumah", type: "cash", balance: 3000000 },
+				{ name: "Dompet Rumah", type: "cash" },
 				{ type: "household", householdId: "hh-1", role: "admin" },
 			),
 		);

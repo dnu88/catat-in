@@ -85,7 +85,7 @@ async def analyze_receipt(
         ) from exc
 
 
-@router.post("/insight", dependencies=[Depends(require_premium)])
+@router.post("/insight", dependencies=[Depends(rate_limit_ai), Depends(require_premium)])
 async def get_financial_insight(
     body: InsightRequest, current_user=Depends(get_current_user)
 ):

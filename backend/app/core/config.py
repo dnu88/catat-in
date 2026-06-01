@@ -8,6 +8,7 @@ import os
 from functools import lru_cache
 from pathlib import Path
 from typing import Any, List, Tuple, Type
+from urllib.parse import urlparse
 
 from pydantic import field_validator, model_validator
 from pydantic.fields import FieldInfo
@@ -19,7 +20,7 @@ from pydantic_settings.sources import EnvSettingsSource, PydanticBaseSettingsSou
 # from environment variables. Pydantic-settings normally tries to JSON-decode
 # complex types from env; we bypass that for these specific fields and let the
 # field_validator below parse raw string values instead.
-_LIST_FIELDS_NO_JSON_DECODE = {"ALLOWED_ORIGINS", "ALLOWED_HOSTS"}
+_LIST_FIELDS_NO_JSON_DECODE = {"ALLOWED_ORIGINS", "ALLOWED_HOSTS", "SUPABASE_JWT_ALLOWED_ALGORITHMS"}
 
 _REQUIRED_ALLOWED_ORIGINS: list[str] = [
     "https://catat-in-nine.vercel.app",
@@ -84,6 +85,12 @@ class Settings(BaseSettings):
     SUPABASE_URL: str | None = None
     SUPABASE_ANON_KEY: str | None = None
     SUPABASE_SERVICE_ROLE_KEY: str | None = None
+    SUPABASE_JWT_AUDIENCE: str = "authenticated"
+    SUPABASE_JWT_ISSUER: str | None = None
+    SUPABASE_JWT_ALLOWED_ALGORITHMS: List[str] = ["RS256", "ES256"]
+    SUPABASE_LEGACY_HS256_ENABLED: bool = False
+    SUPABASE_JWKS_CACHE_SECONDS: int = 3600
+    SUPABASE_JWKS_NEGATIVE_CACHE_SECONDS: int = 60
 
     # CORS / trusted hosts. See _ListFriendlyEnvSource above.
     ALLOWED_ORIGINS: List[str] = [
@@ -103,6 +110,7 @@ class Settings(BaseSettings):
     # Rate limiting
     RATE_LIMIT_DEFAULT: int = 100
     RATE_LIMIT_AI_ENDPOINT: int = 20
+    RATE_LIMIT_IMPORT_ENDPOINT: int = 10
 
     # Business rules
     FREE_TIER_RECEIPT_UPLOAD_LIMIT: int = 10
@@ -114,7 +122,7 @@ class Settings(BaseSettings):
     GROUP_MAX_MEMBERS: int = 10
     INVITE_LINK_EXPIRE_DAYS: int = 7
 
-    @field_validator("DEBUG", "MIDTRANS_IS_PRODUCTION", "CORS_ALLOW_CREDENTIALS", mode="before")
+    @field_validator("DEBUG", "MIDTRANS_IS_PRODUCTION", "CORS_ALLOW_CREDENTIALS", "SUPABASE_LEGACY_HS256_ENABLED", mode="before")
     @classmethod
     def parse_bool_like_values(cls, value):
         if isinstance(value, bool):
@@ -127,7 +135,7 @@ class Settings(BaseSettings):
                 return False
         return value
 
-    @field_validator("ALLOWED_ORIGINS", "ALLOWED_HOSTS", mode="before")
+    @field_validator("ALLOWED_ORIGINS", "ALLOWED_HOSTS", "SUPABASE_JWT_ALLOWED_ALGORITHMS", mode="before")
     @classmethod
     def parse_list_like_values(cls, value):
         if isinstance(value, list):
@@ -150,6 +158,24 @@ class Settings(BaseSettings):
     def include_deployment_defaults(self):
         self.ALLOWED_ORIGINS = _dedupe_preserve_order([*self.ALLOWED_ORIGINS, *_REQUIRED_ALLOWED_ORIGINS])
         self.ALLOWED_HOSTS = _dedupe_preserve_order([*self.ALLOWED_HOSTS, *_REQUIRED_ALLOWED_HOSTS])
+        self.SUPABASE_JWT_ALLOWED_ALGORITHMS = _dedupe_preserve_order([
+            alg.upper() for alg in self.SUPABASE_JWT_ALLOWED_ALGORITHMS
+        ])
+
+        is_production = self.ENVIRONMENT.strip().lower() == "production" or not self.DEBUG
+        if is_production:
+            for origin in self.ALLOWED_ORIGINS:
+                parsed = urlparse(origin)
+                hostname = parsed.hostname or ""
+                if origin == "*":
+                    raise ValueError("Production CORS must not allow wildcard origins")
+                if parsed.scheme != "https":
+                    raise ValueError("Production CORS origins must use https")
+                if hostname in {"localhost", "127.0.0.1"} or hostname.startswith("127."):
+                    raise ValueError("Production CORS must not allow localhost origins")
+            if self.CORS_ALLOW_CREDENTIALS and "*" in self.ALLOWED_ORIGINS:
+                raise ValueError("Credentialed CORS cannot use wildcard origins")
+
         return self
 
     @classmethod

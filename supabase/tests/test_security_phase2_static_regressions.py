@@ -6,6 +6,7 @@ MIGRATIONS = Path(__file__).resolve().parents[1] / "migrations"
 ALL_SQL = "\n".join(path.read_text() for path in sorted(MIGRATIONS.glob("*.sql")))
 SECURITY_PHASE1_SQL = (MIGRATIONS / "202605310001_security_hardening_phase1.sql").read_text()
 ALLOCATION_UNIQUE_SQL = (MIGRATIONS / "202605310002_repair_transaction_envelope_allocations_unique.sql").read_text()
+SECURITY_PHASE2_SQL = (MIGRATIONS / "202606010001_security_hardening_phase2.sql").read_text()
 
 
 def normalized(sql: str) -> str:
@@ -15,6 +16,7 @@ def normalized(sql: str) -> str:
 NORMALIZED_ALL = normalized(ALL_SQL)
 NORMALIZED_SECURITY_PHASE1 = normalized(SECURITY_PHASE1_SQL)
 NORMALIZED_ALLOCATION_UNIQUE = normalized(ALLOCATION_UNIQUE_SQL)
+NORMALIZED_SECURITY_PHASE2 = normalized(SECURITY_PHASE2_SQL)
 
 
 class SecurityPhase2StaticRegressionTest(unittest.TestCase):
@@ -64,6 +66,25 @@ class SecurityPhase2StaticRegressionTest(unittest.TestCase):
         self.assertIn("new.plan_expires_at is distinct from old.plan_expires_at", NORMALIZED_SECURITY_PHASE1)
         self.assertIn("raise exception 'profile billing fields are server-managed'", NORMALIZED_SECURITY_PHASE1)
         self.assertIn("before update on public.profiles", NORMALIZED_SECURITY_PHASE1)
+
+    def test_profile_billing_trigger_allows_service_role_and_blocks_client_insert_escalation(self):
+        self.assertIn("coalesce(auth.role(), '') = 'service_role'", NORMALIZED_SECURITY_PHASE2)
+        self.assertIn("before insert or update on public.profiles", NORMALIZED_SECURITY_PHASE2)
+        self.assertIn("new.plan_type <> 'free'", NORMALIZED_SECURITY_PHASE2)
+        self.assertIn("new.plan_expires_at is not null", NORMALIZED_SECURITY_PHASE2)
+
+    def test_wallet_balance_and_transaction_wallet_scope_are_guarded(self):
+        self.assertIn("prevent_wallet_balance_direct_change", NORMALIZED_SECURITY_PHASE2)
+        self.assertIn("wallet balance is transaction-managed", NORMALIZED_SECURITY_PHASE2)
+        self.assertIn("kaswise.wallet_balance_trigger", NORMALIZED_SECURITY_PHASE2)
+        self.assertIn("prevent_transaction_wallet_scope_mismatch", NORMALIZED_SECURITY_PHASE2)
+        self.assertIn("wallet_matches_transaction_scope", NORMALIZED_SECURITY_PHASE2)
+
+    def test_import_hash_uniqueness_and_avatar_policy_repair_are_present(self):
+        self.assertIn("alter table public.transactions add column if not exists import_hash", NORMALIZED_SECURITY_PHASE2)
+        self.assertIn("transactions_import_hash_wallet_uidx", NORMALIZED_SECURITY_PHASE2)
+        self.assertIn('drop policy if exists "avatars_select_public"', NORMALIZED_SECURITY_PHASE2)
+        self.assertIn('create policy "avatars_insert_own"', NORMALIZED_SECURITY_PHASE2)
 
     def test_usage_counters_only_keep_user_read_policy_for_clients(self):
         self.assertIn('drop policy if exists "usage_counters_insert_own"', NORMALIZED_SECURITY_PHASE1)

@@ -95,11 +95,12 @@ def detect_encoding(raw_bytes: bytes) -> str:
 
 
 def clean_amount(value: str, decimal_sep: str = ",", thousands_sep: str = ".") -> float:
-    """Bersihkan string nominal jadi float."""
+    """Bersihkan string nominal jadi float. Empty values are zero; malformed values fail the row."""
     if pd.isna(value) or str(value).strip() == "":
         return 0.0
+    raw_value = str(value).strip()
     cleaned = (
-        str(value)
+        raw_value
         .replace(thousands_sep, "")
         .replace(decimal_sep, ".")
         .replace("Rp", "")
@@ -108,8 +109,8 @@ def clean_amount(value: str, decimal_sep: str = ",", thousands_sep: str = ".") -
     )
     try:
         return float(cleaned)
-    except ValueError:
-        return 0.0
+    except ValueError as exc:
+        raise ValueError(f"Nominal tidak valid: {raw_value}") from exc
 
 
 def generate_tx_hash(date: str, description: str, amount: float) -> str:
@@ -187,7 +188,7 @@ def parse_bank_csv(
     df.columns = df.columns.str.strip()
 
     # Validasi kolom wajib ada
-    required_cols = [config["date_col"], config["desc_col"]]
+    required_cols = [config["date_col"], config["desc_col"], config["debit_col"], config["credit_col"]]
     missing = [c for c in required_cols if c not in df.columns]
     if missing:
         raise ValueError(
@@ -241,6 +242,10 @@ def parse_bank_csv(
                 continue
 
             description = str(row[config["desc_col"]]).strip()
+            if not description or description == "nan":
+                errors.append({"row": idx + 1, "reason": "Keterangan transaksi kosong"})
+                continue
+
             tx_type = "income" if credit > 0 else "expense"
             amount = credit if credit > 0 else debit
 

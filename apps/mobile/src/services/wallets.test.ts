@@ -192,7 +192,7 @@ describe("Wallet Service", () => {
 		expect(result.name).toBe("Updated Cash");
 	});
 
-	test("updateWallet includes balance in update payload", async () => {
+	test("updateWallet omits balance from update payload", async () => {
 		const existingWallet = {
 			id: "w-1",
 			user_id: "user-123",
@@ -228,7 +228,6 @@ describe("Wallet Service", () => {
 
 		expect(mockUpdate).toHaveBeenCalledWith({
 			name: "Updated Cash",
-			balance: 999999,
 			updated_by: "user-123",
 		});
 	});
