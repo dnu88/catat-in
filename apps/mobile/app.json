@@ -38,11 +38,19 @@
     },
     "plugins": [
       "expo-router",
-      "expo-secure-store"
+      "expo-secure-store",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Kaswise membutuhkan akses foto untuk scan struk.",
+          "cameraPermission": "Kaswise membutuhkan kamera untuk foto struk."
+        }
+      ]
     ],
     "extra": {
       "supabaseUrl": "https://xqvtsgfakuehjwdmenuw.supabase.co",
-      "supabaseAnonKey": "sb_publishable_5wHtNuoACq4r8OQRwf0wTQ_TJEJakPM"
+      "supabaseAnonKey": "sb_publishable_5wHtNuoACq4r8OQRwf0wTQ_TJEJakPM",
+      "apiUrl": "https://api.kaswise.com"
     }
   }
 }

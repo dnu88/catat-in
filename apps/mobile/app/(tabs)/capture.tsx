@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
 	ActivityIndicator,
+	Image,
 	Pressable,
 	RefreshControl,
 	ScrollView,
@@ -9,6 +10,7 @@ import {
 	TextInput,
 	View,
 } from "react-native";
+import * as ImagePicker from "expo-image-picker";
 import { PageEntrance, StaggeredStack } from "../../src/components/motion";
 import { useRouter } from "expo-router";
 
@@ -23,6 +25,14 @@ import {
 } from "../../src/components/icons/kaswise-icons";
 import { createEnvelopeAllocation } from "../../src/services/budget-envelopes";
 import { createTransaction } from "../../src/services/transactions";
+import {
+	analyzeReceiptImage,
+	receiptExtractionToDraft,
+	uploadReceiptImage,
+	type ReceiptExtraction,
+	type ReceiptImageAsset,
+	type ReceiptTransactionDraft,
+} from "../../src/services/receipt-intake";
 import { listCategories, type Category } from "../../src/services/categories";
 import { getLocalizedCategoryName } from "../../src/services/category-taxonomy";
 import {
@@ -60,6 +70,9 @@ const modes = [
 ] as const;
 
 type ModeId = (typeof modes)[number]["id"];
+const enabledModes = modes.filter(
+	(mode) => mode.id === "Teks" || mode.id === "Foto",
+);
 
 export default function CaptureScreen() {
 	const { supabase } = useSupabase();
@@ -103,6 +116,7 @@ export default function CaptureScreen() {
 	);
 	const styles = useMemo(() => createStyles(theme), [theme]);
 
+	const [activeMode, setActiveMode] = useState<ModeId>("Teks");
 	const [textInput, setTextInput] = useState("");
 	const [transactionId, setTransactionId] = useState<string | null>(null);
 	const [wallets, setWallets] = useState<Wallet[]>([]);
@@ -113,6 +127,10 @@ export default function CaptureScreen() {
 	const [queuedMessage, setQueuedMessage] = useState<string | null>(null);
 	const [error, setError] = useState<string | null>(null);
 	const [optimisticTransaction, setOptimisticTransaction] = useState<any | null>(null);
+	const [receiptAsset, setReceiptAsset] = useState<ReceiptImageAsset | null>(null);
+	const [receiptDraft, setReceiptDraft] = useState<ReceiptTransactionDraft | null>(null);
+	const [receiptPath, setReceiptPath] = useState<string | null>(null);
+	const [receiptExtraction, setReceiptExtraction] = useState<ReceiptExtraction | null>(null);
 	const persistedSuggestionKeyRef = useRef<string | null>(null);
 
 	const { transaction, loading } = useTransactionRealtime(transactionId);
@@ -243,6 +261,143 @@ export default function CaptureScreen() {
 		}
 	};
 
+
+	const pickReceiptImage = async () => {
+		setError(null);
+		setQueuedMessage(null);
+		setReceiptDraft(null);
+		setReceiptPath(null);
+		setReceiptExtraction(null);
+
+		const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+		if (!permission.granted) {
+			setError(
+				isEn
+					? "Photo library permission is needed to scan receipts."
+					: "Izin galeri diperlukan untuk scan struk.",
+			);
+			return;
+		}
+
+		const result = await ImagePicker.launchImageLibraryAsync({
+			mediaTypes: ["images"],
+			quality: 0.82,
+			allowsEditing: false,
+		});
+
+		if (result.canceled || !result.assets[0]) return;
+		const asset = result.assets[0];
+		setReceiptAsset({
+			uri: asset.uri,
+			fileName: asset.fileName,
+			mimeType: asset.mimeType,
+		});
+	};
+
+	const submitReceiptPhoto = async () => {
+		if (!receiptAsset || submitting) return;
+		setSubmitting(true);
+		setError(null);
+		setQueuedMessage(null);
+
+		try {
+			const {
+				data: { user },
+			} = await supabase.auth.getUser();
+			if (!user) {
+				throw new Error("Sesi login tidak ditemukan. Silakan login ulang.");
+			}
+
+			const [uploadedPath, extraction] = await Promise.all([
+				uploadReceiptImage(supabase, user.id, receiptAsset),
+				analyzeReceiptImage(supabase, receiptAsset),
+			]);
+			const draft = receiptExtractionToDraft(extraction);
+			if (!draft) {
+				throw new Error(
+					isEn
+						? "Amount was not detected. Try a clearer photo."
+						: "Nominal belum terbaca. Coba foto yang lebih jelas.",
+				);
+			}
+			setReceiptPath(uploadedPath);
+			setReceiptExtraction(extraction);
+			setReceiptDraft(draft);
+			setQueuedMessage(
+				isEn
+					? "Receipt read successfully. Review before saving."
+					: "Struk berhasil dibaca. Review dulu sebelum disimpan.",
+			);
+		} catch (error) {
+			setError(
+				error instanceof Error
+					? error.message
+					: "Struk belum bisa diproses. Coba lagi.",
+			);
+		} finally {
+			setSubmitting(false);
+		}
+	};
+
+	const confirmReceiptDraft = async () => {
+		if (!receiptDraft || submitting) return;
+		setSubmitting(true);
+		setError(null);
+
+		try {
+			const createdTransaction = await createTransaction(
+				{
+					wallet_id: walletId,
+					transaction_type: receiptDraft.transactionType,
+					amount: receiptDraft.amount,
+					category: receiptDraft.category,
+					description: receiptDraft.description,
+					date: receiptDraft.date,
+					note: receiptDraft.description,
+					merchant: receiptDraft.merchant,
+					input_type: "image",
+					status: "done",
+					receipt_url: receiptPath,
+					raw_input: receiptAsset?.fileName ?? "receipt_photo",
+					ai_extracted: receiptExtraction,
+					ai_confidence: receiptDraft.confidence,
+					review_required: receiptDraft.reviewRequired,
+					confidence: receiptDraft.confidence,
+				},
+				activeContext,
+			);
+
+			setOptimisticTransaction({
+				id: createdTransaction.id,
+				status: "done",
+				confidence: receiptDraft.confidence,
+				transaction_type: receiptDraft.transactionType,
+				type: receiptDraft.transactionType,
+				amount: receiptDraft.amount,
+				nominal: receiptDraft.amount,
+				category: receiptDraft.category,
+				kategori: receiptDraft.category,
+				description: receiptDraft.description,
+				catatan: receiptDraft.description,
+				merchant: receiptDraft.merchant,
+				date: receiptDraft.date,
+				tanggal: receiptDraft.date,
+			});
+			setTransactionId(createdTransaction.id);
+			setQueuedMessage(
+				isEn ? "Receipt transaction saved." : "Transaksi struk tersimpan.",
+			);
+		} catch (error) {
+			setError(
+				error instanceof Error
+					? error.message
+					: "Struk belum bisa disimpan. Coba lagi.",
+			);
+		} finally {
+			setSubmitting(false);
+		}
+	};
+
 	const isSuccess =
 		displayedTransaction?.status === "done" ||
 		(displayedTransaction?.confidence ?? 0) >= 0.85;
@@ -290,8 +445,50 @@ export default function CaptureScreen() {
 		setSubmitting(false);
 		setQueuedMessage(null);
 		setError(null);
-		if (clearText) setTextInput("");
+		if (clearText) {
+			setTextInput("");
+			setReceiptAsset(null);
+			setReceiptDraft(null);
+			setReceiptPath(null);
+			setReceiptExtraction(null);
+		}
 	};
+
+	const renderWalletSelector = () => (
+		<View style={styles.walletSelector}>
+			<Text style={styles.walletSelectorLabel}>{tx.walletLabel}</Text>
+			{wallets.length > 0 ? (
+				<ScrollView horizontal showsHorizontalScrollIndicator={false}>
+					<View style={styles.walletChipRow}>
+						{wallets.map((wallet) => (
+							<Pressable
+								key={wallet.id}
+								accessibilityRole="button"
+								accessibilityLabel={`${tx.walletLabel}: ${wallet.name}`}
+								accessibilityState={{ selected: walletId === wallet.id }}
+								style={[
+									styles.walletChip,
+									walletId === wallet.id && styles.walletChipActive,
+								]}
+								onPress={() => setWalletId(wallet.id)}
+							>
+								<Text
+									style={[
+										styles.walletChipText,
+										walletId === wallet.id && styles.walletChipTextActive,
+									]}
+								>
+									{wallet.name}
+								</Text>
+							</Pressable>
+						))}
+					</View>
+				</ScrollView>
+			) : (
+				<Text style={styles.walletEmptyText}>{tx.noWallet}</Text>
+			)}
+		</View>
+	);
 
 	return (
 		<PageEntrance testID="capture-page-entrance" style={styles.screen}>
@@ -317,83 +514,82 @@ export default function CaptureScreen() {
 				</View>
 
 				<View key="capture-input" testID="capture-input" style={styles.inputArea}>
+					<View style={styles.modeGrid}>
+						{enabledModes.map((mode) => (
+							<Pressable
+								key={mode.id}
+								testID={`capture-mode-${mode.id}`}
+								accessibilityRole="button"
+								accessibilityState={{ selected: activeMode === mode.id }}
+								style={[styles.modeChip, activeMode === mode.id && styles.modeChipActive]}
+								onPress={() => setActiveMode(mode.id)}
+							>
+								<KaswiseIcon
+									name={mode.icon}
+									size={14}
+									weight="bold"
+									color={activeMode === mode.id ? theme.colors.textInverse : theme.colors.textSecondary}
+								/>
+								<Text style={[styles.modeChipText, activeMode === mode.id && styles.modeChipTextActive]}>{mode.label}</Text>
+							</Pressable>
+						))}
+					</View>
+
 					<View style={styles.inputHeader}>
-						<Text style={styles.inputTitle}>Mode Teks</Text>
-						<Text style={styles.inputHelper}>
-							Ketik transaksi dengan bahasa natural
-						</Text>
+						<Text style={styles.inputTitle}>Mode {activeMode}</Text>
+						<Text style={styles.inputHelper}>{modes.find((mode) => mode.id === activeMode)?.helper}</Text>
 					</View>
 
-					<View style={styles.textContainer}>
-						<TextInput
-							style={styles.textArea}
-							value={textInput}
-							onChangeText={setTextInput}
-							multiline
-							accessibilityLabel={
-								isEn ? "Transaction text input" : "Input teks transaksi"
-							}
-							placeholder="Contoh: Beli kopi 35rb di Kopi Kenangan pakai QRIS"
-							placeholderTextColor={theme.colors.textMuted}
-						/>
-
-						<View style={styles.walletSelector}>
-							<Text style={styles.walletSelectorLabel}>{tx.walletLabel}</Text>
-							{wallets.length > 0 ? (
-								<ScrollView horizontal showsHorizontalScrollIndicator={false}>
-									<View style={styles.walletChipRow}>
-										{wallets.map((wallet) => (
-											<Pressable
-												key={wallet.id}
-												accessibilityRole="button"
-												accessibilityLabel={`${tx.walletLabel}: ${wallet.name}`}
-												accessibilityState={{ selected: walletId === wallet.id }}
-												style={[
-													styles.walletChip,
-													walletId === wallet.id && styles.walletChipActive,
-												]}
-												onPress={() => setWalletId(wallet.id)}
-											>
-												<Text
-													style={[
-														styles.walletChipText,
-														walletId === wallet.id && styles.walletChipTextActive,
-													]}
-												>
-													{wallet.name}
-												</Text>
-											</Pressable>
-										))}
-									</View>
-								</ScrollView>
-							) : (
-								<Text style={styles.walletEmptyText}>{tx.noWallet}</Text>
-							)}
+					{activeMode === "Teks" ? (
+						<View style={styles.textContainer}>
+							<TextInput
+								style={styles.textArea}
+								value={textInput}
+								onChangeText={setTextInput}
+								multiline
+								accessibilityLabel={isEn ? "Transaction text input" : "Input teks transaksi"}
+								placeholder="Contoh: Beli kopi 35rb di Kopi Kenangan pakai QRIS"
+								placeholderTextColor={theme.colors.textMuted}
+							/>
+							{renderWalletSelector()}
+							<Pressable
+								accessibilityRole="button"
+								accessibilityLabel={isEn ? "Process transaction with AI" : "Proses transaksi dengan AI"}
+								accessibilityState={{ disabled: submitting, busy: submitting }}
+								style={[styles.submitButton, submitting && { opacity: 0.7 }]}
+								onPress={submitText}
+								disabled={submitting}
+							>
+								{submitting ? <ActivityIndicator color={theme.colors.textInverse} /> : <Text style={styles.submitButtonText}>Proses dengan AI</Text>}
+							</Pressable>
 						</View>
+					) : null}
 
-						<Pressable
-							accessibilityRole="button"
-							accessibilityLabel={
-								isEn
-									? "Process transaction with AI"
-									: "Proses transaksi dengan AI"
-							}
-							accessibilityState={{ disabled: submitting, busy: submitting }}
-							style={[styles.submitButton, submitting && { opacity: 0.7 }]}
-							onPress={submitText}
-							disabled={submitting}
-						>
-							{submitting ? (
-								<ActivityIndicator color={theme.colors.textInverse} />
-							) : (
-								<Text style={styles.submitButtonText}>Proses dengan AI</Text>
-							)}
-						</Pressable>
-
-						<Text style={styles.comingSoonText}>
-							Mode lain segera hadir: Foto · Suara · Import
-						</Text>
-					</View>
+					{activeMode === "Foto" ? (
+						<View style={styles.textContainer}>
+							<View style={styles.receiptPickerCard}>
+								{receiptAsset ? <Image source={{ uri: receiptAsset.uri }} style={styles.receiptPreviewImage} /> : <Text style={styles.receiptPlaceholderText}>{isEn ? "Choose a clear receipt photo." : "Pilih foto struk yang jelas."}</Text>}
+							</View>
+							{renderWalletSelector()}
+							<Pressable testID="capture-receipt-pick" accessibilityRole="button" style={styles.secondaryButton} onPress={pickReceiptImage}>
+								<Text style={styles.secondaryButtonText}>{receiptAsset ? "Ganti Foto Struk" : "Pilih Foto Struk"}</Text>
+							</Pressable>
+							<Pressable testID="capture-receipt-process" accessibilityRole="button" accessibilityState={{ disabled: !receiptAsset || submitting, busy: submitting }} style={[styles.submitButton, (!receiptAsset || submitting) && { opacity: 0.7 }]} onPress={submitReceiptPhoto} disabled={!receiptAsset || submitting}>
+								{submitting ? <ActivityIndicator color={theme.colors.textInverse} /> : <Text style={styles.submitButtonText}>Proses Struk</Text>}
+							</Pressable>
+							{receiptDraft ? (
+								<View testID="capture-receipt-preview" style={styles.receiptDraftCard}>
+									<Text style={styles.suggestionLabel}>Preview Struk</Text>
+									<Text style={styles.suggestionTitle}>{receiptDraft.description}</Text>
+									<Text style={styles.suggestionMeta}>Rp {receiptDraft.amount.toLocaleString("id-ID")} · {receiptDraft.category} · {receiptDraft.date}</Text>
+									{receiptDraft.reviewRequired ? <Text style={styles.suggestionWarning}>{tx.needsReview}</Text> : null}
+									<Pressable testID="capture-receipt-confirm" accessibilityRole="button" style={styles.submitButton} onPress={confirmReceiptDraft} disabled={submitting}>
+										<Text style={styles.submitButtonText}>Simpan Transaksi Struk</Text>
+									</Pressable>
+								</View>
+							) : null}
+						</View>
+					) : null}
 				</View>
 
 				{isProcessing && (
@@ -552,7 +748,63 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			fontWeight: "800",
 		},
 		inputHelper: { color: theme.colors.textSecondary, fontSize: 12 },
+		modeGrid: {
+			flexDirection: "row",
+			flexWrap: "wrap",
+			gap: 8,
+		},
+		modeChip: {
+			minHeight: 40,
+			borderRadius: 999,
+			borderWidth: 1,
+			borderColor: theme.colors.borderSoft,
+			backgroundColor: theme.colors.mutedSurface,
+			paddingHorizontal: 12,
+			flexDirection: "row",
+			alignItems: "center",
+			gap: 6,
+		},
+		modeChipActive: {
+			backgroundColor: theme.colors.brandPrimary,
+			borderColor: theme.colors.brandPrimary,
+		},
+		modeChipText: {
+			color: theme.colors.textSecondary,
+			fontSize: 12,
+			fontWeight: theme.typography.fontWeight.bold,
+		},
+		modeChipTextActive: { color: theme.colors.textInverse },
 		textContainer: { gap: 12 },
+		receiptPickerCard: {
+			minHeight: 180,
+			borderRadius: 16,
+			borderWidth: 1,
+			borderColor: theme.colors.borderStrong,
+			backgroundColor: theme.colors.mutedSurface,
+			alignItems: "center",
+			justifyContent: "center",
+			overflow: "hidden",
+			padding: 12,
+		},
+		receiptPreviewImage: {
+			width: "100%",
+			height: 220,
+			borderRadius: 12,
+		},
+		receiptPlaceholderText: {
+			color: theme.colors.textMuted,
+			fontSize: 13,
+			textAlign: "center",
+			lineHeight: 20,
+		},
+		receiptDraftCard: {
+			backgroundColor: theme.colors.card,
+			borderRadius: 14,
+			borderWidth: 1,
+			borderColor: theme.colors.borderSoft,
+			padding: 12,
+			gap: 8,
+		},
 		textArea: {
 			minHeight: 120,
 			borderWidth: 1,

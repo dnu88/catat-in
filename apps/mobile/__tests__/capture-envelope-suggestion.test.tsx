@@ -22,6 +22,23 @@ const mockCreateTransaction = jest.fn(async (...args: unknown[]) => {
 });
 const mockInsert = jest.fn();
 const mockInvoke = jest.fn();
+const mockRequestMediaLibraryPermissionsAsync = jest.fn(async () => ({ granted: true }));
+const mockLaunchImageLibraryAsync = jest.fn(async (..._args: unknown[]) => ({
+	canceled: false,
+	assets: [{ uri: "file:///receipt.jpg", fileName: "receipt.jpg", mimeType: "image/jpeg" }],
+}));
+const mockUploadReceiptImage = jest.fn(async (..._args: unknown[]) => "user-1/receipt.jpg");
+const mockAnalyzeReceiptImage = jest.fn(async (..._args: unknown[]) => ({ total_amount: 125000, merchant: "RM Sederhana", confidence: 0.92 }));
+const mockReceiptExtractionToDraft = jest.fn((..._args: unknown[]) => ({
+	amount: 125000,
+	transactionType: "expense",
+	category: "Makan & Minum",
+	description: "Struk RM Sederhana",
+	merchant: "RM Sederhana",
+	date: "2026-06-01",
+	confidence: 0.92,
+	reviewRequired: false,
+}));
 const mockGetUser = jest.fn(async () => ({ data: { user: { id: "user-1" } } }));
 const mockSupabaseClient = {
 	auth: { getUser: mockGetUser },
@@ -79,6 +96,17 @@ jest.mock("../src/services/transactions", () => ({
 	createTransaction: (...args: unknown[]) => mockCreateTransaction(...args),
 }));
 
+jest.mock("expo-image-picker", () => ({
+	requestMediaLibraryPermissionsAsync: () => mockRequestMediaLibraryPermissionsAsync(),
+	launchImageLibraryAsync: (...args: unknown[]) => mockLaunchImageLibraryAsync(...args),
+}));
+
+jest.mock("../src/services/receipt-intake", () => ({
+	uploadReceiptImage: (...args: unknown[]) => mockUploadReceiptImage(...args),
+	analyzeReceiptImage: (...args: unknown[]) => mockAnalyzeReceiptImage(...args),
+	receiptExtractionToDraft: (...args: unknown[]) => mockReceiptExtractionToDraft(...args),
+}));
+
 jest.mock("../src/services/categories", () => ({
 	listCategories: jest.fn(async () => [
 		{ id: "cat-food", user_id: "user-1", name: "Food & Beverage", icon: "food", is_default: true, type: "expense", created_at: "" },
@@ -125,6 +153,11 @@ describe("Capture envelope suggestion", () => {
 		mockInsert.mockReset();
 		mockInvoke.mockReset();
 		mockGetUser.mockClear();
+		mockRequestMediaLibraryPermissionsAsync.mockClear();
+		mockLaunchImageLibraryAsync.mockClear();
+		mockUploadReceiptImage.mockClear();
+		mockAnalyzeReceiptImage.mockClear();
+		mockReceiptExtractionToDraft.mockClear();
 		mockInsert.mockImplementation((payload) => ({
 			select: () => ({
 				single: async () => ({ data: { id: "tx-created", ...payload }, error: null }),
@@ -225,5 +258,43 @@ describe("Capture envelope suggestion", () => {
 			mockActiveContext,
 		);
 		expect(mockInvoke).not.toHaveBeenCalled();
+	});
+
+	it("processes a receipt photo preview and confirms it as an image transaction", async () => {
+		mockEnvelopeSuggestion = null;
+		renderCapture();
+
+		fireEvent.press(screen.getByTestId("capture-mode-Foto"));
+		fireEvent.press(screen.getByTestId("capture-receipt-pick"));
+
+		await waitFor(() => expect(mockLaunchImageLibraryAsync).toHaveBeenCalled());
+		expect(screen.getByTestId("capture-receipt-process")).toBeTruthy();
+
+		fireEvent.press(screen.getByTestId("capture-receipt-process"));
+		await waitFor(() =>
+			expect(screen.getByTestId("capture-receipt-preview")).toBeTruthy(),
+		);
+
+		fireEvent.press(screen.getByTestId("capture-receipt-confirm"));
+
+		await waitFor(() => expect(mockCreateTransaction).toHaveBeenCalledTimes(1));
+		expect(mockCreateTransaction).toHaveBeenCalledWith(
+			expect.objectContaining({
+				transaction_type: "expense",
+				amount: 125000,
+				category: "Makan & Minum",
+				description: "Struk RM Sederhana",
+				merchant: "RM Sederhana",
+				date: "2026-06-01",
+				input_type: "image",
+				status: "done",
+				receipt_url: "user-1/receipt.jpg",
+				raw_input: "receipt.jpg",
+				ai_extracted: { total_amount: 125000, merchant: "RM Sederhana", confidence: 0.92 },
+				ai_confidence: 0.92,
+				confidence: 0.92,
+			}),
+			mockActiveContext,
+		);
 	});
 });
