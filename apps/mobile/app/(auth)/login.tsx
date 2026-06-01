@@ -8,7 +8,7 @@ import { AuthButton, AuthFooter, AuthFormCard, AuthHeroPanel, AuthLink, AuthScre
 import { InputField, StateMessage } from '../../src/components/ui'
 import { KaswiseLogoMark } from '../../src/components/brand/KaswiseLogoMark'
 import { useI18n } from '../../src/i18n/i18n-context'
-import { getAuthCallbackRedirectTo, getAuthCodeFromUrl, isStandaloneWebApp } from '../../src/lib/auth-redirects'
+import { getAuthCallbackRedirectTo, getAuthCodeFromUrl } from '../../src/lib/auth-redirects'
 import { useSupabase } from '../../src/lib/supabase'
 
 WebBrowser.maybeCompleteAuthSession()
@@ -47,7 +47,10 @@ export default function LoginScreen() {
     setGoogleLoading(true)
 
     const redirectTo = getAuthCallbackRedirectTo()
-    const shouldUseFullRedirect = Platform.OS === 'web' && isStandaloneWebApp()
+    // On web, keep Google OAuth in the same browser context.
+    // Mobile Chrome/iOS PWA can lose the PKCE verifier when Expo WebBrowser
+    // opens a separate auth session, causing /callback to show "Login could not be completed".
+    const shouldUseFullRedirect = Platform.OS === 'web'
     const { data, error: oauthError } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
