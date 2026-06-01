@@ -1,4 +1,5 @@
 import React from "react";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
 	fireEvent,
 	render,
@@ -153,6 +154,8 @@ describe("Capture envelope suggestion", () => {
 		mockInsert.mockReset();
 		mockInvoke.mockReset();
 		mockGetUser.mockClear();
+		jest.mocked(AsyncStorage.getItem).mockReset();
+		jest.mocked(AsyncStorage.getItem).mockResolvedValue(null);
 		mockRequestMediaLibraryPermissionsAsync.mockClear();
 		mockLaunchImageLibraryAsync.mockClear();
 		mockUploadReceiptImage.mockClear();
@@ -258,6 +261,20 @@ describe("Capture envelope suggestion", () => {
 			mockActiveContext,
 		);
 		expect(mockInvoke).not.toHaveBeenCalled();
+	});
+
+	it("follows the selected app language for Capture copy", async () => {
+		jest.mocked(AsyncStorage.getItem).mockImplementation(async (key) =>
+			key === "kaswise:language-preference" ? "en" : null,
+		);
+		mockEnvelopeSuggestion = null;
+
+		renderCapture();
+
+		expect(await screen.findByText("Track automatically with artificial intelligence.")).toBeTruthy();
+		expect(screen.getByText("Text")).toBeTruthy();
+		expect(screen.getByText("Photo")).toBeTruthy();
+		expect(screen.getByText("Process with AI")).toBeTruthy();
 	});
 
 	it("processes a receipt photo preview and confirms it as an image transaction", async () => {

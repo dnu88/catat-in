@@ -85,6 +85,25 @@ export default function CaptureScreen() {
 		() =>
 			isEn
 				? {
+						title: "Capture AI",
+						subtitle: "Track automatically with artificial intelligence.",
+						modePrefix: "Mode",
+						modeLabels: {
+							Teks: "Text",
+							Foto: "Photo",
+							Rekam: "Voice",
+							Import: "Import",
+						},
+						modeHelpers: {
+							Teks: "Type a transaction in natural language",
+							Foto: "Scan shopping receipts with OCR",
+							Rekam: "Record transaction voice notes",
+							Import: "Import bank and e-wallet statements",
+						},
+						textPlaceholder: "Example: Bought coffee 35k at Kopi Kenangan with QRIS",
+						textInputLabel: "Transaction text input",
+						processTextLabel: "Process transaction with AI",
+						processTextButton: "Process with AI",
 						walletLabel: "Wallet for sync",
 						noWallet: "No active wallet. Saved transaction will not change wallet balance.",
 						processingTitle: "Processing...",
@@ -97,8 +116,50 @@ export default function CaptureScreen() {
 						remainingAfter: (amount: number) =>
 							`Rp${amount.toLocaleString("id-ID")} left after this transaction`,
 						needsReview: "Needs review in Reports",
+						multiSaved: (count: number) => `${count} transactions were saved from one note.`,
+						sessionMissing: "Login session not found. Please sign in again.",
+						systemError: "System error. Please try again.",
+						photoPermission: "Photo library permission is needed to scan receipts.",
+						receiptAmountMissing: "Amount was not detected. Try a clearer photo.",
+						receiptReadSuccess: "Receipt read successfully. Review before saving.",
+						receiptProcessFallback: "Receipt could not be processed. Try again.",
+						receiptSaveFallback: "Receipt could not be saved. Try again.",
+						receiptSaved: "Receipt transaction saved.",
+						receiptPlaceholder: "Choose a clear receipt photo.",
+						chooseReceiptPhoto: "Choose Receipt Photo",
+						changeReceiptPhoto: "Change Receipt Photo",
+						processReceipt: "Process Receipt",
+						receiptPreviewTitle: "Receipt Preview",
+						saveReceiptTransaction: "Save Receipt Transaction",
+						viewReview: "View & Review",
+						keepSaved: "Keep saved",
+						viewReviewLabel: "View and review transaction",
+						keepSavedLabel: "Keep saved transaction",
+						errorTitle: "Processing failed",
+						errorFallback: "Transaction could not be processed. Try again shortly.",
+						tryAgain: "Try Again",
+						tryAgainLabel: "Try processing again",
 					}
 				: {
+						title: "Capture AI",
+						subtitle: "Catat otomatis dengan kecerdasan buatan.",
+						modePrefix: "Mode",
+						modeLabels: {
+							Teks: "Teks",
+							Foto: "Foto",
+							Rekam: "Suara",
+							Import: "Impor",
+						},
+						modeHelpers: {
+							Teks: "Ketik transaksi dengan bahasa natural",
+							Foto: "Scan struk belanja dengan OCR",
+							Rekam: "Rekam suara transaksi",
+							Import: "Impor mutasi bank dan e-wallet",
+						},
+						textPlaceholder: "Contoh: Beli kopi 35rb di Kopi Kenangan pakai QRIS",
+						textInputLabel: "Input teks transaksi",
+						processTextLabel: "Proses transaksi dengan AI",
+						processTextButton: "Proses dengan AI",
 						walletLabel: "Akun untuk sinkronisasi",
 						noWallet: "Belum ada akun aktif. Transaksi tersimpan tanpa mengubah saldo akun.",
 						processingTitle: "Sedang memproses...",
@@ -111,6 +172,29 @@ export default function CaptureScreen() {
 						remainingAfter: (amount: number) =>
 							`Rp${amount.toLocaleString("id-ID")} tersisa setelah transaksi ini`,
 						needsReview: "Perlu cek di Reports",
+						multiSaved: (count: number) => `${count} transaksi langsung disimpan dari satu catatan.`,
+						sessionMissing: "Sesi login tidak ditemukan. Silakan login ulang.",
+						systemError: "Terjadi kesalahan sistem. Silakan coba lagi.",
+						photoPermission: "Izin galeri diperlukan untuk scan struk.",
+						receiptAmountMissing: "Nominal belum terbaca. Coba foto yang lebih jelas.",
+						receiptReadSuccess: "Struk berhasil dibaca. Review dulu sebelum disimpan.",
+						receiptProcessFallback: "Struk belum bisa diproses. Coba lagi.",
+						receiptSaveFallback: "Struk belum bisa disimpan. Coba lagi.",
+						receiptSaved: "Transaksi struk tersimpan.",
+						receiptPlaceholder: "Pilih foto struk yang jelas.",
+						chooseReceiptPhoto: "Pilih Foto Struk",
+						changeReceiptPhoto: "Ganti Foto Struk",
+						processReceipt: "Proses Struk",
+						receiptPreviewTitle: "Preview Struk",
+						saveReceiptTransaction: "Simpan Transaksi Struk",
+						viewReview: "Lihat & Review",
+						keepSaved: "Langsung simpan",
+						viewReviewLabel: "Lihat dan review transaksi",
+						keepSavedLabel: "Langsung simpan transaksi",
+						errorTitle: "Gagal memproses",
+						errorFallback: "Transaksi belum berhasil diproses. Coba lagi sebentar.",
+						tryAgain: "Coba Lagi",
+						tryAgainLabel: "Coba proses lagi",
 					},
 		[isEn],
 	);
@@ -180,7 +264,7 @@ export default function CaptureScreen() {
 			} = await supabase.auth.getUser();
 
 			if (!user) {
-				setError("Sesi login tidak ditemukan. Silakan login ulang.");
+				setError(tx.sessionMissing);
 				setSubmitting(false);
 				return;
 			}
@@ -250,13 +334,13 @@ export default function CaptureScreen() {
 			setTransactionId(createdTransaction.id);
 			setQueuedMessage(
 				quickDrafts.length > 1
-					? `${quickDrafts.length} transaksi langsung disimpan dari satu catatan.`
+					? tx.multiSaved(quickDrafts.length)
 					: tx.queued,
 			);
 			setTextInput("");
 			setSubmitting(false);
 		} catch (e) {
-			setError("Terjadi kesalahan sistem. Silakan coba lagi.");
+			setError(tx.systemError);
 			setSubmitting(false);
 		}
 	};
@@ -272,9 +356,7 @@ export default function CaptureScreen() {
 		const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
 		if (!permission.granted) {
 			setError(
-				isEn
-					? "Photo library permission is needed to scan receipts."
-					: "Izin galeri diperlukan untuk scan struk.",
+				tx.photoPermission,
 			);
 			return;
 		}
@@ -305,7 +387,7 @@ export default function CaptureScreen() {
 				data: { user },
 			} = await supabase.auth.getUser();
 			if (!user) {
-				throw new Error("Sesi login tidak ditemukan. Silakan login ulang.");
+				throw new Error(tx.sessionMissing);
 			}
 
 			const [uploadedPath, extraction] = await Promise.all([
@@ -315,24 +397,20 @@ export default function CaptureScreen() {
 			const draft = receiptExtractionToDraft(extraction);
 			if (!draft) {
 				throw new Error(
-					isEn
-						? "Amount was not detected. Try a clearer photo."
-						: "Nominal belum terbaca. Coba foto yang lebih jelas.",
+					tx.receiptAmountMissing,
 				);
 			}
 			setReceiptPath(uploadedPath);
 			setReceiptExtraction(extraction);
 			setReceiptDraft(draft);
 			setQueuedMessage(
-				isEn
-					? "Receipt read successfully. Review before saving."
-					: "Struk berhasil dibaca. Review dulu sebelum disimpan.",
+				tx.receiptReadSuccess,
 			);
 		} catch (error) {
 			setError(
 				error instanceof Error
 					? error.message
-					: "Struk belum bisa diproses. Coba lagi.",
+					: tx.receiptProcessFallback,
 			);
 		} finally {
 			setSubmitting(false);
@@ -385,13 +463,13 @@ export default function CaptureScreen() {
 			});
 			setTransactionId(createdTransaction.id);
 			setQueuedMessage(
-				isEn ? "Receipt transaction saved." : "Transaksi struk tersimpan.",
+				tx.receiptSaved,
 			);
 		} catch (error) {
 			setError(
 				error instanceof Error
 					? error.message
-					: "Struk belum bisa disimpan. Coba lagi.",
+					: tx.receiptSaveFallback,
 			);
 		} finally {
 			setSubmitting(false);
@@ -506,10 +584,8 @@ export default function CaptureScreen() {
 				<StaggeredStack testIDPrefix="capture-entrance">
 				<View key="capture-header" testID="capture-header" style={styles.headerRow}>
 					<View>
-						<Text style={styles.title}>Capture AI</Text>
-						<Text style={styles.subtitle}>
-							Catat otomatis dengan kecerdasan buatan.
-						</Text>
+						<Text style={styles.title}>{tx.title}</Text>
+						<Text style={styles.subtitle}>{tx.subtitle}</Text>
 					</View>
 				</View>
 
@@ -530,14 +606,14 @@ export default function CaptureScreen() {
 									weight="bold"
 									color={activeMode === mode.id ? theme.colors.textInverse : theme.colors.textSecondary}
 								/>
-								<Text style={[styles.modeChipText, activeMode === mode.id && styles.modeChipTextActive]}>{mode.label}</Text>
+								<Text style={[styles.modeChipText, activeMode === mode.id && styles.modeChipTextActive]}>{tx.modeLabels[mode.id]}</Text>
 							</Pressable>
 						))}
 					</View>
 
 					<View style={styles.inputHeader}>
-						<Text style={styles.inputTitle}>Mode {activeMode}</Text>
-						<Text style={styles.inputHelper}>{modes.find((mode) => mode.id === activeMode)?.helper}</Text>
+						<Text style={styles.inputTitle}>{tx.modePrefix} {tx.modeLabels[activeMode]}</Text>
+						<Text style={styles.inputHelper}>{tx.modeHelpers[activeMode]}</Text>
 					</View>
 
 					{activeMode === "Teks" ? (
@@ -547,20 +623,20 @@ export default function CaptureScreen() {
 								value={textInput}
 								onChangeText={setTextInput}
 								multiline
-								accessibilityLabel={isEn ? "Transaction text input" : "Input teks transaksi"}
-								placeholder="Contoh: Beli kopi 35rb di Kopi Kenangan pakai QRIS"
+								accessibilityLabel={tx.textInputLabel}
+								placeholder={tx.textPlaceholder}
 								placeholderTextColor={theme.colors.textMuted}
 							/>
 							{renderWalletSelector()}
 							<Pressable
 								accessibilityRole="button"
-								accessibilityLabel={isEn ? "Process transaction with AI" : "Proses transaksi dengan AI"}
+								accessibilityLabel={tx.processTextLabel}
 								accessibilityState={{ disabled: submitting, busy: submitting }}
 								style={[styles.submitButton, submitting && { opacity: 0.7 }]}
 								onPress={submitText}
 								disabled={submitting}
 							>
-								{submitting ? <ActivityIndicator color={theme.colors.textInverse} /> : <Text style={styles.submitButtonText}>Proses dengan AI</Text>}
+								{submitting ? <ActivityIndicator color={theme.colors.textInverse} /> : <Text style={styles.submitButtonText}>{tx.processTextButton}</Text>}
 							</Pressable>
 						</View>
 					) : null}
@@ -568,23 +644,23 @@ export default function CaptureScreen() {
 					{activeMode === "Foto" ? (
 						<View style={styles.textContainer}>
 							<View style={styles.receiptPickerCard}>
-								{receiptAsset ? <Image source={{ uri: receiptAsset.uri }} style={styles.receiptPreviewImage} /> : <Text style={styles.receiptPlaceholderText}>{isEn ? "Choose a clear receipt photo." : "Pilih foto struk yang jelas."}</Text>}
+								{receiptAsset ? <Image source={{ uri: receiptAsset.uri }} style={styles.receiptPreviewImage} /> : <Text style={styles.receiptPlaceholderText}>{tx.receiptPlaceholder}</Text>}
 							</View>
 							{renderWalletSelector()}
 							<Pressable testID="capture-receipt-pick" accessibilityRole="button" style={styles.secondaryButton} onPress={pickReceiptImage}>
-								<Text style={styles.secondaryButtonText}>{receiptAsset ? "Ganti Foto Struk" : "Pilih Foto Struk"}</Text>
+								<Text style={styles.secondaryButtonText}>{receiptAsset ? tx.changeReceiptPhoto : tx.chooseReceiptPhoto}</Text>
 							</Pressable>
 							<Pressable testID="capture-receipt-process" accessibilityRole="button" accessibilityState={{ disabled: !receiptAsset || submitting, busy: submitting }} style={[styles.submitButton, (!receiptAsset || submitting) && { opacity: 0.7 }]} onPress={submitReceiptPhoto} disabled={!receiptAsset || submitting}>
-								{submitting ? <ActivityIndicator color={theme.colors.textInverse} /> : <Text style={styles.submitButtonText}>Proses Struk</Text>}
+								{submitting ? <ActivityIndicator color={theme.colors.textInverse} /> : <Text style={styles.submitButtonText}>{tx.processReceipt}</Text>}
 							</Pressable>
 							{receiptDraft ? (
 								<View testID="capture-receipt-preview" style={styles.receiptDraftCard}>
-									<Text style={styles.suggestionLabel}>Preview Struk</Text>
+									<Text style={styles.suggestionLabel}>{tx.receiptPreviewTitle}</Text>
 									<Text style={styles.suggestionTitle}>{receiptDraft.description}</Text>
 									<Text style={styles.suggestionMeta}>Rp {receiptDraft.amount.toLocaleString("id-ID")} · {receiptDraft.category} · {receiptDraft.date}</Text>
 									{receiptDraft.reviewRequired ? <Text style={styles.suggestionWarning}>{tx.needsReview}</Text> : null}
 									<Pressable testID="capture-receipt-confirm" accessibilityRole="button" style={styles.submitButton} onPress={confirmReceiptDraft} disabled={submitting}>
-										<Text style={styles.submitButtonText}>Simpan Transaksi Struk</Text>
+										<Text style={styles.submitButtonText}>{tx.saveReceiptTransaction}</Text>
 									</Pressable>
 								</View>
 							) : null}
@@ -657,26 +733,22 @@ export default function CaptureScreen() {
 						<Pressable
 							accessibilityRole="button"
 							accessibilityLabel={
-								isEn
-									? "View and review transaction"
-									: "Lihat dan review transaksi"
+								tx.viewReviewLabel
 							}
 							style={styles.secondaryButton}
 							onPress={() => router.push("/(tabs)/transactions")}
 						>
-							<Text style={styles.secondaryButtonText}>Lihat & Review</Text>
+							<Text style={styles.secondaryButtonText}>{tx.viewReview}</Text>
 						</Pressable>
 						<Pressable
 							accessibilityRole="button"
 							accessibilityLabel={
-								isEn
-									? "Save transaction immediately"
-									: "Langsung simpan transaksi"
+								tx.keepSavedLabel
 							}
 							style={styles.textLinkButton}
 							onPress={() => resetCapture(true)}
 						>
-							<Text style={styles.textLink}>Langsung simpan</Text>
+							<Text style={styles.textLink}>{tx.keepSaved}</Text>
 						</Pressable>
 					</View>
 				)}
@@ -691,20 +763,19 @@ export default function CaptureScreen() {
 								weight="bold"
 							/>
 						</View>
-						<Text style={styles.feedbackTitle}>Gagal memproses</Text>
+						<Text style={styles.feedbackTitle}>{tx.errorTitle}</Text>
 						<Text style={styles.feedbackSub}>
-							{error ||
-								"Transaksi belum berhasil diproses. Coba lagi sebentar."}
+							{error || tx.errorFallback}
 						</Text>
 						<Pressable
 							accessibilityRole="button"
 							accessibilityLabel={
-								isEn ? "Try processing again" : "Coba proses lagi"
+								tx.tryAgainLabel
 							}
 							style={styles.secondaryButton}
 							onPress={() => resetCapture(false)}
 						>
-							<Text style={styles.secondaryButtonText}>Coba Lagi</Text>
+							<Text style={styles.secondaryButtonText}>{tx.tryAgain}</Text>
 						</Pressable>
 					</View>
 				)}

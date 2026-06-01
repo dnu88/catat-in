@@ -1,4 +1,5 @@
 import {
+	analyzeReceiptImage,
 	getApiBaseUrl,
 	receiptExtractionToDraft,
 	uploadReceiptImage,
@@ -52,4 +53,31 @@ describe("receipt intake helpers", () => {
 		expect(upload).not.toHaveBeenCalled();
 		global.fetch = originalFetch;
 	});
+	it("sends receipt analysis as a typed multipart file and keeps backend details", async () => {
+		const originalFetch = global.fetch;
+		global.fetch = jest
+			.fn()
+			.mockResolvedValueOnce({
+				ok: true,
+				blob: async () => new Blob(["image"], { type: "" }),
+			})
+			.mockResolvedValueOnce({
+				ok: false,
+				json: async () => ({ detail: "Format file tidak didukung." }),
+			}) as unknown as typeof fetch;
+
+		await expect(
+			analyzeReceiptImage(
+				{ auth: { getSession: async () => ({ data: { session: { access_token: "token" } } }) } } as never,
+				{ uri: "file:///receipt", fileName: "receipt.png", mimeType: "image/png" },
+			),
+		).rejects.toThrow("Format file tidak didukung.");
+
+		const apiRequest = (global.fetch as jest.Mock).mock.calls[1][1];
+		const file = (apiRequest.body as FormData).get("file") as File;
+		expect(file.type).toBe("image/png");
+		expect(file.name).toBe("receipt.png");
+		global.fetch = originalFetch;
+	});
+
 });

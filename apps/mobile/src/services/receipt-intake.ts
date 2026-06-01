@@ -75,7 +75,6 @@ function validateReceiptBlob(blob: Blob, mimeType: string) {
 function extensionForMime(mimeType: string) {
 	if (mimeType.includes("png")) return "png";
 	if (mimeType.includes("webp")) return "webp";
-	if (mimeType.includes("pdf")) return "pdf";
 	return "jpg";
 }
 
@@ -92,6 +91,33 @@ export async function blobFromAsset(asset: ReceiptImageAsset) {
 	return response.blob();
 }
 
+function withReceiptMimeType(blob: Blob, mimeType: string) {
+	if (blob.type === mimeType) return blob;
+	if (typeof blob.slice === "function") {
+		return blob.slice(0, blob.size, mimeType);
+	}
+	return new Blob([blob], { type: mimeType });
+}
+
+function appendReceiptFile(formData: FormData, blob: Blob, filename: string, mimeType: string) {
+	const typedBlob = withReceiptMimeType(blob, mimeType);
+	const FileCtor = (globalThis as { File?: typeof File }).File;
+	if (typeof FileCtor === "function") {
+		formData.append("file", new FileCtor([typedBlob], filename, { type: mimeType }));
+		return;
+	}
+	formData.append("file", typedBlob, filename);
+}
+
+async function readErrorDetail(response: Response) {
+	try {
+		const payload = await response.json();
+		const detail = (payload as { detail?: unknown }).detail;
+		if (typeof detail === "string" && detail.trim()) return detail.trim();
+	} catch {}
+	return null;
+}
+
 export async function uploadReceiptImage(
 	supabase: SupabaseClient,
 	userId: string,
@@ -104,7 +130,7 @@ export async function uploadReceiptImage(
 	const objectPath = `${userId}/${Date.now()}-${safeFileName(asset, extension)}`;
 	const { data, error } = await supabase.storage
 		.from("receipts")
-		.upload(objectPath, blob, {
+		.upload(objectPath, withReceiptMimeType(blob, mimeType), {
 			contentType: mimeType,
 			upsert: false,
 		});
@@ -128,7 +154,12 @@ export async function analyzeReceiptImage(
 	const mimeType = normalizeMimeType(asset.mimeType || blob.type);
 	validateReceiptBlob(blob, mimeType);
 	const formData = new FormData();
-	formData.append("file", blob, safeFileName(asset, extensionForMime(mimeType)));
+	appendReceiptFile(
+		formData,
+		blob,
+		safeFileName(asset, extensionForMime(mimeType)),
+		mimeType,
+	);
 
 	const response = await fetch(`${getApiBaseUrl()}/api/v1/ai/receipt`, {
 		method: "POST",
@@ -139,7 +170,8 @@ export async function analyzeReceiptImage(
 	});
 
 	if (!response.ok) {
-		throw new Error("Struk belum bisa diproses. Coba foto yang lebih jelas.");
+		const detail = await readErrorDetail(response);
+		throw new Error(detail ?? "Struk belum bisa diproses. Coba foto yang lebih jelas.");
 	}
 
 	return response.json();
