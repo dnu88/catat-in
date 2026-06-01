@@ -23,7 +23,9 @@ function bootstrapTheme() {
 function LoadingShell() {
 	return (
 		<div className="landing-loading" role="status">
-			<div className="landing-brand-mark">K</div>
+			<div className="landing-logo-shell" aria-hidden="true">
+				<img src="/brand/logo-kaswise-mark.svg" alt="" />
+			</div>
 			<span>Memuat Kaswise...</span>
 		</div>
 	);

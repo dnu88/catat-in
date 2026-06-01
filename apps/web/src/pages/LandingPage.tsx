@@ -47,7 +47,9 @@ export default function LandingPage() {
     <main className="landing-page" data-testid="web-landing-page">
       <header className="landing-header" aria-label="Navigasi Kaswise">
         <a className="landing-brand" href="#top" aria-label="Kaswise">
-          <span className="landing-brand-mark">K</span>
+          <span className="landing-logo-shell" aria-hidden="true">
+            <img src="/brand/logo-kaswise-mark.svg" alt="" />
+          </span>
           <span>
             <strong>kaswise</strong>
             <small>Personal finance PWA</small>
@@ -192,7 +194,9 @@ export default function LandingPage() {
       </section>
 
       <section className="landing-final-cta" aria-label="Mulai menggunakan Kaswise">
-        <span className="landing-brand-mark">K</span>
+        <span className="landing-logo-shell landing-logo-shell-large" aria-hidden="true">
+          <img src="/brand/logo-kaswise-mark.svg" alt="" />
+        </span>
         <h2>Mulai dari transaksi berikutnya.</h2>
         <p>Buka PWA, tulis transaksi pertama, lalu biarkan budget dan laporan ikut membaca kebiasaan belanja Anda.</p>
         <a className="landing-primary" href={appUrl}>Buka Kaswise PWA</a>
