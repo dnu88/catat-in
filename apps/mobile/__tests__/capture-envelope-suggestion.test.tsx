@@ -28,6 +28,7 @@ const mockLaunchImageLibraryAsync = jest.fn(async (..._args: unknown[]) => ({
 	canceled: false,
 	assets: [{ uri: "file:///receipt.jpg", fileName: "receipt.jpg", mimeType: "image/jpeg" }],
 }));
+const mockGetReceiptAuthSession = jest.fn<Promise<{ access_token: string; user: { id: string } } | null>, unknown[]>(async () => ({ access_token: "token", user: { id: "user-1" } }));
 const mockUploadReceiptImage = jest.fn(async (..._args: unknown[]) => "user-1/receipt.jpg");
 const mockAnalyzeReceiptImage = jest.fn(async (..._args: unknown[]) => ({ total_amount: 125000, merchant: "RM Sederhana", confidence: 0.92 }));
 const mockReceiptExtractionToDraft = jest.fn((..._args: unknown[]) => ({
@@ -103,6 +104,7 @@ jest.mock("expo-image-picker", () => ({
 }));
 
 jest.mock("../src/services/receipt-intake", () => ({
+	getReceiptAuthSession: (...args: unknown[]) => mockGetReceiptAuthSession(...args),
 	uploadReceiptImage: (...args: unknown[]) => mockUploadReceiptImage(...args),
 	analyzeReceiptImage: (...args: unknown[]) => mockAnalyzeReceiptImage(...args),
 	receiptExtractionToDraft: (...args: unknown[]) => mockReceiptExtractionToDraft(...args),
@@ -158,6 +160,7 @@ describe("Capture envelope suggestion", () => {
 		jest.mocked(AsyncStorage.getItem).mockResolvedValue(null);
 		mockRequestMediaLibraryPermissionsAsync.mockClear();
 		mockLaunchImageLibraryAsync.mockClear();
+		mockGetReceiptAuthSession.mockClear();
 		mockUploadReceiptImage.mockClear();
 		mockAnalyzeReceiptImage.mockClear();
 		mockReceiptExtractionToDraft.mockClear();
@@ -275,6 +278,24 @@ describe("Capture envelope suggestion", () => {
 		expect(screen.getByText("Text")).toBeTruthy();
 		expect(screen.getByText("Photo")).toBeTruthy();
 		expect(screen.getByText("Process with AI")).toBeTruthy();
+	});
+
+	it("shows a clear login message when receipt processing has no active session", async () => {
+		mockEnvelopeSuggestion = null;
+		mockGetReceiptAuthSession.mockResolvedValueOnce(null);
+		renderCapture();
+
+		fireEvent.press(screen.getByTestId("capture-mode-Foto"));
+		fireEvent.press(screen.getByTestId("capture-receipt-pick"));
+		await waitFor(() => expect(mockLaunchImageLibraryAsync).toHaveBeenCalled());
+
+		fireEvent.press(screen.getByTestId("capture-receipt-process"));
+
+		await waitFor(() =>
+			expect(screen.getByText(/Sesi login tidak ditemukan/i)).toBeTruthy(),
+		);
+		expect(mockUploadReceiptImage).not.toHaveBeenCalled();
+		expect(mockAnalyzeReceiptImage).not.toHaveBeenCalled();
 	});
 
 	it("processes a receipt photo preview and confirms it as an image transaction", async () => {

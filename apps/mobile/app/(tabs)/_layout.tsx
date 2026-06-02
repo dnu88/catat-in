@@ -33,8 +33,19 @@ export default function TabsLayout() {
 
 		const {
 			data: { subscription },
-		} = supabase.auth.onAuthStateChange((_event, nextSession) => {
-			setSession(nextSession);
+		} = supabase.auth.onAuthStateChange(async (_event, nextSession) => {
+			if (nextSession) {
+				setSession(nextSession);
+				return;
+			}
+
+			// PWA OAuth callbacks can briefly emit a null session while PKCE
+			// storage is still settling. Confirm before redirecting to login so
+			// feature flows such as receipt upload are not interrupted mid-action.
+			const {
+				data: { session: confirmedSession },
+			} = await supabase.auth.getSession();
+			setSession(confirmedSession);
 		});
 
 		return () => subscription.unsubscribe();

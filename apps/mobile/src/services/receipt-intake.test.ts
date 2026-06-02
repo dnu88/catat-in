@@ -1,6 +1,7 @@
 import {
 	analyzeReceiptImage,
 	getApiBaseUrl,
+	getReceiptAuthSession,
 	receiptExtractionToDraft,
 	uploadReceiptImage,
 } from "./receipt-intake";
@@ -33,6 +34,17 @@ describe("receipt intake helpers", () => {
 
 	it("returns null when receipt extraction has no valid amount", () => {
 		expect(receiptExtractionToDraft({ total_amount: null })).toBeNull();
+	});
+
+	it("refreshes the auth session before receipt analysis when the cached session is empty", async () => {
+		const refreshedSession = { access_token: "fresh-token" };
+		const getSession = jest.fn(async () => ({ data: { session: null } }));
+		const refreshSession = jest.fn(async () => ({ data: { session: refreshedSession } }));
+
+		await expect(
+			getReceiptAuthSession({ auth: { getSession, refreshSession } } as never),
+		).resolves.toBe(refreshedSession);
+		expect(refreshSession).toHaveBeenCalledTimes(1);
 	});
 
 	it("rejects unsupported receipt upload MIME types before storage upload", async () => {

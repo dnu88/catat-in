@@ -27,6 +27,7 @@ import { createEnvelopeAllocation } from "../../src/services/budget-envelopes";
 import { createTransaction } from "../../src/services/transactions";
 import {
 	analyzeReceiptImage,
+	getReceiptAuthSession,
 	receiptExtractionToDraft,
 	uploadReceiptImage,
 	type ReceiptExtraction,
@@ -383,17 +384,18 @@ export default function CaptureScreen() {
 		setQueuedMessage(null);
 
 		try {
-			const {
-				data: { user },
-			} = await supabase.auth.getUser();
-			if (!user) {
+			const session = await getReceiptAuthSession(supabase);
+			if (!session?.access_token) {
 				throw new Error(tx.sessionMissing);
 			}
 
-			const [uploadedPath, extraction] = await Promise.all([
-				uploadReceiptImage(supabase, user.id, receiptAsset),
-				analyzeReceiptImage(supabase, receiptAsset),
-			]);
+			const userId = session.user?.id;
+			if (!userId) {
+				throw new Error(tx.sessionMissing);
+			}
+
+			const uploadedPath = await uploadReceiptImage(supabase, userId, receiptAsset);
+			const extraction = await analyzeReceiptImage(supabase, receiptAsset);
 			const draft = receiptExtractionToDraft(extraction);
 			if (!draft) {
 				throw new Error(

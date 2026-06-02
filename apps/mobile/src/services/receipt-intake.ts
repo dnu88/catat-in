@@ -1,5 +1,5 @@
 import Constants from "expo-constants";
-import type { SupabaseClient } from "@supabase/supabase-js";
+import type { Session, SupabaseClient } from "@supabase/supabase-js";
 
 export type ReceiptImageAsset = {
 	uri: string;
@@ -41,6 +41,24 @@ const ALLOWED_RECEIPT_MIME_TYPES = new Set([
 	"image/png",
 	"image/webp",
 ]);
+
+function wait(ms: number) {
+	return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+export async function getReceiptAuthSession(
+	supabase: SupabaseClient,
+): Promise<Session | null> {
+	const initial = await supabase.auth.getSession();
+	if (initial.data.session?.access_token) return initial.data.session;
+
+	const refreshed = await supabase.auth.refreshSession().catch(() => null);
+	if (refreshed?.data.session?.access_token) return refreshed.data.session;
+
+	await wait(350);
+	const retried = await supabase.auth.getSession();
+	return retried.data.session?.access_token ? retried.data.session : null;
+}
 
 function readConfigValue(...values: Array<string | undefined>) {
 	return values.find((value) => value?.trim())?.trim();
@@ -143,11 +161,9 @@ export async function analyzeReceiptImage(
 	supabase: SupabaseClient,
 	asset: ReceiptImageAsset,
 ): Promise<ReceiptExtraction> {
-	const {
-		data: { session },
-	} = await supabase.auth.getSession();
+	const session = await getReceiptAuthSession(supabase);
 	if (!session?.access_token) {
-		throw new Error("Sesi login tidak ditemukan.");
+		throw new Error("Sesi login tidak ditemukan. Silakan login ulang.");
 	}
 
 	const blob = await blobFromAsset(asset);
