@@ -298,6 +298,35 @@ describe("Capture envelope suggestion", () => {
 		expect(mockAnalyzeReceiptImage).not.toHaveBeenCalled();
 	});
 
+
+	it("continues receipt preview and save when private receipt upload is blocked by RLS", async () => {
+		mockEnvelopeSuggestion = null;
+		mockUploadReceiptImage.mockRejectedValueOnce(
+			new Error("new row violates row-level security policy"),
+		);
+		renderCapture();
+
+		fireEvent.press(screen.getByTestId("capture-mode-Foto"));
+		fireEvent.press(screen.getByTestId("capture-receipt-pick"));
+		await waitFor(() => expect(mockLaunchImageLibraryAsync).toHaveBeenCalled());
+
+		fireEvent.press(screen.getByTestId("capture-receipt-process"));
+		await waitFor(() =>
+			expect(screen.getByTestId("capture-receipt-preview")).toBeTruthy(),
+		);
+
+		fireEvent.press(screen.getByTestId("capture-receipt-confirm"));
+
+		await waitFor(() => expect(mockCreateTransaction).toHaveBeenCalledTimes(1));
+		expect(mockCreateTransaction).toHaveBeenCalledWith(
+			expect.objectContaining({
+				input_type: "image",
+				receipt_url: null,
+			}),
+			mockActiveContext,
+		);
+	});
+
 	it("processes a receipt photo preview and confirms it as an image transaction", async () => {
 		mockEnvelopeSuggestion = null;
 		renderCapture();

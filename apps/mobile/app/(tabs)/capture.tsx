@@ -377,6 +377,23 @@ export default function CaptureScreen() {
 		});
 	};
 
+
+	const isRowLevelSecurityError = (error: unknown) =>
+		error instanceof Error &&
+		error.message.toLowerCase().includes("row-level security");
+
+	const uploadReceiptImageBestEffort = async (
+		userId: string,
+		asset: ReceiptImageAsset,
+	) => {
+		try {
+			return await uploadReceiptImage(supabase, userId, asset);
+		} catch (uploadError) {
+			console.error("Receipt image upload skipped:", uploadError);
+			return null;
+		}
+	};
+
 	const submitReceiptPhoto = async () => {
 		if (!receiptAsset || submitting) return;
 		setSubmitting(true);
@@ -394,8 +411,8 @@ export default function CaptureScreen() {
 				throw new Error(tx.sessionMissing);
 			}
 
-			const uploadedPath = await uploadReceiptImage(supabase, userId, receiptAsset);
 			const extraction = await analyzeReceiptImage(supabase, receiptAsset);
+			const uploadedPath = await uploadReceiptImageBestEffort(userId, receiptAsset);
 			const draft = receiptExtractionToDraft(extraction);
 			if (!draft) {
 				throw new Error(
@@ -425,26 +442,37 @@ export default function CaptureScreen() {
 		setError(null);
 
 		try {
-			const createdTransaction = await createTransaction(
-				{
-					wallet_id: walletId,
-					transaction_type: receiptDraft.transactionType,
-					amount: receiptDraft.amount,
-					category: receiptDraft.category,
-					description: receiptDraft.description,
-					date: receiptDraft.date,
-					note: receiptDraft.description,
-					merchant: receiptDraft.merchant,
-					input_type: "image",
-					status: "done",
-					receipt_url: receiptPath,
-					raw_input: receiptAsset?.fileName ?? "receipt_photo",
-					ai_confidence: receiptDraft.confidence,
-					review_required: receiptDraft.reviewRequired,
-					confidence: receiptDraft.confidence,
-				},
-				activeContext,
-			);
+			const receiptPayload = {
+				wallet_id: walletId,
+				transaction_type: receiptDraft.transactionType,
+				amount: receiptDraft.amount,
+				category: receiptDraft.category,
+				description: receiptDraft.description,
+				date: receiptDraft.date,
+				note: receiptDraft.description,
+				merchant: receiptDraft.merchant,
+				input_type: "image",
+				status: "done",
+				receipt_url: receiptPath,
+				raw_input: receiptAsset?.fileName ?? "receipt_photo",
+				ai_confidence: receiptDraft.confidence,
+				review_required: receiptDraft.reviewRequired,
+				confidence: receiptDraft.confidence,
+			} as const;
+
+			let createdTransaction;
+			try {
+				createdTransaction = await createTransaction(receiptPayload, activeContext);
+			} catch (createError) {
+				if (!walletId || !isRowLevelSecurityError(createError)) {
+					throw createError;
+				}
+				console.error("Receipt transaction wallet scope failed; retrying without wallet:", createError);
+				createdTransaction = await createTransaction(
+					{ ...receiptPayload, wallet_id: null },
+					activeContext,
+				);
+			}
 
 			setOptimisticTransaction({
 				id: createdTransaction.id,
