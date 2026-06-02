@@ -139,6 +139,24 @@ describe("transaction-new edit mode", () => {
 		expect(mockBack).toHaveBeenCalledTimes(1);
 	});
 
+
+	it("clears stale edit values when route is reused for manual create after cancel", async () => {
+		const screen = renderScreen();
+
+		expect(await screen.findByDisplayValue("Kopi sore")).toBeTruthy();
+		fireEvent.press(screen.getByLabelText("Batal edit transaksi"));
+		expect(mockBack).toHaveBeenCalledTimes(1);
+
+		mockSearchParams = {};
+		screen.rerender(renderTransactionNewTree());
+
+		expect(await screen.findByText("Catat Manual")).toBeTruthy();
+		await waitFor(() => expect(screen.queryByDisplayValue("Kopi sore")).toBeNull());
+		expect(screen.queryByDisplayValue("Kopi Kenangan")).toBeNull();
+		expect(screen.queryByDisplayValue("Less sugar")).toBeNull();
+		expect(screen.getByLabelText("Deskripsi transaksi").props.value).toBe("");
+	});
+
 	it("clears the edit form after a successful update", async () => {
 		const screen = renderScreen();
 

@@ -339,11 +339,17 @@ export default function TransactionNewScreen() {
 				setMerchant(transaction.merchant || "");
 				setNote(transaction.note || "");
 			} else {
-				setWalletId((currentWalletId) =>
-					activeWallets.some((wallet) => wallet.id === currentWalletId)
-						? currentWalletId
-						: (activeWallets[0]?.id ?? null),
-				);
+				// When this route is reused after leaving edit mode, clear any stale
+				// transaction values so Manual Entry always starts from a blank form.
+				setTxType("expense");
+				setAmountInput("");
+				setWalletId(activeWallets[0]?.id ?? null);
+				setCategory("");
+				setCustomCategory("");
+				setDescription("");
+				setDate(todayIso());
+				setMerchant("");
+				setNote("");
 			}
 		} catch (e) {
 			if (!isCurrentRequest()) return;
@@ -725,7 +731,10 @@ export default function TransactionNewScreen() {
 							testID="transaction-form-cancel"
 							accessibilityRole="button"
 							accessibilityLabel={tx.cancelLabel}
-							onPress={() => router.back()}
+							onPress={() => {
+								resetForm();
+								router.back();
+							}}
 							style={styles.cancelButton}
 						>
 							<Text style={styles.cancelText}>{tx.cancel}</Text>
