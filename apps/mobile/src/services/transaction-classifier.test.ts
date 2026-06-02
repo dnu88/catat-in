@@ -199,6 +199,34 @@ describe("transaction text classifier", () => {
 		});
 	});
 
+
+	it("removes parsed amount from AI text description and infers merchant after di", () => {
+		expect(
+			classifyTransactionText("Makan malam di warteg 25rb", categories, fixedDate),
+		).toMatchObject({
+			amount: 25000,
+			note: "Makan malam di warteg",
+			merchant: "warteg",
+			categoryName: "Food & Beverage",
+		});
+
+		expect(
+			classifyTransactionText("belanja sabun di Alfamart 20rb", categories, fixedDate),
+		).toMatchObject({
+			amount: 20000,
+			note: "belanja sabun di Alfamart",
+			merchant: "alfamart",
+		});
+
+		expect(
+			classifyTransactionText("ngopi di Warkop Teteh 18rb", categories, fixedDate),
+		).toMatchObject({
+			amount: 18000,
+			note: "ngopi di Warkop Teteh",
+			merchant: "Warkop Teteh",
+		});
+	});
+
 	it("falls back to Other expenses with low confidence when unclear", () => {
 		const result = classifyTransactionText("bayar sesuatu 50000", categories, fixedDate);
 

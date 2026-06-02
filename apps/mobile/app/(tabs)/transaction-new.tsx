@@ -123,6 +123,113 @@ export default function TransactionNewScreen() {
 	const { theme } = useTheme();
 	const { language } = useI18n();
 	const isEn = language === "en";
+	const tx = useMemo(
+		() =>
+			isEn
+				? {
+						notFound: "Transaction not found",
+						loadError: "Failed to load transaction form",
+						readonlyError: "View-only access. You cannot change transactions in this context.",
+						incompleteError: "Complete amount, category, and description first",
+						dateError: "Date format must be YYYY-MM-DD",
+						walletError: "Choose a valid wallet for the active context.",
+						updateSuccess: "Transaction changes saved.",
+						createSuccess: "Transaction saved.",
+						updateFailed: "Failed to update transaction",
+						createFailed: "Failed to save transaction",
+						loading: "Loading transaction form...",
+						editTitle: "Edit Transaction",
+						createTitle: "Manual Entry",
+						editSubtitle: "Update the details of an existing transaction.",
+						createSubtitle: "Input a transaction manually without AI.",
+						backLabel: "Back from manual entry",
+						readonlyNotice: "View-only mode is active. Transactions cannot be created or changed.",
+						expense: "Expense",
+						income: "Income",
+						pickExpense: "Choose expense",
+						pickIncome: "Choose income",
+						amount: "Amount",
+						amountLabel: "Transaction amount",
+						description: "Description",
+						descriptionLabel: "Transaction description",
+						descriptionPlaceholder: "example: Lunch at warteg",
+						wallet: "Wallet",
+						noWallet: "No active wallet. Wallet balance will not be updated.",
+						pickWallet: (name: string) => `Choose wallet ${name}`,
+						category: "Category",
+						pickCategory: (name: string) => `Choose category ${name}`,
+						customCategory: "Custom",
+						pickCustomCategory: "Choose custom category",
+						customCategoryLabel: "Custom category name",
+						customCategoryPlaceholder: "Category name",
+						date: "Date",
+						dateLabel: "Transaction date",
+						merchant: "Merchant (optional)",
+						merchantLabel: "Optional transaction merchant",
+						merchantPlaceholder: "example: Indomaret",
+						note: "Note (optional)",
+						noteLabel: "Optional transaction note",
+						notePlaceholder: "example: grab ride from office to home",
+						saveEditLabel: "Save transaction changes",
+						saveCreateLabel: "Save manual transaction",
+						saveEdit: "Save Changes",
+						saveCreate: "Save Transaction",
+						cancel: "Cancel",
+						cancelLabel: "Cancel editing transaction",
+					}
+				: {
+						notFound: "Transaksi tidak ditemukan",
+						loadError: "Gagal memuat form transaksi",
+						readonlyError: "Akses lihat saja. Kamu tidak bisa mengubah transaksi di konteks ini.",
+						incompleteError: "Lengkapi nominal, kategori, dan deskripsi dulu",
+						dateError: "Format tanggal harus YYYY-MM-DD",
+						walletError: "Pilih dompet yang valid untuk konteks aktif.",
+						updateSuccess: "Perubahan transaksi tersimpan.",
+						createSuccess: "Transaksi tersimpan.",
+						updateFailed: "Gagal memperbarui transaksi",
+						createFailed: "Gagal menyimpan transaksi",
+						loading: "Memuat form transaksi...",
+						editTitle: "Edit Transaksi",
+						createTitle: "Catat Manual",
+						editSubtitle: "Perbarui detail transaksi yang sudah tercatat.",
+						createSubtitle: "Input transaksi secara manual tanpa AI.",
+						backLabel: "Kembali dari catat manual",
+						readonlyNotice: "Mode lihat saja aktif. Transaksi tidak bisa dibuat atau diubah.",
+						expense: "Pengeluaran",
+						income: "Pemasukan",
+						pickExpense: "Pilih pengeluaran",
+						pickIncome: "Pilih pemasukan",
+						amount: "Nominal",
+						amountLabel: "Nominal transaksi",
+						description: "Deskripsi",
+						descriptionLabel: "Deskripsi transaksi",
+						descriptionPlaceholder: "contoh: Makan siang di warteg",
+						wallet: "Dompet",
+						noWallet: "Belum ada dompet aktif. Saldo dompet tidak akan terupdate.",
+						pickWallet: (name: string) => `Pilih dompet ${name}`,
+						category: "Kategori",
+						pickCategory: (name: string) => `Pilih kategori ${name}`,
+						customCategory: "Kustom",
+						pickCustomCategory: "Pilih kategori kustom",
+						customCategoryLabel: "Nama kategori kustom",
+						customCategoryPlaceholder: "Nama kategori",
+						date: "Tanggal",
+						dateLabel: "Tanggal transaksi",
+						merchant: "Merchant (opsional)",
+						merchantLabel: "Merchant transaksi opsional",
+						merchantPlaceholder: "contoh: Indomaret",
+						note: "Catatan (opsional)",
+						noteLabel: "Catatan transaksi opsional",
+						notePlaceholder: "contoh: bayar grab dari kantor pulang",
+						saveEditLabel: "Simpan perubahan transaksi",
+						saveCreateLabel: "Simpan transaksi manual",
+						saveEdit: "Simpan Perubahan",
+						saveCreate: "Simpan Transaksi",
+						cancel: "Batal",
+						cancelLabel: "Batal edit transaksi",
+					},
+		[isEn],
+	);
 	const { activeContext, canCreate } = useFinanceContext();
 	const router = ExpoRouter.useRouter();
 	const rawParams = (ExpoRouter as any).useLocalSearchParams?.() ?? {};
@@ -194,7 +301,7 @@ export default function TransactionNewScreen() {
 					setWallets(activeWallets);
 					setWalletId(activeWallets[0]?.id ?? null);
 					setCategories(categoryOptions);
-					setError("Transaksi tidak ditemukan");
+					setError(tx.notFound);
 					return;
 				}
 			}
@@ -241,11 +348,11 @@ export default function TransactionNewScreen() {
 		} catch (e) {
 			if (!isCurrentRequest()) return;
 			console.error("Failed to load form data:", e);
-			setError("Gagal memuat form transaksi");
+			setError(tx.loadError);
 		} finally {
 			if (isCurrentRequest()) setLoading(false);
 		}
-	}, [activeContext, activeContextKey, isEditMode, transactionId, isEn]);
+	}, [activeContext, activeContextKey, isEditMode, transactionId, isEn, tx]);
 
 	useEffect(() => {
 		void loadInitialData();
@@ -268,21 +375,34 @@ export default function TransactionNewScreen() {
 		resolvedDescription.length > 0 &&
 		!submitting;
 
+
+	const resetForm = useCallback(() => {
+		setTxType("expense");
+		setAmountInput("");
+		setWalletId(wallets[0]?.id ?? null);
+		setCategory("");
+		setCustomCategory("");
+		setDescription("");
+		setDate(todayIso());
+		setMerchant("");
+		setNote("");
+	}, [wallets]);
+
 	const onSubmit = async () => {
 		if (!canCreate) {
-			setError("Akses lihat saja. Kamu tidak bisa mengubah transaksi di konteks ini.");
+			setError(tx.readonlyError);
 			return;
 		}
 		if (!canSubmit) {
-			setError("Lengkapi nominal, kategori, dan deskripsi dulu");
+			setError(tx.incompleteError);
 			return;
 		}
 		if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
-			setError("Format tanggal harus YYYY-MM-DD");
+			setError(tx.dateError);
 			return;
 		}
 		if (!selectedWalletIsValid) {
-			setError("Pilih dompet yang valid untuk konteks aktif.");
+			setError(tx.walletError);
 			return;
 		}
 
@@ -302,20 +422,23 @@ export default function TransactionNewScreen() {
 		try {
 			if (isEditMode) {
 				await updateTransaction(transactionId, payload, activeContext);
-				setSuccessMessage("Perubahan transaksi tersimpan.");
+				resetForm();
+				setSuccessMessage(tx.updateSuccess);
 				setSubmitting(false);
 				return;
 			}
 
 			await createTransaction(payload, activeContext);
-			router.replace("/(tabs)/transactions");
+			resetForm();
+			setSuccessMessage(tx.createSuccess);
+			setSubmitting(false);
 		} catch (e) {
 			const message =
 				e instanceof Error
 					? e.message
 					: isEditMode
-						? "Gagal memperbarui transaksi"
-						: "Gagal menyimpan transaksi";
+						? tx.updateFailed
+						: tx.createFailed;
 			setError(message);
 			setSubmitting(false);
 		}
@@ -324,7 +447,7 @@ export default function TransactionNewScreen() {
 	if (loading) {
 		return (
 			<View style={styles.screen}>
-				<LoadingState label="Memuat form transaksi..." />
+				<LoadingState label={tx.loading} />
 			</View>
 		);
 	}
@@ -340,17 +463,15 @@ export default function TransactionNewScreen() {
 				<View key="transaction-form-header" testID="transaction-form-header" style={styles.headerRow}>
 					<View>
 						<Text style={styles.title}>
-							{isEditMode ? "Edit Transaksi" : "Catat Manual"}
+							{isEditMode ? tx.editTitle : tx.createTitle}
 						</Text>
 						<Text style={styles.subtitle}>
-							{isEditMode
-								? "Perbarui detail transaksi yang sudah tercatat."
-								: "Input transaksi secara manual tanpa AI."}
+							{isEditMode ? tx.editSubtitle : tx.createSubtitle}
 						</Text>
 					</View>
 					<Pressable
 						accessibilityRole="button"
-						accessibilityLabel="Kembali dari catat manual"
+						accessibilityLabel={tx.backLabel}
 						onPress={() => router.back()}
 						style={styles.closeBtn}
 					>
@@ -366,7 +487,7 @@ export default function TransactionNewScreen() {
 				{!canCreate && (
 					<View key="transaction-form-readonly" testID="transaction-form-readonly" style={styles.warningCard}>
 						<Text style={styles.warningText}>
-							Mode lihat saja aktif. Transaksi tidak bisa dibuat atau diubah.
+							{tx.readonlyNotice}
 						</Text>
 					</View>
 				)}
@@ -378,7 +499,7 @@ export default function TransactionNewScreen() {
 							key={t}
 							accessibilityRole="button"
 							accessibilityLabel={
-								t === "expense" ? "Pilih pengeluaran" : "Pilih pemasukan"
+								t === "expense" ? tx.pickExpense : tx.pickIncome
 							}
 							accessibilityState={{ selected: txType === t }}
 							onPress={() => setTxType(t)}
@@ -398,7 +519,7 @@ export default function TransactionNewScreen() {
 									txType === t && { color: theme.colors.textInverse },
 								]}
 							>
-								{t === "expense" ? "Pengeluaran" : "Pemasukan"}
+								{t === "expense" ? tx.expense : tx.income}
 							</Text>
 						</Pressable>
 					))}
@@ -406,11 +527,11 @@ export default function TransactionNewScreen() {
 
 				{/* Amount */}
 				<View key="transaction-form-amount" testID="transaction-form-amount" style={styles.field}>
-					<Text style={styles.label}>Nominal</Text>
+					<Text style={styles.label}>{tx.amount}</Text>
 					<View style={styles.amountRow}>
 						<Text style={styles.amountPrefix}>Rp</Text>
 						<TextInput
-							accessibilityLabel="Nominal transaksi"
+							accessibilityLabel={tx.amountLabel}
 							style={styles.amountInput}
 							value={formatAmount(amountValue)}
 							onChangeText={(text) => setAmountInput(text)}
@@ -423,24 +544,24 @@ export default function TransactionNewScreen() {
 
 				{/* Description */}
 				<View key="transaction-form-description" testID="transaction-form-description" style={styles.field}>
-					<Text style={styles.label}>Deskripsi</Text>
+					<Text style={styles.label}>{tx.description}</Text>
 					<TextInput
-						accessibilityLabel="Deskripsi transaksi"
+						accessibilityLabel={tx.descriptionLabel}
 						style={styles.textInput}
 						value={description}
 						onChangeText={setDescription}
-						placeholder="contoh: Makan siang di warteg"
+						placeholder={tx.descriptionPlaceholder}
 						placeholderTextColor={theme.colors.textMuted}
 					/>
 				</View>
 
 				{/* Wallet */}
 				<View key="transaction-form-wallet" testID="transaction-form-wallet" style={styles.field}>
-					<Text style={styles.label}>Dompet</Text>
+					<Text style={styles.label}>{tx.wallet}</Text>
 					{wallets.length === 0 ? (
 						<View style={styles.warningCard}>
 							<Text style={styles.warningText}>
-								Belum ada dompet aktif. Saldo dompet tidak akan terupdate.
+								{tx.noWallet}
 							</Text>
 						</View>
 					) : (
@@ -449,7 +570,7 @@ export default function TransactionNewScreen() {
 								<Pressable
 									key={w.id}
 									accessibilityRole="button"
-									accessibilityLabel={`Pilih dompet ${w.name}`}
+									accessibilityLabel={tx.pickWallet(w.name)}
 									accessibilityState={{ selected: walletId === w.id }}
 									onPress={() => setWalletId(w.id)}
 									style={[
@@ -476,13 +597,13 @@ export default function TransactionNewScreen() {
 
 				{/* Category */}
 				<View key="transaction-form-category" testID="transaction-form-category" style={styles.field}>
-					<Text style={styles.label}>Kategori</Text>
+					<Text style={styles.label}>{tx.category}</Text>
 					<View style={styles.chipRow}>
 						{categories.map((c) => (
 							<Pressable
 								key={c.name}
 								accessibilityRole="button"
-								accessibilityLabel={`Pilih kategori ${c.name}`}
+								accessibilityLabel={tx.pickCategory(c.name)}
 								accessibilityState={{ selected: category === c.name }}
 								onPress={() => setCategory(c.name)}
 								style={[
@@ -515,7 +636,7 @@ export default function TransactionNewScreen() {
 						{!isEditMode && (
 							<Pressable
 								accessibilityRole="button"
-								accessibilityLabel="Pilih kategori kustom"
+								accessibilityLabel={tx.pickCustomCategory}
 								accessibilityState={{ selected: category === "__custom__" }}
 								onPress={() => setCategory("__custom__")}
 								style={[
@@ -534,18 +655,18 @@ export default function TransactionNewScreen() {
 										},
 									]}
 								>
-									+ Kustom
+									+ {tx.customCategory}
 								</Text>
 							</Pressable>
 						)}
 					</View>
 					{category === "__custom__" && (
 						<TextInput
-							accessibilityLabel="Nama kategori kustom"
+							accessibilityLabel={tx.customCategoryLabel}
 							style={styles.textInput}
 							value={customCategory}
 							onChangeText={setCustomCategory}
-							placeholder="Nama kategori"
+							placeholder={tx.customCategoryPlaceholder}
 							placeholderTextColor={theme.colors.textMuted}
 						/>
 					)}
@@ -553,9 +674,9 @@ export default function TransactionNewScreen() {
 
 				{/* Date */}
 				<View key="transaction-form-date" testID="transaction-form-date" style={styles.field}>
-					<Text style={styles.label}>Tanggal</Text>
+					<Text style={styles.label}>{tx.date}</Text>
 					<TextInput
-						accessibilityLabel="Tanggal transaksi"
+						accessibilityLabel={tx.dateLabel}
 						style={styles.textInput}
 						value={date}
 						onChangeText={setDate}
@@ -567,29 +688,29 @@ export default function TransactionNewScreen() {
 
 				{/* Merchant */}
 				<View key="transaction-form-merchant" testID="transaction-form-merchant" style={styles.field}>
-					<Text style={styles.label}>Merchant (opsional)</Text>
+					<Text style={styles.label}>{tx.merchant}</Text>
 					<TextInput
-						accessibilityLabel="Merchant transaksi opsional"
+						accessibilityLabel={tx.merchantLabel}
 						style={styles.textInput}
 						value={merchant}
 						onChangeText={setMerchant}
-						placeholder="contoh: Indomaret"
+						placeholder={tx.merchantPlaceholder}
 						placeholderTextColor={theme.colors.textMuted}
 					/>
 				</View>
 
 				{/* Note */}
 				<View key="transaction-form-note" testID="transaction-form-note" style={styles.field}>
-					<Text style={styles.label}>Catatan (opsional)</Text>
+					<Text style={styles.label}>{tx.note}</Text>
 					<TextInput
-						accessibilityLabel="Catatan transaksi opsional"
+						accessibilityLabel={tx.noteLabel}
 						style={[
 							styles.textInput,
 							{ minHeight: 70, textAlignVertical: "top" },
 						]}
 						value={note}
 						onChangeText={setNote}
-						placeholder="contoh: bayar grab dari kantor pulang"
+						placeholder={tx.notePlaceholder}
 						placeholderTextColor={theme.colors.textMuted}
 						multiline
 					/>
@@ -598,28 +719,36 @@ export default function TransactionNewScreen() {
 				{error && <Text key="transaction-form-error" testID="transaction-form-error" style={styles.errorText}>{error}</Text>}
 				{successMessage && <Text key="transaction-form-success" testID="transaction-form-success" style={styles.successText}>{successMessage}</Text>}
 
-				<Pressable
-					key="transaction-form-submit"
-					testID="transaction-form-submit"
-					accessibilityRole="button"
-					accessibilityLabel={
-						isEditMode
-							? "Simpan perubahan transaksi"
-							: "Simpan transaksi manual"
-					}
-					accessibilityState={{ disabled: !canSubmit, busy: submitting }}
-					onPress={onSubmit}
-					disabled={!canSubmit}
-					style={[styles.submitButton, !canSubmit && { opacity: 0.4 }]}
-				>
-					{submitting ? (
-						<ActivityIndicator color={theme.colors.textInverse} />
-					) : (
-						<Text style={styles.submitText}>
-							{isEditMode ? "Simpan Perubahan" : "Simpan Transaksi"}
-						</Text>
-					)}
-				</Pressable>
+				<View key="transaction-form-actions" style={styles.actionRow}>
+					{isEditMode ? (
+						<Pressable
+							testID="transaction-form-cancel"
+							accessibilityRole="button"
+							accessibilityLabel={tx.cancelLabel}
+							onPress={() => router.back()}
+							style={styles.cancelButton}
+						>
+							<Text style={styles.cancelText}>{tx.cancel}</Text>
+						</Pressable>
+					) : null}
+					<Pressable
+						testID="transaction-form-submit"
+						accessibilityRole="button"
+						accessibilityLabel={isEditMode ? tx.saveEditLabel : tx.saveCreateLabel}
+						accessibilityState={{ disabled: !canSubmit, busy: submitting }}
+						onPress={onSubmit}
+						disabled={!canSubmit}
+						style={[styles.submitButton, styles.actionButton, !canSubmit && { opacity: 0.4 }]}
+					>
+						{submitting ? (
+							<ActivityIndicator color={theme.colors.textInverse} />
+						) : (
+							<Text style={styles.submitText}>
+								{isEditMode ? tx.saveEdit : tx.saveCreate}
+							</Text>
+						)}
+					</Pressable>
+				</View>
 				</StaggeredStack>
 
 
@@ -750,6 +879,23 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			backgroundColor: `${theme.colors.success}12`,
 			padding: 10,
 			borderRadius: 10,
+		},
+		actionRow: { flexDirection: "row", gap: 10, alignItems: "center" },
+		actionButton: { flex: 1 },
+		cancelButton: {
+			flex: 1,
+			borderRadius: 999,
+			paddingVertical: 16,
+			alignItems: "center",
+			justifyContent: "center",
+			borderWidth: 1,
+			borderColor: theme.colors.borderStrong,
+			backgroundColor: theme.colors.surface,
+		},
+		cancelText: {
+			color: theme.colors.textPrimary,
+			fontSize: 15,
+			fontWeight: "800",
 		},
 		submitButton: {
 			backgroundColor: theme.colors.brandPrimary,

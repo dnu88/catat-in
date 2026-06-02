@@ -493,6 +493,19 @@ function findAmountMentions(value: string) {
 	}));
 }
 
+
+function stripAmountMentions(value: string) {
+	let next = value;
+	for (const mention of findAmountMentions(value).sort((a, b) => b.index - a.index)) {
+		next = `${next.slice(0, mention.index)} ${next.slice(mention.end)}`;
+	}
+	return next
+		.replace(/\s+/g, " ")
+		.replace(/\s+([.,;:])/g, "$1")
+		.replace(/[\s,;:-]+$/g, "")
+		.trim();
+}
+
 function segmentTextAroundAmounts(value: string) {
 	const mentions = findAmountMentions(value);
 	if (mentions.length < 2) return [];
@@ -569,10 +582,15 @@ function inferMerchant(value: string, matchedMerchants: string[]) {
 		.sort((a, b) => b.length - a.length)[0];
 	if (matchedMerchant) return matchedMerchant;
 
-	const match = value.match(/\b(?:di|ke|dari)\s+([a-z0-9&.' -]{2,48})/i);
+	const match = value.match(/\b(?:di|ke|dari)\s+([a-z0-9&.' -]{2,64})/i);
 	if (!match) return null;
-	const merchant = match[1]
-		.split(/\b(?:pakai|dengan|via|untuk|sebesar|tanggal|tgl|rp|harga)\b/i)[0]
+
+	const amountMention = findAmountMentions(match[1])[0];
+	const merchantSource = amountMention
+		? match[1].slice(0, amountMention.index)
+		: match[1];
+	const merchant = merchantSource
+		.split(/\b(?:pakai|dengan|via|untuk|sebesar|tanggal|tgl|rp|harga|bayar|dibayar)\b/i)[0]
 		.trim()
 		.replace(/[.,;:]+$/, "");
 	return merchant || null;
@@ -633,14 +651,15 @@ export function classifyTransactionText(
 	categories: ClassificationCategory[] = [],
 	date = new Date(),
 ): ClassifiedTransaction | null {
-	const note = input.trim();
-	if (!note) return null;
+	const rawNote = input.trim();
+	if (!rawNote) return null;
+	const note = stripAmountMentions(rawNote) || rawNote;
 
-	const amount = parseAmountFromTransactionText(note);
+	const amount = parseAmountFromTransactionText(rawNote);
 	if (!Number.isFinite(amount) || amount <= 0) return null;
 
-	const transactionType = inferTransactionType(note);
-	const source = normalize(note);
+	const transactionType = inferTransactionType(rawNote);
+	const source = normalize(rawNote);
 	const compatibleConcepts = categoryConcepts.filter(
 		(concept) => concept.type === transactionType,
 	);
@@ -659,7 +678,7 @@ export function classifyTransactionText(
 		amount,
 		categoryId: category.id,
 		categoryName: category.name,
-		merchant: inferMerchant(note, matchedMerchants),
+		merchant: inferMerchant(rawNote, matchedMerchants),
 		note,
 		date: todayKey(date),
 		confidence,

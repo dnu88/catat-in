@@ -1,8 +1,10 @@
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { act, fireEvent, render, waitFor } from "@testing-library/react-native";
 import TransactionNewScreen from "../app/(tabs)/transaction-new";
 import { I18nProvider } from "../src/i18n/i18n-context";
 import { ThemeProvider } from "../src/theme/theme-context";
 
+const mockBack = jest.fn();
 const mockReplace = jest.fn();
 const mockGetTransaction = jest.fn();
 const mockCreateTransaction = jest.fn();
@@ -22,7 +24,7 @@ let mockActiveContext:
 let mockCanCreate = true;
 
 jest.mock("expo-router", () => ({
-	useRouter: () => ({ back: jest.fn(), replace: mockReplace }),
+	useRouter: () => ({ back: mockBack, replace: mockReplace }),
 	useLocalSearchParams: () => mockSearchParams,
 }));
 
@@ -74,6 +76,8 @@ function renderScreen() {
 describe("transaction-new edit mode", () => {
 	beforeEach(() => {
 		jest.clearAllMocks();
+		jest.mocked(AsyncStorage.getItem).mockReset();
+		jest.mocked(AsyncStorage.getItem).mockResolvedValue(null);
 		mockSearchParams = { transactionId: "tx-1" };
 		mockActiveContext = { type: "personal" };
 		mockCanCreate = true;
@@ -125,6 +129,28 @@ describe("transaction-new edit mode", () => {
 		expect(await screen.findByText("Perubahan transaksi tersimpan.")).toBeTruthy();
 	});
 
+
+	it("shows a cancel button beside save in edit mode", async () => {
+		const screen = renderScreen();
+
+		expect(await screen.findByText("Simpan Perubahan")).toBeTruthy();
+		fireEvent.press(screen.getByLabelText("Batal edit transaksi"));
+
+		expect(mockBack).toHaveBeenCalledTimes(1);
+	});
+
+	it("clears the edit form after a successful update", async () => {
+		const screen = renderScreen();
+
+		expect(await screen.findByDisplayValue("Kopi sore")).toBeTruthy();
+		fireEvent.press(screen.getByLabelText("Simpan perubahan transaksi"));
+
+		await waitFor(() => expect(mockUpdateTransaction).toHaveBeenCalledTimes(1));
+		expect(await screen.findByText("Perubahan transaksi tersimpan.")).toBeTruthy();
+		expect(screen.queryByDisplayValue("Kopi sore")).toBeNull();
+		expect(screen.queryByDisplayValue("Kopi Kenangan")).toBeNull();
+	});
+
 	it("shows only default categories while editing a transaction", async () => {
 		mockListCategories.mockResolvedValueOnce([
 			{ id: "cat-1", name: "Makan", icon: "chart", is_default: true },
@@ -167,6 +193,36 @@ describe("transaction-new edit mode", () => {
 				mockActiveContext,
 			),
 		);
+	});
+
+
+	it("clears the create form after a successful manual transaction", async () => {
+		mockSearchParams = {};
+		const screen = renderScreen();
+
+		expect(await screen.findByText("Catat Manual")).toBeTruthy();
+		fireEvent.changeText(screen.getByLabelText("Nominal transaksi"), "50000");
+		fireEvent.changeText(screen.getByLabelText("Deskripsi transaksi"), "Makan siang");
+		fireEvent.press(screen.getByLabelText("Pilih kategori Makan & Minum"));
+		fireEvent.press(screen.getByLabelText("Simpan transaksi manual"));
+
+		await waitFor(() => expect(mockCreateTransaction).toHaveBeenCalledTimes(1));
+		expect(await screen.findByText("Transaksi tersimpan.")).toBeTruthy();
+		expect(screen.queryByDisplayValue("Makan siang")).toBeNull();
+		expect(mockReplace).not.toHaveBeenCalled();
+	});
+
+	it("uses selected app language on the manual transaction form", async () => {
+		jest.mocked(AsyncStorage.getItem).mockImplementation(async (key) =>
+			key === "kaswise:language-preference" ? "en" : null,
+		);
+		mockSearchParams = {};
+		const screen = renderScreen();
+
+		expect(await screen.findByText("Manual Entry")).toBeTruthy();
+		expect(screen.getByText("Amount")).toBeTruthy();
+		expect(screen.getByText("Description")).toBeTruthy();
+		expect(screen.getByLabelText("Save manual transaction")).toBeTruthy();
 	});
 
 
