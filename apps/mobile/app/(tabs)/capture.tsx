@@ -437,7 +437,6 @@ export default function CaptureScreen() {
 					status: "done",
 					receipt_url: receiptPath,
 					raw_input: receiptAsset?.fileName ?? "receipt_photo",
-					ai_extracted: receiptExtraction,
 					ai_confidence: receiptDraft.confidence,
 					review_required: receiptDraft.reviewRequired,
 					confidence: receiptDraft.confidence,

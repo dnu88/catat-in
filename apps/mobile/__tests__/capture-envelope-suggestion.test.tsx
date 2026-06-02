@@ -307,7 +307,6 @@ describe("Capture envelope suggestion", () => {
 				status: "done",
 				receipt_url: "user-1/receipt.jpg",
 				raw_input: "receipt.jpg",
-				ai_extracted: { total_amount: 125000, merchant: "RM Sederhana", confidence: 0.92 },
 				ai_confidence: 0.92,
 				confidence: 0.92,
 			}),
