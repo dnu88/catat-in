@@ -61,3 +61,8 @@ Implementation notes:
 - Receipt images are stored as private Supabase Storage object paths, not public URLs.
 - Bank import and voice modes remain hidden until their real MVP flows are ready.
 - Known v1 simplification: receipt image display in transaction history can be added later using signed URLs.
+
+
+## Production handoff documents
+
+- [Photo Receipt MVP Handoff — 2026-06-02](./PHOTO_RECEIPT_MVP_HANDOFF_2026-06-02.md)
