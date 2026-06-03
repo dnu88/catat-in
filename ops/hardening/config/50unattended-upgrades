@@ -1,0 +1,26 @@
+// Kaswise hardening — kebijakan unattended-upgrades
+// Target: /etc/apt/apt.conf.d/50unattended-upgrades
+// Hanya security updates yang di-apply otomatis. Reboot tidak otomatis.
+
+Unattended-Upgrade::Allowed-Origins {
+    "${distro_id}:${distro_codename}-security";
+    "${distro_id}ESMApps:${distro_codename}-apps-security";
+    "${distro_id}ESM:${distro_codename}-infra-security";
+};
+
+// Jangan auto-upgrade paket yang berpotensi mengganggu runtime produksi.
+// Tambahkan paket di sini jika perlu di-pin (mis. "docker-ce").
+Unattended-Upgrade::Package-Blacklist {
+};
+
+Unattended-Upgrade::AutoFixInterruptedDpkg "true";
+Unattended-Upgrade::MinimalSteps "true";
+Unattended-Upgrade::Remove-Unused-Kernel-Packages "true";
+Unattended-Upgrade::Remove-Unused-Dependencies "true";
+
+// Reboot dikendalikan manual — VPS produksi, hindari reboot tak terjadwal.
+Unattended-Upgrade::Automatic-Reboot "false";
+
+// Laporkan hanya saat ada perubahan/error.
+Unattended-Upgrade::Mail "";
+Unattended-Upgrade::MailReport "on-change";

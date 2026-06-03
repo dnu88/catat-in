@@ -1,0 +1,15 @@
+# Kaswise hardening — wajib password untuk perintah sensitif.
+# Mempertahankan NOPASSWD harian (dari 90-cloud-init-users), tapi meng-override
+# perintah destruktif/akun/auth agar MINTA PASSWORD.
+# Harus sort SETELAH 90-* di /etc/sudoers.d (lexical) => prefiks 95.
+Cmnd_Alias KASWISE_SENSITIVE = \
+    /usr/sbin/visudo, \
+    /usr/sbin/useradd, /usr/sbin/userdel, /usr/sbin/usermod, \
+    /usr/sbin/groupadd, /usr/sbin/groupdel, /usr/sbin/groupmod, \
+    /usr/bin/passwd, /usr/sbin/chpasswd, \
+    /usr/bin/su, \
+    /usr/sbin/reboot, /usr/sbin/shutdown, /usr/sbin/poweroff, /usr/sbin/halt, \
+    /usr/sbin/fdisk, /usr/bin/dd, \
+    /usr/sbin/mkfs, /usr/sbin/mkfs.*
+
+Danu88 ALL=(ALL) PASSWD: KASWISE_SENSITIVE

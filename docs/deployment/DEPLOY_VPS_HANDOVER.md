@@ -63,13 +63,16 @@
 # Status semua container
 sudo docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
 
-# Restart backend
+# PENTING: SELALU sertakan overlay hardening (-f ops/hardening/docker/compose.hardening.yml)
+# Tanpa itu, container backend di-recreate TANPA read_only/cap_drop/limit (hardening hilang).
 cd /home/Danu88/catat-in
-sudo docker compose -f docker-compose.production.yml --env-file .env.production up -d --force-recreate backend
+
+# Restart backend
+sudo docker compose -f docker-compose.production.yml -f ops/hardening/docker/compose.hardening.yml --env-file .env.production up -d --force-recreate backend
 
 # Rebuild backend setelah code change
-sudo docker compose -f docker-compose.production.yml --env-file .env.production build backend && \
-sudo docker compose -f docker-compose.production.yml --env-file .env.production up -d --force-recreate backend
+sudo docker compose -f docker-compose.production.yml -f ops/hardening/docker/compose.hardening.yml --env-file .env.production build backend && \
+sudo docker compose -f docker-compose.production.yml -f ops/hardening/docker/compose.hardening.yml --env-file .env.production up -d --force-recreate backend
 
 # Logs backend
 sudo docker logs kaswise-backend --tail 50 -f
@@ -191,6 +194,10 @@ cp -r dist/assets /home/Danu88/nginx-proxy-manager/placeholder/
 | 3 | **Ganti placeholder** `kaswise.com` ke landing page sungguhan | Low |
 | 4 | **Tutup port 81** hanya lewat SSH tunnel sudah cukup (sudah ditutup) | ✅ Done |
 | 5 | **Integrasi fitur AI/Import** di mobile app ke `api.kaswise.com` | Future |
+| 6 | **Amankan port 81 (NPM admin)** — kini HTTP polos publik. Proxy HTTPS + Access List, lalu tutup 81 di cloud firewall. Lihat hardening doc §6 | ⚠️ High |
+| 7 | **Backup off-site** (rclone) — backup harian masih lokal di VPS | 🟠 Medium |
+
+> 🛡️ **Hardening host/container sudah diterapkan 2026-06-03.** Deploy backend ke depan **WAJIB** menyertakan `-f ops/hardening/docker/compose.hardening.yml` (lihat §2), kalau tidak hardening container hilang. Detail lengkap & sisa pekerjaan: `docs/security/HARDENING_OPS_APPLIED_2026-06-03.md`.
 
 ---
 
@@ -221,6 +228,7 @@ Container `kaswise-placeholder` pakai image `catat-in-backend:latest` dengan com
 | Cloudflare DNS | `https://dash.cloudflare.com` |
 | Biznet Neo portal | `https://portal.neo.biznetcloud.com` |
 | Repo | `https://github.com/dnu88/catat-in` |
+| **Hardening host/container (2026-06-03)** | `docs/security/HARDENING_OPS_APPLIED_2026-06-03.md` + bundle `ops/hardening/` |
 | File secrets | `/home/Danu88/catat-in/.env.production` |
 | NPM data | `/home/Danu88/nginx-proxy-manager/data/` |
 | Placeholder HTML | `/home/Danu88/nginx-proxy-manager/placeholder/index.html` |
