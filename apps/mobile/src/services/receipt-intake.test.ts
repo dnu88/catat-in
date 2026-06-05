@@ -111,9 +111,9 @@ describe("receipt intake helpers", () => {
 		expect(drafts).toHaveLength(3);
 		expect(drafts.map((draft) => draft.description)).toEqual(["Susu", "Roti", "Sabun"]);
 		expect(drafts.map((draft) => draft.category)).toEqual([
-			"Belanja",
 			"Makan & Minum",
-			"Kebutuhan Rumah",
+			"Makan & Minum",
+			"Rumah & Perawatan",
 		]);
 		expect(drafts.reduce((sum, draft) => sum + draft.amount, 0)).toBe(120000);
 		expect(drafts[0]).toMatchObject({ amount: 51000, quantity: 2 });

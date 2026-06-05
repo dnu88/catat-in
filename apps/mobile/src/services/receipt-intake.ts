@@ -1,5 +1,6 @@
 import Constants from "expo-constants";
 import type { Session, SupabaseClient } from "@supabase/supabase-js";
+import { categorizeReceiptItem } from "./receipt-item-categorizer";
 
 export type ReceiptImageAsset = {
 	uri: string;
@@ -290,10 +291,16 @@ export function receiptExtractionToDrafts(
 	if (normalizedItems.length > 0) {
 		return normalizedItems.map(({ item, amount, qty }) => {
 			const itemName = item.name?.trim() || "Item struk";
+			const category = categorizeReceiptItem({
+				itemName,
+				itemCategory: item.category,
+				merchant,
+				fallbackCategory: extraction.category,
+			}).category;
 			return {
 				amount,
 				transactionType: "expense",
-				category: item.category?.trim() || extraction.category?.trim() || "Belanja",
+				category,
 				description: itemName,
 				merchant,
 				date,
@@ -310,7 +317,11 @@ export function receiptExtractionToDrafts(
 		{
 			amount: targetTotal,
 			transactionType: "expense",
-			category: extraction.category?.trim() || "Belanja",
+			category: categorizeReceiptItem({
+				itemName: merchant ? `Struk ${merchant}` : "Transaksi dari struk",
+				merchant,
+				fallbackCategory: extraction.category,
+			}).category,
 			description: merchant ? `Struk ${merchant}` : "Transaksi dari struk",
 			merchant,
 			date,

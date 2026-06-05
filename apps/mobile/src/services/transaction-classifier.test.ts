@@ -7,6 +7,7 @@ import {
 const categories = [
 	{ id: "cat-food", name: "Food & Beverage", type: "expense" as const },
 	{ id: "cat-groceries", name: "Groceries", type: "expense" as const },
+	{ id: "cat-household", name: "Household & Personal Care", type: "expense" as const },
 	{ id: "cat-transport", name: "Transport", type: "expense" as const },
 	{ id: "cat-bills", name: "Bills", type: "expense" as const },
 	{ id: "cat-gifts", name: "Gifts & Donations", type: "expense" as const },
@@ -277,6 +278,25 @@ describe("transaction text classifier", () => {
 			note: "makan siang di warteg",
 			merchant: "warteg",
 			categoryName: "Food & Beverage",
+		});
+	});
+
+
+	it("classifies personal and household care items separately from groceries", () => {
+		expect(
+			classifyTransactionText("beli sabun lifebuoy 18000 di Indomaret", categories, fixedDate),
+		).toMatchObject({
+			amount: 18000,
+			categoryName: "Household & Personal Care",
+			matchedConcept: "household_personal_care",
+		});
+
+		expect(
+			classifyTransactionText("beli aqua dan roti 25000 di Indomaret", categories, fixedDate),
+		).toMatchObject({
+			amount: 25000,
+			categoryName: "Food & Beverage",
+			matchedConcept: "food_beverage",
 		});
 	});
 

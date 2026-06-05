@@ -76,6 +76,7 @@ const iconMap = {
   recreation: GameController,
   movie: FilmSlate,
   groceries: ShoppingCart,
+  household: House,
   investment: TrendUp,
   gift: Gift,
   otherExpenses: DotsThreeCircle,

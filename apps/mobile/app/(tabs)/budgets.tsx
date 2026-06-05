@@ -83,6 +83,7 @@ const iconOptions: {
 	{ value: "recreation", labelId: "Rekreasi", labelEn: "Recreation" },
 	{ value: "bills", labelId: "Tagihan", labelEn: "Bills" },
 	{ value: "groceries", labelId: "Belanja Bulanan", labelEn: "Groceries" },
+	{ value: "household", labelId: "Rumah & Perawatan", labelEn: "Household & Personal Care" },
 	{ value: "investment", labelId: "Investasi", labelEn: "Investment" },
 	{ value: "gift", labelId: "Hadiah", labelEn: "Gift" },
 	{

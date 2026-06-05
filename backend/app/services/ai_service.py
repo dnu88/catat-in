@@ -21,7 +21,7 @@ TRANSACTION_EXTRACT_PROMPT = """Kamu adalah asisten pencatatan keuangan untuk ap
 Tugasmu: ekstrak informasi transaksi dari teks Bahasa Indonesia yang diberikan pengguna.
 
 KATEGORI YANG TERSEDIA:
-food, transport, shopping, health, entertainment, education, housing, salary, freelance, investment, other
+food_beverage, groceries, household_personal_care, personal_shopping, transport, bills, health, entertainment, education, sport, gifts_donations, other_expenses, salary, bonus, freelance
 
 OUTPUT: Selalu response dengan JSON valid saja, tanpa teks lain. Format:
 {
@@ -75,7 +75,9 @@ ATURAN:
 - Jangan hanya ambil total; ekstrak semua item/line item yang terbaca dari struk.
 - Setiap item wajib punya name, qty, price, dan category.
 - price adalah total harga baris/item tersebut jika struk menampilkan line total; jika hanya harga satuan, tetap isi price dengan harga satuan dan qty sesuai struk.
-- category per item harus paling sesuai: food, transport, shopping, health, entertainment, education, housing, salary, freelance, investment, other.
+- category per item harus paling sesuai dari daftar ini: food_beverage, groceries, household_personal_care, personal_shopping, transport, bills, health, entertainment, education, sport, gifts_donations, other_expenses.
+- Untuk merchant minimarket/supermarket seperti Indomaret/Alfamart, JANGAN kategorikan semua item sebagai groceries. Merchant hanya fallback jika nama item tidak jelas.
+- Contoh item minimarket: AQUA/teh/roti/snack/mie instan/susu -> food_beverage; sabun/shampoo/odol/deterjen/tisu/pembalut/popok -> household_personal_care; obat/vitamin -> health; pulsa/token listrik/paket data -> bills; beras/minyak/telur/gula/bahan dapur -> groceries.
 - total_amount harus sama dengan total akhir struk setelah diskon/pajak/biaya yang terlihat.
 - Jika ada diskon/pajak/biaya yang membuat jumlah item berbeda dari total struk, masukkan sebagai item terpisah dengan kategori paling sesuai atau other.
 - Jika struk tidak jelas/buram, set readable = false dan confidence rendah.
@@ -313,27 +315,37 @@ def _infer_category(text: str, tx_type: str) -> str:
     if tx_type == "income":
         if "gaji" in text:
             return "salary"
+        if "bonus" in text or "thr" in text:
+            return "bonus"
         if "freelance" in text or "proyek" in text:
             return "freelance"
-        if "investasi" in text or "dividen" in text:
-            return "investment"
-        return "other"
+        return "other_expenses"
 
-    if any(word in text for word in ["makan", "kopi", "warteg", "resto"]):
-        return "food"
-    if any(word in text for word in ["bensin", "transport", "parkir", "tol"]):
-        return "transport"
-    if any(word in text for word in ["belanja", "supermarket", "minimarket"]):
-        return "shopping"
-    if any(word in text for word in ["obat", "dokter", "klinik"]):
+    if any(word in text for word in ["obat", "dokter", "klinik", "vitamin", "apotek"]):
         return "health"
+    if any(word in text for word in ["pulsa", "token listrik", "paket data", "listrik", "internet", "pdam", "bpjs"]):
+        return "bills"
+    if any(word in text for word in ["sabun", "shampoo", "sampo", "odol", "pasta gigi", "deterjen", "detergen", "tisu", "tissue", "pembalut", "popok"]):
+        return "household_personal_care"
+    if any(word in text for word in ["makan", "minum", "kopi", "teh", "roti", "snack", "mie", "mi instan", "warteg", "resto", "aqua", "susu"]):
+        return "food_beverage"
+    if any(word in text for word in ["beras", "minyak goreng", "telur", "gula", "sembako", "bahan dapur", "sayur", "buah"]):
+        return "groceries"
+    if any(word in text for word in ["bensin", "transport", "parkir", "tol", "gojek", "grab"]):
+        return "transport"
+    if any(word in text for word in ["belanja online", "marketplace", "baju", "sepatu", "tas", "skincare"]):
+        return "personal_shopping"
     if any(word in text for word in ["bioskop", "hiburan", "netflix", "game"]):
         return "entertainment"
     if any(word in text for word in ["kursus", "buku", "sekolah"]):
         return "education"
-    if any(word in text for word in ["listrik", "internet", "air", "kontrakan"]):
-        return "housing"
-    return "other"
+    if any(word in text for word in ["gym", "futsal", "olahraga"]):
+        return "sport"
+    if any(word in text for word in ["donasi", "kado", "hadiah", "sedekah", "zakat"]):
+        return "gifts_donations"
+    if any(word in text for word in ["belanja", "supermarket", "minimarket", "indomaret", "alfamart"]):
+        return "groceries"
+    return "other_expenses"
 
 
 def _extract_wallet_hint(text: str) -> str | None:
