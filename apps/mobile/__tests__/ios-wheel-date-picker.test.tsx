@@ -3,7 +3,7 @@ import { fireEvent, render, waitFor } from "@testing-library/react-native";
 import { IOSWheelDatePicker } from "../src/components/date/IOSWheelDatePicker";
 import { ThemeProvider } from "../src/theme/theme-context";
 
-const ITEM_HEIGHT = 42;
+const ITEM_HEIGHT = 34;
 
 function renderPicker(value: string, onChange = jest.fn()) {
 	return {

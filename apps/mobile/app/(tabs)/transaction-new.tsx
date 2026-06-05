@@ -173,7 +173,7 @@ export default function TransactionNewScreen() {
 						dateLabel: "Transaction date",
 						dateDraft: "Wheel selection",
 						dateConfirmed: "Confirmed date",
-						confirmDate: "Confirm date",
+						confirmDate: "Confirm",
 						merchant: "Merchant (optional)",
 						merchantLabel: "Optional transaction merchant",
 						merchantPlaceholder: "example: Indomaret",
@@ -227,7 +227,7 @@ export default function TransactionNewScreen() {
 						dateLabel: "Tanggal transaksi",
 						dateDraft: "Pilihan roda",
 						dateConfirmed: "Tanggal terkonfirmasi",
-						confirmDate: "Konfirmasi tanggal",
+						confirmDate: "Konfirmasi",
 						merchant: "Merchant (opsional)",
 						merchantLabel: "Merchant transaksi opsional",
 						merchantPlaceholder: "contoh: Indomaret",
@@ -708,6 +708,7 @@ export default function TransactionNewScreen() {
 						onChange={setDraftDate}
 						locale={isEn ? "en" : "id"}
 						testID="transaction-date-wheel-picker"
+						showValueLabel={false}
 					/>
 					<View style={styles.dateConfirmCard}>
 						<View style={styles.dateConfirmCopy}>
@@ -899,15 +900,21 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			fontSize: 14,
 		},
 		dateConfirmCard: {
+			minHeight: 54,
 			borderWidth: 1,
 			borderColor: theme.colors.borderSoft,
-			borderRadius: 14,
+			borderRadius: 12,
 			backgroundColor: theme.colors.mutedSurface,
-			padding: 10,
+			paddingHorizontal: 10,
+			paddingVertical: 8,
 			gap: 10,
+			flexDirection: "row",
+			alignItems: "center",
 		},
 		dateConfirmCopy: {
-			gap: 3,
+			flex: 1,
+			gap: 2,
+			minWidth: 0,
 		},
 		dateDraftText: {
 			color: theme.colors.textPrimary,
@@ -916,19 +923,20 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 		},
 		dateConfirmedText: {
 			color: theme.colors.textMuted,
-			fontSize: 11,
+			fontSize: 10,
 			fontWeight: "700",
 		},
 		dateConfirmButton: {
-			minHeight: 44,
-			borderRadius: 12,
+			minHeight: 38,
+			borderRadius: 10,
 			alignItems: "center",
 			justifyContent: "center",
+			paddingHorizontal: 14,
 			backgroundColor: theme.mode === "light" ? theme.colors.brandPrimaryDeep : theme.colors.brandPrimary,
 		},
 		dateConfirmButtonText: {
 			color: theme.colors.textInverse,
-			fontSize: 13,
+			fontSize: 12,
 			fontWeight: "900",
 		},
 		warningCard: {

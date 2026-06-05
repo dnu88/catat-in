@@ -237,10 +237,10 @@ describe("transaction-new edit mode", () => {
 
 		expect(await screen.findByText("Catat Manual")).toBeTruthy();
 		fireEvent(screen.getByTestId("transaction-date-wheel-picker-month-scroll"), "scrollEndDrag", {
-			nativeEvent: { contentOffset: { y: 42 * 6 } },
+			nativeEvent: { contentOffset: { y: 34 * 6 } },
 		});
 		fireEvent(screen.getByTestId("transaction-date-wheel-picker-date-scroll"), "scrollEndDrag", {
-			nativeEvent: { contentOffset: { y: 42 * 30 } },
+			nativeEvent: { contentOffset: { y: 34 * 30 } },
 		});
 
 		await waitFor(() =>

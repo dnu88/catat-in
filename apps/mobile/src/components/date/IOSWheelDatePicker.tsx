@@ -11,7 +11,7 @@ import {
 import { useTheme } from "../../theme/theme-context";
 import type { MobileTheme } from "../../theme/mobile-theme";
 
-const ITEM_HEIGHT = 42;
+const ITEM_HEIGHT = 34;
 const VISIBLE_ITEMS = 5;
 const WHEEL_HEIGHT = ITEM_HEIGHT * VISIBLE_ITEMS;
 const CENTER_INDEX = Math.floor(VISIBLE_ITEMS / 2);
@@ -266,24 +266,24 @@ function createStyles(theme: MobileTheme) {
 		card: {
 			borderWidth: 1,
 			borderColor: theme.colors.borderStrong,
-			borderRadius: 20,
+			borderRadius: 16,
 			backgroundColor: theme.colors.surface,
-			padding: 12,
-			gap: 10,
+			padding: 8,
+			gap: 6,
 		},
 		wheelRow: {
 			position: "relative",
 			flexDirection: "row",
-			height: WHEEL_HEIGHT + 22,
-			gap: 8,
+			height: WHEEL_HEIGHT + 18,
+			gap: 6,
 		},
 		centerHighlight: {
 			position: "absolute",
 			left: 0,
 			right: 0,
-			top: 22 + ITEM_HEIGHT * CENTER_INDEX,
+			top: 18 + ITEM_HEIGHT * CENTER_INDEX,
 			height: ITEM_HEIGHT,
-			borderRadius: 14,
+			borderRadius: 12,
 			backgroundColor: centerBg,
 			borderWidth: 1,
 			borderColor: centerBorder,
@@ -294,17 +294,17 @@ function createStyles(theme: MobileTheme) {
 			minWidth: 0,
 		},
 		columnLabel: {
-			height: 22,
+			height: 18,
 			textAlign: "center",
 			color: theme.colors.textSecondary,
-			fontSize: 11,
+			fontSize: 10,
 			fontWeight: "800",
 			textTransform: "uppercase",
-			letterSpacing: 0.4,
+			letterSpacing: 0.35,
 		},
 		wheelViewport: {
 			height: WHEEL_HEIGHT,
-			borderRadius: 16,
+			borderRadius: 13,
 			overflow: "hidden",
 			position: "relative",
 		},
@@ -319,11 +319,11 @@ function createStyles(theme: MobileTheme) {
 		},
 		wheelText: {
 			textAlign: "center",
-			fontSize: 17,
+			fontSize: 15,
 			letterSpacing: 0.2,
 		},
 		wheelTextSelected: {
-			color: "#FFFFFF",
+			color: "#F8FFF4",
 			fontWeight: "900",
 		},
 		wheelTextDimmed: {
@@ -368,7 +368,7 @@ function createStyles(theme: MobileTheme) {
 		},
 		valueLabel: {
 			color: theme.colors.textMuted,
-			fontSize: 12,
+			fontSize: 11,
 			fontWeight: "800",
 			textAlign: "center",
 		},

@@ -476,12 +476,12 @@ describe("ReportsScreen visual parity", () => {
 		fireEvent(
 			screen.getByTestId("reports-start-date-wheel-picker-date-scroll"),
 			"scrollEndDrag",
-			{ nativeEvent: { contentOffset: { y: 42 * 14 } } },
+			{ nativeEvent: { contentOffset: { y: 34 * 14 } } },
 		);
 		fireEvent(
 			screen.getByTestId("reports-end-date-wheel-picker-date-scroll"),
 			"scrollEndDrag",
-			{ nativeEvent: { contentOffset: { y: 42 * 19 } } },
+			{ nativeEvent: { contentOffset: { y: 34 * 19 } } },
 		);
 
 		await waitFor(() => {
