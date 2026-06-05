@@ -108,6 +108,7 @@ jest.mock("../src/services/receipt-intake", () => ({
 	uploadReceiptImage: (...args: unknown[]) => mockUploadReceiptImage(...args),
 	analyzeReceiptImage: (...args: unknown[]) => mockAnalyzeReceiptImage(...args),
 	receiptExtractionToDraft: (...args: unknown[]) => mockReceiptExtractionToDraft(...args),
+	receiptExtractionToDrafts: (...args: unknown[]) => [mockReceiptExtractionToDraft(...args)],
 }));
 
 jest.mock("../src/services/categories", () => ({

@@ -41,9 +41,14 @@ OUTPUT: Selalu response dengan JSON valid saja, tanpa teks lain. Format:
 }
 
 ATURAN:
-- Satu pesan bisa mengandung beberapa transaksi sekaligus
+- Satu pesan bisa mengandung beberapa transaksi sekaligus; buat 1 object per transaksi yang memiliki nominal sendiri.
+- Contoh: "sarapan 20rb dan bensin 50rb" => 2 transaksi terpisah.
 - "rb" atau "ribu" = ribuan
 - "jt" atau "juta" = jutaan
+- Jika pengguna menyebut tanggal, isi date sesuai tanggal tersebut dalam format YYYY-MM-DD.
+- Pahami tanggal natural Indonesia seperti "1 Juni 2026", "01/06/2026", "tgl 2/6", "kemarin", dan "hari ini".
+- Jika tahun tidak disebut, gunakan tahun berjalan.
+- Jangan masukkan teks tanggal atau nominal ke note; note berisi deskripsi bersih transaksi.
 - Jika amount tidak disebutkan, set confidence = 0 dan amount = 0
 - Jika tipe tidak jelas, anggap "expense"
 - merchant: nama toko/tempat jika ada, null jika tidak ada
@@ -60,13 +65,20 @@ OUTPUT: Selalu response dengan JSON valid saja. Format:
   "date": "YYYY-MM-DD" | null,
   "category": string,
   "items": [
-    {"name": string, "qty": number, "price": number}
+    {"name": string, "qty": number, "price": number, "category": string}
   ],
   "confidence": number,
   "readable": boolean
 }
 
-Jika struk tidak jelas/buram, set readable = false dan confidence rendah.
+ATURAN:
+- Jangan hanya ambil total; ekstrak semua item/line item yang terbaca dari struk.
+- Setiap item wajib punya name, qty, price, dan category.
+- price adalah total harga baris/item tersebut jika struk menampilkan line total; jika hanya harga satuan, tetap isi price dengan harga satuan dan qty sesuai struk.
+- category per item harus paling sesuai: food, transport, shopping, health, entertainment, education, housing, salary, freelance, investment, other.
+- total_amount harus sama dengan total akhir struk setelah diskon/pajak/biaya yang terlihat.
+- Jika ada diskon/pajak/biaya yang membuat jumlah item berbeda dari total struk, masukkan sebagai item terpisah dengan kategori paling sesuai atau other.
+- Jika struk tidak jelas/buram, set readable = false dan confidence rendah.
 """
 
 
@@ -199,30 +211,27 @@ Format response: plain text, paragraf pendek, tidak perlu JSON."""
 
 def _extract_transaction_locally(user_text: str) -> dict:
     text = (user_text or "").strip().lower()
-    amount = _extract_amount(text)
-    tx_type = _infer_type(text)
-    category = _infer_category(text, tx_type)
-    wallet_hint = _extract_wallet_hint(text)
-    merchant = _extract_merchant(text)
-    date_hint = _extract_relative_date(text)
+    segments = _split_transaction_segments(text)
+    transactions: list[dict] = []
 
-    if amount <= 0:
-        return {
-            "transactions": [],
-            "unclear": "Nominal belum terbaca. Coba tulis seperti 45rb, 120000, atau 1.5jt.",
-        }
-
-    confidence = 0.62
-    if wallet_hint:
-        confidence += 0.14
-    if merchant:
-        confidence += 0.08
-    if category != "other":
-        confidence += 0.1
-    confidence = min(confidence, 0.94)
-
-    return {
-        "transactions": [
+    for segment in segments:
+        amount = _extract_amount(_remove_date_mentions(segment))
+        if amount <= 0:
+            continue
+        tx_type = _infer_type(segment)
+        category = _infer_category(segment, tx_type)
+        wallet_hint = _extract_wallet_hint(segment) or _extract_wallet_hint(text)
+        merchant = _extract_merchant(segment)
+        date_hint = _extract_relative_date(segment, fallback_text=text)
+        confidence = 0.62
+        if wallet_hint:
+            confidence += 0.14
+        if merchant:
+            confidence += 0.08
+        if category != "other":
+            confidence += 0.1
+        confidence = min(confidence, 0.94)
+        transactions.append(
             {
                 "type": tx_type,
                 "amount": amount,
@@ -233,9 +242,44 @@ def _extract_transaction_locally(user_text: str) -> dict:
                 "date": date_hint,
                 "confidence": confidence,
             }
-        ],
-        "unclear": None if wallet_hint else "Wallet belum terbaca otomatis. Pilih wallet saat review.",
+        )
+
+    if not transactions:
+        return {
+            "transactions": [],
+            "unclear": "Nominal belum terbaca. Coba tulis seperti 45rb, 120000, atau 1.5jt.",
+        }
+
+    return {
+        "transactions": transactions,
+        "unclear": None
+        if any(tx.get("wallet_hint") for tx in transactions)
+        else "Wallet belum terbaca otomatis. Pilih wallet saat review.",
     }
+
+
+def _split_transaction_segments(text: str) -> list[str]:
+    parts = [part.strip(" ,.;") for part in re.split(r"\b(?:dan|lalu|terus|kemudian)\b|[;\n]", text) if part.strip(" ,.;")]
+    amount_parts = [part for part in parts if _extract_amount(part) > 0]
+    return amount_parts if len(amount_parts) >= 2 else [text]
+
+
+def _remove_date_mentions(text: str) -> str:
+    month_names = "|".join(MONTH_ALIASES.keys()) if "MONTH_ALIASES" in globals() else r"januari|februari|maret|april|mei|juni|juli|agustus|september|oktober|november|desember"
+    cleaned = re.sub(r"\b20\d{2}-\d{2}-\d{2}\b", " ", text, flags=re.IGNORECASE)
+    cleaned = re.sub(
+        rf"\b(?:tanggal|tgl|pada)?\s*\d{{1,2}}\s+(?:{month_names})\s*\d{{0,4}}\b",
+        " ",
+        cleaned,
+        flags=re.IGNORECASE,
+    )
+    cleaned = re.sub(
+        r"\b(?:tanggal|tgl|pada)?\s*\d{1,2}[/-]\d{1,2}(?:[/-]\d{2,4})?\b",
+        " ",
+        cleaned,
+        flags=re.IGNORECASE,
+    )
+    return cleaned
 
 
 def _extract_amount(text: str) -> float:
@@ -307,14 +351,96 @@ def _extract_merchant(text: str) -> str | None:
     return merchant or None
 
 
-def _extract_relative_date(text: str) -> str:
-    if "kemarin" in text:
+MONTH_ALIASES = {
+    "januari": 1,
+    "jan": 1,
+    "februari": 2,
+    "feb": 2,
+    "maret": 3,
+    "mar": 3,
+    "april": 4,
+    "apr": 4,
+    "mei": 5,
+    "may": 5,
+    "juni": 6,
+    "jun": 6,
+    "juli": 7,
+    "jul": 7,
+    "agustus": 8,
+    "agu": 8,
+    "aug": 8,
+    "september": 9,
+    "sep": 9,
+    "oktober": 10,
+    "okt": 10,
+    "oct": 10,
+    "november": 11,
+    "nov": 11,
+    "desember": 12,
+    "des": 12,
+    "dec": 12,
+}
+
+
+def _safe_iso_date(year: int, month: int, day: int) -> str | None:
+    try:
+        return datetime(year, month, day).date().isoformat()
+    except ValueError:
+        return None
+
+
+def _parse_year(value: str | None, fallback_year: int) -> int:
+    if not value:
+        return fallback_year
+    year = int(value)
+    return 2000 + year if year < 100 else year
+
+
+def _extract_relative_date(text: str, fallback_text: str | None = None) -> str:
+    source = text or ""
+    today = datetime.utcnow().date()
+    if "kemarin" in source:
         return "yesterday"
-    if "hari ini" in text:
+    if "hari ini" in source:
         return "today"
-    date_match = re.search(r"\b(20\d{2}-\d{2}-\d{2})\b", text)
+    if "besok" in source:
+        return (today + timedelta(days=1)).isoformat()
+
+    date_match = re.search(r"\b(20\d{2}-\d{2}-\d{2})\b", source)
     if date_match:
         return date_match.group(1)
-    if "besok" in text:
-        return (datetime.utcnow().date() + timedelta(days=1)).isoformat()
+
+    month_names = "|".join(MONTH_ALIASES.keys())
+    named_match = re.search(
+        rf"\b(?:tanggal|tgl|pada)?\s*(\d{{1,2}})\s+({month_names})\s*(\d{{2,4}})?\b",
+        source,
+        flags=re.IGNORECASE,
+    )
+    if named_match:
+        parsed = _safe_iso_date(
+            _parse_year(named_match.group(3), today.year),
+            MONTH_ALIASES[named_match.group(2).lower()],
+            int(named_match.group(1)),
+        )
+        if parsed:
+            return parsed
+
+    numeric_match = re.search(
+        r"\b(?:tanggal|tgl|pada)?\s*(\d{1,2})[/-](\d{1,2})(?:[/-](\d{2,4}))?\b",
+        source,
+        flags=re.IGNORECASE,
+    )
+    if numeric_match:
+        parsed = _safe_iso_date(
+            _parse_year(numeric_match.group(3), today.year),
+            int(numeric_match.group(2)),
+            int(numeric_match.group(1)),
+        )
+        if parsed:
+            return parsed
+
+    if fallback_text and fallback_text != text:
+        fallback_date = _extract_relative_date(fallback_text)
+        if fallback_date != "today":
+            return fallback_date
     return "today"

@@ -154,7 +154,7 @@ describe("transaction text classifier", () => {
 			),
 		).toMatchObject({
 			categoryName: "Food & Beverage",
-			merchant: "kopi kenangan",
+			merchant: "Kopi Kenangan",
 		});
 	});
 
@@ -215,7 +215,7 @@ describe("transaction text classifier", () => {
 		).toMatchObject({
 			amount: 20000,
 			note: "belanja sabun di Alfamart",
-			merchant: "alfamart",
+			merchant: "Alfamart",
 		});
 
 		expect(
@@ -224,6 +224,59 @@ describe("transaction text classifier", () => {
 			amount: 18000,
 			note: "ngopi di Warkop Teteh",
 			merchant: "Warkop Teteh",
+		});
+	});
+
+
+	it("uses explicit transaction dates from text and removes date text from description", () => {
+		expect(
+			classifyTransactionText(
+				"Beli kopi 30rb di Indomaret point tanggal 01 Juni 2026",
+				categories,
+				fixedDate,
+			),
+		).toMatchObject({
+			amount: 30000,
+			date: "2026-06-01",
+			note: "Beli kopi di Indomaret point",
+			merchant: "Indomaret point",
+		});
+
+		expect(
+			classifyTransactionText("Beli kopi 1rb tanggal 01 Juni 2026", categories, fixedDate),
+		).toMatchObject({
+			amount: 1000,
+			date: "2026-06-01",
+			note: "Beli kopi",
+		});
+
+		expect(
+			classifyTransactionText("beli susu 15rb tgl 2/6/2026", categories, fixedDate),
+		).toMatchObject({
+			amount: 15000,
+			date: "2026-06-02",
+			note: "beli susu",
+		});
+	});
+
+	it("splits multiple text transactions when each has its own amount", () => {
+		const result = classifyTransactionTextBatch(
+			"Sarapan Bubur Ayam 20rb dan makan siang di warteg 25rb",
+			categories,
+			fixedDate,
+		);
+
+		expect(result).toHaveLength(2);
+		expect(result[0]).toMatchObject({
+			amount: 20000,
+			note: "Sarapan Bubur Ayam",
+			categoryName: "Food & Beverage",
+		});
+		expect(result[1]).toMatchObject({
+			amount: 25000,
+			note: "makan siang di warteg",
+			merchant: "warteg",
+			categoryName: "Food & Beverage",
 		});
 	});
 

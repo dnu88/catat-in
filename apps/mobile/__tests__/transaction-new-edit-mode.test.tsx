@@ -238,7 +238,7 @@ describe("transaction-new edit mode", () => {
 		const screen = renderScreen();
 
 		expect(await screen.findByText("Manual Entry")).toBeTruthy();
-		expect(screen.getByText("Amount")).toBeTruthy();
+		await waitFor(() => expect(screen.getByText("Amount")).toBeTruthy());
 		expect(screen.getByText("Description")).toBeTruthy();
 		expect(screen.getByLabelText("Save manual transaction")).toBeTruthy();
 	});

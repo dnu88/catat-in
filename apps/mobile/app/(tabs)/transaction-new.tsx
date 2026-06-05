@@ -119,6 +119,178 @@ function formatAmount(value: number): string {
 	return value.toLocaleString("id-ID");
 }
 
+
+const WHEEL_ITEM_HEIGHT = 38;
+const WHEEL_VISIBLE_ITEMS = 5;
+const WHEEL_REPEAT_COUNT = 7;
+
+function daysInMonth(year: number, month: number) {
+	return new Date(year, month, 0).getDate();
+}
+
+function parseIsoDateParts(value: string) {
+	const [yearText, monthText, dayText] = value.split("-");
+	const now = new Date();
+	const year = Number(yearText) || now.getFullYear();
+	const month = Math.min(12, Math.max(1, Number(monthText) || now.getMonth() + 1));
+	const day = Math.min(
+		daysInMonth(year, month),
+		Math.max(1, Number(dayText) || now.getDate()),
+	);
+	return { year, month, day };
+}
+
+function toIsoDate(year: number, month: number, day: number) {
+	const safeDay = Math.min(daysInMonth(year, month), Math.max(1, day));
+	return `${year}-${month.toString().padStart(2, "0")}-${safeDay
+		.toString()
+		.padStart(2, "0")}`;
+}
+
+type WheelColumnProps = {
+	values: number[];
+	selected: number;
+	onChange: (value: number) => void;
+	format: (value: number) => string;
+	styles: ReturnType<typeof createStyles>;
+};
+
+function WheelColumn({ values, selected, onChange, format, styles }: WheelColumnProps) {
+	const scrollRef = useRef<ScrollView>(null);
+	const selectedIndex = Math.max(0, values.indexOf(selected));
+	const centerBlockIndex = Math.floor(WHEEL_REPEAT_COUNT / 2);
+	const targetIndex = centerBlockIndex * values.length + selectedIndex;
+	const repeatedValues = useMemo(
+		() =>
+			Array.from({ length: WHEEL_REPEAT_COUNT }).flatMap(() => values),
+		[values],
+	);
+
+	useEffect(() => {
+		const handle = setTimeout(() => {
+			scrollRef.current?.scrollTo({
+				y: targetIndex * WHEEL_ITEM_HEIGHT,
+				animated: false,
+			});
+		}, 0);
+		return () => clearTimeout(handle);
+	}, [targetIndex]);
+
+	const handleScrollEnd = (event: { nativeEvent: { contentOffset: { y: number } } }) => {
+		const rawIndex = Math.round(event.nativeEvent.contentOffset.y / WHEEL_ITEM_HEIGHT);
+		const value = repeatedValues[((rawIndex % values.length) + values.length) % values.length];
+		if (value !== selected) onChange(value);
+	};
+
+	return (
+		<View style={styles.wheelColumn}>
+			<View pointerEvents="none" style={styles.wheelHighlight} />
+			<ScrollView
+				ref={scrollRef}
+				showsVerticalScrollIndicator={false}
+				snapToInterval={WHEEL_ITEM_HEIGHT}
+				decelerationRate="fast"
+				contentContainerStyle={styles.wheelContent}
+				onMomentumScrollEnd={handleScrollEnd}
+				onScrollEndDrag={handleScrollEnd}
+			>
+				{repeatedValues.map((value, index) => {
+					const distance = Math.min(Math.abs(index - targetIndex), 4);
+					const isSelected = value === selected && distance === 0;
+					const opacity = distance === 0 ? 1 : distance === 1 ? 0.6 : distance === 2 ? 0.4 : 0.2;
+					const fontSize = distance === 0 ? 17 : distance === 1 ? 14 : 12;
+					return (
+						<Pressable
+							key={`${value}-${index}`}
+							accessibilityRole="button"
+							onPress={() => onChange(value)}
+							style={styles.wheelItem}
+						>
+							<Text
+								style={[
+									styles.wheelItemText,
+									{
+										opacity,
+										fontSize,
+										fontWeight: isSelected ? "800" : "600",
+									},
+								]}
+							>
+								{format(value)}
+							</Text>
+						</Pressable>
+					);
+				})}
+			</ScrollView>
+		</View>
+	);
+}
+
+type DateWheelPickerProps = {
+	value: string;
+	onChange: (value: string) => void;
+	isEn: boolean;
+	styles: ReturnType<typeof createStyles>;
+};
+
+function DateWheelPicker({ value, onChange, isEn, styles }: DateWheelPickerProps) {
+	const { year, month, day } = parseIsoDateParts(value);
+	const currentYear = new Date().getFullYear();
+	const years = useMemo(
+		() => Array.from({ length: 41 }, (_, index) => currentYear - 20 + index),
+		[currentYear],
+	);
+	const months = useMemo(() => Array.from({ length: 12 }, (_, index) => index + 1), []);
+	const days = useMemo(
+		() => Array.from({ length: daysInMonth(year, month) }, (_, index) => index + 1),
+		[year, month],
+	);
+	const monthNames = isEn
+		? ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+		: ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"];
+
+	const updateDate = (next: Partial<{ year: number; month: number; day: number }>) => {
+		const nextYear = next.year ?? year;
+		const nextMonth = next.month ?? month;
+		const nextDay = Math.min(next.day ?? day, daysInMonth(nextYear, nextMonth));
+		onChange(toIsoDate(nextYear, nextMonth, nextDay));
+	};
+
+	return (
+		<View testID="transaction-date-wheel-picker" style={styles.datePickerCard}>
+			<View style={styles.datePickerHeader}>
+				<Text style={styles.datePickerHeaderText}>{isEn ? "Year" : "Tahun"}</Text>
+				<Text style={styles.datePickerHeaderText}>{isEn ? "Month" : "Bulan"}</Text>
+				<Text style={styles.datePickerHeaderText}>{isEn ? "Date" : "Tanggal"}</Text>
+			</View>
+			<View style={styles.dateWheelRow}>
+				<WheelColumn
+					values={years}
+					selected={year}
+					onChange={(nextYear) => updateDate({ year: nextYear })}
+					format={(nextYear) => String(nextYear)}
+					styles={styles}
+				/>
+				<WheelColumn
+					values={months}
+					selected={month}
+					onChange={(nextMonth) => updateDate({ month: nextMonth })}
+					format={(nextMonth) => monthNames[nextMonth - 1]}
+					styles={styles}
+				/>
+				<WheelColumn
+					values={days}
+					selected={day}
+					onChange={(nextDay) => updateDate({ day: nextDay })}
+					format={(nextDay) => String(nextDay).padStart(2, "0")}
+					styles={styles}
+				/>
+			</View>
+			<Text style={styles.datePickerValue}>{value}</Text>
+		</View>
+	);
+}
+
 export default function TransactionNewScreen() {
 	const { theme } = useTheme();
 	const { language } = useI18n();
@@ -681,14 +853,11 @@ export default function TransactionNewScreen() {
 				{/* Date */}
 				<View key="transaction-form-date" testID="transaction-form-date" style={styles.field}>
 					<Text style={styles.label}>{tx.date}</Text>
-					<TextInput
-						accessibilityLabel={tx.dateLabel}
-						style={styles.textInput}
+					<DateWheelPicker
 						value={date}
-						onChangeText={setDate}
-						placeholder="YYYY-MM-DD"
-						placeholderTextColor={theme.colors.textMuted}
-						autoCapitalize="none"
+						onChange={setDate}
+						isEn={isEn}
+						styles={styles}
 					/>
 				</View>
 
@@ -861,6 +1030,68 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			paddingVertical: 12,
 			fontSize: 14,
 		},
+		datePickerCard: {
+			borderWidth: 1,
+			borderColor: theme.colors.borderStrong,
+			borderRadius: 16,
+			backgroundColor: theme.colors.surface,
+			padding: 10,
+			gap: 8,
+		},
+		datePickerHeader: {
+			flexDirection: "row",
+			justifyContent: "space-around",
+		},
+		datePickerHeaderText: {
+			flex: 1,
+			textAlign: "center",
+			color: theme.colors.textSecondary,
+			fontSize: 11,
+			fontWeight: "800",
+			textTransform: "uppercase",
+		},
+		dateWheelRow: {
+			flexDirection: "row",
+			height: WHEEL_ITEM_HEIGHT * WHEEL_VISIBLE_ITEMS,
+			gap: 6,
+		},
+		wheelColumn: {
+			flex: 1,
+			position: "relative",
+			overflow: "hidden",
+			borderRadius: 14,
+		},
+		wheelHighlight: {
+			position: "absolute",
+			left: 2,
+			right: 2,
+			top: WHEEL_ITEM_HEIGHT * 2,
+			height: WHEEL_ITEM_HEIGHT,
+			borderRadius: 12,
+			backgroundColor: `${theme.colors.brandPrimary}18`,
+			borderWidth: 1,
+			borderColor: `${theme.colors.brandPrimary}30`,
+			zIndex: 0,
+		},
+		wheelContent: {
+			paddingVertical: WHEEL_ITEM_HEIGHT * 2,
+		},
+		wheelItem: {
+			height: WHEEL_ITEM_HEIGHT,
+			alignItems: "center",
+			justifyContent: "center",
+		},
+		wheelItemText: {
+			color: theme.colors.textPrimary,
+			textAlign: "center",
+		},
+		datePickerValue: {
+			color: theme.colors.textMuted,
+			fontSize: 12,
+			fontWeight: "700",
+			textAlign: "center",
+		},
+
 		warningCard: {
 			padding: 12,
 			borderRadius: 10,
