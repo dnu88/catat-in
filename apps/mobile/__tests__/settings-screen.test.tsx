@@ -199,6 +199,25 @@ describe('SettingsScreen honest controls', () => {
     })
   })
 
+
+  it('does not leave logout stuck when Supabase signOut is slow', async () => {
+    jest.useFakeTimers()
+    mockSignOut.mockImplementationOnce(() => new Promise(() => undefined))
+    const screen = renderSettings()
+
+    fireEvent.press(screen.getByText('Keluar dari Akun'))
+    expect(mockSignOut).toHaveBeenCalled()
+
+    act(() => {
+      jest.advanceTimersByTime(1800)
+    })
+
+    await waitFor(() => {
+      expect(mockReplace).toHaveBeenCalledWith('/(auth)/login')
+    })
+    jest.useRealTimers()
+  })
+
   it('still lets language and logout controls work', async () => {
     const screen = renderSettings()
 

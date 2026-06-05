@@ -14,6 +14,7 @@ import Svg, { Circle } from "react-native-svg";
 
 import { useTheme } from "../../src/theme/theme-context";
 import { useSupabase } from "../../src/lib/supabase";
+import { IOSWheelDatePicker } from "../../src/components/date/IOSWheelDatePicker";
 import { IconBubble } from "../../src/components/ui";
 import { PageEntrance, StaggeredEntrance } from "../../src/components/motion";
 import type { KaswiseIconName } from "../../src/components/icons/kaswise-icons";
@@ -213,12 +214,6 @@ export default function ReportsScreen() {
 		new Date().getMonth() + 1,
 	);
 	const [customEndDay, setCustomEndDay] = useState(new Date().getDate());
-	const [tempStartYear, setTempStartYear] = useState(customStartYear);
-	const [tempStartMonth, setTempStartMonth] = useState(customStartMonth);
-	const [tempStartDay, setTempStartDay] = useState(customStartDay);
-	const [tempEndYear, setTempEndYear] = useState(customEndYear);
-	const [tempEndMonth, setTempEndMonth] = useState(customEndMonth);
-	const [tempEndDay, setTempEndDay] = useState(customEndDay);
 	const [compareData, setCompareData] = useState<{
 		current: {
 			income: number;
@@ -334,6 +329,7 @@ export default function ReportsScreen() {
 				modalDay: "Day",
 				modalCancel: "Cancel",
 				modalApply: "Apply",
+				modalDone: "Done",
 				detailTitle: "Transactions",
 				noCategoryTransactions: "No transactions in this category.",
 				otherCategoryInsight: (percent: number) =>
@@ -387,6 +383,7 @@ export default function ReportsScreen() {
 				modalDay: "Tanggal",
 				modalCancel: "Batal",
 				modalApply: "Terapkan",
+				modalDone: "Selesai",
 				detailTitle: "Transaksi",
 				noCategoryTransactions: "Belum ada transaksi di kategori ini.",
 				otherCategoryInsight: (percent: number) =>
@@ -437,8 +434,8 @@ export default function ReportsScreen() {
 		`${year}-${pad2(month)}-${pad2(day)}`;
 	const daysInMonth = (year: number, month: number) =>
 		new Date(year, month, 0).getDate();
-	const dayNumbers = (year: number, month: number) =>
-		Array.from({ length: daysInMonth(year, month) }, (_, index) => index + 1);
+	const customStartIso = dateKey(customStartYear, customStartMonth, customStartDay);
+	const customEndIso = dateKey(customEndYear, customEndMonth, customEndDay);
 	const customRangeLabel = `${customStartDay} ${monthName(customStartMonth)} ${customStartYear} - ${customEndDay} ${monthName(customEndMonth)} ${customEndYear}`;
 	const periodDisplayLabel =
 		periodFilter === "custom"
@@ -702,38 +699,39 @@ export default function ReportsScreen() {
 		: [];
 
 	const openCustomDateModal = () => {
-		setTempStartYear(customStartYear);
-		setTempStartMonth(customStartMonth);
-		setTempStartDay(customStartDay);
-		setTempEndYear(customEndYear);
-		setTempEndMonth(customEndMonth);
-		setTempEndDay(customEndDay);
 		setShowDateModal(true);
 	};
 
-	const confirmCustomDateRange = () => {
-		const safeStartDay = Math.min(
-			tempStartDay,
-			daysInMonth(tempStartYear, tempStartMonth),
-		);
-		const safeEndDay = Math.min(
-			tempEndDay,
-			daysInMonth(tempEndYear, tempEndMonth),
-		);
-		const tempStart = new Date(tempStartYear, tempStartMonth - 1, safeStartDay);
-		const tempEnd = new Date(tempEndYear, tempEndMonth - 1, safeEndDay);
-		if (tempStart > tempEnd) {
-			setDataError(tx.errorDateRange);
-			return;
+	const applyStartDate = (nextValue: string) => {
+		const [nextYear, nextMonth, nextDay] = nextValue.split("-").map(Number);
+		if (!nextYear || !nextMonth || !nextDay) return;
+		const nextStart = new Date(nextYear, nextMonth - 1, nextDay);
+		const currentEnd = new Date(customEndYear, customEndMonth - 1, customEndDay);
+		setCustomStartYear(nextYear);
+		setCustomStartMonth(nextMonth);
+		setCustomStartDay(nextDay);
+		if (nextStart > currentEnd) {
+			setCustomEndYear(nextYear);
+			setCustomEndMonth(nextMonth);
+			setCustomEndDay(nextDay);
 		}
+		setDataError(null);
+	};
 
-		setCustomStartYear(tempStartYear);
-		setCustomStartMonth(tempStartMonth);
-		setCustomStartDay(safeStartDay);
-		setCustomEndYear(tempEndYear);
-		setCustomEndMonth(tempEndMonth);
-		setCustomEndDay(safeEndDay);
-		setShowDateModal(false);
+	const applyEndDate = (nextValue: string) => {
+		const [nextYear, nextMonth, nextDay] = nextValue.split("-").map(Number);
+		if (!nextYear || !nextMonth || !nextDay) return;
+		const currentStart = new Date(customStartYear, customStartMonth - 1, customStartDay);
+		const nextEnd = new Date(nextYear, nextMonth - 1, nextDay);
+		setCustomEndYear(nextYear);
+		setCustomEndMonth(nextMonth);
+		setCustomEndDay(nextDay);
+		if (nextEnd < currentStart) {
+			setCustomStartYear(nextYear);
+			setCustomStartMonth(nextMonth);
+			setCustomStartDay(nextDay);
+		}
+		setDataError(null);
 	};
 
 	useFocusEffect(
@@ -1697,195 +1695,33 @@ export default function ReportsScreen() {
 
 						<View style={styles.modalSection}>
 							<Text style={styles.modalSectionTitle}>{tx.modalStart}</Text>
-							<View style={styles.modalRow}>
-								<Pressable
-									accessibilityRole="button"
-									accessibilityLabel="Kurangi tahun mulai"
-									style={styles.modalButton}
-									onPress={() => setTempStartYear(tempStartYear - 1)}
-								>
-									<Text style={styles.modalButtonText}>-</Text>
-								</Pressable>
-								<Text style={styles.modalValue}>{tempStartYear}</Text>
-								<Pressable
-									accessibilityRole="button"
-									accessibilityLabel="Tambah tahun mulai"
-									style={styles.modalButton}
-									onPress={() => setTempStartYear(tempStartYear + 1)}
-								>
-									<Text style={styles.modalButtonText}>+</Text>
-								</Pressable>
-							</View>
-							<ScrollView
-								horizontal
-								showsHorizontalScrollIndicator={false}
-								style={styles.monthScroll}
-							>
-								{[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((m) => (
-									<Pressable
-										key={m}
-										accessibilityRole="button"
-										accessibilityLabel={`Pilih bulan mulai ${monthName(m)}`}
-										accessibilityState={{ selected: tempStartMonth === m }}
-										style={[
-											styles.monthChip,
-											tempStartMonth === m && styles.monthChipActive,
-										]}
-										onPress={() => {
-											setTempStartMonth(m);
-											setTempStartDay(
-												Math.min(tempStartDay, daysInMonth(tempStartYear, m)),
-											);
-										}}
-									>
-										<Text
-											style={[
-												styles.monthChipText,
-												tempStartMonth === m && styles.monthChipTextActive,
-											]}
-										>
-											{monthName(m)}
-										</Text>
-									</Pressable>
-								))}
-							</ScrollView>
-							<Text style={styles.modalSectionTitle}>{tx.modalDay}</Text>
-							<ScrollView
-								horizontal
-								showsHorizontalScrollIndicator={false}
-								style={styles.monthScroll}
-							>
-								{dayNumbers(tempStartYear, tempStartMonth).map((day) => (
-									<Pressable
-										key={day}
-										testID={`reports-start-day-${day}`}
-										accessibilityRole="button"
-										accessibilityLabel={`Pilih tanggal mulai ${day}`}
-										accessibilityState={{ selected: tempStartDay === day }}
-										style={[
-											styles.dayChip,
-											tempStartDay === day && styles.monthChipActive,
-										]}
-										onPress={() => setTempStartDay(day)}
-									>
-										<Text
-											style={[
-												styles.monthChipText,
-												tempStartDay === day && styles.monthChipTextActive,
-											]}
-										>
-											{day}
-										</Text>
-									</Pressable>
-								))}
-							</ScrollView>
+							<IOSWheelDatePicker
+								value={customStartIso}
+								onChange={applyStartDate}
+								locale={isEn ? "en" : "id"}
+								testID="reports-start-date-wheel-picker"
+							/>
 						</View>
 
 						<View style={styles.modalSection}>
 							<Text style={styles.modalSectionTitle}>{tx.modalEnd}</Text>
-							<View style={styles.modalRow}>
-								<Pressable
-									accessibilityRole="button"
-									accessibilityLabel="Kurangi tahun selesai"
-									style={styles.modalButton}
-									onPress={() => setTempEndYear(tempEndYear - 1)}
-								>
-									<Text style={styles.modalButtonText}>-</Text>
-								</Pressable>
-								<Text style={styles.modalValue}>{tempEndYear}</Text>
-								<Pressable
-									accessibilityRole="button"
-									accessibilityLabel="Tambah tahun selesai"
-									style={styles.modalButton}
-									onPress={() => setTempEndYear(tempEndYear + 1)}
-								>
-									<Text style={styles.modalButtonText}>+</Text>
-								</Pressable>
-							</View>
-							<ScrollView
-								horizontal
-								showsHorizontalScrollIndicator={false}
-								style={styles.monthScroll}
-							>
-								{[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((m) => (
-									<Pressable
-										key={m}
-										accessibilityRole="button"
-										accessibilityLabel={`Pilih bulan selesai ${monthName(m)}`}
-										accessibilityState={{ selected: tempEndMonth === m }}
-										style={[
-											styles.monthChip,
-											tempEndMonth === m && styles.monthChipActive,
-										]}
-										onPress={() => {
-											setTempEndMonth(m);
-											setTempEndDay(
-												Math.min(tempEndDay, daysInMonth(tempEndYear, m)),
-											);
-										}}
-									>
-										<Text
-											style={[
-												styles.monthChipText,
-												tempEndMonth === m && styles.monthChipTextActive,
-											]}
-										>
-											{monthName(m)}
-										</Text>
-									</Pressable>
-								))}
-							</ScrollView>
-							<Text style={styles.modalSectionTitle}>{tx.modalDay}</Text>
-							<ScrollView
-								horizontal
-								showsHorizontalScrollIndicator={false}
-								style={styles.monthScroll}
-							>
-								{dayNumbers(tempEndYear, tempEndMonth).map((day) => (
-									<Pressable
-										key={day}
-										testID={`reports-end-day-${day}`}
-										accessibilityRole="button"
-										accessibilityLabel={`Pilih tanggal selesai ${day}`}
-										accessibilityState={{ selected: tempEndDay === day }}
-										style={[
-											styles.dayChip,
-											tempEndDay === day && styles.monthChipActive,
-										]}
-										onPress={() => setTempEndDay(day)}
-									>
-										<Text
-											style={[
-												styles.monthChipText,
-												tempEndDay === day && styles.monthChipTextActive,
-											]}
-										>
-											{day}
-										</Text>
-									</Pressable>
-								))}
-							</ScrollView>
+							<IOSWheelDatePicker
+								value={customEndIso}
+								onChange={applyEndDate}
+								locale={isEn ? "en" : "id"}
+								testID="reports-end-date-wheel-picker"
+							/>
 						</View>
 
 						<View style={styles.modalActions}>
 							<Pressable
 								accessibilityRole="button"
-								accessibilityLabel="Batalkan rentang tanggal"
-								style={[styles.modalActionButton, styles.modalActionCancel]}
+								accessibilityLabel="Tutup rentang tanggal"
+								style={[styles.modalActionButton, styles.modalActionConfirm]}
 								onPress={() => setShowDateModal(false)}
 							>
-								<Text style={styles.modalActionCancelText}>
-									{tx.modalCancel}
-								</Text>
-							</Pressable>
-							<Pressable
-								accessibilityRole="button"
-								accessibilityLabel="Terapkan rentang tanggal"
-								style={[styles.modalActionButton, styles.modalActionConfirm]}
-								onPress={confirmCustomDateRange}
-							>
 								<Text style={styles.modalActionConfirmText}>
-									{tx.modalApply}
+									{tx.modalDone}
 								</Text>
 							</Pressable>
 						</View>

@@ -23,7 +23,7 @@ const mockTransactions = [
 		amount: 125000,
 		transaction_type: "income",
 		category: "Pendapatan",
-		date: "2026-05-05",
+		date: "2026-06-05",
 		description: "Bonus modern schema",
 		merchant: "Klien",
 	},
@@ -31,7 +31,7 @@ const mockTransactions = [
 		nominal: 500000,
 		type: "expense",
 		kategori: "Makan",
-		tanggal: "2026-05-01",
+		tanggal: "2026-06-01",
 		catatan: "Nasi padang",
 		merchant: "RM Sederhana",
 	},
@@ -39,7 +39,7 @@ const mockTransactions = [
 		nominal: 350000,
 		type: "expense",
 		kategori: "Belanja",
-		tanggal: "2026-05-02",
+		tanggal: "2026-06-02",
 		catatan: "Groceries",
 		merchant: "Supermarket",
 	},
@@ -47,7 +47,7 @@ const mockTransactions = [
 		nominal: 200000,
 		type: "expense",
 		kategori: "Transport",
-		tanggal: "2026-05-03",
+		tanggal: "2026-06-03",
 		catatan: "Taxi",
 		merchant: "Grab",
 	},
@@ -55,7 +55,7 @@ const mockTransactions = [
 		nominal: 150000,
 		type: "expense",
 		kategori: "Kesehatan",
-		tanggal: "2026-05-04",
+		tanggal: "2026-06-04",
 		catatan: "Vitamin",
 		merchant: "Apotek",
 	},
@@ -89,15 +89,15 @@ jest.mock("../src/lib/supabase", () => {
 	};
 	(globalThis as any).__reportsQueryChain = chain;
 
+	const supabase = {
+		auth: {
+			getUser: jest.fn(async () => ({ data: { user: { id: "user-1" } } })),
+		},
+		from: jest.fn(() => chain),
+	};
+
 	return {
-		useSupabase: () => ({
-			supabase: {
-				auth: {
-					getUser: jest.fn(async () => ({ data: { user: { id: "user-1" } } })),
-				},
-				from: jest.fn(() => chain),
-			},
-		}),
+		useSupabase: () => ({ supabase }),
 		SupabaseProvider: ({ children }: { children: React.ReactNode }) => children,
 	};
 });
@@ -464,19 +464,28 @@ describe("ReportsScreen visual parity", () => {
 		expect(foodGlow.props.cy).toBe(foodGlow.props.cx);
 	});
 
-	it("lets custom period choose exact start and end dates for client-side report filtering", async () => {
+	it("lets custom period choose exact start and end dates with the wheel picker", async () => {
 		const screen = renderReports();
 
 		fireEvent.press(screen.getByText("Kustom"));
-		expect(screen.getByLabelText("Kurangi tahun mulai")).toBeTruthy();
-		expect(screen.getByLabelText("Tambah tahun mulai")).toBeTruthy();
-		expect(screen.getByLabelText("Pilih tanggal mulai 15")).toBeTruthy();
-		expect(screen.getByLabelText("Pilih tanggal selesai 20")).toBeTruthy();
-		fireEvent.press(await screen.findByTestId("reports-start-day-15"));
-		fireEvent.press(await screen.findByTestId("reports-end-day-20"));
-		fireEvent.press(screen.getByLabelText("Terapkan rentang tanggal"));
+		expect(await screen.findByTestId("reports-start-date-wheel-picker")).toBeTruthy();
+		expect(screen.getByTestId("reports-end-date-wheel-picker")).toBeTruthy();
+		expect(screen.queryByLabelText("Kurangi tahun mulai")).toBeNull();
+		expect(screen.queryByLabelText("Terapkan rentang tanggal")).toBeNull();
+
+		fireEvent(
+			screen.getByTestId("reports-start-date-wheel-picker-date-scroll"),
+			"scrollEndDrag",
+			{ nativeEvent: { contentOffset: { y: 42 * 14 } } },
+		);
+		fireEvent(
+			screen.getByTestId("reports-end-date-wheel-picker-date-scroll"),
+			"scrollEndDrag",
+			{ nativeEvent: { contentOffset: { y: 42 * 19 } } },
+		);
 
 		await waitFor(() => {
+			expect(screen.getAllByText(/15 .* - 20 /).length).toBeGreaterThan(0);
 			expect((globalThis as any).__reportsQueryChain.then).toHaveBeenCalled();
 			expect((globalThis as any).__reportsGteMock).not.toHaveBeenCalled();
 			expect((globalThis as any).__reportsLteMock).not.toHaveBeenCalled();

@@ -22,3 +22,7 @@ This directory is the canonical home for project documentation. Runtime code rem
 ## Root docs intentionally kept
 
 `CLAUDE.md` remains at repo root as an agent/tooling entrypoint. All other root markdown docs were moved under `docs/*` during Cleanup Phase 2.
+
+## Current continuation handoff
+
+- `docs/handoffs/AI_CONTINUATION_HANDOFF_NEXT_STEPS_2026-06-05.md` — current next-step plan for future models.

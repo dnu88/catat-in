@@ -895,10 +895,24 @@ export default function SettingsScreen() {
 
 		setLogoutLoading(true);
 		animateLogoutButton(0.96);
+
+		let timeoutHandle: ReturnType<typeof setTimeout> | null = null;
+		const signOutWithTimeout = Promise.race([
+			supabase.auth.signOut(),
+			new Promise((resolve) => {
+				timeoutHandle = setTimeout(resolve, 1800);
+			}),
+		]);
+
 		try {
-			await supabase.auth.signOut();
-			router.replace("/(auth)/login");
+			await signOutWithTimeout;
+		} catch {
+			// Never keep the user trapped on Settings if the network/auth client
+			// fails during logout. The auth layout will also redirect when the
+			// Supabase session becomes null.
 		} finally {
+			if (timeoutHandle) clearTimeout(timeoutHandle);
+			router.replace("/(auth)/login");
 			setLogoutLoading(false);
 			animateLogoutButton(1);
 		}

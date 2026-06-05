@@ -31,24 +31,43 @@ export default function TabsLayout() {
 			setLoading(false);
 		});
 
+		let confirmNullSessionTimer: ReturnType<typeof setTimeout> | null = null;
 		const {
 			data: { subscription },
-		} = supabase.auth.onAuthStateChange(async (_event, nextSession) => {
+		} = supabase.auth.onAuthStateChange((event, nextSession) => {
+			if (confirmNullSessionTimer) {
+				clearTimeout(confirmNullSessionTimer);
+				confirmNullSessionTimer = null;
+			}
+
 			if (nextSession) {
 				setSession(nextSession);
 				return;
 			}
 
+			if (event === "SIGNED_OUT") {
+				setSession(null);
+				return;
+			}
+
 			// PWA OAuth callbacks can briefly emit a null session while PKCE
-			// storage is still settling. Confirm before redirecting to login so
-			// feature flows such as receipt upload are not interrupted mid-action.
-			const {
-				data: { session: confirmedSession },
-			} = await supabase.auth.getSession();
-			setSession(confirmedSession);
+			// storage is settling. Do not await Supabase inside the auth callback:
+			// schedule a short confirmation instead so signOut/navigation can never
+			// be blocked by a nested auth call.
+			confirmNullSessionTimer = setTimeout(() => {
+				void supabase.auth
+					.getSession()
+					.then(({ data: { session: confirmedSession } }) => {
+						setSession(confirmedSession);
+					})
+					.catch(() => setSession(null));
+			}, 250);
 		});
 
-		return () => subscription.unsubscribe();
+		return () => {
+			if (confirmNullSessionTimer) clearTimeout(confirmNullSessionTimer);
+			subscription.unsubscribe();
+		};
 	}, [supabase.auth]);
 
 	if (loading) {
