@@ -43,4 +43,15 @@ describe("IOSWheelDatePicker", () => {
 			);
 		});
 	});
+	it("shows the 31st day for months that have 31 days", () => {
+		const currentYear = new Date().getFullYear();
+		const march = renderPicker(`${currentYear}-03-31`);
+
+		expect(march.getByTestId("date-picker-date-item-31")).toBeTruthy();
+
+		march.unmount();
+		const april = renderPicker(`${currentYear}-04-30`);
+		expect(april.queryByTestId("date-picker-date-item-31")).toBeNull();
+	});
+
 });

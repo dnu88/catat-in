@@ -171,6 +171,9 @@ export default function TransactionNewScreen() {
 						customCategoryPlaceholder: "Category name",
 						date: "Date",
 						dateLabel: "Transaction date",
+						dateDraft: "Wheel selection",
+						dateConfirmed: "Confirmed date",
+						confirmDate: "Confirm date",
 						merchant: "Merchant (optional)",
 						merchantLabel: "Optional transaction merchant",
 						merchantPlaceholder: "example: Indomaret",
@@ -222,6 +225,9 @@ export default function TransactionNewScreen() {
 						customCategoryPlaceholder: "Nama kategori",
 						date: "Tanggal",
 						dateLabel: "Tanggal transaksi",
+						dateDraft: "Pilihan roda",
+						dateConfirmed: "Tanggal terkonfirmasi",
+						confirmDate: "Konfirmasi tanggal",
 						merchant: "Merchant (opsional)",
 						merchantLabel: "Merchant transaksi opsional",
 						merchantPlaceholder: "contoh: Indomaret",
@@ -266,6 +272,7 @@ export default function TransactionNewScreen() {
 	const [customCategory, setCustomCategory] = useState<string>("");
 	const [description, setDescription] = useState("");
 	const [date, setDate] = useState(todayIso());
+	const [draftDate, setDraftDate] = useState(todayIso());
 	const [merchant, setMerchant] = useState("");
 	const [note, setNote] = useState("");
 
@@ -342,7 +349,9 @@ export default function TransactionNewScreen() {
 					setCustomCategory(nextCategory);
 				}
 				setDescription(transaction.description || transaction.catatan || "");
-				setDate(transaction.date || transaction.tanggal || todayIso());
+				const nextDate = transaction.date || transaction.tanggal || todayIso();
+				setDate(nextDate);
+				setDraftDate(nextDate);
 				setMerchant(transaction.merchant || "");
 				setNote(transaction.note || "");
 			} else {
@@ -354,7 +363,9 @@ export default function TransactionNewScreen() {
 				setCategory("");
 				setCustomCategory("");
 				setDescription("");
-				setDate(todayIso());
+				const nextDate = todayIso();
+				setDate(nextDate);
+				setDraftDate(nextDate);
 				setMerchant("");
 				setNote("");
 			}
@@ -396,7 +407,9 @@ export default function TransactionNewScreen() {
 		setCategory("");
 		setCustomCategory("");
 		setDescription("");
-		setDate(todayIso());
+		const nextDate = todayIso();
+		setDate(nextDate);
+		setDraftDate(nextDate);
 		setMerchant("");
 		setNote("");
 	}, [wallets]);
@@ -410,7 +423,8 @@ export default function TransactionNewScreen() {
 			setError(tx.incompleteError);
 			return;
 		}
-		if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+		const effectiveDate = draftDate || date;
+		if (!/^\d{4}-\d{2}-\d{2}$/.test(effectiveDate)) {
 			setError(tx.dateError);
 			return;
 		}
@@ -419,6 +433,7 @@ export default function TransactionNewScreen() {
 			return;
 		}
 
+		setDate(effectiveDate);
 		setSubmitting(true);
 		setError(null);
 		setSuccessMessage(null);
@@ -429,7 +444,7 @@ export default function TransactionNewScreen() {
 			category: resolvedCategory,
 			description: resolvedDescription,
 			merchant: merchant.trim() || null,
-			date,
+			date: effectiveDate,
 			note: note.trim() || null,
 		};
 		try {
@@ -689,11 +704,29 @@ export default function TransactionNewScreen() {
 				<View key="transaction-form-date" testID="transaction-form-date" style={styles.field}>
 					<Text style={styles.label}>{tx.date}</Text>
 					<IOSWheelDatePicker
-						value={date}
-						onChange={setDate}
+						value={draftDate}
+						onChange={setDraftDate}
 						locale={isEn ? "en" : "id"}
 						testID="transaction-date-wheel-picker"
 					/>
+					<View style={styles.dateConfirmCard}>
+						<View style={styles.dateConfirmCopy}>
+							<Text style={styles.dateDraftText}>{tx.dateDraft}: {draftDate}</Text>
+							<Text style={styles.dateConfirmedText}>{tx.dateConfirmed}: {date}</Text>
+						</View>
+						<Pressable
+							accessibilityRole="button"
+							accessibilityLabel={tx.confirmDate}
+							testID="transaction-date-confirm"
+							style={({ pressed }) => [
+								styles.dateConfirmButton,
+								pressed && { opacity: 0.78 },
+							]}
+							onPress={() => setDate(draftDate)}
+						>
+							<Text style={styles.dateConfirmButtonText}>{tx.confirmDate}</Text>
+						</Pressable>
+					</View>
 				</View>
 
 				{/* Merchant */}
@@ -864,6 +897,39 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			paddingHorizontal: 14,
 			paddingVertical: 12,
 			fontSize: 14,
+		},
+		dateConfirmCard: {
+			borderWidth: 1,
+			borderColor: theme.colors.borderSoft,
+			borderRadius: 14,
+			backgroundColor: theme.colors.mutedSurface,
+			padding: 10,
+			gap: 10,
+		},
+		dateConfirmCopy: {
+			gap: 3,
+		},
+		dateDraftText: {
+			color: theme.colors.textPrimary,
+			fontSize: 12,
+			fontWeight: "800",
+		},
+		dateConfirmedText: {
+			color: theme.colors.textMuted,
+			fontSize: 11,
+			fontWeight: "700",
+		},
+		dateConfirmButton: {
+			minHeight: 44,
+			borderRadius: 12,
+			alignItems: "center",
+			justifyContent: "center",
+			backgroundColor: theme.mode === "light" ? theme.colors.brandPrimaryDeep : theme.colors.brandPrimary,
+		},
+		dateConfirmButtonText: {
+			color: theme.colors.textInverse,
+			fontSize: 13,
+			fontWeight: "900",
 		},
 		warningCard: {
 			padding: 12,

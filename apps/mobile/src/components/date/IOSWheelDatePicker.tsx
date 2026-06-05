@@ -78,6 +78,7 @@ function WheelColumn({ label, values, selected, onChange, format, testID }: Whee
 	const selectedIndex = Math.max(0, values.indexOf(selected));
 	const [scrollY, setScrollY] = useState(selectedIndex * ITEM_HEIGHT);
 	const lastSelectedRef = useRef(selected);
+	const scrollSettleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
 	useEffect(() => {
 		lastSelectedRef.current = selected;
@@ -89,14 +90,20 @@ function WheelColumn({ label, values, selected, onChange, format, testID }: Whee
 		return () => clearTimeout(handle);
 	}, [selected, selectedIndex]);
 
-	const selectFromOffset = (offsetY: number) => {
+	useEffect(() => {
+		return () => {
+			if (scrollSettleTimerRef.current) clearTimeout(scrollSettleTimerRef.current);
+		};
+	}, []);
+
+	const selectFromOffset = (offsetY: number, animated = true) => {
 		if (!values.length) return;
 		const rawIndex = Math.round(offsetY / ITEM_HEIGHT);
 		const clampedIndex = Math.min(values.length - 1, Math.max(0, rawIndex));
 		const nextValue = values[clampedIndex];
 		const snappedY = clampedIndex * ITEM_HEIGHT;
 		setScrollY(snappedY);
-		scrollRef.current?.scrollTo({ y: snappedY, animated: true });
+		scrollRef.current?.scrollTo({ y: snappedY, animated });
 		if (nextValue !== lastSelectedRef.current) {
 			lastSelectedRef.current = nextValue;
 			onChange(nextValue);
@@ -104,10 +111,19 @@ function WheelColumn({ label, values, selected, onChange, format, testID }: Whee
 	};
 
 	const handleScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
-		setScrollY(event.nativeEvent.contentOffset.y);
+		const offsetY = event.nativeEvent.contentOffset.y;
+		setScrollY(offsetY);
+		if (scrollSettleTimerRef.current) clearTimeout(scrollSettleTimerRef.current);
+		// React Native Web does not consistently fire momentum/drag-end for
+		// every wheel gesture. Debounce scroll updates so the centered value is
+		// still selected after the wheel settles, preventing stale dates on save.
+		scrollSettleTimerRef.current = setTimeout(() => {
+			selectFromOffset(offsetY);
+		}, 140);
 	};
 
 	const handleScrollEnd = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+		if (scrollSettleTimerRef.current) clearTimeout(scrollSettleTimerRef.current);
 		selectFromOffset(event.nativeEvent.contentOffset.y);
 	};
 

@@ -230,6 +230,38 @@ describe("transaction-new edit mode", () => {
 		expect(mockReplace).not.toHaveBeenCalled();
 	});
 
+	it("saves the wheel-selected and confirmed manual transaction date", async () => {
+		mockSearchParams = {};
+		const currentYear = new Date().getFullYear();
+		const screen = renderScreen();
+
+		expect(await screen.findByText("Catat Manual")).toBeTruthy();
+		fireEvent(screen.getByTestId("transaction-date-wheel-picker-month-scroll"), "scrollEndDrag", {
+			nativeEvent: { contentOffset: { y: 42 * 6 } },
+		});
+		fireEvent(screen.getByTestId("transaction-date-wheel-picker-date-scroll"), "scrollEndDrag", {
+			nativeEvent: { contentOffset: { y: 42 * 30 } },
+		});
+
+		await waitFor(() =>
+			expect(screen.getByText(`Pilihan roda: ${currentYear}-07-31`)).toBeTruthy(),
+		);
+		fireEvent.press(screen.getByTestId("transaction-date-confirm"));
+		expect(screen.getByText(`Tanggal terkonfirmasi: ${currentYear}-07-31`)).toBeTruthy();
+
+		fireEvent.changeText(screen.getByLabelText("Nominal transaksi"), "50000");
+		fireEvent.changeText(screen.getByLabelText("Deskripsi transaksi"), "Belanja akhir bulan");
+		fireEvent.press(screen.getByLabelText("Pilih kategori Makan & Minum"));
+		fireEvent.press(screen.getByLabelText("Simpan transaksi manual"));
+
+		await waitFor(() =>
+			expect(mockCreateTransaction).toHaveBeenCalledWith(
+				expect.objectContaining({ date: `${currentYear}-07-31` }),
+				{ type: "personal" },
+			),
+		);
+	});
+
 	it("uses selected app language on the manual transaction form", async () => {
 		jest.mocked(AsyncStorage.getItem).mockImplementation(async (key) =>
 			key === "kaswise:language-preference" ? "en" : null,
