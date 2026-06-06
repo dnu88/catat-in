@@ -489,11 +489,17 @@ describe("ReportsScreen visual parity", () => {
 		fireEvent.press(screen.getAllByTestId(/reports-manage-saved-rule-/)[0]);
 		await waitFor(() => expect(screen.getByTestId("reports-saved-rule-manage-modal")).toBeTruthy());
 		expect(screen.getByTestId("reports-set-selected-rule-default")).toBeTruthy();
+		expect(screen.queryByTestId("reports-selected-rule-name-input")).toBeNull();
+		fireEvent.press(screen.getByTestId("reports-open-rename-rule"));
+		await waitFor(() => {
+			expect(screen.queryByTestId("reports-saved-rule-manage-modal")).toBeNull();
+			expect(screen.getByTestId("reports-rename-rule-modal")).toBeTruthy();
+		});
 		fireEvent.changeText(screen.getByTestId("reports-selected-rule-name-input"), "Gajian kantor");
 		fireEvent.press(screen.getByTestId("reports-save-selected-rule-name"));
 		await waitFor(() => {
 			expect(screen.getByText("Gajian kantor")).toBeTruthy();
-			expect(screen.queryByTestId("reports-saved-rule-manage-modal")).toBeNull();
+			expect(screen.queryByTestId("reports-rename-rule-modal")).toBeNull();
 		});
 
 		fireEvent.press(screen.getByTestId("reports-reset-current-month"));

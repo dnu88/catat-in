@@ -67,6 +67,16 @@ Reports period controls were simplified with an impeccable compact layout:
 - The `•••` manage trigger remains available on each saved rule chip.
 - `Default active` remains available inside the manage sheet.
 
+### 1d. Keyboard-safe rename flow
+
+Saved rule management now separates action selection from text editing:
+
+```text
+••• → manage sheet → Ubah nama → centered rename modal
+```
+
+The manage sheet no longer contains a text input, so `Default active`, `Hapus`, and `Batal` are never covered by the keyboard. The rename form opens in a centered `KeyboardAvoidingView` modal with only the name input plus `Batal`/`Simpan nama`.
+
 ### 2. Explicit Reports active-period reset
 
 Updated:
@@ -143,7 +153,7 @@ Results:
 type-check: pass
 focused tests: 56 passed / 5 suites
 export:pwa: pass
-web bundle: _expo/static/js/web/entry-eeb20e7176a4d36b6f1439a96ff0915f.js
+web bundle: _expo/static/js/web/entry-e9b47693ed8ae819deca546d4cbb90ab.js
 ```
 
 ## Files changed

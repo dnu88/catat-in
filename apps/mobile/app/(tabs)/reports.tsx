@@ -6,7 +6,9 @@ import {
 	Text,
 	View,
 	Share,
+	KeyboardAvoidingView,
 	Modal,
+	Platform,
 	RefreshControl,
 	TextInput,
 } from "react-native";
@@ -225,6 +227,7 @@ export default function ReportsScreen() {
 	const [showDateModal, setShowDateModal] = useState(false);
 	const [showSaveRuleModal, setShowSaveRuleModal] = useState(false);
 	const [managedRuleId, setManagedRuleId] = useState<string | null>(null);
+	const [renameRuleId, setRenameRuleId] = useState<string | null>(null);
 	const [ruleName, setRuleName] = useState("");
 	const [editingRuleName, setEditingRuleName] = useState("");
 	const [customStartYear, setCustomStartYear] = useState(
@@ -553,14 +556,17 @@ export default function ReportsScreen() {
 	const managedSavedRule = managedRuleId
 		? savedRules.find((rule) => rule.id === managedRuleId) ?? null
 		: null;
+	const renameSavedRule = renameRuleId
+		? savedRules.find((rule) => rule.id === renameRuleId) ?? null
+		: null;
 	const activePeriodDisplayLabel = activePeriod.ruleName
 		? `${activePeriod.ruleName} · ${activePeriodRangeLabel}`
 		: activePeriodRangeLabel;
 	const isCurrentMonthActive = isCurrentMonthPeriod(activePeriod);
 
 	useEffect(() => {
-		setEditingRuleName(managedSavedRule?.name ?? "");
-	}, [managedSavedRule?.id, managedSavedRule?.name]);
+		setEditingRuleName(renameSavedRule?.name ?? "");
+	}, [renameSavedRule?.id, renameSavedRule?.name]);
 
 	const formatRupiah = (valueInJuta: number) =>
 		`Rp ${(valueInJuta * 1_000_000).toLocaleString("id-ID")}`;
@@ -846,10 +852,21 @@ export default function ReportsScreen() {
 		setManagedRuleId(null);
 	};
 
-	const handleSaveManagedRuleName = () => {
+	const openRenameRuleModal = () => {
 		if (!managedSavedRule) return;
-		updateSavedRule(managedSavedRule.id, { name: editingRuleName });
+		setRenameRuleId(managedSavedRule.id);
+		setEditingRuleName(managedSavedRule.name);
 		closeRuleManageModal();
+	};
+
+	const closeRenameRuleModal = () => {
+		setRenameRuleId(null);
+	};
+
+	const handleSaveRenamedRule = () => {
+		if (!renameSavedRule) return;
+		updateSavedRule(renameSavedRule.id, { name: editingRuleName });
+		closeRenameRuleModal();
 	};
 
 	const handleActivateManagedRule = () => {
@@ -2066,39 +2083,30 @@ export default function ReportsScreen() {
 								<Text style={styles.ruleManageSummary}>
 									{formatSavedRuleSummary(managedSavedRule, isEn ? "en" : "id")}
 								</Text>
-								<Text style={styles.modalSectionTitle}>{tx.renameRule}</Text>
-								<TextInput
-									testID="reports-selected-rule-name-input"
-									value={editingRuleName}
-									onChangeText={setEditingRuleName}
-									placeholder={managedSavedRule.name}
-									placeholderTextColor={theme.colors.textMuted}
-									style={styles.ruleNameInput}
-								/>
-								<View style={styles.ruleManagerActions}>
+								<View style={styles.ruleManageMenu}>
 									<Pressable
-										testID="reports-save-selected-rule-name"
+										testID="reports-open-rename-rule"
 										accessibilityRole="button"
-										style={styles.ruleManagerPrimaryButton}
-										onPress={handleSaveManagedRuleName}
+										style={styles.ruleManageMenuButton}
+										onPress={openRenameRuleModal}
 									>
-										<Text style={styles.ruleManagerPrimaryText}>{tx.saveRuleNameAction}</Text>
+										<Text style={styles.ruleManageMenuText}>{tx.renameRule}</Text>
 									</Pressable>
 									<Pressable
 										testID="reports-set-selected-rule-default"
 										accessibilityRole="button"
-										style={styles.ruleManagerSecondaryButton}
+										style={styles.ruleManageMenuButton}
 										onPress={handleActivateManagedRule}
 									>
-										<Text style={styles.ruleManagerSecondaryText}>{tx.defaultRuleActive}</Text>
+										<Text style={styles.ruleManageMenuText}>{tx.defaultRuleActive}</Text>
 									</Pressable>
 									<Pressable
 										testID="reports-delete-selected-rule"
 										accessibilityRole="button"
-										style={styles.ruleManagerDangerButton}
+										style={[styles.ruleManageMenuButton, styles.ruleManageMenuDangerButton]}
 										onPress={handleDeleteManagedRule}
 									>
-										<Text style={styles.ruleManagerDangerText}>{tx.deleteRule}</Text>
+										<Text style={styles.ruleManageMenuDangerText}>{tx.deleteRule}</Text>
 									</Pressable>
 								</View>
 								<Pressable
@@ -2113,6 +2121,57 @@ export default function ReportsScreen() {
 						) : null}
 					</View>
 				</View>
+			</Modal>
+
+			<Modal
+				visible={!!renameSavedRule}
+				transparent
+				animationType="fade"
+				onRequestClose={closeRenameRuleModal}
+			>
+				<KeyboardAvoidingView
+					behavior={Platform.OS === "ios" ? "padding" : undefined}
+					style={styles.renameModalKeyboardWrap}
+				>
+					<View style={styles.modalCenterOverlay}>
+						<View testID="reports-rename-rule-modal" style={styles.renameRuleCard}>
+							<Text style={styles.renameRuleTitle}>{tx.renameRule}</Text>
+							{renameSavedRule ? (
+								<>
+									<Text style={styles.renameRuleSummary}>
+										{formatSavedRuleSummary(renameSavedRule, isEn ? "en" : "id")}
+									</Text>
+									<TextInput
+										testID="reports-selected-rule-name-input"
+										value={editingRuleName}
+										onChangeText={setEditingRuleName}
+										placeholder={renameSavedRule.name}
+										placeholderTextColor={theme.colors.textMuted}
+										style={styles.ruleNameInput}
+									/>
+									<View style={styles.renameRuleActions}>
+										<Pressable
+											accessibilityRole="button"
+											accessibilityLabel={tx.modalCancel}
+											style={[styles.modalActionButton, styles.modalActionCancel]}
+											onPress={closeRenameRuleModal}
+										>
+											<Text style={styles.modalActionCancelText}>{tx.modalCancel}</Text>
+										</Pressable>
+										<Pressable
+											testID="reports-save-selected-rule-name"
+											accessibilityRole="button"
+											style={[styles.modalActionButton, styles.modalActionConfirm]}
+											onPress={handleSaveRenamedRule}
+										>
+											<Text style={styles.modalActionConfirmText}>{tx.saveRuleNameAction}</Text>
+										</Pressable>
+									</View>
+								</>
+							) : null}
+						</View>
+					</View>
+				</KeyboardAvoidingView>
 			</Modal>
 
 			<Modal
@@ -2479,51 +2538,68 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			marginTop: 3,
 			marginBottom: 16,
 		},
-		ruleManagerActions: {
-			flexDirection: "row",
-			alignItems: "center",
+		ruleManageMenu: {
 			gap: 8,
-			flexWrap: "wrap",
 		},
-		ruleManagerPrimaryButton: {
-			minHeight: 40,
-			borderRadius: 999,
-			paddingHorizontal: 12,
-			justifyContent: "center",
-			backgroundColor: theme.mode === "light" ? theme.colors.brandPrimaryDeep : theme.colors.brandPrimary,
-		},
-		ruleManagerPrimaryText: {
-			color: theme.colors.textInverse,
-			fontSize: 12,
-			fontWeight: "800",
-		},
-		ruleManagerSecondaryButton: {
-			minHeight: 40,
-			borderRadius: 999,
+		ruleManageMenuButton: {
+			minHeight: 46,
+			borderRadius: 14,
 			borderWidth: 1,
 			borderColor: theme.colors.borderSoft,
-			paddingHorizontal: 12,
+			backgroundColor: theme.colors.mutedSurface,
+			paddingHorizontal: 14,
 			justifyContent: "center",
-			backgroundColor: theme.colors.surface,
 		},
-		ruleManagerSecondaryText: {
-			color: theme.colors.textSecondary,
-			fontSize: 12,
+		ruleManageMenuText: {
+			color: theme.colors.textPrimary,
+			fontSize: 14,
 			fontWeight: "800",
 		},
-		ruleManagerDangerButton: {
-			minHeight: 40,
-			borderRadius: 999,
-			borderWidth: 1,
-			borderColor: `${theme.colors.danger}40`,
-			paddingHorizontal: 12,
-			justifyContent: "center",
-			backgroundColor: `${theme.colors.danger}12`,
+		ruleManageMenuDangerButton: {
+			borderColor: `${theme.colors.danger}35`,
+			backgroundColor: `${theme.colors.danger}10`,
 		},
-		ruleManagerDangerText: {
+		ruleManageMenuDangerText: {
 			color: theme.colors.danger,
-			fontSize: 12,
+			fontSize: 14,
 			fontWeight: "800",
+		},
+		renameModalKeyboardWrap: {
+			flex: 1,
+		},
+		modalCenterOverlay: {
+			flex: 1,
+			backgroundColor: `${theme.colors.background}${theme.opacity[50] * 100}`,
+			alignItems: "center",
+			justifyContent: "center",
+			padding: 20,
+		},
+		renameRuleCard: {
+			width: "100%",
+			maxWidth: 360,
+			borderRadius: 22,
+			borderWidth: 1,
+			borderColor: theme.colors.borderSoft,
+			backgroundColor: theme.colors.surface,
+			padding: 18,
+		},
+		renameRuleTitle: {
+			color: theme.colors.textPrimary,
+			fontSize: 17,
+			fontWeight: "800",
+			textAlign: "center",
+		},
+		renameRuleSummary: {
+			color: theme.colors.textMuted,
+			fontSize: 12,
+			fontWeight: "700",
+			textAlign: "center",
+			marginTop: 4,
+			marginBottom: 16,
+		},
+		renameRuleActions: {
+			flexDirection: "row",
+			gap: 10,
 		},
 		ruleManageCancelButton: {
 			minHeight: 44,
