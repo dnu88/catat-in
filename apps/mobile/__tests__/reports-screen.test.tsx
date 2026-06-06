@@ -467,6 +467,38 @@ describe("ReportsScreen visual parity", () => {
 		expect(foodGlow.props.cy).toBe(foodGlow.props.cx);
 	});
 
+	it("saves, renames, resets, and deletes a custom period rule", async () => {
+		const screen = renderReports();
+
+		fireEvent.press(screen.getByText("Kustom"));
+		expect(await screen.findByTestId("reports-start-date-wheel-picker")).toBeTruthy();
+		fireEvent.press(screen.getByTestId("reports-save-period-rule-from-date-modal"));
+
+		await waitFor(() =>
+			expect(screen.getByTestId("reports-period-rule-name-input")).toBeTruthy(),
+		);
+		fireEvent.changeText(screen.getByTestId("reports-period-rule-name-input"), "Siklus gajian");
+		fireEvent.press(screen.getByTestId("reports-confirm-save-period-rule"));
+
+		await waitFor(() => {
+			expect(screen.getByText("Siklus gajian")).toBeTruthy();
+			expect(screen.getByTestId("reports-selected-rule-manager")).toBeTruthy();
+			expect(screen.getByTestId("reports-reset-current-month")).toBeTruthy();
+		});
+
+		fireEvent.changeText(screen.getByTestId("reports-selected-rule-name-input"), "Gajian kantor");
+		fireEvent.press(screen.getByTestId("reports-save-selected-rule-name"));
+		await waitFor(() => expect(screen.getByText("Gajian kantor")).toBeTruthy());
+
+		fireEvent.press(screen.getByTestId("reports-reset-current-month"));
+		await waitFor(() => expect(screen.queryByTestId("reports-reset-current-month")).toBeNull());
+
+		fireEvent.press(screen.getByText("Gajian kantor"));
+		await waitFor(() => expect(screen.getByTestId("reports-selected-rule-manager")).toBeTruthy());
+		fireEvent.press(screen.getByTestId("reports-delete-selected-rule"));
+		await waitFor(() => expect(screen.queryByText("Gajian kantor")).toBeNull());
+	});
+
 	it("lets custom period choose exact start and end dates with the wheel picker", async () => {
 		const screen = renderReports();
 

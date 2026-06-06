@@ -50,6 +50,8 @@ type ReportPeriodContextValue = {
 		startDay: number;
 		endDay: number;
 	}) => SavedReportPeriodRule;
+	updateSavedRule: (ruleId: string, input: { name: string }) => void;
+	deleteSavedRule: (ruleId: string) => void;
 	selectSavedRule: (ruleId: string) => void;
 };
 
@@ -300,6 +302,18 @@ function serializeSelection(selection: ActiveReportPeriodSelection) {
 	return selection;
 }
 
+async function maybeDeleteRemoteRule(supabase: any, ruleId: string) {
+	if (typeof supabase?.from !== "function") return;
+	try {
+		const table = supabase.from("report_period_rules");
+		if (typeof table?.delete === "function") {
+			await table.delete().eq("id", ruleId);
+		}
+	} catch {
+		// Local storage keeps the app functional if the backend delete is unavailable.
+	}
+}
+
 async function maybeSaveRemote(
 	supabase: any,
 	userId: string,
@@ -443,6 +457,32 @@ export function ReportPeriodProvider({ children }: { children: React.ReactNode }
 		return rule;
 	}, [persist]);
 
+	const updateSavedRule = useCallback((ruleId: string, input: { name: string }) => {
+		const nextName = input.name.trim();
+		if (!nextName) return;
+		const now = new Date().toISOString();
+		const nextRules = rulesRef.current.map((rule) =>
+			rule.id === ruleId ? { ...rule, name: nextName, updatedAt: now } : rule,
+		);
+		setSavedRules(nextRules);
+		rulesRef.current = nextRules;
+		persist(nextRules, selectionRef.current);
+	}, [persist]);
+
+	const deleteSavedRule = useCallback((ruleId: string) => {
+		const nextRules = rulesRef.current.filter((rule) => rule.id !== ruleId);
+		const nextSelection =
+			selectionRef.current.type === "saved_rule" && selectionRef.current.ruleId === ruleId
+				? { type: "preset", preset: "month" } as ActiveReportPeriodSelection
+				: selectionRef.current;
+		setSavedRules(nextRules);
+		setActiveSelection(nextSelection);
+		rulesRef.current = nextRules;
+		selectionRef.current = nextSelection;
+		persist(nextRules, nextSelection);
+		void maybeDeleteRemoteRule(supabase, ruleId);
+	}, [persist, supabase]);
+
 	const selectSavedRule = useCallback((ruleId: string) => {
 		setSelectionAndPersist({ type: "saved_rule", ruleId });
 	}, [setSelectionAndPersist]);
@@ -456,6 +496,8 @@ export function ReportPeriodProvider({ children }: { children: React.ReactNode }
 		setActivePeriod,
 		resetToCurrentMonth,
 		saveMonthlyCycleRule,
+		updateSavedRule,
+		deleteSavedRule,
 		selectSavedRule,
 	}), [
 		activePeriod,
@@ -463,6 +505,8 @@ export function ReportPeriodProvider({ children }: { children: React.ReactNode }
 		resetToCurrentMonth,
 		savedRules,
 		saveMonthlyCycleRule,
+		updateSavedRule,
+		deleteSavedRule,
 		selectSavedRule,
 		setActivePeriod,
 	]);

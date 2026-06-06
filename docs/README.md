@@ -25,6 +25,7 @@ This directory is the canonical home for project documentation. Runtime code rem
 
 ## Current continuation handoff
 
-- `docs/handoffs/AI_CONTINUATION_HANDOFF_DASHBOARD_THEME_HERO_SIMPLIFICATION_2026-06-06.md` — latest dashboard theme toggle, hero simplification, Settings Appearance removal, and validation notes.
+- `docs/handoffs/AI_CONTINUATION_HANDOFF_REPORT_RULE_MANAGEMENT_HELP_AUDIT_2026-06-06.md` — latest saved-rule management, Reports reset, language audit, and user-facing FAQ notes.
+- `docs/handoffs/AI_CONTINUATION_HANDOFF_DASHBOARD_THEME_HERO_SIMPLIFICATION_2026-06-06.md` — dashboard theme toggle, hero simplification, Settings Appearance removal, and validation notes.
 - `docs/handoffs/AI_CONTINUATION_HANDOFF_REPORT_PERIOD_RULES_DASHBOARD_PRIVACY_2026-06-06.md` — mobile/PWA report-period rules, dashboard privacy toggle, validation, and deployment notes.
 - `docs/handoffs/AI_CONTINUATION_HANDOFF_NEXT_STEPS_2026-06-05.md` — prior next-step plan for future models.

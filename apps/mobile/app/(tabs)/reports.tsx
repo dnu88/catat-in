@@ -30,6 +30,7 @@ import {
 	buildReportPeriod,
 	formatReportPeriodLabel,
 	formatSavedRuleSummary,
+	isCurrentMonthPeriod,
 	parseDateKey,
 	type ReportPeriodPreset,
 	useReportPeriod,
@@ -203,7 +204,10 @@ export default function ReportsScreen() {
 		activePeriod,
 		savedRules,
 		setActivePeriod,
+		resetToCurrentMonth,
 		saveMonthlyCycleRule,
+		updateSavedRule,
+		deleteSavedRule,
 		selectSavedRule,
 	} = useReportPeriod();
 	const { language } = useI18n();
@@ -221,6 +225,7 @@ export default function ReportsScreen() {
 	const [showDateModal, setShowDateModal] = useState(false);
 	const [showSaveRuleModal, setShowSaveRuleModal] = useState(false);
 	const [ruleName, setRuleName] = useState("");
+	const [editingRuleName, setEditingRuleName] = useState("");
 	const [customStartYear, setCustomStartYear] = useState(
 		new Date().getFullYear(),
 	);
@@ -358,6 +363,13 @@ export default function ReportsScreen() {
 				saveRuleHint: (startDay: number, endDay: number) => `Repeats every month from day ${startDay} to ${endDay}.`,
 				saveRuleConfirm: "Save rule",
 				savedRuleAccessibility: (name: string) => `Choose saved period ${name}`,
+				activePeriodTitle: "Active period",
+				resetToThisMonth: "This month",
+				manageRuleTitle: "Manage selected rule",
+				renameRule: "Rename rule",
+				saveRuleNameAction: "Save name",
+				defaultRuleActive: "Default active",
+				deleteRule: "Delete",
 				detailTitle: "Transactions",
 				noCategoryTransactions: "No transactions in this category.",
 				otherCategoryInsight: (percent: number) =>
@@ -372,6 +384,9 @@ export default function ReportsScreen() {
 				shareA11y: "Share report",
 				manageBudgetA11y: "Manage budget wallets",
 				choosePeriodA11y: (label: string) => `Choose period ${label}`,
+				showOverviewA11y: "Show report overview",
+				showCategoryA11y: "Show report category",
+				showCompareA11y: "Show report comparison",
 				editCustomRangeA11y: "Edit custom date range",
 				chartColumnA11y: (label: string, year: number) => `View cashflow rhythm ${label} ${year}`,
 				donutA11y: "Expense composition by category",
@@ -406,7 +421,7 @@ export default function ReportsScreen() {
 				thisMonth: "bulan ini",
 				tooltipIncome: "Pemasukan",
 				tooltipExpense: "Pengeluaran",
-				breakdownTitle: "Breakdown Pengeluaran",
+				breakdownTitle: "Rincian Pengeluaran",
 				breakdownSub: "Per kategori",
 				ringLabel: "Total",
 				compareTitle: "Perbandingan Bulan Lalu",
@@ -433,6 +448,13 @@ export default function ReportsScreen() {
 				saveRuleHint: (startDay: number, endDay: number) => `Berulang tiap bulan dari tanggal ${startDay} sampai ${endDay}.`,
 				saveRuleConfirm: "Simpan aturan",
 				savedRuleAccessibility: (name: string) => `Pilih aturan periode ${name}`,
+				activePeriodTitle: "Periode aktif",
+				resetToThisMonth: "Bulan ini",
+				manageRuleTitle: "Kelola aturan terpilih",
+				renameRule: "Ubah nama aturan",
+				saveRuleNameAction: "Simpan nama",
+				defaultRuleActive: "Default aktif",
+				deleteRule: "Hapus",
 				detailTitle: "Transaksi",
 				noCategoryTransactions: "Belum ada transaksi di kategori ini.",
 				otherCategoryInsight: (percent: number) =>
@@ -447,6 +469,9 @@ export default function ReportsScreen() {
 				shareA11y: "Bagikan laporan",
 				manageBudgetA11y: "Kelola dompet budget",
 				choosePeriodA11y: (label: string) => `Pilih periode ${label}`,
+				showOverviewA11y: "Tampilkan ringkasan laporan",
+				showCategoryA11y: "Tampilkan kategori laporan",
+				showCompareA11y: "Tampilkan perbandingan laporan",
 				editCustomRangeA11y: "Ubah rentang tanggal kustom",
 				chartColumnA11y: (label: string, year: number) => `Lihat ritme kas ${label} ${year}`,
 				donutA11y: "Komposisi pengeluaran berdasarkan kategori",
@@ -522,6 +547,18 @@ export default function ReportsScreen() {
 				: periodFilter === "month"
 					? `${monthName(new Date().getMonth() + 1)} ${new Date().getFullYear()}`
 					: periodLabels[periodFilter];
+	const selectedSavedRule = activePeriod.ruleId
+		? savedRules.find((rule) => rule.id === activePeriod.ruleId) ?? null
+		: null;
+	const activePeriodDisplayLabel = activePeriod.ruleName
+		? `${activePeriod.ruleName} · ${activePeriodRangeLabel}`
+		: activePeriodRangeLabel;
+	const isCurrentMonthActive = isCurrentMonthPeriod(activePeriod);
+
+	useEffect(() => {
+		setEditingRuleName(selectedSavedRule?.name ?? "");
+	}, [selectedSavedRule?.id, selectedSavedRule?.name]);
+
 	const formatRupiah = (valueInJuta: number) =>
 		`Rp ${(valueInJuta * 1_000_000).toLocaleString("id-ID")}`;
 	const formatCompactRupiah = (value: number) => {
@@ -796,6 +833,16 @@ export default function ReportsScreen() {
 		});
 		setShowSaveRuleModal(false);
 		setShowDateModal(false);
+	};
+
+	const handleSaveSelectedRuleName = () => {
+		if (!selectedSavedRule) return;
+		updateSavedRule(selectedSavedRule.id, { name: editingRuleName });
+	};
+
+	const handleDeleteSelectedRule = () => {
+		if (!selectedSavedRule) return;
+		deleteSavedRule(selectedSavedRule.id);
 	};
 
 	const applyStartDate = (nextValue: string) => {
@@ -1248,7 +1295,7 @@ export default function ReportsScreen() {
 				>
 					<Pressable
 						accessibilityRole="button"
-						accessibilityLabel="Tampilkan ringkasan laporan"
+						accessibilityLabel={tx.showOverviewA11y}
 						accessibilityState={{ selected: activeTab === "overview" }}
 						style={[
 							styles.tabChip,
@@ -1267,7 +1314,7 @@ export default function ReportsScreen() {
 					</Pressable>
 					<Pressable
 						accessibilityRole="button"
-						accessibilityLabel="Tampilkan kategori laporan"
+						accessibilityLabel={tx.showCategoryA11y}
 						accessibilityState={{ selected: activeTab === "category" }}
 						style={[
 							styles.tabChip,
@@ -1286,7 +1333,7 @@ export default function ReportsScreen() {
 					</Pressable>
 					<Pressable
 						accessibilityRole="button"
-						accessibilityLabel="Tampilkan perbandingan laporan"
+						accessibilityLabel={tx.showCompareA11y}
 						accessibilityState={{ selected: activeTab === "compare" }}
 						style={[
 							styles.tabChip,
@@ -1325,7 +1372,10 @@ export default function ReportsScreen() {
 							onPress={() => {
 								setPeriodFilter(key);
 								if (key === "custom") {
+									setActivePeriod(buildCustomReportPeriod(customStartIso, customEndIso));
 									openCustomDateModal();
+								} else {
+									setActivePeriod(buildReportPeriod(key));
 								}
 							}}
 						>
@@ -1340,6 +1390,24 @@ export default function ReportsScreen() {
 						</Pressable>
 					))}
 				</ScrollView>
+
+				<View testID="reports-active-period-card" style={styles.activePeriodCard}>
+					<View style={styles.activePeriodCopy}>
+						<Text style={styles.activePeriodTitle}>{tx.activePeriodTitle}</Text>
+						<Text style={styles.activePeriodValue}>{activePeriodDisplayLabel}</Text>
+					</View>
+					{!isCurrentMonthActive ? (
+						<Pressable
+							testID="reports-reset-current-month"
+							accessibilityRole="button"
+							accessibilityLabel={tx.resetToThisMonth}
+							style={styles.activePeriodResetButton}
+							onPress={resetToCurrentMonth}
+						>
+							<Text style={styles.activePeriodResetText}>{tx.resetToThisMonth}</Text>
+						</Pressable>
+					) : null}
+				</View>
 
 				<View testID="reports-saved-rules-card" style={styles.savedRulesCard}>
 					<View style={styles.savedRulesHeader}>
@@ -1375,6 +1443,46 @@ export default function ReportsScreen() {
 							})}
 						</ScrollView>
 					)}
+					{selectedSavedRule ? (
+						<View testID="reports-selected-rule-manager" style={styles.ruleManagerCard}>
+							<Text style={styles.ruleManagerTitle}>{tx.manageRuleTitle}</Text>
+							<Text style={styles.modalSectionTitle}>{tx.renameRule}</Text>
+							<TextInput
+								testID="reports-selected-rule-name-input"
+								value={editingRuleName}
+								onChangeText={setEditingRuleName}
+								placeholder={selectedSavedRule.name}
+								placeholderTextColor={theme.colors.textMuted}
+								style={styles.ruleNameInput}
+							/>
+							<View style={styles.ruleManagerActions}>
+								<Pressable
+									testID="reports-save-selected-rule-name"
+									accessibilityRole="button"
+									style={styles.ruleManagerPrimaryButton}
+									onPress={handleSaveSelectedRuleName}
+								>
+									<Text style={styles.ruleManagerPrimaryText}>{tx.saveRuleNameAction}</Text>
+								</Pressable>
+								<Pressable
+									testID="reports-set-selected-rule-default"
+									accessibilityRole="button"
+									style={styles.ruleManagerSecondaryButton}
+									onPress={() => selectSavedRule(selectedSavedRule.id)}
+								>
+									<Text style={styles.ruleManagerSecondaryText}>{tx.defaultRuleActive}</Text>
+								</Pressable>
+								<Pressable
+									testID="reports-delete-selected-rule"
+									accessibilityRole="button"
+									style={styles.ruleManagerDangerButton}
+									onPress={handleDeleteSelectedRule}
+								>
+									<Text style={styles.ruleManagerDangerText}>{tx.deleteRule}</Text>
+								</Pressable>
+							</View>
+						</View>
+					) : null}
 				</View>
 				{periodFilter === "custom" && (
 					<View style={styles.customRulePrompt}>
@@ -2130,6 +2238,49 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 		periodChipTextActive: {
 			color: brandText,
 		},
+		activePeriodCard: {
+			backgroundColor: theme.colors.mutedSurface,
+			borderRadius: 16,
+			borderWidth: 1,
+			borderColor: theme.colors.borderSoft,
+			padding: 12,
+			flexDirection: "row",
+			alignItems: "center",
+			justifyContent: "space-between",
+			gap: 10,
+		},
+		activePeriodCopy: {
+			flex: 1,
+			minWidth: 0,
+		},
+		activePeriodTitle: {
+			color: theme.colors.textMuted,
+			fontSize: 11,
+			fontWeight: "800",
+			textTransform: "uppercase",
+			letterSpacing: 0.4,
+		},
+		activePeriodValue: {
+			color: theme.colors.textPrimary,
+			fontSize: 13,
+			fontWeight: "800",
+			marginTop: 2,
+		},
+		activePeriodResetButton: {
+			minHeight: 36,
+			borderRadius: 999,
+			borderWidth: 1,
+			borderColor: brandSoftBorder,
+			backgroundColor: brandSoftBg,
+			paddingHorizontal: 12,
+			alignItems: "center",
+			justifyContent: "center",
+		},
+		activePeriodResetText: {
+			color: brandText,
+			fontSize: 12,
+			fontWeight: "800",
+		},
 		savedRulesCard: {
 			backgroundColor: theme.colors.surface,
 			borderRadius: 18,
@@ -2228,6 +2379,65 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			fontWeight: "700",
 			paddingHorizontal: 12,
 			marginBottom: 12,
+		},
+		ruleManagerCard: {
+			backgroundColor: theme.colors.mutedSurface,
+			borderRadius: 14,
+			borderWidth: 1,
+			borderColor: theme.colors.borderSoft,
+			padding: 12,
+			gap: 8,
+		},
+		ruleManagerTitle: {
+			color: theme.colors.textPrimary,
+			fontSize: 13,
+			fontWeight: "800",
+		},
+		ruleManagerActions: {
+			flexDirection: "row",
+			alignItems: "center",
+			gap: 8,
+			flexWrap: "wrap",
+		},
+		ruleManagerPrimaryButton: {
+			minHeight: 40,
+			borderRadius: 999,
+			paddingHorizontal: 12,
+			justifyContent: "center",
+			backgroundColor: theme.mode === "light" ? theme.colors.brandPrimaryDeep : theme.colors.brandPrimary,
+		},
+		ruleManagerPrimaryText: {
+			color: theme.colors.textInverse,
+			fontSize: 12,
+			fontWeight: "800",
+		},
+		ruleManagerSecondaryButton: {
+			minHeight: 40,
+			borderRadius: 999,
+			borderWidth: 1,
+			borderColor: theme.colors.borderSoft,
+			paddingHorizontal: 12,
+			justifyContent: "center",
+			backgroundColor: theme.colors.surface,
+		},
+		ruleManagerSecondaryText: {
+			color: theme.colors.textSecondary,
+			fontSize: 12,
+			fontWeight: "800",
+		},
+		ruleManagerDangerButton: {
+			minHeight: 40,
+			borderRadius: 999,
+			borderWidth: 1,
+			borderColor: `${theme.colors.danger}40`,
+			paddingHorizontal: 12,
+			justifyContent: "center",
+			backgroundColor: `${theme.colors.danger}12`,
+		},
+		ruleManagerDangerText: {
+			color: theme.colors.danger,
+			fontSize: 12,
+			fontWeight: "800",
 		},
 		loadingCard: {
 			backgroundColor: theme.colors.surface,

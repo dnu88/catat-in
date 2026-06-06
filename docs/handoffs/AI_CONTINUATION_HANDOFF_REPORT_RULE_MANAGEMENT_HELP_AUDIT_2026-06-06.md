@@ -1,0 +1,157 @@
+# AI Continuation Handoff — Report Rule Management + Help Docs + Language Audit
+
+Date: 2026-06-06
+Repo: `/home/Danu88/catat-in`
+Branch: `ops/hardening-bundle`
+Primary app: `apps/mobile`
+Live PWA: `https://kaswise.com`
+
+## Purpose
+
+Dokumen ini mencatat lanjutan setelah saved report-period rules, dashboard privacy toggle, dan dashboard theme simplification. Fokus kali ini adalah menjalankan backlog step 2–5 secara inline:
+
+1. Manage saved period rules.
+2. Reset active period yang lebih eksplisit di Reports.
+3. Audit kecil konsistensi bahasa.
+4. Dokumentasi user-facing singkat.
+
+## Delivered changes
+
+### 1. Manage saved period rules
+
+Updated:
+
+```text
+apps/mobile/src/state/report-period.tsx
+apps/mobile/app/(tabs)/reports.tsx
+apps/mobile/__tests__/reports-screen.test.tsx
+```
+
+Reports sekarang mendukung management rule terpilih:
+
+- rename saved rule,
+- save renamed rule,
+- keep selected rule as active/default preference,
+- delete saved rule.
+
+Delete active rule automatically falls back to current month.
+
+State layer now exposes:
+
+```ts
+updateSavedRule(ruleId, { name })
+deleteSavedRule(ruleId)
+selectSavedRule(ruleId)
+```
+
+Remote sync remains best-effort with local AsyncStorage fallback.
+
+### 2. Explicit Reports active-period reset
+
+Updated:
+
+```text
+apps/mobile/app/(tabs)/reports.tsx
+```
+
+Reports now shows an active-period card:
+
+```text
+Periode aktif / Active period
+Siklus gajian · 25 Mei – 24 Jun 2026
+[Bulan ini / This month]
+```
+
+The reset button appears when the active period is not the current month.
+
+### 3. Language audit
+
+Added:
+
+```text
+docs/audit/MOBILE_LANGUAGE_AUDIT_2026-06-06.md
+```
+
+Audit scope:
+
+- Dashboard
+- Reports
+- Transactions
+- Settings
+- FinanceContextSwitcher
+
+Result: touched UI copy and accessibility labels pass for Indonesian/English consistency. User-generated content intentionally remains unchanged.
+
+### 4. User-facing FAQ/help draft
+
+Added:
+
+```text
+docs/product/REPORT_PERIOD_DASHBOARD_FAQ_2026-06-06.md
+```
+
+FAQ explains:
+
+- `Sisa bulan ini`,
+- `Sisa periode ini`,
+- difference between cashflow and `Total saldo`,
+- how to create a salary-cycle rule,
+- how period sync works across Reports, Dashboard, Transactions,
+- dashboard nominal privacy toggle,
+- dashboard theme toggle.
+
+## Validation performed
+
+Commands:
+
+```bash
+corepack pnpm --filter mobile type-check
+corepack pnpm --filter mobile test -- --runTestsByPath \
+  __tests__/tabs-index.test.tsx \
+  __tests__/reports-screen.test.tsx \
+  __tests__/transactions-swipe-actions.test.tsx \
+  __tests__/screen-light-accent-regression.test.tsx \
+  __tests__/settings-screen.test.tsx \
+  --runInBand
+corepack pnpm --filter mobile export:pwa
+```
+
+Results:
+
+```text
+type-check: pass
+focused tests: 56 passed / 5 suites
+export:pwa: pass
+web bundle: _expo/static/js/web/entry-e00f827ee2e05656b347950918be8d39.js
+```
+
+## Files changed
+
+Runtime:
+
+```text
+apps/mobile/src/state/report-period.tsx
+apps/mobile/app/(tabs)/reports.tsx
+```
+
+Tests:
+
+```text
+apps/mobile/__tests__/reports-screen.test.tsx
+```
+
+Docs:
+
+```text
+docs/audit/MOBILE_LANGUAGE_AUDIT_2026-06-06.md
+docs/product/REPORT_PERIOD_DASHBOARD_FAQ_2026-06-06.md
+docs/handoffs/AI_CONTINUATION_HANDOFF_REPORT_RULE_MANAGEMENT_HELP_AUDIT_2026-06-06.md
+docs/README.md
+```
+
+## Known caveats
+
+- Manage UI is intentionally lightweight and scoped to the selected rule.
+- Rule editing currently supports rule name only; start/end day editing can be added later.
+- There is no destructive confirmation modal for delete; the action is visible in the selected rule manager and active deletion falls back safely to current month.
+- FAQ is documentation/help copy, not yet surfaced inside the PWA.
