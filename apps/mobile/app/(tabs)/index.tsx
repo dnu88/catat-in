@@ -90,7 +90,7 @@ function getInitials(fullName: string) {
 
 export default function DashboardScreen() {
 	const { supabase } = useSupabase();
-	const { theme } = useTheme();
+	const { theme, toggleTheme } = useTheme();
 	const { language } = useI18n();
 	const { activeContext } = useFinanceContext();
 	const { activePeriod, resetToCurrentMonth } = useReportPeriod();
@@ -106,14 +106,14 @@ export default function DashboardScreen() {
 						monthlyDeficit: "This month minus",
 						periodRemaining: "This period left",
 						periodDeficit: "This period minus",
-						monthlyRemainingSub: (month: string) => `Income minus spending in ${month}`,
-						periodRemainingSub: (period: string) => `Income minus spending for ${period}`,
 						activePeriod: "Active period",
 						resetPeriod: "This month",
 						hideAmounts: "Hide",
 						showAmounts: "Show",
 						hideAmountsA11y: "Hide dashboard amounts",
 						showAmountsA11y: "Show dashboard amounts",
+						switchToLightTheme: "Switch to light mode",
+						switchToDarkTheme: "Switch to dark mode",
 						manageWallets: "Manage wallets",
 						manage: "Manage",
 						quickActionA11y: (label: string) => `Quick action ${label}`,
@@ -158,14 +158,14 @@ export default function DashboardScreen() {
 						monthlyDeficit: "Minus bulan ini",
 						periodRemaining: "Sisa periode ini",
 						periodDeficit: "Minus periode ini",
-						monthlyRemainingSub: (month: string) => `Pemasukan dikurangi pengeluaran ${month}`,
-						periodRemainingSub: (period: string) => `Pemasukan dikurangi pengeluaran ${period}`,
 						activePeriod: "Periode aktif",
 						resetPeriod: "Bulan ini",
 						hideAmounts: "Sembunyikan",
 						showAmounts: "Lihat",
 						hideAmountsA11y: "Sembunyikan nominal dashboard",
 						showAmountsA11y: "Tampilkan nominal dashboard",
+						switchToLightTheme: "Ganti ke mode terang",
+						switchToDarkTheme: "Ganti ke mode gelap",
 						manageWallets: "Kelola dompet",
 						manage: "Kelola",
 						quickActionA11y: (label: string) => `Aksi cepat ${label}`,
@@ -386,9 +386,6 @@ export default function DashboardScreen() {
 	const heroTitle = isCurrentMonth
 		? monthlyRemaining < 0 ? tx.monthlyDeficit : tx.monthlyRemaining
 		: monthlyRemaining < 0 ? tx.periodDeficit : tx.periodRemaining;
-	const heroSubtitle = isCurrentMonth
-		? tx.monthlyRemainingSub(activePeriodRangeLabel)
-		: tx.periodRemainingSub(activePeriodRangeLabel);
 	const displayedTransactions = recentTransactions.slice(0, 3).map((transaction) => {
 		const categoryVisual = resolveCategoryVisual({
 			categoryName: transaction.category,
@@ -600,6 +597,20 @@ export default function DashboardScreen() {
 						<Text style={styles.dateText}>{dateText}</Text>
 					</View>
 					<View style={styles.headerActions}>
+						<Pressable
+							testID="home-theme-toggle"
+							accessibilityRole="button"
+							accessibilityLabel={theme.mode === "dark" ? tx.switchToLightTheme : tx.switchToDarkTheme}
+							style={({ pressed }) => [styles.headerIconButton, pressed && { opacity: 0.74 }]}
+							onPress={toggleTheme}
+						>
+							<KaswiseIcon
+								name={theme.mode === "dark" ? "sun" : "moon"}
+								size={18}
+								weight="bold"
+								color={theme.colors.textSecondary}
+							/>
+						</Pressable>
 						<View testID="home-avatar" style={styles.avatarWrap}>
 							{profilePhotoUrl ? (
 								<Image
@@ -631,9 +642,12 @@ export default function DashboardScreen() {
 									style={styles.privacyToggle}
 									onPress={toggleNominalVisibility}
 								>
-									<Text style={styles.privacyToggleText}>
-										{isNominalHidden ? tx.showAmounts : tx.hideAmounts}
-									</Text>
+									<KaswiseIcon
+										name={isNominalHidden ? "eyeSlash" : "eye"}
+										size={17}
+										weight="bold"
+										color={theme.colors.textSecondary}
+									/>
 								</Pressable>
 								<Pressable
 									accessibilityRole="button"
@@ -659,7 +673,6 @@ export default function DashboardScreen() {
 									{displayAmount(formatSignedCurrency(monthlyRemaining))}
 								</Text>
 							</View>
-							<Text style={styles.heroSubLabel}>{heroSubtitle}</Text>
 						</View>
 
 						<View style={styles.heroPeriodRow}>
@@ -985,6 +998,16 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			flexShrink: 1,
 			minWidth: 0,
 		},
+		headerIconButton: {
+			width: 38,
+			height: 38,
+			borderRadius: 19,
+			borderWidth: 1,
+			borderColor: theme.colors.borderSoft,
+			backgroundColor: theme.colors.mutedSurface,
+			alignItems: "center",
+			justifyContent: "center",
+		},
 		avatarWrap: {
 			width: 40,
 			height: 40,
@@ -1038,19 +1061,14 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			flexShrink: 0,
 		},
 		privacyToggle: {
-			minHeight: 34,
-			borderRadius: 999,
+			width: 34,
+			height: 34,
+			borderRadius: 17,
 			borderWidth: 1,
 			borderColor: theme.colors.borderSoft,
 			backgroundColor: theme.colors.mutedSurface,
-			paddingHorizontal: 10,
 			alignItems: "center",
 			justifyContent: "center",
-		},
-		privacyToggleText: {
-			color: theme.colors.textSecondary,
-			fontSize: 11,
-			fontWeight: theme.typography.fontWeight.extrabold,
 		},
 		manageText: {
 			color: theme.colors.textMuted,
@@ -1083,12 +1101,6 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 		},
 		heroAmountDanger: {
 			color: theme.colors.danger,
-		},
-		heroSubLabel: {
-			color: theme.colors.textMuted,
-			fontSize: 12,
-			fontWeight: theme.typography.fontWeight.semibold,
-			marginTop: 4,
 		},
 		heroPeriodRow: {
 			flexDirection: "row",

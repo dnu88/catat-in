@@ -2,6 +2,7 @@ import { fireEvent, render, waitFor } from "@testing-library/react-native";
 import { StyleSheet } from "react-native";
 import type { ViewStyle } from "react-native";
 
+import DashboardScreen from "../app/(tabs)/index";
 import SettingsScreen from "../app/(tabs)/settings";
 import TransactionsScreen from "../app/(tabs)/transactions";
 import TransactionNewScreen from "../app/(tabs)/transaction-new";
@@ -13,6 +14,10 @@ const mockFinanceContext = { type: "personal" as const };
 jest.mock("expo-router", () => ({
 	router: { replace: jest.fn() },
 	useRouter: () => ({ push: jest.fn(), back: jest.fn() }),
+	useFocusEffect: (callback: () => void | (() => void)) => {
+		const React = require("react");
+		React.useEffect(() => callback(), [callback]);
+	},
 }));
 
 jest.mock("../src/lib/supabase", () => ({
@@ -62,8 +67,8 @@ jest.mock("../src/state/report-period", () => {
 });
 
 describe("light accent regressions", () => {
-	it("does not use neon green for selected settings chips in light theme", () => {
-		const screen = render(
+	it("moves theme control out of Settings and keeps the dashboard toggle quiet", async () => {
+		const settings = render(
 			<I18nProvider>
 				<ThemeProvider>
 					<SettingsScreen />
@@ -71,15 +76,27 @@ describe("light accent regressions", () => {
 			</I18nProvider>,
 		);
 
-		const lightChip = screen.getByTestId("settings-theme-light");
+		expect(settings.queryByTestId("settings-theme-light")).toBeNull();
+		expect(settings.queryByText("Tampilan")).toBeNull();
+		settings.unmount();
 
-		fireEvent.press(lightChip);
+		const dashboard = render(
+			<ThemeProvider>
+				<I18nProvider>
+					<DashboardScreen />
+				</I18nProvider>
+			</ThemeProvider>,
+		);
 
+		await waitFor(() => expect(dashboard.getByTestId("home-theme-toggle")).toBeTruthy());
+		const toggleStyle = dashboard.getByTestId("home-theme-toggle").props.style;
 		const flattened = StyleSheet.flatten(
-			lightChip.props.style as object,
+			typeof toggleStyle === "function"
+				? toggleStyle({ pressed: false, hovered: false, focused: false })
+				: toggleStyle,
 		) as ViewStyle;
-		expect(flattened.backgroundColor).toBe("#3F6212");
 		expect(flattened.backgroundColor).not.toBe("#A3FF12");
+		dashboard.unmount();
 	});
 
 	it("keeps transaction-new icon controls accessible and at least 44px wide", async () => {

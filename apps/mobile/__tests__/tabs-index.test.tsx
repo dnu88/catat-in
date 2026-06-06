@@ -371,6 +371,18 @@ describe("DashboardScreen dark luxury Home parity", () => {
 		]);
 	});
 
+	it("offers the theme toggle from the dashboard header", async () => {
+		const screen = renderDashboard();
+
+		await waitFor(() => expect(screen.getByTestId("home-theme-toggle")).toBeTruthy());
+		fireEvent.press(screen.getByTestId("home-theme-toggle"));
+
+		expect(AsyncStorage.setItem).toHaveBeenCalledWith(
+			"kaswise:theme-preference",
+			expect.stringMatching(/^(light|dark)$/),
+		);
+	});
+
 	it("can hide and show dashboard nominal amounts", async () => {
 		mockWallets = [{ id: "wallet-1", name: "BCA", balance: 250000 }];
 		mockTransactions = [
