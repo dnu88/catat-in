@@ -559,9 +559,8 @@ export default function ReportsScreen() {
 	const renameSavedRule = renameRuleId
 		? savedRules.find((rule) => rule.id === renameRuleId) ?? null
 		: null;
-	const activePeriodDisplayLabel = activePeriod.ruleName
-		? `${activePeriod.ruleName} · ${activePeriodRangeLabel}`
-		: activePeriodRangeLabel;
+	const activePeriodNameLabel = activePeriod.ruleName ?? activePeriodRangeLabel;
+	const shouldShowActivePeriodRange = Boolean(activePeriod.ruleName);
 	const isCurrentMonthActive = isCurrentMonthPeriod(activePeriod);
 
 	useEffect(() => {
@@ -1431,7 +1430,10 @@ export default function ReportsScreen() {
 					<View style={styles.activePeriodRow}>
 						<View style={styles.activePeriodCopy}>
 							<Text style={styles.activePeriodTitle}>{tx.activePeriodTitle}</Text>
-							<Text numberOfLines={2} style={styles.activePeriodValue}>{activePeriodDisplayLabel}</Text>
+							<Text numberOfLines={1} style={styles.activePeriodValue}>{activePeriodNameLabel}</Text>
+							{shouldShowActivePeriodRange ? (
+								<Text numberOfLines={1} style={styles.activePeriodDate}>{activePeriodRangeLabel}</Text>
+							) : null}
 						</View>
 						{!isCurrentMonthActive ? (
 							<Pressable
@@ -2391,6 +2393,13 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			fontSize: 13,
 			fontWeight: "800",
 			lineHeight: 17,
+			marginTop: 1,
+		},
+		activePeriodDate: {
+			color: theme.colors.textMuted,
+			fontSize: 11,
+			fontWeight: "700",
+			lineHeight: 15,
 			marginTop: 1,
 		},
 		activePeriodResetButton: {

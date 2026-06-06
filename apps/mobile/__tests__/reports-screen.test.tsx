@@ -481,7 +481,7 @@ describe("ReportsScreen visual parity", () => {
 		fireEvent.press(screen.getByTestId("reports-confirm-save-period-rule"));
 
 		await waitFor(() => {
-			expect(screen.getByText("Siklus gajian")).toBeTruthy();
+			expect(screen.getAllByText("Siklus gajian").length).toBeGreaterThan(0);
 			expect(screen.queryByTestId("reports-saved-rule-manage-modal")).toBeNull();
 			expect(screen.getByTestId("reports-reset-current-month")).toBeTruthy();
 		});
@@ -498,7 +498,7 @@ describe("ReportsScreen visual parity", () => {
 		fireEvent.changeText(screen.getByTestId("reports-selected-rule-name-input"), "Gajian kantor");
 		fireEvent.press(screen.getByTestId("reports-save-selected-rule-name"));
 		await waitFor(() => {
-			expect(screen.getByText("Gajian kantor")).toBeTruthy();
+			expect(screen.getAllByText("Gajian kantor").length).toBeGreaterThan(0);
 			expect(screen.queryByTestId("reports-rename-rule-modal")).toBeNull();
 		});
 
