@@ -18,7 +18,7 @@ import { useSupabase } from "../../src/lib/supabase";
 import { IOSWheelDatePicker } from "../../src/components/date/IOSWheelDatePicker";
 import { IconBubble } from "../../src/components/ui";
 import { PageEntrance, StaggeredEntrance } from "../../src/components/motion";
-import type { KaswiseIconName } from "../../src/components/icons/kaswise-icons";
+import { KaswiseIcon, type KaswiseIconName } from "../../src/components/icons/kaswise-icons";
 import {
 	resolveCategoryVisual,
 	type CategoryTone,
@@ -224,6 +224,7 @@ export default function ReportsScreen() {
 	>(null);
 	const [showDateModal, setShowDateModal] = useState(false);
 	const [showSaveRuleModal, setShowSaveRuleModal] = useState(false);
+	const [managedRuleId, setManagedRuleId] = useState<string | null>(null);
 	const [ruleName, setRuleName] = useState("");
 	const [editingRuleName, setEditingRuleName] = useState("");
 	const [customStartYear, setCustomStartYear] = useState(
@@ -363,9 +364,10 @@ export default function ReportsScreen() {
 				saveRuleHint: (startDay: number, endDay: number) => `Repeats every month from day ${startDay} to ${endDay}.`,
 				saveRuleConfirm: "Save rule",
 				savedRuleAccessibility: (name: string) => `Choose saved period ${name}`,
+				manageRuleAccessibility: (name: string) => `Manage saved period ${name}`,
 				activePeriodTitle: "Active period",
 				resetToThisMonth: "This month",
-				manageRuleTitle: "Manage selected rule",
+				manageRuleTitle: "Manage period rule",
 				renameRule: "Rename rule",
 				saveRuleNameAction: "Save name",
 				defaultRuleActive: "Default active",
@@ -448,9 +450,10 @@ export default function ReportsScreen() {
 				saveRuleHint: (startDay: number, endDay: number) => `Berulang tiap bulan dari tanggal ${startDay} sampai ${endDay}.`,
 				saveRuleConfirm: "Simpan aturan",
 				savedRuleAccessibility: (name: string) => `Pilih aturan periode ${name}`,
+				manageRuleAccessibility: (name: string) => `Kelola aturan periode ${name}`,
 				activePeriodTitle: "Periode aktif",
 				resetToThisMonth: "Bulan ini",
-				manageRuleTitle: "Kelola aturan terpilih",
+				manageRuleTitle: "Kelola aturan periode",
 				renameRule: "Ubah nama aturan",
 				saveRuleNameAction: "Simpan nama",
 				defaultRuleActive: "Default aktif",
@@ -547,8 +550,8 @@ export default function ReportsScreen() {
 				: periodFilter === "month"
 					? `${monthName(new Date().getMonth() + 1)} ${new Date().getFullYear()}`
 					: periodLabels[periodFilter];
-	const selectedSavedRule = activePeriod.ruleId
-		? savedRules.find((rule) => rule.id === activePeriod.ruleId) ?? null
+	const managedSavedRule = managedRuleId
+		? savedRules.find((rule) => rule.id === managedRuleId) ?? null
 		: null;
 	const activePeriodDisplayLabel = activePeriod.ruleName
 		? `${activePeriod.ruleName} · ${activePeriodRangeLabel}`
@@ -556,8 +559,8 @@ export default function ReportsScreen() {
 	const isCurrentMonthActive = isCurrentMonthPeriod(activePeriod);
 
 	useEffect(() => {
-		setEditingRuleName(selectedSavedRule?.name ?? "");
-	}, [selectedSavedRule?.id, selectedSavedRule?.name]);
+		setEditingRuleName(managedSavedRule?.name ?? "");
+	}, [managedSavedRule?.id, managedSavedRule?.name]);
 
 	const formatRupiah = (valueInJuta: number) =>
 		`Rp ${(valueInJuta * 1_000_000).toLocaleString("id-ID")}`;
@@ -835,14 +838,30 @@ export default function ReportsScreen() {
 		setShowDateModal(false);
 	};
 
-	const handleSaveSelectedRuleName = () => {
-		if (!selectedSavedRule) return;
-		updateSavedRule(selectedSavedRule.id, { name: editingRuleName });
+	const openRuleManageModal = (ruleId: string) => {
+		setManagedRuleId(ruleId);
 	};
 
-	const handleDeleteSelectedRule = () => {
-		if (!selectedSavedRule) return;
-		deleteSavedRule(selectedSavedRule.id);
+	const closeRuleManageModal = () => {
+		setManagedRuleId(null);
+	};
+
+	const handleSaveManagedRuleName = () => {
+		if (!managedSavedRule) return;
+		updateSavedRule(managedSavedRule.id, { name: editingRuleName });
+		closeRuleManageModal();
+	};
+
+	const handleActivateManagedRule = () => {
+		if (!managedSavedRule) return;
+		selectSavedRule(managedSavedRule.id);
+		closeRuleManageModal();
+	};
+
+	const handleDeleteManagedRule = () => {
+		if (!managedSavedRule) return;
+		deleteSavedRule(managedSavedRule.id);
+		closeRuleManageModal();
 	};
 
 	const applyStartDate = (nextValue: string) => {
@@ -1425,64 +1444,42 @@ export default function ReportsScreen() {
 							{savedRules.map((rule) => {
 								const selected = activePeriod.type === "saved_rule" && activePeriod.ruleId === rule.id;
 								return (
-									<Pressable
+									<View
 										key={rule.id}
-										testID={`reports-saved-rule-${rule.id}`}
-										accessibilityRole="button"
-										accessibilityLabel={tx.savedRuleAccessibility(rule.name)}
-										accessibilityState={{ selected }}
-										style={[styles.savedRuleChip, selected && styles.savedRuleChipActive]}
-										onPress={() => selectSavedRule(rule.id)}
+										style={[styles.savedRuleChipShell, selected && styles.savedRuleChipShellActive]}
 									>
-										<Text style={[styles.savedRuleName, selected && styles.savedRuleNameActive]}>{rule.name}</Text>
-										<Text style={[styles.savedRuleSummary, selected && styles.savedRuleSummaryActive]}>
-											{formatSavedRuleSummary(rule, isEn ? "en" : "id")}
-										</Text>
-									</Pressable>
+										<Pressable
+											testID={`reports-saved-rule-${rule.id}`}
+											accessibilityRole="button"
+											accessibilityLabel={tx.savedRuleAccessibility(rule.name)}
+											accessibilityState={{ selected }}
+											style={styles.savedRuleChip}
+											onPress={() => selectSavedRule(rule.id)}
+										>
+											<Text style={[styles.savedRuleName, selected && styles.savedRuleNameActive]}>{rule.name}</Text>
+											<Text style={[styles.savedRuleSummary, selected && styles.savedRuleSummaryActive]}>
+												{formatSavedRuleSummary(rule, isEn ? "en" : "id")}
+											</Text>
+										</Pressable>
+										<Pressable
+											testID={`reports-manage-saved-rule-${rule.id}`}
+											accessibilityRole="button"
+											accessibilityLabel={tx.manageRuleAccessibility(rule.name)}
+											style={[styles.savedRuleManageButton, selected && styles.savedRuleManageButtonActive]}
+											onPress={() => openRuleManageModal(rule.id)}
+										>
+											<KaswiseIcon
+												name="more"
+												size={18}
+												color={selected ? (theme.mode === "light" ? theme.colors.brandPrimaryDeep : theme.colors.brandPrimary) : theme.colors.textMuted}
+												weight="bold"
+											/>
+										</Pressable>
+									</View>
 								);
 							})}
 						</ScrollView>
 					)}
-					{selectedSavedRule ? (
-						<View testID="reports-selected-rule-manager" style={styles.ruleManagerCard}>
-							<Text style={styles.ruleManagerTitle}>{tx.manageRuleTitle}</Text>
-							<Text style={styles.modalSectionTitle}>{tx.renameRule}</Text>
-							<TextInput
-								testID="reports-selected-rule-name-input"
-								value={editingRuleName}
-								onChangeText={setEditingRuleName}
-								placeholder={selectedSavedRule.name}
-								placeholderTextColor={theme.colors.textMuted}
-								style={styles.ruleNameInput}
-							/>
-							<View style={styles.ruleManagerActions}>
-								<Pressable
-									testID="reports-save-selected-rule-name"
-									accessibilityRole="button"
-									style={styles.ruleManagerPrimaryButton}
-									onPress={handleSaveSelectedRuleName}
-								>
-									<Text style={styles.ruleManagerPrimaryText}>{tx.saveRuleNameAction}</Text>
-								</Pressable>
-								<Pressable
-									testID="reports-set-selected-rule-default"
-									accessibilityRole="button"
-									style={styles.ruleManagerSecondaryButton}
-									onPress={() => selectSavedRule(selectedSavedRule.id)}
-								>
-									<Text style={styles.ruleManagerSecondaryText}>{tx.defaultRuleActive}</Text>
-								</Pressable>
-								<Pressable
-									testID="reports-delete-selected-rule"
-									accessibilityRole="button"
-									style={styles.ruleManagerDangerButton}
-									onPress={handleDeleteSelectedRule}
-								>
-									<Text style={styles.ruleManagerDangerText}>{tx.deleteRule}</Text>
-								</Pressable>
-							</View>
-						</View>
-					) : null}
 				</View>
 				{periodFilter === "custom" && (
 					<View style={styles.customRulePrompt}>
@@ -2057,6 +2054,71 @@ export default function ReportsScreen() {
 			</Modal>
 
 			<Modal
+				visible={!!managedSavedRule}
+				transparent
+				animationType="slide"
+				onRequestClose={closeRuleManageModal}
+			>
+				<View style={styles.modalOverlay}>
+					<View testID="reports-saved-rule-manage-modal" style={styles.ruleManageSheet}>
+						<View style={styles.ruleManageHandle} />
+						<Text style={styles.modalTitle}>{tx.manageRuleTitle}</Text>
+						{managedSavedRule ? (
+							<>
+								<Text style={styles.ruleManageName}>{managedSavedRule.name}</Text>
+								<Text style={styles.ruleManageSummary}>
+									{formatSavedRuleSummary(managedSavedRule, isEn ? "en" : "id")}
+								</Text>
+								<Text style={styles.modalSectionTitle}>{tx.renameRule}</Text>
+								<TextInput
+									testID="reports-selected-rule-name-input"
+									value={editingRuleName}
+									onChangeText={setEditingRuleName}
+									placeholder={managedSavedRule.name}
+									placeholderTextColor={theme.colors.textMuted}
+									style={styles.ruleNameInput}
+								/>
+								<View style={styles.ruleManagerActions}>
+									<Pressable
+										testID="reports-save-selected-rule-name"
+										accessibilityRole="button"
+										style={styles.ruleManagerPrimaryButton}
+										onPress={handleSaveManagedRuleName}
+									>
+										<Text style={styles.ruleManagerPrimaryText}>{tx.saveRuleNameAction}</Text>
+									</Pressable>
+									<Pressable
+										testID="reports-set-selected-rule-default"
+										accessibilityRole="button"
+										style={styles.ruleManagerSecondaryButton}
+										onPress={handleActivateManagedRule}
+									>
+										<Text style={styles.ruleManagerSecondaryText}>{tx.defaultRuleActive}</Text>
+									</Pressable>
+									<Pressable
+										testID="reports-delete-selected-rule"
+										accessibilityRole="button"
+										style={styles.ruleManagerDangerButton}
+										onPress={handleDeleteManagedRule}
+									>
+										<Text style={styles.ruleManagerDangerText}>{tx.deleteRule}</Text>
+									</Pressable>
+								</View>
+								<Pressable
+									accessibilityRole="button"
+									accessibilityLabel={tx.modalCancel}
+									style={styles.ruleManageCancelButton}
+									onPress={closeRuleManageModal}
+								>
+									<Text style={styles.ruleManageCancelText}>{tx.modalCancel}</Text>
+								</Pressable>
+							</>
+						) : null}
+					</View>
+				</View>
+			</Modal>
+
+			<Modal
 				visible={!!selectedCategory}
 				transparent
 				animationType="slide"
@@ -2314,20 +2376,40 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			gap: 8,
 			paddingRight: 2,
 		},
-		savedRuleChip: {
-			minWidth: 158,
-			minHeight: 56,
-			borderRadius: 14,
+		savedRuleChipShell: {
+			minWidth: 178,
+			minHeight: 58,
+			borderRadius: 16,
 			borderWidth: 1,
 			borderColor: theme.colors.borderSoft,
 			backgroundColor: theme.colors.mutedSurface,
-			paddingHorizontal: 12,
+			flexDirection: "row",
+			alignItems: "stretch",
+			overflow: "hidden",
+		},
+		savedRuleChipShellActive: {
+			backgroundColor: brandSoftBg,
+			borderColor: brandSoftBorder,
+		},
+		savedRuleChip: {
+			flex: 1,
+			minHeight: 56,
+			justifyContent: "center",
+			paddingLeft: 12,
+			paddingRight: 8,
 			paddingVertical: 10,
 			gap: 3,
 		},
-		savedRuleChipActive: {
-			backgroundColor: brandSoftBg,
-			borderColor: brandSoftBorder,
+		savedRuleManageButton: {
+			width: 42,
+			alignItems: "center",
+			justifyContent: "center",
+			borderLeftWidth: 1,
+			borderLeftColor: theme.colors.borderSoft,
+		},
+		savedRuleManageButtonActive: {
+			borderLeftColor: brandSoftBorder,
+			backgroundColor: `${theme.colors.surface}66`,
 		},
 		savedRuleName: {
 			color: theme.colors.textPrimary,
@@ -2380,18 +2462,37 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			paddingHorizontal: 12,
 			marginBottom: 12,
 		},
-		ruleManagerCard: {
-			backgroundColor: theme.colors.mutedSurface,
-			borderRadius: 14,
-			borderWidth: 1,
+		ruleManageSheet: {
+			backgroundColor: theme.colors.surface,
+			borderTopLeftRadius: 24,
+			borderTopRightRadius: 24,
+			paddingHorizontal: 20,
+			paddingTop: 10,
+			paddingBottom: 34,
+			borderTopWidth: 1,
 			borderColor: theme.colors.borderSoft,
-			padding: 12,
-			gap: 8,
 		},
-		ruleManagerTitle: {
+		ruleManageHandle: {
+			alignSelf: "center",
+			width: 42,
+			height: 4,
+			borderRadius: 999,
+			backgroundColor: theme.colors.borderSoft,
+			marginBottom: 14,
+		},
+		ruleManageName: {
 			color: theme.colors.textPrimary,
-			fontSize: 13,
+			fontSize: 15,
 			fontWeight: "800",
+			textAlign: "center",
+		},
+		ruleManageSummary: {
+			color: theme.colors.textMuted,
+			fontSize: 12,
+			fontWeight: "700",
+			textAlign: "center",
+			marginTop: 3,
+			marginBottom: 16,
 		},
 		ruleManagerActions: {
 			flexDirection: "row",
@@ -2437,6 +2538,19 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 		ruleManagerDangerText: {
 			color: theme.colors.danger,
 			fontSize: 12,
+			fontWeight: "800",
+		},
+		ruleManageCancelButton: {
+			minHeight: 44,
+			borderRadius: 999,
+			alignItems: "center",
+			justifyContent: "center",
+			marginTop: 12,
+			backgroundColor: theme.colors.mutedSurface,
+		},
+		ruleManageCancelText: {
+			color: theme.colors.textSecondary,
+			fontSize: 13,
 			fontWeight: "800",
 		},
 		loadingCard: {

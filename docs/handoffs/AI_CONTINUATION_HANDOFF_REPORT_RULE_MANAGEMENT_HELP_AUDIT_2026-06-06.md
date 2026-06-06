@@ -27,11 +27,11 @@ apps/mobile/app/(tabs)/reports.tsx
 apps/mobile/__tests__/reports-screen.test.tsx
 ```
 
-Reports sekarang mendukung management rule terpilih:
+Reports sekarang mendukung management rule lewat trigger `•••` di tiap saved rule chip:
 
 - rename saved rule,
 - save renamed rule,
-- keep selected rule as active/default preference,
+- keep `Default active` action available from the management sheet,
 - delete saved rule.
 
 Delete active rule automatically falls back to current month.
@@ -45,6 +45,17 @@ selectSavedRule(ruleId)
 ```
 
 Remote sync remains best-effort with local AsyncStorage fallback.
+
+### 1b. Managed saved period trigger refinement
+
+The inline management card was replaced with a compact, mobile-first trigger:
+
+```text
+Tap saved rule chip = activate/select period
+Tap ••• on chip = open manage sheet
+```
+
+The manage sheet contains rename, `Default active`, delete, and cancel actions. This keeps Reports compact while preserving management actions.
 
 ### 2. Explicit Reports active-period reset
 
@@ -122,7 +133,7 @@ Results:
 type-check: pass
 focused tests: 56 passed / 5 suites
 export:pwa: pass
-web bundle: _expo/static/js/web/entry-e00f827ee2e05656b347950918be8d39.js
+web bundle: _expo/static/js/web/entry-56cbf5c75c5fd1911549ba76651af347.js
 ```
 
 ## Files changed
@@ -151,7 +162,7 @@ docs/README.md
 
 ## Known caveats
 
-- Manage UI is intentionally lightweight and scoped to the selected rule.
+- Manage UI is intentionally lightweight and only appears after tapping the `•••` trigger on a saved rule chip.
 - Rule editing currently supports rule name only; start/end day editing can be added later.
 - There is no destructive confirmation modal for delete; the action is visible in the selected rule manager and active deletion falls back safely to current month.
 - FAQ is documentation/help copy, not yet surfaced inside the PWA.

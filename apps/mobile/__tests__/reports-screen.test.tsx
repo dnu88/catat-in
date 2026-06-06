@@ -482,19 +482,26 @@ describe("ReportsScreen visual parity", () => {
 
 		await waitFor(() => {
 			expect(screen.getByText("Siklus gajian")).toBeTruthy();
-			expect(screen.getByTestId("reports-selected-rule-manager")).toBeTruthy();
+			expect(screen.queryByTestId("reports-saved-rule-manage-modal")).toBeNull();
 			expect(screen.getByTestId("reports-reset-current-month")).toBeTruthy();
 		});
 
+		fireEvent.press(screen.getAllByTestId(/reports-manage-saved-rule-/)[0]);
+		await waitFor(() => expect(screen.getByTestId("reports-saved-rule-manage-modal")).toBeTruthy());
+		expect(screen.getByTestId("reports-set-selected-rule-default")).toBeTruthy();
 		fireEvent.changeText(screen.getByTestId("reports-selected-rule-name-input"), "Gajian kantor");
 		fireEvent.press(screen.getByTestId("reports-save-selected-rule-name"));
-		await waitFor(() => expect(screen.getByText("Gajian kantor")).toBeTruthy());
+		await waitFor(() => {
+			expect(screen.getByText("Gajian kantor")).toBeTruthy();
+			expect(screen.queryByTestId("reports-saved-rule-manage-modal")).toBeNull();
+		});
 
 		fireEvent.press(screen.getByTestId("reports-reset-current-month"));
 		await waitFor(() => expect(screen.queryByTestId("reports-reset-current-month")).toBeNull());
 
 		fireEvent.press(screen.getByText("Gajian kantor"));
-		await waitFor(() => expect(screen.getByTestId("reports-selected-rule-manager")).toBeTruthy());
+		fireEvent.press(screen.getAllByTestId(/reports-manage-saved-rule-/)[0]);
+		await waitFor(() => expect(screen.getByTestId("reports-saved-rule-manage-modal")).toBeTruthy());
 		fireEvent.press(screen.getByTestId("reports-delete-selected-rule"));
 		await waitFor(() => expect(screen.queryByText("Gajian kantor")).toBeNull());
 	});

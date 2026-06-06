@@ -11,6 +11,7 @@ import {
   ChartPieSlice,
   Coffee,
   CreditCard,
+  DotsThree,
   DotsThreeCircle,
   Envelope,
   Eye,
@@ -83,6 +84,7 @@ const iconMap = {
   household: House,
   investment: TrendUp,
   gift: Gift,
+  more: DotsThree,
   otherExpenses: DotsThreeCircle,
 } as const
 
