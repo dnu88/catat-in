@@ -199,14 +199,21 @@ export default function LandingPage() {
 
         <div className="landing-support-points">
           <div className="landing-support-point">
-            <span className="landing-icon-bubble landing-icon-bubble-primary" aria-hidden="true">ID</span>
+            <span className="landing-icon-bubble landing-icon-bubble-primary" aria-hidden="true">AI</span>
+            <div>
+              <h3>Ketik atau foto, sama cepatnya</h3>
+              <p>Tulis kalimat biasa atau foto struk belanja, AI merapikan keduanya jadi transaksi.</p>
+            </div>
+          </div>
+          <div className="landing-support-point">
+            <span className="landing-icon-bubble landing-icon-bubble-info" aria-hidden="true">ID</span>
             <div>
               <h3>Paham konteks lokal</h3>
               <p>Kopi Kenangan, QRIS, 35rb, transfer bank: istilah sehari-hari langsung dikenali.</p>
             </div>
           </div>
           <div className="landing-support-point">
-            <span className="landing-icon-bubble landing-icon-bubble-info" aria-hidden="true">∙∙</span>
+            <span className="landing-icon-bubble landing-icon-bubble-warning" aria-hidden="true">∙∙</span>
             <div>
               <h3>Ringan, bukan dashboard penuh chart</h3>
               <p>Cukup arus kas, kategori terbesar, dan sisa budget, tanpa UI yang bikin pusing.</p>
