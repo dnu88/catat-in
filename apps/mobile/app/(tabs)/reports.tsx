@@ -1431,7 +1431,7 @@ export default function ReportsScreen() {
 					<View style={styles.activePeriodRow}>
 						<View style={styles.activePeriodCopy}>
 							<Text style={styles.activePeriodTitle}>{tx.activePeriodTitle}</Text>
-							<Text numberOfLines={1} style={styles.activePeriodValue}>{activePeriodDisplayLabel}</Text>
+							<Text numberOfLines={2} style={styles.activePeriodValue}>{activePeriodDisplayLabel}</Text>
 						</View>
 						{!isCurrentMonthActive ? (
 							<Pressable
@@ -2370,13 +2370,14 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 		},
 		activePeriodRow: {
 			flexDirection: "row",
-			alignItems: "center",
+			alignItems: "flex-start",
 			justifyContent: "space-between",
 			gap: 10,
+			flexWrap: "wrap",
 		},
 		activePeriodCopy: {
 			flex: 1,
-			minWidth: 0,
+			minWidth: 180,
 		},
 		activePeriodTitle: {
 			color: theme.colors.textMuted,
@@ -2389,10 +2390,12 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			color: theme.colors.textPrimary,
 			fontSize: 13,
 			fontWeight: "800",
+			lineHeight: 17,
 			marginTop: 1,
 		},
 		activePeriodResetButton: {
 			minHeight: 32,
+			flexShrink: 0,
 			borderRadius: 999,
 			borderWidth: 1,
 			borderColor: brandSoftBorder,
