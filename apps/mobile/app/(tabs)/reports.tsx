@@ -2130,7 +2130,7 @@ export default function ReportsScreen() {
 				onRequestClose={closeRenameRuleModal}
 			>
 				<KeyboardAvoidingView
-					behavior={Platform.OS === "ios" ? "padding" : undefined}
+					behavior={Platform.OS === "ios" ? "padding" : "height"}
 					style={styles.renameModalKeyboardWrap}
 				>
 					<View style={styles.modalCenterOverlay}>
@@ -2148,6 +2148,10 @@ export default function ReportsScreen() {
 										placeholder={renameSavedRule.name}
 										placeholderTextColor={theme.colors.textMuted}
 										style={styles.ruleNameInput}
+										autoFocus
+										selectTextOnFocus
+										returnKeyType="done"
+										onSubmitEditing={handleSaveRenamedRule}
 									/>
 									<View style={styles.renameRuleActions}>
 										<Pressable

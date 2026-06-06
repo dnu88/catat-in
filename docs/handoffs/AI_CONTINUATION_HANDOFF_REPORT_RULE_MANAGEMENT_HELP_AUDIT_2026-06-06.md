@@ -77,6 +77,10 @@ Saved rule management now separates action selection from text editing:
 
 The manage sheet no longer contains a text input, so `Default active`, `Hapus`, and `Batal` are never covered by the keyboard. The rename form opens in a centered `KeyboardAvoidingView` modal with only the name input plus `Batal`/`Simpan nama`.
 
+### 1e. Impeccable polish pass
+
+A final `impeccable polish reports` pass tightened the rename modal interaction: the field now autofocuses, selects the existing name, submits from the keyboard Done key, and uses height-based keyboard avoidance outside iOS so the action row remains reachable.
+
 ### 2. Explicit Reports active-period reset
 
 Updated:
@@ -153,7 +157,7 @@ Results:
 type-check: pass
 focused tests: 56 passed / 5 suites
 export:pwa: pass
-web bundle: _expo/static/js/web/entry-e9b47693ed8ae819deca546d4cbb90ab.js
+web bundle: _expo/static/js/web/entry-4b9234dca2e696ce139ddf372051e315.js
 ```
 
 ## Files changed
