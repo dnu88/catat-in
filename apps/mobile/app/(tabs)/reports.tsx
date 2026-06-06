@@ -1410,76 +1410,73 @@ export default function ReportsScreen() {
 					))}
 				</ScrollView>
 
-				<View testID="reports-active-period-card" style={styles.activePeriodCard}>
-					<View style={styles.activePeriodCopy}>
-						<Text style={styles.activePeriodTitle}>{tx.activePeriodTitle}</Text>
-						<Text style={styles.activePeriodValue}>{activePeriodDisplayLabel}</Text>
+				<View testID="reports-active-period-card" style={styles.periodControlsCard}>
+					<View style={styles.activePeriodRow}>
+						<View style={styles.activePeriodCopy}>
+							<Text style={styles.activePeriodTitle}>{tx.activePeriodTitle}</Text>
+							<Text numberOfLines={1} style={styles.activePeriodValue}>{activePeriodDisplayLabel}</Text>
+						</View>
+						{!isCurrentMonthActive ? (
+							<Pressable
+								testID="reports-reset-current-month"
+								accessibilityRole="button"
+								accessibilityLabel={tx.resetToThisMonth}
+								style={styles.activePeriodResetButton}
+								onPress={resetToCurrentMonth}
+							>
+								<Text style={styles.activePeriodResetText}>{tx.resetToThisMonth}</Text>
+							</Pressable>
+						) : null}
 					</View>
-					{!isCurrentMonthActive ? (
-						<Pressable
-							testID="reports-reset-current-month"
-							accessibilityRole="button"
-							accessibilityLabel={tx.resetToThisMonth}
-							style={styles.activePeriodResetButton}
-							onPress={resetToCurrentMonth}
-						>
-							<Text style={styles.activePeriodResetText}>{tx.resetToThisMonth}</Text>
-						</Pressable>
-					) : null}
-				</View>
 
-				<View testID="reports-saved-rules-card" style={styles.savedRulesCard}>
-					<View style={styles.savedRulesHeader}>
-						<Text style={styles.savedRulesTitle}>{tx.savedRulesTitle}</Text>
-						<Text style={styles.savedRulesMeta}>{tx.savedRulesCount(savedRules.length)}</Text>
-					</View>
-					{savedRules.length === 0 ? (
-						<Text style={styles.savedRulesEmpty}>{tx.savedRulesEmpty}</Text>
-					) : (
-						<ScrollView
-							horizontal
-							showsHorizontalScrollIndicator={false}
-							contentContainerStyle={styles.savedRuleRow}
-						>
-							{savedRules.map((rule) => {
-								const selected = activePeriod.type === "saved_rule" && activePeriod.ruleId === rule.id;
-								return (
-									<View
-										key={rule.id}
-										style={[styles.savedRuleChipShell, selected && styles.savedRuleChipShellActive]}
-									>
-										<Pressable
-											testID={`reports-saved-rule-${rule.id}`}
-											accessibilityRole="button"
-											accessibilityLabel={tx.savedRuleAccessibility(rule.name)}
-											accessibilityState={{ selected }}
-											style={styles.savedRuleChip}
-											onPress={() => selectSavedRule(rule.id)}
+					{savedRules.length > 0 ? (
+						<View testID="reports-saved-rules-card" style={styles.savedRulesInline}>
+							<Text style={styles.savedRulesInlineTitle}>{tx.savedRulesTitle}</Text>
+							<ScrollView
+								horizontal
+								showsHorizontalScrollIndicator={false}
+								contentContainerStyle={styles.savedRuleRow}
+							>
+								{savedRules.map((rule) => {
+									const selected = activePeriod.type === "saved_rule" && activePeriod.ruleId === rule.id;
+									return (
+										<View
+											key={rule.id}
+											style={[styles.savedRuleChipShell, selected && styles.savedRuleChipShellActive]}
 										>
-											<Text style={[styles.savedRuleName, selected && styles.savedRuleNameActive]}>{rule.name}</Text>
-											<Text style={[styles.savedRuleSummary, selected && styles.savedRuleSummaryActive]}>
-												{formatSavedRuleSummary(rule, isEn ? "en" : "id")}
-											</Text>
-										</Pressable>
-										<Pressable
-											testID={`reports-manage-saved-rule-${rule.id}`}
-											accessibilityRole="button"
-											accessibilityLabel={tx.manageRuleAccessibility(rule.name)}
-											style={[styles.savedRuleManageButton, selected && styles.savedRuleManageButtonActive]}
-											onPress={() => openRuleManageModal(rule.id)}
-										>
-											<KaswiseIcon
-												name="more"
-												size={18}
-												color={selected ? (theme.mode === "light" ? theme.colors.brandPrimaryDeep : theme.colors.brandPrimary) : theme.colors.textMuted}
-												weight="bold"
-											/>
-										</Pressable>
-									</View>
-								);
-							})}
-						</ScrollView>
-					)}
+											<Pressable
+												testID={`reports-saved-rule-${rule.id}`}
+												accessibilityRole="button"
+												accessibilityLabel={tx.savedRuleAccessibility(rule.name)}
+												accessibilityState={{ selected }}
+												style={styles.savedRuleChip}
+												onPress={() => selectSavedRule(rule.id)}
+											>
+												<Text numberOfLines={1} style={[styles.savedRuleName, selected && styles.savedRuleNameActive]}>{rule.name}</Text>
+												<Text style={[styles.savedRuleSummary, selected && styles.savedRuleSummaryActive]}>
+													{rule.startDay}–{rule.endDay}
+												</Text>
+											</Pressable>
+											<Pressable
+												testID={`reports-manage-saved-rule-${rule.id}`}
+												accessibilityRole="button"
+												accessibilityLabel={tx.manageRuleAccessibility(rule.name)}
+												style={[styles.savedRuleManageButton, selected && styles.savedRuleManageButtonActive]}
+												onPress={() => openRuleManageModal(rule.id)}
+											>
+												<KaswiseIcon
+													name="more"
+													size={18}
+													color={selected ? (theme.mode === "light" ? theme.colors.brandPrimaryDeep : theme.colors.brandPrimary) : theme.colors.textMuted}
+													weight="bold"
+												/>
+											</Pressable>
+										</View>
+									);
+								})}
+							</ScrollView>
+						</View>
+					) : null}
 				</View>
 				{periodFilter === "custom" && (
 					<View style={styles.customRulePrompt}>
@@ -2300,12 +2297,15 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 		periodChipTextActive: {
 			color: brandText,
 		},
-		activePeriodCard: {
-			backgroundColor: theme.colors.mutedSurface,
+		periodControlsCard: {
+			backgroundColor: theme.colors.surface,
 			borderRadius: 16,
 			borderWidth: 1,
 			borderColor: theme.colors.borderSoft,
-			padding: 12,
+			padding: 10,
+			gap: 8,
+		},
+		activePeriodRow: {
 			flexDirection: "row",
 			alignItems: "center",
 			justifyContent: "space-between",
@@ -2317,69 +2317,54 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 		},
 		activePeriodTitle: {
 			color: theme.colors.textMuted,
-			fontSize: 11,
+			fontSize: 10,
 			fontWeight: "800",
 			textTransform: "uppercase",
-			letterSpacing: 0.4,
+			letterSpacing: 0.35,
 		},
 		activePeriodValue: {
 			color: theme.colors.textPrimary,
 			fontSize: 13,
 			fontWeight: "800",
-			marginTop: 2,
+			marginTop: 1,
 		},
 		activePeriodResetButton: {
-			minHeight: 36,
+			minHeight: 32,
 			borderRadius: 999,
 			borderWidth: 1,
 			borderColor: brandSoftBorder,
 			backgroundColor: brandSoftBg,
-			paddingHorizontal: 12,
+			paddingHorizontal: 10,
 			alignItems: "center",
 			justifyContent: "center",
 		},
 		activePeriodResetText: {
 			color: brandText,
-			fontSize: 12,
-			fontWeight: "800",
-		},
-		savedRulesCard: {
-			backgroundColor: theme.colors.surface,
-			borderRadius: 18,
-			borderWidth: 1,
-			borderColor: theme.colors.borderSoft,
-			padding: 14,
-			gap: 10,
-		},
-		savedRulesHeader: {
-			flexDirection: "row",
-			alignItems: "center",
-			justifyContent: "space-between",
-			gap: 10,
-		},
-		savedRulesTitle: {
-			color: theme.colors.textPrimary,
-			fontSize: 13,
-			fontWeight: "800",
-		},
-		savedRulesMeta: {
-			color: theme.colors.textMuted,
 			fontSize: 11,
-			fontWeight: "700",
+			fontWeight: "800",
 		},
-		savedRulesEmpty: {
+		savedRulesInline: {
+			borderTopWidth: 1,
+			borderTopColor: theme.colors.borderSoft,
+			paddingTop: 8,
+			gap: 6,
+		},
+		savedRulesInlineTitle: {
 			color: theme.colors.textMuted,
-			fontSize: 12,
-			fontWeight: "600",
+			fontSize: 10,
+			fontWeight: "800",
+			textTransform: "uppercase",
+			letterSpacing: 0.35,
 		},
 		savedRuleRow: {
-			gap: 8,
+			gap: 6,
 			paddingRight: 2,
 		},
 		savedRuleChipShell: {
-			minWidth: 178,
-			minHeight: 58,
-			borderRadius: 16,
+			minWidth: 126,
+			maxWidth: 164,
+			minHeight: 46,
+			borderRadius: 14,
 			borderWidth: 1,
 			borderColor: theme.colors.borderSoft,
 			backgroundColor: theme.colors.mutedSurface,
@@ -2393,15 +2378,15 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 		},
 		savedRuleChip: {
 			flex: 1,
-			minHeight: 56,
+			minHeight: 44,
 			justifyContent: "center",
-			paddingLeft: 12,
-			paddingRight: 8,
-			paddingVertical: 10,
-			gap: 3,
+			paddingLeft: 10,
+			paddingRight: 6,
+			paddingVertical: 7,
+			gap: 1,
 		},
 		savedRuleManageButton: {
-			width: 42,
+			width: 34,
 			alignItems: "center",
 			justifyContent: "center",
 			borderLeftWidth: 1,
@@ -2413,14 +2398,14 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 		},
 		savedRuleName: {
 			color: theme.colors.textPrimary,
-			fontSize: 13,
+			fontSize: 12,
 			fontWeight: "800",
 		},
 		savedRuleNameActive: { color: brandText },
 		savedRuleSummary: {
 			color: theme.colors.textMuted,
-			fontSize: 11,
-			fontWeight: "600",
+			fontSize: 10,
+			fontWeight: "700",
 		},
 		savedRuleSummaryActive: { color: brandText },
 		customRulePrompt: {

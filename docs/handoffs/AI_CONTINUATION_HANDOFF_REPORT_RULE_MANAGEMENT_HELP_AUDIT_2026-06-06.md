@@ -57,6 +57,16 @@ Tap ••• on chip = open manage sheet
 
 The manage sheet contains rename, `Default active`, delete, and cancel actions. This keeps Reports compact while preserving management actions.
 
+### 1c. Reports declutter pass
+
+Reports period controls were simplified with an impeccable compact layout:
+
+- Active period and saved rules now share one compact card instead of two stacked cards.
+- Empty saved-period state no longer occupies a dedicated card.
+- Saved rule chips show concise `start–end` cycle text instead of long summaries.
+- The `•••` manage trigger remains available on each saved rule chip.
+- `Default active` remains available inside the manage sheet.
+
 ### 2. Explicit Reports active-period reset
 
 Updated:
@@ -133,7 +143,7 @@ Results:
 type-check: pass
 focused tests: 56 passed / 5 suites
 export:pwa: pass
-web bundle: _expo/static/js/web/entry-56cbf5c75c5fd1911549ba76651af347.js
+web bundle: _expo/static/js/web/entry-eeb20e7176a4d36b6f1439a96ff0915f.js
 ```
 
 ## Files changed
