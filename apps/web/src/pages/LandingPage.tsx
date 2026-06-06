@@ -48,7 +48,7 @@ const features = [
 ]
 
 const securityPoints = [
-  'Setiap akun terisolasi — hanya kamu yang bisa melihat transaksimu.',
+  'Setiap akun terisolasi: hanya kamu yang bisa melihat transaksimu.',
   'Login aman lewat Supabase Auth, dan data dikirim melalui koneksi terenkripsi (HTTPS).',
   'Jalan di browser, bisa dipasang ke layar utama (PWA) di HP maupun laptop.',
 ]
@@ -56,7 +56,7 @@ const securityPoints = [
 const faqItems = [
   {
     q: 'Apakah Kaswise gratis?',
-    a: 'Ya. Fitur inti — catat transaksi dengan AI, budget kategori, dan laporan bulanan — bisa dipakai gratis. Mulai tanpa kartu kredit.',
+    a: 'Ya. Fitur inti (catat transaksi dengan AI, budget kategori, dan laporan bulanan) bisa dipakai gratis. Mulai tanpa kartu kredit.',
   },
   {
     q: 'Apakah data keuangan saya aman?',
@@ -75,6 +75,7 @@ const faqItems = [
 export default function LandingPage() {
   return (
     <main className="landing-page" data-testid="web-landing-page">
+      <a className="landing-skip" href="#top">Lewati ke konten</a>
       <header className="landing-header" aria-label="Navigasi Kaswise">
         <a className="landing-brand" href="#top" aria-label="Kaswise">
           <span className="landing-logo-shell" aria-hidden="true">
@@ -104,8 +105,8 @@ export default function LandingPage() {
           <span className="landing-eyebrow">Pencatat keuangan harian</span>
           <h1 id="landing-title">Catat uang keluar sebelum lupa.</h1>
           <p>
-            Tulis transaksi seperti mengetik chat — "beli kopi 35rb di Kopi Kenangan" — dan
-            Kaswise yang merapikan nominal, kategori, dan tanggalnya. Tanpa form panjang,
+            Tulis transaksi seperti mengetik chat. Ketik "beli kopi 35rb di Kopi Kenangan",
+            lalu Kaswise yang merapikan nominal, kategori, dan tanggalnya. Tanpa form panjang,
             tanpa spreadsheet.
           </p>
 
@@ -191,7 +192,7 @@ export default function LandingPage() {
           <article className="landing-versus-card landing-versus-new">
             <span className="landing-versus-tag">Cara Kaswise</span>
             <p>
-              Tulis "beli kopi 35rb di Kopi Kenangan". Selesai — sisanya Kaswise yang merapikan.
+              Tulis "beli kopi 35rb di Kopi Kenangan". Selesai. Sisanya Kaswise yang merapikan.
             </p>
           </article>
         </div>
@@ -201,14 +202,14 @@ export default function LandingPage() {
             <span className="landing-icon-bubble landing-icon-bubble-primary" aria-hidden="true">ID</span>
             <div>
               <h3>Paham konteks lokal</h3>
-              <p>Kopi Kenangan, QRIS, 35rb, transfer bank — istilah sehari-hari langsung dikenali.</p>
+              <p>Kopi Kenangan, QRIS, 35rb, transfer bank: istilah sehari-hari langsung dikenali.</p>
             </div>
           </div>
           <div className="landing-support-point">
             <span className="landing-icon-bubble landing-icon-bubble-info" aria-hidden="true">∙∙</span>
             <div>
               <h3>Ringan, bukan dashboard penuh chart</h3>
-              <p>Cukup arus kas, kategori terbesar, dan sisa budget — tanpa UI yang bikin pusing.</p>
+              <p>Cukup arus kas, kategori terbesar, dan sisa budget, tanpa UI yang bikin pusing.</p>
             </div>
           </div>
         </div>
@@ -270,7 +271,7 @@ export default function LandingPage() {
           <h2 id="trust-title">Data keuanganmu tetap milikmu.</h2>
           <p>
             Kaswise dibuat di Indonesia untuk kebiasaan keuangan sehari-hari di sini. Masih muda
-            dan dikembangkan aktif — jadi yang kamu lihat adalah fitur yang benar-benar sudah
+            dan dikembangkan aktif, jadi yang kamu lihat adalah fitur yang benar-benar sudah
             jalan, bukan janji.
           </p>
         </div>
@@ -288,7 +289,7 @@ export default function LandingPage() {
           <h2 id="faq-title">Hal yang biasanya ditanyakan dulu.</h2>
         </div>
 
-        <div className="landing-faq-grid">
+        <div className="landing-faq-list">
           {faqItems.map((item) => (
             <article className="landing-faq-item" key={item.q}>
               <h3>{item.q}</h3>
@@ -315,7 +316,7 @@ export default function LandingPage() {
 
       <footer className="landing-footer">
         <span>© 2026 Kaswise</span>
-        <span>Pencatat keuangan personal — dibuat di Indonesia.</span>
+        <span>Pencatat keuangan personal, dibuat di Indonesia.</span>
       </footer>
     </main>
   )

@@ -1882,7 +1882,9 @@ body {
   --ks-bubble-info-bg: rgba(56, 189, 248, 0.14);
   --ks-bubble-info-bd: rgba(56, 189, 248, 0.30);
   --ks-bubble-info-fg: #38BDF8;
+  --ks-brand-primary-border: rgba(163, 255, 18, 0.55);
 
+  position: relative;
   min-height: 100vh;
   background:
     radial-gradient(circle at 50% -12rem, rgba(163, 255, 18, 0.08), transparent 28rem),
@@ -2028,11 +2030,12 @@ body {
   font-size: 13px;
   font-weight: 800;
   letter-spacing: -0.01em;
+  transition: transform 160ms cubic-bezier(0.22, 1, 0.36, 1), box-shadow 160ms ease;
 }
 
 .landing-nav-cta,
 .landing-primary {
-  border: 1px solid rgba(163, 255, 18, 0.58);
+  border: 1px solid var(--ks-brand-primary-border);
   background: var(--ks-brand-primary);
   color: var(--ks-text-inverse);
   box-shadow: var(--ks-glow-neon-soft);
@@ -2771,7 +2774,7 @@ body {
 }
 
 .landing-shot span {
-  color: var(--ks-text-dim);
+  color: var(--ks-text-muted);
   font-size: 11px;
   font-weight: 800;
   letter-spacing: 0.06em;
@@ -2821,32 +2824,34 @@ body {
   margin-bottom: 6px;
 }
 
-/* FAQ */
-.landing-faq-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
+/* FAQ — divider list (bukan card grid, memecah ritme tiga grid beruntun) */
+.landing-faq-list {
+  max-width: 760px;
 }
 
 .landing-faq-item {
-  padding: 20px;
-  border: 1px solid var(--ks-border-soft);
-  border-radius: var(--ks-radius-lg);
-  background: var(--ks-bg-card);
+  padding: 22px 0;
+  border-top: 1px solid var(--ks-border-soft);
+}
+
+.landing-faq-item:first-child {
+  border-top: none;
+  padding-top: 4px;
 }
 
 .landing-faq-item h3 {
   margin: 0;
   color: var(--ks-text-primary);
-  font-size: 16px;
+  font-size: 17px;
   line-height: 1.4;
   letter-spacing: -0.02em;
 }
 
 .landing-faq-item p {
   margin: 8px 0 0;
+  max-width: 68ch;
   color: var(--ks-text-muted);
-  font-size: 14px;
+  font-size: 15px;
   line-height: 1.7;
 }
 
@@ -2862,12 +2867,42 @@ body {
   }
 
   .landing-versus,
-  .landing-support-points,
-  .landing-faq-grid {
+  .landing-support-points {
     grid-template-columns: 1fr;
+  }
+
+  /* Screenshot portrait dibatasi tingginya di mobile supaya section Fitur
+     tidak jadi scroll panjang; bagian atas layar (header + isi) tetap terlihat. */
+  .landing-shot:has(img) {
+    aspect-ratio: auto;
+    height: clamp(340px, 56vh, 440px);
   }
 
   .landing-final-cta .landing-actions a {
     width: 100%;
+  }
+}
+
+/* Perangkat sentuh (termasuk tablet yang masih menampilkan nav): target nav 44px */
+@media (pointer: coarse) {
+  .landing-nav a {
+    min-height: 44px;
+  }
+}
+
+.landing-ghost {
+  transition: color 160ms ease, box-shadow 160ms ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .landing-page *,
+  .landing-skip {
+    transition: none !important;
+  }
+
+  .landing-primary:hover,
+  .landing-nav-cta:hover,
+  .landing-secondary:hover {
+    transform: none;
   }
 }
