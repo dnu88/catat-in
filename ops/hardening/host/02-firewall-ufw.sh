@@ -35,6 +35,14 @@ ufw allow from "${PROXY_SUBNET}" to any port "${CODE_SERVER_PORT}" proto tcp \
   comment 'NPM bridge -> code-server (KRITIS, jangan hapus)'
 echo "    Allow ${PROXY_SUBNET} -> :${CODE_SERVER_PORT} (jalur NPM ke code-server)"
 
+# www.kaswise.com landing preview: vite preview berjalan sebagai proses HOST di :4173,
+# NPM (4.conf) mencapainya via gateway docker bridge. Tanpa rule ini ufw default-deny
+# memblokir jalur itu -> www.kaswise.com DOWN (timeout). Lihat WEB_LANDING_PHASE_3 doc.
+WEB_LANDING_PORT="${WEB_LANDING_PORT:-4173}"
+ufw allow from "${PROXY_SUBNET}" to any port "${WEB_LANDING_PORT}" proto tcp \
+  comment 'NPM bridge -> web landing preview'
+echo "    Allow ${PROXY_SUBNET} -> :${WEB_LANDING_PORT} (jalur NPM ke landing preview)"
+
 # Aktifkan tanpa prompt interaktif
 ufw --force enable
 
