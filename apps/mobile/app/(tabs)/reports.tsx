@@ -228,6 +228,7 @@ export default function ReportsScreen() {
 	const [showSaveRuleModal, setShowSaveRuleModal] = useState(false);
 	const [managedRuleId, setManagedRuleId] = useState<string | null>(null);
 	const [renameRuleId, setRenameRuleId] = useState<string | null>(null);
+	const [deleteRuleId, setDeleteRuleId] = useState<string | null>(null);
 	const [ruleName, setRuleName] = useState("");
 	const [editingRuleName, setEditingRuleName] = useState("");
 	const [customStartYear, setCustomStartYear] = useState(
@@ -375,6 +376,9 @@ export default function ReportsScreen() {
 				saveRuleNameAction: "Save name",
 				defaultRuleActive: "Default active",
 				deleteRule: "Delete",
+				deleteRuleConfirmTitle: "Delete period rule?",
+				deleteRuleConfirmBody: (name: string) => `Delete ${name}? This saved period will be removed from Reports.`,
+				deleteRuleConfirmAction: "Delete rule",
 				detailTitle: "Transactions",
 				noCategoryTransactions: "No transactions in this category.",
 				otherCategoryInsight: (percent: number) =>
@@ -461,6 +465,9 @@ export default function ReportsScreen() {
 				saveRuleNameAction: "Simpan nama",
 				defaultRuleActive: "Default aktif",
 				deleteRule: "Hapus",
+				deleteRuleConfirmTitle: "Hapus aturan periode?",
+				deleteRuleConfirmBody: (name: string) => `Hapus ${name}? Aturan periode ini akan hilang dari Laporan.`,
+				deleteRuleConfirmAction: "Hapus aturan",
 				detailTitle: "Transaksi",
 				noCategoryTransactions: "Belum ada transaksi di kategori ini.",
 				otherCategoryInsight: (percent: number) =>
@@ -558,6 +565,9 @@ export default function ReportsScreen() {
 		: null;
 	const renameSavedRule = renameRuleId
 		? savedRules.find((rule) => rule.id === renameRuleId) ?? null
+		: null;
+	const deleteConfirmRule = deleteRuleId
+		? savedRules.find((rule) => rule.id === deleteRuleId) ?? null
 		: null;
 	const activePeriodNameLabel = activePeriod.ruleName ?? activePeriodRangeLabel;
 	const shouldShowActivePeriodRange = Boolean(activePeriod.ruleName);
@@ -874,10 +884,20 @@ export default function ReportsScreen() {
 		closeRuleManageModal();
 	};
 
-	const handleDeleteManagedRule = () => {
+	const openDeleteRuleConfirm = () => {
 		if (!managedSavedRule) return;
-		deleteSavedRule(managedSavedRule.id);
+		setDeleteRuleId(managedSavedRule.id);
 		closeRuleManageModal();
+	};
+
+	const closeDeleteRuleConfirm = () => {
+		setDeleteRuleId(null);
+	};
+
+	const handleConfirmDeleteRule = () => {
+		if (!deleteConfirmRule) return;
+		deleteSavedRule(deleteConfirmRule.id);
+		closeDeleteRuleConfirm();
 	};
 
 	const applyStartDate = (nextValue: string) => {
@@ -1388,12 +1408,7 @@ export default function ReportsScreen() {
 				</ScrollView>
 
 				{/* Period Selector */}
-				<ScrollView
-					horizontal
-					showsHorizontalScrollIndicator={false}
-					style={styles.periodScrollView}
-					contentContainerStyle={styles.periodRow}
-				>
+				<View style={styles.periodWrap}>
 					{(Object.keys(periodLabels) as Exclude<PeriodFilter, "saved_rule">[]).map((key) => (
 						<Pressable
 							key={key}
@@ -1424,7 +1439,7 @@ export default function ReportsScreen() {
 							</Text>
 						</Pressable>
 					))}
-				</ScrollView>
+				</View>
 
 				<View testID="reports-active-period-card" style={styles.periodControlsCard}>
 					<View style={styles.activePeriodRow}>
@@ -1978,49 +1993,54 @@ export default function ReportsScreen() {
 				onRequestClose={() => setShowDateModal(false)}
 			>
 				<View style={styles.modalOverlay}>
-					<View style={styles.modalContent}>
+					<View style={styles.dateRangeModalContent}>
 						<Text style={styles.modalTitle}>{tx.modalTitle}</Text>
 
-						<View style={styles.modalSection}>
-							<Text style={styles.modalSectionTitle}>{tx.modalStart}</Text>
-							<IOSWheelDatePicker
-								value={customStartIso}
-								onChange={applyStartDate}
-								locale={isEn ? "en" : "id"}
-								testID="reports-start-date-wheel-picker"
-							/>
-						</View>
+						<ScrollView
+							style={styles.dateRangePickerScroll}
+							contentContainerStyle={styles.dateRangePickerBody}
+						>
+							<View style={styles.modalSection}>
+								<Text style={styles.modalSectionTitle}>{tx.modalStart}</Text>
+								<IOSWheelDatePicker
+									value={customStartIso}
+									onChange={applyStartDate}
+									locale={isEn ? "en" : "id"}
+									testID="reports-start-date-wheel-picker"
+								/>
+							</View>
 
-						<View style={styles.modalSection}>
-							<Text style={styles.modalSectionTitle}>{tx.modalEnd}</Text>
-							<IOSWheelDatePicker
-								value={customEndIso}
-								onChange={applyEndDate}
-								locale={isEn ? "en" : "id"}
-								testID="reports-end-date-wheel-picker"
-							/>
-						</View>
+							<View style={styles.modalSection}>
+								<Text style={styles.modalSectionTitle}>{tx.modalEnd}</Text>
+								<IOSWheelDatePicker
+									value={customEndIso}
+									onChange={applyEndDate}
+									locale={isEn ? "en" : "id"}
+									testID="reports-end-date-wheel-picker"
+								/>
+							</View>
+						</ScrollView>
 
-						<View style={styles.modalActions}>
+						<View style={styles.dateRangeActions}>
 							<Pressable
 								testID="reports-save-period-rule-from-date-modal"
 								accessibilityRole="button"
 								accessibilityLabel={tx.saveRuleCta}
-								style={[styles.modalActionButton, styles.modalActionCancel]}
+								style={[styles.modalActionButton, styles.modalActionConfirm]}
 								onPress={() => {
 									setShowDateModal(false);
 									openSaveRuleModal();
 								}}
 							>
-								<Text style={styles.modalActionCancelText}>{tx.saveRuleCta}</Text>
+								<Text style={styles.modalActionConfirmText}>{tx.saveRuleCta}</Text>
 							</Pressable>
 							<Pressable
 								accessibilityRole="button"
-								accessibilityLabel={tx.closeDateRangeA11y}
-								style={[styles.modalActionButton, styles.modalActionConfirm]}
+								accessibilityLabel={tx.modalCancel}
+								style={[styles.modalActionButton, styles.modalActionCancel]}
 								onPress={() => setShowDateModal(false)}
 							>
-								<Text style={styles.modalActionConfirmText}>{tx.modalDone}</Text>
+								<Text style={styles.modalActionCancelText}>{tx.modalCancel}</Text>
 							</Pressable>
 						</View>
 					</View>
@@ -2106,7 +2126,7 @@ export default function ReportsScreen() {
 										testID="reports-delete-selected-rule"
 										accessibilityRole="button"
 										style={[styles.ruleManageMenuButton, styles.ruleManageMenuDangerButton]}
-										onPress={handleDeleteManagedRule}
+										onPress={openDeleteRuleConfirm}
 									>
 										<Text style={styles.ruleManageMenuDangerText}>{tx.deleteRule}</Text>
 									</Pressable>
@@ -2178,6 +2198,43 @@ export default function ReportsScreen() {
 						</View>
 					</View>
 				</KeyboardAvoidingView>
+			</Modal>
+
+			<Modal
+				visible={!!deleteConfirmRule}
+				transparent
+				animationType="fade"
+				onRequestClose={closeDeleteRuleConfirm}
+			>
+				<View style={styles.modalCenterOverlay}>
+					<View testID="reports-delete-rule-confirm-modal" style={styles.deleteRuleCard}>
+						<Text style={styles.renameRuleTitle}>{tx.deleteRuleConfirmTitle}</Text>
+						{deleteConfirmRule ? (
+							<Text style={styles.deleteRuleBody}>
+								{tx.deleteRuleConfirmBody(deleteConfirmRule.name)}
+							</Text>
+						) : null}
+						<View style={styles.renameRuleActions}>
+							<Pressable
+								accessibilityRole="button"
+								accessibilityLabel={tx.modalCancel}
+								style={[styles.modalActionButton, styles.modalActionCancel]}
+								onPress={closeDeleteRuleConfirm}
+							>
+								<Text style={styles.modalActionCancelText}>{tx.modalCancel}</Text>
+							</Pressable>
+							<Pressable
+								testID="reports-confirm-delete-rule"
+								accessibilityRole="button"
+								accessibilityLabel={tx.deleteRuleConfirmAction}
+								style={[styles.modalActionButton, styles.deleteRuleConfirmButton]}
+								onPress={handleConfirmDeleteRule}
+							>
+								<Text style={styles.deleteRuleConfirmText}>{tx.deleteRuleConfirmAction}</Text>
+							</Pressable>
+						</View>
+					</View>
+				</View>
 			</Modal>
 
 			<Modal
@@ -2333,6 +2390,12 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			fontSize: 11,
 			fontWeight: theme.typography.fontWeight.bold,
 		},
+		periodWrap: {
+			flexDirection: "row",
+			flexWrap: "wrap",
+			gap: 8,
+			marginBottom: 8,
+		},
 		periodScrollView: {
 			marginHorizontal: -20,
 		},
@@ -2341,6 +2404,7 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			gap: 8,
 			marginBottom: 8,
 			paddingHorizontal: 20,
+			paddingRight: 36,
 		},
 		periodChip: {
 			paddingVertical: 6,
@@ -2599,6 +2663,15 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			backgroundColor: theme.colors.surface,
 			padding: 18,
 		},
+		deleteRuleCard: {
+			width: "100%",
+			maxWidth: 360,
+			borderRadius: 22,
+			borderWidth: 1,
+			borderColor: `${theme.colors.danger}30`,
+			backgroundColor: theme.colors.surface,
+			padding: 18,
+		},
 		renameRuleTitle: {
 			color: theme.colors.textPrimary,
 			fontSize: 17,
@@ -2616,6 +2689,25 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 		renameRuleActions: {
 			flexDirection: "row",
 			gap: 10,
+		},
+		deleteRuleBody: {
+			color: theme.colors.textSecondary,
+			fontSize: 13,
+			fontWeight: "600",
+			lineHeight: 18,
+			textAlign: "center",
+			marginTop: 8,
+			marginBottom: 16,
+		},
+		deleteRuleConfirmButton: {
+			backgroundColor: `${theme.colors.danger}18`,
+			borderWidth: 1,
+			borderColor: `${theme.colors.danger}45`,
+		},
+		deleteRuleConfirmText: {
+			color: theme.colors.danger,
+			fontSize: 14,
+			fontWeight: "800",
 		},
 		ruleManageCancelButton: {
 			minHeight: 44,
@@ -3166,6 +3258,20 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			paddingBottom: 40,
 			maxHeight: "80%",
 		},
+		dateRangeModalContent: {
+			backgroundColor: theme.colors.surface,
+			borderTopLeftRadius: 24,
+			borderTopRightRadius: 24,
+			padding: 18,
+			paddingBottom: 18,
+			maxHeight: "92%",
+		},
+		dateRangePickerScroll: {
+			flexShrink: 1,
+		},
+		dateRangePickerBody: {
+			paddingBottom: 2,
+		},
 		modalTitle: {
 			color: theme.colors.textPrimary,
 			fontSize: 18,
@@ -3249,6 +3355,14 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			flexDirection: "row",
 			gap: 12,
 			marginTop: 8,
+		},
+		dateRangeActions: {
+			flexDirection: "row",
+			gap: 12,
+			marginTop: 10,
+			paddingTop: 10,
+			borderTopWidth: 1,
+			borderTopColor: theme.colors.borderSoft,
 		},
 		modalActionButton: {
 			flex: 1,

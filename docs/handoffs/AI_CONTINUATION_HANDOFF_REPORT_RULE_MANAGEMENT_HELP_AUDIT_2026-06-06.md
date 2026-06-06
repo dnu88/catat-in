@@ -81,6 +81,14 @@ The manage sheet no longer contains a text input, so `Default active`, `Hapus`, 
 
 A final `impeccable polish reports` pass tightened the rename modal interaction: the field now autofocuses, selects the existing name, submits from the keyboard Done key, and uses height-based keyboard avoidance outside iOS so the action row remains reachable.
 
+### 1f. Reports period controls hardening
+
+Reports received three small production hardening fixes:
+
+- The period preset row now wraps, so `Kustom / Custom` is never clipped off-screen.
+- The date-range picker modal has a scrollable picker body plus pinned actions, keeping `Simpan sebagai aturan / Save as rule` and `Batal / Cancel` visible on short screens.
+- Saved period deletion now requires a confirmation modal before removal.
+
 ### 2. Explicit Reports active-period reset
 
 Updated:
@@ -157,7 +165,7 @@ Results:
 type-check: pass
 focused tests: 56 passed / 5 suites
 export:pwa: pass
-web bundle: _expo/static/js/web/entry-4b9234dca2e696ce139ddf372051e315.js
+web bundle: _expo/static/js/web/entry-17f93f154615af8ff13681b96c2e0c67.js
 ```
 
 ## Files changed
@@ -188,5 +196,5 @@ docs/README.md
 
 - Manage UI is intentionally lightweight and only appears after tapping the `•••` trigger on a saved rule chip.
 - Rule editing currently supports rule name only; start/end day editing can be added later.
-- There is no destructive confirmation modal for delete; the action is visible in the selected rule manager and active deletion falls back safely to current month.
+- Delete now uses a destructive confirmation modal; deleting the active rule still falls back safely to current month.
 - FAQ is documentation/help copy, not yet surfaced inside the PWA.

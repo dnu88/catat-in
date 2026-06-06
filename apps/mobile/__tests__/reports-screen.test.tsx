@@ -509,6 +509,9 @@ describe("ReportsScreen visual parity", () => {
 		fireEvent.press(screen.getAllByTestId(/reports-manage-saved-rule-/)[0]);
 		await waitFor(() => expect(screen.getByTestId("reports-saved-rule-manage-modal")).toBeTruthy());
 		fireEvent.press(screen.getByTestId("reports-delete-selected-rule"));
+		await waitFor(() => expect(screen.getByTestId("reports-delete-rule-confirm-modal")).toBeTruthy());
+		expect(screen.getAllByText("Gajian kantor").length).toBeGreaterThan(0);
+		fireEvent.press(screen.getByTestId("reports-confirm-delete-rule"));
 		await waitFor(() => expect(screen.queryByText("Gajian kantor")).toBeNull());
 	});
 
