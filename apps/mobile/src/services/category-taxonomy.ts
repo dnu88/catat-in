@@ -4,6 +4,7 @@ export type AppLanguage = 'id' | 'en';
 export type CategoryCanonicalId =
   | 'food_beverage'
   | 'groceries'
+  | 'household_personal_care'
   | 'personal_shopping'
   | 'transport'
   | 'bills'
@@ -42,12 +43,23 @@ export const categoryDefinitions: CategoryDefinition[] = [
     id: 'groceries',
     labels: { id: 'Belanja Bulanan', en: 'Groceries' },
     helper: {
-      id: 'Bahan dapur, stok rumah, minimarket.',
-      en: 'Kitchen supplies, household stock, minimarket.',
+      id: 'Bahan dapur, sembako, stok makanan rumah.',
+      en: 'Kitchen staples, pantry stock, household food supplies.',
     },
     icon: 'groceries',
     type: 'expense',
-    aliases: ['groceries', 'grocery', 'belanja bulanan', 'kebutuhan harian', 'kebutuhan rumah', 'stok rumah', 'sembako', 'bahan pokok', 'supermarket', 'minimarket'],
+    aliases: ['groceries', 'grocery', 'belanja bulanan', 'kebutuhan harian', 'stok makanan', 'stok dapur', 'sembako', 'bahan pokok', 'bahan dapur', 'supermarket', 'minimarket'],
+  },
+  {
+    id: 'household_personal_care',
+    labels: { id: 'Rumah & Perawatan', en: 'Household & Personal Care' },
+    helper: {
+      id: 'Sabun, sampo, deterjen, tisu, kebersihan rumah.',
+      en: 'Soap, shampoo, detergent, tissue, home cleaning supplies.',
+    },
+    icon: 'household',
+    type: 'expense',
+    aliases: ['rumah perawatan', 'rumah & perawatan', 'household personal care', 'household and personal care', 'household', 'home care', 'personal care', 'kebutuhan rumah', 'kebersihan rumah', 'perawatan diri', 'toiletries', 'sabun', 'shampoo', 'sampo', 'deterjen', 'detergen', 'tisu', 'tissue', 'odol', 'pasta gigi', 'pembalut', 'popok'],
   },
   {
     id: 'personal_shopping',

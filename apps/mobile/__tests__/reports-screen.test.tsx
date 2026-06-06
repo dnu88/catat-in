@@ -11,6 +11,7 @@ import ReportsScreen from "../app/(tabs)/reports";
 import { ThemeProvider } from "../src/theme/theme-context";
 import { SupabaseProvider } from "../src/lib/supabase";
 import { I18nProvider } from "../src/i18n/i18n-context";
+import { ReportPeriodProvider } from "../src/state/report-period";
 
 let mockActiveContext:
 	| { type: "personal" }
@@ -23,7 +24,7 @@ const mockTransactions = [
 		amount: 125000,
 		transaction_type: "income",
 		category: "Pendapatan",
-		date: "2026-05-05",
+		date: "2026-06-05",
 		description: "Bonus modern schema",
 		merchant: "Klien",
 	},
@@ -31,7 +32,7 @@ const mockTransactions = [
 		nominal: 500000,
 		type: "expense",
 		kategori: "Makan",
-		tanggal: "2026-05-01",
+		tanggal: "2026-06-01",
 		catatan: "Nasi padang",
 		merchant: "RM Sederhana",
 	},
@@ -39,7 +40,7 @@ const mockTransactions = [
 		nominal: 350000,
 		type: "expense",
 		kategori: "Belanja",
-		tanggal: "2026-05-02",
+		tanggal: "2026-06-02",
 		catatan: "Groceries",
 		merchant: "Supermarket",
 	},
@@ -47,7 +48,7 @@ const mockTransactions = [
 		nominal: 200000,
 		type: "expense",
 		kategori: "Transport",
-		tanggal: "2026-05-03",
+		tanggal: "2026-06-03",
 		catatan: "Taxi",
 		merchant: "Grab",
 	},
@@ -55,7 +56,7 @@ const mockTransactions = [
 		nominal: 150000,
 		type: "expense",
 		kategori: "Kesehatan",
-		tanggal: "2026-05-04",
+		tanggal: "2026-06-04",
 		catatan: "Vitamin",
 		merchant: "Apotek",
 	},
@@ -89,15 +90,15 @@ jest.mock("../src/lib/supabase", () => {
 	};
 	(globalThis as any).__reportsQueryChain = chain;
 
+	const supabase = {
+		auth: {
+			getUser: jest.fn(async () => ({ data: { user: { id: "user-1" } } })),
+		},
+		from: jest.fn(() => chain),
+	};
+
 	return {
-		useSupabase: () => ({
-			supabase: {
-				auth: {
-					getUser: jest.fn(async () => ({ data: { user: { id: "user-1" } } })),
-				},
-				from: jest.fn(() => chain),
-			},
-		}),
+		useSupabase: () => ({ supabase }),
 		SupabaseProvider: ({ children }: { children: React.ReactNode }) => children,
 	};
 });
@@ -182,7 +183,9 @@ function renderReports() {
 		<SupabaseProvider>
 			<I18nProvider>
 				<ThemeProvider>
-					<ReportsScreen />
+					<ReportPeriodProvider>
+						<ReportsScreen />
+					</ReportPeriodProvider>
 				</ThemeProvider>
 			</I18nProvider>
 		</SupabaseProvider>,
@@ -464,19 +467,76 @@ describe("ReportsScreen visual parity", () => {
 		expect(foodGlow.props.cy).toBe(foodGlow.props.cx);
 	});
 
-	it("lets custom period choose exact start and end dates for client-side report filtering", async () => {
+	it("saves, renames, resets, and deletes a custom period rule", async () => {
 		const screen = renderReports();
 
 		fireEvent.press(screen.getByText("Kustom"));
-		expect(screen.getByLabelText("Kurangi tahun mulai")).toBeTruthy();
-		expect(screen.getByLabelText("Tambah tahun mulai")).toBeTruthy();
-		expect(screen.getByLabelText("Pilih tanggal mulai 15")).toBeTruthy();
-		expect(screen.getByLabelText("Pilih tanggal selesai 20")).toBeTruthy();
-		fireEvent.press(await screen.findByTestId("reports-start-day-15"));
-		fireEvent.press(await screen.findByTestId("reports-end-day-20"));
-		fireEvent.press(screen.getByLabelText("Terapkan rentang tanggal"));
+		expect(await screen.findByTestId("reports-start-date-wheel-picker")).toBeTruthy();
+		fireEvent.press(screen.getByTestId("reports-save-period-rule-from-date-modal"));
+
+		await waitFor(() =>
+			expect(screen.getByTestId("reports-period-rule-name-input")).toBeTruthy(),
+		);
+		fireEvent.changeText(screen.getByTestId("reports-period-rule-name-input"), "Siklus gajian");
+		fireEvent.press(screen.getByTestId("reports-confirm-save-period-rule"));
 
 		await waitFor(() => {
+			expect(screen.getAllByText("Siklus gajian").length).toBeGreaterThan(0);
+			expect(screen.queryByTestId("reports-saved-rule-manage-modal")).toBeNull();
+			expect(screen.getByTestId("reports-reset-current-month")).toBeTruthy();
+		});
+
+		fireEvent.press(screen.getAllByTestId(/reports-manage-saved-rule-/)[0]);
+		await waitFor(() => expect(screen.getByTestId("reports-saved-rule-manage-modal")).toBeTruthy());
+		expect(screen.getByTestId("reports-set-selected-rule-default")).toBeTruthy();
+		expect(screen.queryByTestId("reports-selected-rule-name-input")).toBeNull();
+		fireEvent.press(screen.getByTestId("reports-open-rename-rule"));
+		await waitFor(() => {
+			expect(screen.queryByTestId("reports-saved-rule-manage-modal")).toBeNull();
+			expect(screen.getByTestId("reports-rename-rule-modal")).toBeTruthy();
+		});
+		fireEvent.changeText(screen.getByTestId("reports-selected-rule-name-input"), "Gajian kantor");
+		fireEvent.press(screen.getByTestId("reports-save-selected-rule-name"));
+		await waitFor(() => {
+			expect(screen.getAllByText("Gajian kantor").length).toBeGreaterThan(0);
+			expect(screen.queryByTestId("reports-rename-rule-modal")).toBeNull();
+		});
+
+		fireEvent.press(screen.getByTestId("reports-reset-current-month"));
+		await waitFor(() => expect(screen.queryByTestId("reports-reset-current-month")).toBeNull());
+
+		fireEvent.press(screen.getByText("Gajian kantor"));
+		fireEvent.press(screen.getAllByTestId(/reports-manage-saved-rule-/)[0]);
+		await waitFor(() => expect(screen.getByTestId("reports-saved-rule-manage-modal")).toBeTruthy());
+		fireEvent.press(screen.getByTestId("reports-delete-selected-rule"));
+		await waitFor(() => expect(screen.getByTestId("reports-delete-rule-confirm-modal")).toBeTruthy());
+		expect(screen.getAllByText("Gajian kantor").length).toBeGreaterThan(0);
+		fireEvent.press(screen.getByTestId("reports-confirm-delete-rule"));
+		await waitFor(() => expect(screen.queryByText("Gajian kantor")).toBeNull());
+	});
+
+	it("lets custom period choose exact start and end dates with the wheel picker", async () => {
+		const screen = renderReports();
+
+		fireEvent.press(screen.getByText("Kustom"));
+		expect(await screen.findByTestId("reports-start-date-wheel-picker")).toBeTruthy();
+		expect(screen.getByTestId("reports-end-date-wheel-picker")).toBeTruthy();
+		expect(screen.queryByLabelText("Kurangi tahun mulai")).toBeNull();
+		expect(screen.queryByLabelText("Terapkan rentang tanggal")).toBeNull();
+
+		fireEvent(
+			screen.getByTestId("reports-start-date-wheel-picker-date-scroll"),
+			"scrollEndDrag",
+			{ nativeEvent: { contentOffset: { y: 34 * 14 } } },
+		);
+		fireEvent(
+			screen.getByTestId("reports-end-date-wheel-picker-date-scroll"),
+			"scrollEndDrag",
+			{ nativeEvent: { contentOffset: { y: 34 * 19 } } },
+		);
+
+		await waitFor(() => {
+			expect(screen.getAllByText(/15 .* - 20 /).length).toBeGreaterThan(0);
 			expect((globalThis as any).__reportsQueryChain.then).toHaveBeenCalled();
 			expect((globalThis as any).__reportsGteMock).not.toHaveBeenCalled();
 			expect((globalThis as any).__reportsLteMock).not.toHaveBeenCalled();

@@ -68,6 +68,27 @@ const categoryConcepts: CategoryConcept[] = [
 			{ value: "mie ayam", weight: 5 },
 			{ value: "ayam geprek", weight: 5 },
 			{ value: "bento", weight: 4 },
+			{ value: "teh pucuk", weight: 5 },
+			{ value: "sari roti", weight: 5 },
+			{ value: "roti aoka", weight: 5 },
+			{ value: "mi instan", weight: 5 },
+			{ value: "mie instan", weight: 5 },
+			"aqua",
+			"le minerale",
+			"roti",
+			"snack",
+			"biskuit",
+			"wafer",
+			"oreo",
+			"chitato",
+			"taro",
+			"beng beng",
+			"indomie",
+			"pop mie",
+			"ultramilk",
+			"indomilk",
+			"pocari",
+			"yakult",
 			"warteg",
 			"warung makan",
 			"resto",
@@ -152,15 +173,62 @@ const categoryConcepts: CategoryConcept[] = [
 			"galon",
 		],
 		merchants: [
-			{ value: "indomaret", weight: 5 },
-			{ value: "alfamart", weight: 5 },
-			{ value: "alfamidi", weight: 5 },
+			{ value: "indomaret", weight: 1 },
+			{ value: "alfamart", weight: 1 },
+			{ value: "alfamidi", weight: 1 },
 			{ value: "superindo", weight: 6 },
 			{ value: "hypermart", weight: 6 },
 			{ value: "ranch market", weight: 6 },
 			{ value: "lotte mart", weight: 6 },
 			{ value: "astro", weight: 6 },
 			{ value: "sayurbox", weight: 6 },
+		],
+	},
+	{
+		id: "household_personal_care",
+		fallbackName: "Rumah & Perawatan",
+		type: "expense",
+		aliases: [
+			"rumah perawatan",
+			"household personal care",
+			"household and personal care",
+			"household",
+			"home care",
+			"personal care",
+			"kebersihan rumah",
+			"perawatan diri",
+			"toiletries",
+		],
+		keywords: [
+			{ value: "kebersihan rumah", weight: 6 },
+			{ value: "perawatan diri", weight: 6 },
+			{ value: "pasta gigi", weight: 6 },
+			{ value: "sikat gigi", weight: 6 },
+			"sabun",
+			"shampoo",
+			"sampo",
+			"conditioner",
+			"odol",
+			"deterjen",
+			"detergen",
+			"rinso",
+			"daia",
+			"soklin",
+			"sunlight",
+			"mama lemon",
+			"molto",
+			"tisu",
+			"tissue",
+			"pembalut",
+			"softex",
+			"popok",
+			"pampers",
+			"lifebuoy",
+			"pepsodent",
+			"pantene",
+			"clear",
+			"sunsilk",
+			"deodorant",
 		],
 	},
 	{
@@ -446,6 +514,113 @@ function todayKey(date = new Date()) {
 	return date.toISOString().slice(0, 10);
 }
 
+
+const MONTH_ALIASES: Record<string, number> = {
+	januari: 1,
+	jan: 1,
+	februari: 2,
+	feb: 2,
+	maret: 3,
+	mar: 3,
+	april: 4,
+	apr: 4,
+	mei: 5,
+	may: 5,
+	juni: 6,
+	jun: 6,
+	juli: 7,
+	jul: 7,
+	agustus: 8,
+	agu: 8,
+	aug: 8,
+	september: 9,
+	sep: 9,
+	oktober: 10,
+	okt: 10,
+	oct: 10,
+	november: 11,
+	nov: 11,
+	desember: 12,
+	des: 12,
+	dec: 12,
+};
+
+function toIsoDate(year: number, month: number, day: number) {
+	const date = new Date(year, month - 1, day);
+	if (
+		date.getFullYear() !== year ||
+		date.getMonth() !== month - 1 ||
+		date.getDate() !== day
+	) {
+		return null;
+	}
+	return `${year.toString().padStart(4, "0")}-${month
+		.toString()
+		.padStart(2, "0")}-${day.toString().padStart(2, "0")}`;
+}
+
+function parseTwoDigitYear(value: string, fallbackYear: number) {
+	if (value.length === 2) return 2000 + Number(value);
+	if (value.length === 4) return Number(value);
+	return fallbackYear;
+}
+
+function findDateMention(value: string, fallbackDate = new Date()) {
+	const fallbackYear = fallbackDate.getFullYear();
+	const monthNames = Object.keys(MONTH_ALIASES).join("|");
+	const namedPattern = new RegExp(
+		`\\b(?:tanggal|tgl|pada)?\\s*(\\d{1,2})\\s+(${monthNames})\\s*(\\d{2,4})?\\b`,
+		"i",
+	);
+	const namedMatch = namedPattern.exec(value);
+	if (namedMatch?.index != null) {
+		const day = Number(namedMatch[1]);
+		const month = MONTH_ALIASES[namedMatch[2].toLowerCase()];
+		const year = namedMatch[3]
+			? parseTwoDigitYear(namedMatch[3], fallbackYear)
+			: fallbackYear;
+		const iso = toIsoDate(year, month, day);
+		if (iso) {
+			return {
+				iso,
+				index: namedMatch.index,
+				end: namedMatch.index + namedMatch[0].length,
+			};
+		}
+	}
+
+	const numericFullMatch = /\b(?:tanggal|tgl|pada)?\s*(\d{1,2})[/-](\d{1,2})[/-](\d{2,4})\b/i.exec(value);
+	const numericShortMatch = /\b(?:tanggal|tgl|pada)\s*(\d{1,2})[/-](\d{1,2})\b/i.exec(value);
+	const numericMatch = numericFullMatch ?? numericShortMatch;
+	if (numericMatch?.index != null) {
+		const day = Number(numericMatch[1]);
+		const month = Number(numericMatch[2]);
+		const year = numericMatch[3]
+			? parseTwoDigitYear(numericMatch[3], fallbackYear)
+			: fallbackYear;
+		const iso = toIsoDate(year, month, day);
+		if (iso) {
+			return {
+				iso,
+				index: numericMatch.index,
+				end: numericMatch.index + numericMatch[0].length,
+			};
+		}
+	}
+
+	return null;
+}
+
+function stripDateMention(value: string, fallbackDate = new Date()) {
+	const mention = findDateMention(value, fallbackDate);
+	if (!mention) return value;
+	return `${value.slice(0, mention.index)} ${value.slice(mention.end)}`
+		.replace(/\s+/g, " ")
+		.replace(/\s+([.,;:])/g, "$1")
+		.replace(/[\s,;:-]+$/g, "")
+		.trim();
+}
+
 function normalize(value: string | null | undefined) {
 	return (value ?? "")
 		.toLowerCase()
@@ -578,22 +753,22 @@ function inferTransactionType(source: string): TransactionType {
 }
 
 function inferMerchant(value: string, matchedMerchants: string[]) {
+	const match = value.match(/\b(?:di|ke|dari)\s+([a-z0-9&.' -]{2,64})/i);
+	if (match) {
+		const amountMention = findAmountMentions(match[1])[0];
+		const merchantSource = amountMention
+			? match[1].slice(0, amountMention.index)
+			: match[1];
+		const merchant = merchantSource
+			.split(/\b(?:pakai|dengan|via|untuk|sebesar|tanggal|tgl|rp|harga|bayar|dibayar)\b/i)[0]
+			.trim()
+			.replace(/[.,;:]+$/, "");
+		if (merchant) return merchant;
+	}
+
 	const matchedMerchant = matchedMerchants
 		.sort((a, b) => b.length - a.length)[0];
-	if (matchedMerchant) return matchedMerchant;
-
-	const match = value.match(/\b(?:di|ke|dari)\s+([a-z0-9&.' -]{2,64})/i);
-	if (!match) return null;
-
-	const amountMention = findAmountMentions(match[1])[0];
-	const merchantSource = amountMention
-		? match[1].slice(0, amountMention.index)
-		: match[1];
-	const merchant = merchantSource
-		.split(/\b(?:pakai|dengan|via|untuk|sebesar|tanggal|tgl|rp|harga|bayar|dibayar)\b/i)[0]
-		.trim()
-		.replace(/[.,;:]+$/, "");
-	return merchant || null;
+	return matchedMerchant || null;
 }
 
 function resolveCategory(
@@ -653,7 +828,7 @@ export function classifyTransactionText(
 ): ClassifiedTransaction | null {
 	const rawNote = input.trim();
 	if (!rawNote) return null;
-	const note = stripAmountMentions(rawNote) || rawNote;
+	const note = stripAmountMentions(stripDateMention(rawNote, date)) || rawNote;
 
 	const amount = parseAmountFromTransactionText(rawNote);
 	if (!Number.isFinite(amount) || amount <= 0) return null;
@@ -680,7 +855,7 @@ export function classifyTransactionText(
 		categoryName: category.name,
 		merchant: inferMerchant(rawNote, matchedMerchants),
 		note,
-		date: todayKey(date),
+		date: findDateMention(rawNote, date)?.iso ?? todayKey(date),
 		confidence,
 		matchedKeywords,
 		matchedConcept: matchedConcept?.id ?? "unknown",
@@ -701,13 +876,9 @@ export function classifyTransactionTextBatch(
 	const segmentDrafts = segments
 		.map((segment) => classifyTransactionText(segment, categories, date))
 		.filter((draft): draft is ClassifiedTransaction => Boolean(draft));
-	const concepts = new Set(segmentDrafts.map((draft) => draft.matchedConcept));
-	const shouldSplitFoodAndGroceries =
-		segmentDrafts.length >= 2 &&
-		concepts.has("food_beverage") &&
-		concepts.has("groceries");
-
-	return shouldSplitFoodAndGroceries ? segmentDrafts : [fullDraft];
+	return segmentDrafts.length === segments.length && segmentDrafts.length >= 2
+		? segmentDrafts
+		: [fullDraft];
 }
 
 export { HIGH_CONFIDENCE as CLASSIFIER_HIGH_CONFIDENCE_THRESHOLD };

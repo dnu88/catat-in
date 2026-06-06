@@ -1,0 +1,26 @@
+# Kaswise hardening — fail2ban
+# Target: /etc/fail2ban/jail.local
+# Scope: SSH saja. Trafik web lewat Cloudflare/NPM (IP klien ter-mask),
+# memban di layer itu berisiko memban IP Cloudflare. Rate-limit web ditangani
+# di rencana Phase 2 (Redis/proxy) — lihat docs/security/.
+
+[DEFAULT]
+# Jangan pernah memban diri sendiri / jaringan internal docker.
+ignoreip = 127.0.0.1/8 ::1 172.16.0.0/12 192.168.0.0/16
+bantime  = 1h
+findtime = 10m
+maxretry = 4
+backend  = systemd
+
+[sshd]
+enabled  = true
+port     = ssh
+maxretry = 4
+bantime  = 2h
+# Eskalasi: pelanggar berulang diban lebih lama.
+[recidive]
+enabled  = true
+logpath  = /var/log/fail2ban.log
+bantime  = 1w
+findtime = 1d
+maxretry = 5

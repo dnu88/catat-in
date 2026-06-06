@@ -66,3 +66,4 @@ Implementation notes:
 ## Production handoff documents
 
 - [Photo Receipt MVP Handoff — 2026-06-02](./PHOTO_RECEIPT_MVP_HANDOFF_2026-06-02.md)
+- [Transaction Intake Itemization & Category Handoff — 2026-06-05](./TRANSACTION_INTAKE_ITEMIZATION_HANDOFF_2026-06-05.md)

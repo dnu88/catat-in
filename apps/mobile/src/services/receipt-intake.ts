@@ -1,5 +1,6 @@
 import Constants from "expo-constants";
 import type { Session, SupabaseClient } from "@supabase/supabase-js";
+import { categorizeReceiptItem } from "./receipt-item-categorizer";
 
 export type ReceiptImageAsset = {
 	uri: string;
@@ -7,12 +8,23 @@ export type ReceiptImageAsset = {
 	mimeType?: string | null;
 };
 
+export type ReceiptItemExtraction = {
+	name?: string | null;
+	qty?: number | string | null;
+	quantity?: number | string | null;
+	price?: number | string | null;
+	unit_price?: number | string | null;
+	total_price?: number | string | null;
+	line_total?: number | string | null;
+	category?: string | null;
+};
+
 export type ReceiptExtraction = {
 	total_amount?: number | null;
 	merchant?: string | null;
 	date?: string | null;
 	category?: string | null;
-	items?: unknown[];
+	items?: ReceiptItemExtraction[];
 	confidence?: number | null;
 	readable?: boolean;
 };
@@ -26,6 +38,8 @@ export type ReceiptTransactionDraft = {
 	date: string;
 	confidence: number;
 	reviewRequired: boolean;
+	itemName?: string;
+	quantity?: number;
 };
 
 const processEnv = (
@@ -193,28 +207,132 @@ export async function analyzeReceiptImage(
 	return response.json();
 }
 
+
+function numericValue(value: unknown) {
+	if (typeof value === "number") return Number.isFinite(value) ? value : 0;
+	if (typeof value === "string") {
+		const cleaned = value.replace(/[^\d.,-]/g, "");
+		const lastComma = cleaned.lastIndexOf(",");
+		const lastDot = cleaned.lastIndexOf(".");
+		let normalized = cleaned;
+		if (lastComma >= 0 && lastDot >= 0) {
+			normalized = lastComma > lastDot
+				? cleaned.replace(/\./g, "").replace(/,/g, ".")
+				: cleaned.replace(/,/g, "");
+		} else if (lastComma >= 0) {
+			normalized = /,\d{3}$/.test(cleaned)
+				? cleaned.replace(/,/g, "")
+				: cleaned.replace(/,/g, ".");
+		} else if (lastDot >= 0 && /\.\d{3}$/.test(cleaned)) {
+			normalized = cleaned.replace(/\./g, "");
+		}
+		const parsed = Number(normalized);
+		return Number.isFinite(parsed) ? parsed : 0;
+	}
+	return 0;
+}
+
+function itemLineAmount(item: ReceiptItemExtraction, useQuantityMultiplier: boolean) {
+	const qty = Math.max(1, numericValue(item.qty ?? item.quantity) || 1);
+	const explicitTotal = numericValue(item.total_price ?? item.line_total);
+	if (explicitTotal > 0) return { amount: explicitTotal, qty };
+	const price = numericValue(item.price ?? item.unit_price);
+	return { amount: useQuantityMultiplier ? price * qty : price, qty };
+}
+
+function normalizeReceiptItems(extraction: ReceiptExtraction) {
+	const items = (extraction.items ?? []).filter(
+		(item) => item?.name?.trim() && numericValue(item.price ?? item.unit_price ?? item.total_price ?? item.line_total) > 0,
+	);
+	if (items.length === 0) return [];
+
+	const targetTotal = numericValue(extraction.total_amount);
+	const sumAsLineTotals = items.reduce(
+		(sum, item) => sum + itemLineAmount(item, false).amount,
+		0,
+	);
+	const sumAsUnitPrices = items.reduce(
+		(sum, item) => sum + itemLineAmount(item, true).amount,
+		0,
+	);
+	const useQuantityMultiplier =
+		targetTotal > 0 && Math.abs(sumAsUnitPrices - targetTotal) < Math.abs(sumAsLineTotals - targetTotal);
+
+	const normalized = items.map((item) => ({
+		item,
+		...itemLineAmount(item, useQuantityMultiplier),
+	}));
+	const sum = normalized.reduce((total, item) => total + item.amount, 0);
+	const diff = targetTotal > 0 ? Math.round(targetTotal - sum) : 0;
+	if (diff !== 0 && normalized.length > 0) {
+		const largest = normalized.reduce(
+			(bestIndex, item, index) => item.amount > normalized[bestIndex].amount ? index : bestIndex,
+			0,
+		);
+		normalized[largest] = {
+			...normalized[largest],
+			amount: Math.max(0, normalized[largest].amount + diff),
+		};
+	}
+
+	return normalized.filter((item) => item.amount > 0);
+}
+
+export function receiptExtractionToDrafts(
+	extraction: ReceiptExtraction,
+): ReceiptTransactionDraft[] {
+	const targetTotal = numericValue(extraction.total_amount);
+	const merchant = extraction.merchant?.trim() || undefined;
+	const date = extraction.date?.trim() || new Date().toISOString().slice(0, 10);
+	const confidence = Math.max(0, Math.min(1, Number(extraction.confidence ?? 0)));
+	const reviewRequired = confidence < 0.8;
+	const normalizedItems = normalizeReceiptItems(extraction);
+
+	if (normalizedItems.length > 0) {
+		return normalizedItems.map(({ item, amount, qty }) => {
+			const itemName = item.name?.trim() || "Item struk";
+			const category = categorizeReceiptItem({
+				itemName,
+				itemCategory: item.category,
+				merchant,
+				fallbackCategory: extraction.category,
+			}).category;
+			return {
+				amount,
+				transactionType: "expense",
+				category,
+				description: itemName,
+				merchant,
+				date,
+				confidence,
+				reviewRequired,
+				itemName,
+				quantity: qty,
+			};
+		});
+	}
+
+	if (!Number.isFinite(targetTotal) || targetTotal <= 0) return [];
+	return [
+		{
+			amount: targetTotal,
+			transactionType: "expense",
+			category: categorizeReceiptItem({
+				itemName: merchant ? `Struk ${merchant}` : "Transaksi dari struk",
+				merchant,
+				fallbackCategory: extraction.category,
+			}).category,
+			description: merchant ? `Struk ${merchant}` : "Transaksi dari struk",
+			merchant,
+			date,
+			confidence,
+			reviewRequired,
+		},
+	];
+}
+
 export function receiptExtractionToDraft(
 	extraction: ReceiptExtraction,
 ): ReceiptTransactionDraft | null {
-	const amount = Number(extraction.total_amount ?? 0);
-	if (!Number.isFinite(amount) || amount <= 0) return null;
-
-	const merchant = extraction.merchant?.trim() || undefined;
-	const date = extraction.date?.trim() || new Date().toISOString().slice(0, 10);
-	const category = extraction.category?.trim() || "Belanja";
-	const confidence = Math.max(0, Math.min(1, Number(extraction.confidence ?? 0)));
-	const description = merchant
-		? `Struk ${merchant}`
-		: "Transaksi dari struk";
-
-	return {
-		amount,
-		transactionType: "expense",
-		category,
-		description,
-		merchant,
-		date,
-		confidence,
-		reviewRequired: confidence < 0.8,
-	};
+	return receiptExtractionToDrafts(extraction)[0] ?? null;
 }

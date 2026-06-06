@@ -69,7 +69,7 @@ describe('SettingsScreen honest controls', () => {
     const screen = renderSettings()
 
     expect(screen.getByText('Pengaturan')).toBeTruthy()
-    expect(screen.getByText('Tampilan')).toBeTruthy()
+    expect(screen.queryByText('Tampilan')).toBeNull()
     expect(screen.getByText('Bahasa aplikasi')).toBeTruthy()
     expect(screen.getByText('Notifikasi')).toBeTruthy()
     expect(screen.getByText('Keluarga')).toBeTruthy()
@@ -174,19 +174,16 @@ describe('SettingsScreen honest controls', () => {
   })
 
 
-  it('persists selected language and theme across app reopen', async () => {
+  it('persists selected language across app reopen', async () => {
     const firstSession = renderSettings()
 
     fireEvent.press(firstSession.getByTestId('settings-language-en'))
-    fireEvent.press(firstSession.getByTestId('settings-theme-dark'))
 
     expect(AsyncStorage.setItem).toHaveBeenCalledWith('kaswise:language-preference', 'en')
-    expect(AsyncStorage.setItem).toHaveBeenCalledWith('kaswise:theme-preference', 'dark')
 
     firstSession.unmount()
     jest.mocked(AsyncStorage.getItem).mockImplementation(async (key) => {
       if (key === 'kaswise:language-preference') return 'en'
-      if (key === 'kaswise:theme-preference') return 'dark'
       return null
     })
 
@@ -195,8 +192,26 @@ describe('SettingsScreen honest controls', () => {
     await waitFor(() => {
       expect(reopenedSession.getByText('Settings')).toBeTruthy()
       expect(reopenedSession.getByTestId('settings-language-en').props.accessibilityState.selected).toBe(true)
-      expect(reopenedSession.getByTestId('settings-theme-dark').props.accessibilityState.selected).toBe(true)
     })
+  })
+
+
+  it('does not leave logout stuck when Supabase signOut is slow', async () => {
+    jest.useFakeTimers()
+    mockSignOut.mockImplementationOnce(() => new Promise(() => undefined))
+    const screen = renderSettings()
+
+    fireEvent.press(screen.getByText('Keluar dari Akun'))
+    expect(mockSignOut).toHaveBeenCalled()
+
+    act(() => {
+      jest.advanceTimersByTime(1800)
+    })
+
+    await waitFor(() => {
+      expect(mockReplace).toHaveBeenCalledWith('/(auth)/login')
+    })
+    jest.useRealTimers()
   })
 
   it('still lets language and logout controls work', async () => {
@@ -204,7 +219,7 @@ describe('SettingsScreen honest controls', () => {
 
     fireEvent.press(screen.getByTestId('settings-language-en'))
     expect(screen.getByText('Settings')).toBeTruthy()
-    expect(screen.getByText('Appearance')).toBeTruthy()
+    expect(screen.queryByText('Appearance')).toBeNull()
     expect(screen.getByText('App language')).toBeTruthy()
     expect(screen.getByText('Notifications')).toBeTruthy()
     expect(screen.getByText('Sign Out')).toBeTruthy()

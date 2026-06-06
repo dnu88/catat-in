@@ -1,0 +1,37 @@
+# Kaswise hardening — overlay container untuk backend
+#
+# Pakai bersama compose produksi:
+#   sudo docker compose \
+#     -f docker-compose.production.yml \
+#     -f ops/hardening/docker/compose.hardening.yml \
+#     --env-file .env.production up -d --force-recreate backend
+#
+# Catatan:
+# - read_only: true membuat root filesystem container immutable. tmpfs /tmp
+#   menutup kebutuhan tulis sementara uvicorn. Jika ada lib yang butuh tulis
+#   di path lain, tambahkan ke tmpfs atau set read_only: false dan uji ulang.
+# - cap_drop ALL: backend FastAPI tidak butuh capability Linux apa pun.
+# - resource limit menjaga VPS 3.8GB RAM / 2 CPU tetap stabil.
+
+services:
+  backend:
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    pids_limit: 256
+    mem_limit: 768m
+    memswap_limit: 768m
+    cpus: 1.0
+    ulimits:
+      nofile:
+        soft: 1024
+        hard: 4096
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"

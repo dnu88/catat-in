@@ -3,6 +3,7 @@ import {
 	getApiBaseUrl,
 	getReceiptAuthSession,
 	receiptExtractionToDraft,
+	receiptExtractionToDrafts,
 	uploadReceiptImage,
 } from "./receipt-intake";
 
@@ -90,6 +91,32 @@ describe("receipt intake helpers", () => {
 		expect(file.type).toBe("image/png");
 		expect(file.name).toBe("receipt.png");
 		global.fetch = originalFetch;
+	});
+
+
+	it("creates one draft per receipt item and adjusts total to match receipt", () => {
+		const drafts = receiptExtractionToDrafts({
+			total_amount: "120.000" as never,
+			merchant: "Supermarket A",
+			date: "2026-06-01",
+			category: "Belanja",
+			confidence: 0.91,
+			items: [
+				{ name: "Susu", qty: 2, price: "25.000", category: "Belanja" },
+				{ name: "Roti", qty: 1, price: "30,000", category: "Makan & Minum" },
+				{ name: "Sabun", qty: 1, price: 39000, category: "Kebutuhan Rumah" },
+			],
+		});
+
+		expect(drafts).toHaveLength(3);
+		expect(drafts.map((draft) => draft.description)).toEqual(["Susu", "Roti", "Sabun"]);
+		expect(drafts.map((draft) => draft.category)).toEqual([
+			"Makan & Minum",
+			"Makan & Minum",
+			"Rumah & Perawatan",
+		]);
+		expect(drafts.reduce((sum, draft) => sum + draft.amount, 0)).toBe(120000);
+		expect(drafts[0]).toMatchObject({ amount: 51000, quantity: 2 });
 	});
 
 });

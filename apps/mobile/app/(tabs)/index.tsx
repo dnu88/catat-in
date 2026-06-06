@@ -1,3 +1,4 @@
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Image, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useFocusEffect, useRouter } from "expo-router";
@@ -27,6 +28,12 @@ import { getLocalizedCategoryName } from "../../src/services/category-taxonomy";
 import { resolveCategoryVisual } from "../../src/theme/category-visuals";
 import { useFinanceContext } from "../../src/state/finance-context";
 import {
+	formatReportPeriodLabel,
+	isCurrentMonthPeriod,
+	isDateInReportPeriod,
+	useReportPeriod,
+} from "../../src/state/report-period";
+import {
 	readFirstUseGuideState,
 	saveFirstUseGuideState,
 	type FirstUseGuideState,
@@ -46,6 +53,13 @@ const quickActions = [
 function formatCurrency(value: number) {
 	return `Rp ${Math.abs(value).toLocaleString("id-ID", { maximumFractionDigits: 0 })}`;
 }
+
+function formatSignedCurrency(value: number) {
+	return value < 0 ? `- ${formatCurrency(value)}` : formatCurrency(value);
+}
+
+const DASHBOARD_NOMINAL_VISIBILITY_KEY = "kaswise:dashboard-nominal-hidden";
+const MASKED_AMOUNT = "Rp ••••••";
 
 function formatCompactAmount(
 	value: number,
@@ -76,9 +90,10 @@ function getInitials(fullName: string) {
 
 export default function DashboardScreen() {
 	const { supabase } = useSupabase();
-	const { theme } = useTheme();
+	const { theme, toggleTheme } = useTheme();
 	const { language } = useI18n();
 	const { activeContext } = useFinanceContext();
+	const { activePeriod, resetToCurrentMonth } = useReportPeriod();
 	const router = useRouter();
 	const isEn = language === "en";
 	const tx = useMemo(
@@ -87,6 +102,31 @@ export default function DashboardScreen() {
 				? {
 						budget: "Budgets",
 						view: "View →",
+						monthlyRemaining: "This month left",
+						monthlyDeficit: "This month minus",
+						periodRemaining: "This period left",
+						periodDeficit: "This period minus",
+						activePeriod: "Active period",
+						resetPeriod: "This month",
+						hideAmounts: "Hide",
+						showAmounts: "Show",
+						hideAmountsA11y: "Hide dashboard amounts",
+						showAmountsA11y: "Show dashboard amounts",
+						switchToLightTheme: "Switch to light mode",
+						switchToDarkTheme: "Switch to dark mode",
+						manageWallets: "Manage wallets",
+						manage: "Manage",
+						quickActionA11y: (label: string) => `Quick action ${label}`,
+						budgetActionA11y: "View all budgets",
+						recentTitle: "Recent",
+						allTransactions: "All →",
+						allTransactionsA11y: "View all transactions",
+						overUntilHidden: (day: string, month: string) => `Amount hidden until ${day}/${month}`,
+						remainingUntilHidden: (day: string, month: string) => `Amount hidden until ${day}/${month}`,
+						totalBalance: "Total balance",
+						totalBalanceSub: "All active wallets",
+						monthlyExpense: "Spending",
+						monthlyExpenseSub: "This month",
 						onboardingEyebrow: "First steps",
 						onboardingTitle: "Start with one wallet and one transaction.",
 						onboardingBody: "Kaswise works best after it knows where your money lives and has one daily transaction to read.",
@@ -114,6 +154,31 @@ export default function DashboardScreen() {
 				: {
 						budget: "Anggaran",
 						view: "Lihat →",
+						monthlyRemaining: "Sisa bulan ini",
+						monthlyDeficit: "Minus bulan ini",
+						periodRemaining: "Sisa periode ini",
+						periodDeficit: "Minus periode ini",
+						activePeriod: "Periode aktif",
+						resetPeriod: "Bulan ini",
+						hideAmounts: "Sembunyikan",
+						showAmounts: "Lihat",
+						hideAmountsA11y: "Sembunyikan nominal dashboard",
+						showAmountsA11y: "Tampilkan nominal dashboard",
+						switchToLightTheme: "Ganti ke mode terang",
+						switchToDarkTheme: "Ganti ke mode gelap",
+						manageWallets: "Kelola dompet",
+						manage: "Kelola",
+						quickActionA11y: (label: string) => `Aksi cepat ${label}`,
+						budgetActionA11y: "Lihat semua budget",
+						recentTitle: "Terakhir",
+						allTransactions: "Semua →",
+						allTransactionsA11y: "Lihat semua transaksi",
+						overUntilHidden: (day: string, month: string) => `Nominal disembunyikan sampai ${day}/${month}`,
+						remainingUntilHidden: (day: string, month: string) => `Nominal disembunyikan sampai ${day}/${month}`,
+						totalBalance: "Total saldo",
+						totalBalanceSub: "Semua dompet aktif",
+						monthlyExpense: "Pengeluaran",
+						monthlyExpenseSub: "Bulan ini",
 						onboardingEyebrow: "Langkah awal",
 						onboardingTitle: "Mulai dari satu dompet dan satu transaksi.",
 						onboardingBody: "Kaswise paling terasa setelah tahu uangmu ada di mana dan punya satu transaksi harian untuk dibaca.",
@@ -160,6 +225,35 @@ export default function DashboardScreen() {
 		useState<FirstUseGuideState>({});
 	const [activeBudgetCount, setActiveBudgetCount] = useState(0);
 	const [currentGuideStep, setCurrentGuideStep] = useState(0);
+	const [isNominalHidden, setIsNominalHidden] = useState(false);
+
+	useEffect(() => {
+		let active = true;
+		void AsyncStorage.getItem(DASHBOARD_NOMINAL_VISIBILITY_KEY)
+			.then((value) => {
+				if (active) setIsNominalHidden(value === "hidden");
+			})
+			.catch(() => undefined);
+		return () => {
+			active = false;
+		};
+	}, []);
+
+	const toggleNominalVisibility = useCallback(() => {
+		setIsNominalHidden((current) => {
+			const next = !current;
+			void AsyncStorage.setItem(
+				DASHBOARD_NOMINAL_VISIBILITY_KEY,
+				next ? "hidden" : "visible",
+			).catch(() => undefined);
+			return next;
+		});
+	}, []);
+
+	const displayAmount = useCallback(
+		(amount: string) => (isNominalHidden ? MASKED_AMOUNT : amount),
+		[isNominalHidden],
+	);
 
 	const loadDashboard = useCallback(async (isMounted: () => boolean = () => true) => {
 			try {
@@ -213,7 +307,7 @@ export default function DashboardScreen() {
 					setWallets(
 						scopedWallets.filter((wallet) => wallet.is_active !== false),
 					);
-					setRecentTransactions(scopedTransactions.slice(0, 3));
+					setRecentTransactions(scopedTransactions);
 					setCategoryOptions(categories);
 				}
 				const activeEnvelopes = envelopes.filter(
@@ -272,7 +366,27 @@ export default function DashboardScreen() {
 		(sum, wallet) => sum + Number(wallet.balance ?? 0),
 		0,
 	);
-	const displayedTransactions = recentTransactions.map((transaction) => {
+	const now = new Date();
+	const activePeriodRangeLabel = formatReportPeriodLabel(activePeriod, isEn ? "en" : "id");
+	const activePeriodLabel = activePeriod.ruleName
+		? `${activePeriod.ruleName} · ${activePeriodRangeLabel}`
+		: activePeriodRangeLabel;
+	const isCurrentMonth = isCurrentMonthPeriod(activePeriod, now);
+	const activePeriodTransactions = recentTransactions.filter((transaction) =>
+		isDateInReportPeriod(transaction.date, activePeriod),
+	);
+	const monthlyIncome = activePeriodTransactions
+		.filter((transaction) => transaction.transaction_type === "income")
+		.reduce((sum, transaction) => sum + Number(transaction.amount ?? 0), 0);
+	const monthlyExpense = activePeriodTransactions
+		.filter((transaction) => transaction.transaction_type === "expense")
+		.reduce((sum, transaction) => sum + Number(transaction.amount ?? 0), 0);
+	const monthlyRemaining = monthlyIncome - monthlyExpense;
+	const monthlyRemainingTone = monthlyRemaining < 0 ? "danger" : "default";
+	const heroTitle = isCurrentMonth
+		? monthlyRemaining < 0 ? tx.monthlyDeficit : tx.monthlyRemaining
+		: monthlyRemaining < 0 ? tx.periodDeficit : tx.periodRemaining;
+	const displayedTransactions = recentTransactions.slice(0, 3).map((transaction) => {
 		const categoryVisual = resolveCategoryVisual({
 			categoryName: transaction.category,
 			categories: categoryOptions,
@@ -289,10 +403,10 @@ export default function DashboardScreen() {
 			title:
 				transaction.merchant ?? transaction.description ?? transaction.category,
 			meta: `${transaction.date ?? ""} · ${localizedCategoryName}`,
-			amount: formatCompactAmount(
+			amount: displayAmount(formatCompactAmount(
 				transaction.amount,
 				transaction.transaction_type,
-			),
+			)),
 			amountTone:
 				transaction.transaction_type === "income"
 					? ("income" as const)
@@ -322,7 +436,6 @@ export default function DashboardScreen() {
 	const selectedProfileAvatar = PROFILE_AVATARS.find(
 		(avatar) => avatar.id === profileAvatarKey,
 	);
-	const now = new Date();
 	const dateText = now.toLocaleDateString(isEn ? "en-US" : "id-ID", {
 		month: "long",
 		year: "numeric",
@@ -441,6 +554,29 @@ export default function DashboardScreen() {
 		}
 	}, [guideUserId]);
 
+	const budgetAlertMeta = primaryEnvelopeAlert
+		? (() => {
+				const day = primaryEnvelopeAlert.envelope.end_date.slice(8, 10);
+				const month = primaryEnvelopeAlert.envelope.end_date.slice(5, 7);
+				if (primaryEnvelopeAlert.progress.is_over_budget) {
+					return isNominalHidden
+						? tx.overUntilHidden(day, month)
+						: tx.overUntil(
+								primaryEnvelopeAlert.progress.over_budget_amount,
+								day,
+								month,
+							);
+				}
+				return isNominalHidden
+					? tx.remainingUntilHidden(day, month)
+					: tx.remainingUntil(
+							Math.max(primaryEnvelopeAlert.progress.remaining_amount, 0),
+							day,
+							month,
+						);
+			})()
+		: "";
+
 	return (
 		<PageEntrance testID="home-page-entrance" style={styles.screen}>
 			<ScrollView
@@ -461,6 +597,20 @@ export default function DashboardScreen() {
 						<Text style={styles.dateText}>{dateText}</Text>
 					</View>
 					<View style={styles.headerActions}>
+						<Pressable
+							testID="home-theme-toggle"
+							accessibilityRole="button"
+							accessibilityLabel={theme.mode === "dark" ? tx.switchToLightTheme : tx.switchToDarkTheme}
+							style={({ pressed }) => [styles.headerIconButton, pressed && { opacity: 0.74 }]}
+							onPress={toggleTheme}
+						>
+							<KaswiseIcon
+								name={theme.mode === "dark" ? "sun" : "moon"}
+								size={18}
+								weight="bold"
+								color={theme.colors.textSecondary}
+							/>
+						</Pressable>
 						<View testID="home-avatar" style={styles.avatarWrap}>
 							{profilePhotoUrl ? (
 								<Image
@@ -479,29 +629,85 @@ export default function DashboardScreen() {
 
 				<StaggeredEntrance index={0} testID="home-entrance-hero">
 					<View testID="home-hero-card" style={styles.heroCard}>
-					<View style={styles.heroContextRow}>
-						<FinanceContextSwitcher variant="hero" />
-					</View>
-
-					<View style={styles.heroControlRow}>
-						<Pressable
-							accessibilityRole="button"
-							accessibilityLabel="Kelola dompet"
-							hitSlop={12}
-							onPress={() => router.push("/(tabs)/wallets" as never)}
-						>
-							<Text style={styles.manageText}>Manage</Text>
-						</Pressable>
-					</View>
-
-					<View style={styles.balanceBlock}>
-						<Text style={styles.heroLabel}>Total saldo</Text>
-						<View style={styles.amountRow}>
-							<Text testID="home-total-balance" style={styles.heroAmount}>
-								{formatCurrency(totalBalance)}
-							</Text>
+						<View style={styles.heroTopRow}>
+							<View style={styles.heroContextRow}>
+								<FinanceContextSwitcher variant="hero" />
+							</View>
+							<View style={styles.heroTopActions}>
+								<Pressable
+									testID="home-amount-visibility-toggle"
+									accessibilityRole="button"
+									accessibilityLabel={isNominalHidden ? tx.showAmountsA11y : tx.hideAmountsA11y}
+									accessibilityState={{ selected: isNominalHidden }}
+									style={styles.privacyToggle}
+									onPress={toggleNominalVisibility}
+								>
+									<KaswiseIcon
+										name={isNominalHidden ? "eyeSlash" : "eye"}
+										size={17}
+										weight="bold"
+										color={theme.colors.textSecondary}
+									/>
+								</Pressable>
+								<Pressable
+									accessibilityRole="button"
+									accessibilityLabel={tx.manageWallets}
+									hitSlop={12}
+									onPress={() => router.push("/(tabs)/wallets" as never)}
+								>
+									<Text style={styles.manageText}>{tx.manage}</Text>
+								</Pressable>
+							</View>
 						</View>
-					</View>
+
+						<View style={styles.balanceBlock}>
+							<Text style={styles.heroLabel}>{heroTitle}</Text>
+							<View style={styles.amountRow}>
+								<Text
+									testID="home-monthly-remaining"
+									style={[
+										styles.heroAmount,
+										monthlyRemainingTone === "danger" && styles.heroAmountDanger,
+									]}
+								>
+									{displayAmount(formatSignedCurrency(monthlyRemaining))}
+								</Text>
+							</View>
+						</View>
+
+						<View style={styles.heroPeriodRow}>
+							<View style={styles.heroPeriodChip}>
+								<Text testID="home-active-period-label" style={styles.heroPeriodText}>{tx.activePeriod}: {activePeriodLabel}</Text>
+							</View>
+							{!isCurrentMonth ? (
+								<Pressable
+									accessibilityRole="button"
+									accessibilityLabel={tx.resetPeriod}
+									testID="home-period-reset"
+									onPress={resetToCurrentMonth}
+									style={({ pressed }) => [styles.heroPeriodReset, pressed && { opacity: 0.74 }]}
+								>
+									<Text style={styles.heroPeriodResetText}>{tx.resetPeriod}</Text>
+								</Pressable>
+							) : null}
+						</View>
+
+						<View style={styles.heroMetricRow}>
+							<View style={styles.heroMetricCard}>
+								<Text style={styles.heroMetricLabel}>{tx.totalBalance}</Text>
+								<Text testID="home-total-balance" style={styles.heroMetricValue}>
+									{displayAmount(formatCurrency(totalBalance))}
+								</Text>
+								<Text style={styles.heroMetricSub}>{tx.totalBalanceSub}</Text>
+							</View>
+							<View style={styles.heroMetricCard}>
+								<Text style={styles.heroMetricLabel}>{tx.monthlyExpense}</Text>
+								<Text testID="home-monthly-expense" style={styles.heroMetricValue}>
+									{displayAmount(formatCurrency(monthlyExpense))}
+								</Text>
+								<Text style={styles.heroMetricSub}>{tx.monthlyExpenseSub}</Text>
+							</View>
+						</View>
 					</View>
 				</StaggeredEntrance>
 
@@ -512,7 +718,7 @@ export default function DashboardScreen() {
 							key={action.id}
 							testID={`home-quick-action-${action.id}`}
 							accessibilityRole="button"
-							accessibilityLabel={`Aksi cepat ${action.label}`}
+							accessibilityLabel={tx.quickActionA11y(action.label)}
 							style={styles.quickActionCard}
 							onPress={() => router.push(action.route as never)}
 						>
@@ -637,7 +843,7 @@ export default function DashboardScreen() {
 						<Pressable
 							testID="home-budget-action"
 							accessibilityRole="button"
-							accessibilityLabel="Lihat semua budget"
+							accessibilityLabel={tx.budgetActionA11y}
 							hitSlop={12}
 							onPress={() => router.push("/(tabs)/budgets" as never)}
 						>
@@ -653,22 +859,7 @@ export default function DashboardScreen() {
 											? `${primaryEnvelopeAlert.envelope.name} ${tx.over}`
 											: `${primaryEnvelopeAlert.envelope.name} ${tx.near}`}
 									</Text>
-									<Text style={styles.budgetMeta}>
-										{primaryEnvelopeAlert.progress.is_over_budget
-											? tx.overUntil(
-													primaryEnvelopeAlert.progress.over_budget_amount,
-													primaryEnvelopeAlert.envelope.end_date.slice(8, 10),
-													primaryEnvelopeAlert.envelope.end_date.slice(5, 7),
-												)
-											: tx.remainingUntil(
-													Math.max(
-														primaryEnvelopeAlert.progress.remaining_amount,
-														0,
-													),
-													primaryEnvelopeAlert.envelope.end_date.slice(8, 10),
-													primaryEnvelopeAlert.envelope.end_date.slice(5, 7),
-												)}
-									</Text>
+									<Text style={styles.budgetMeta}>{budgetAlertMeta}</Text>
 								</View>
 								<Text style={styles.budgetPercent}>
 									{primaryEnvelopeAlert.progress.used_percentage}%
@@ -693,14 +884,14 @@ export default function DashboardScreen() {
 				<StaggeredEntrance index={4} testID="home-entrance-recent">
 					<View style={styles.sectionCard}>
 						<View style={styles.sectionTopRow}>
-							<Text style={styles.sectionTitle}>Terakhir</Text>
+							<Text style={styles.sectionTitle}>{tx.recentTitle}</Text>
 						<Pressable
 							accessibilityRole="button"
-							accessibilityLabel="Lihat semua transaksi"
+							accessibilityLabel={tx.allTransactionsA11y}
 							hitSlop={12}
 							onPress={() => router.push("/(tabs)/transactions" as never)}
 						>
-							<Text style={styles.sectionAction}>Semua →</Text>
+							<Text style={styles.sectionAction}>{tx.allTransactions}</Text>
 						</Pressable>
 					</View>
 					{displayedTransactions.length ? (
@@ -807,6 +998,16 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			flexShrink: 1,
 			minWidth: 0,
 		},
+		headerIconButton: {
+			width: 38,
+			height: 38,
+			borderRadius: 19,
+			borderWidth: 1,
+			borderColor: theme.colors.borderSoft,
+			backgroundColor: theme.colors.mutedSurface,
+			alignItems: "center",
+			justifyContent: "center",
+		},
 		avatarWrap: {
 			width: 40,
 			height: 40,
@@ -838,18 +1039,36 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			borderColor: theme.colors.borderSoft,
 			overflow: "hidden",
 		},
+		heroTopRow: {
+			position: "relative",
+			zIndex: 20,
+			flexDirection: "row",
+			alignItems: "center",
+			justifyContent: "space-between",
+			gap: 12,
+			marginBottom: 16,
+		},
 		heroContextRow: {
 			position: "relative",
 			zIndex: 20,
 			alignSelf: "flex-start",
-			marginBottom: 12,
+			flexShrink: 1,
 		},
-		heroControlRow: {
-			position: "relative",
+		heroTopActions: {
 			flexDirection: "row",
-			justifyContent: "flex-end",
 			alignItems: "center",
-			marginBottom: 16,
+			gap: 8,
+			flexShrink: 0,
+		},
+		privacyToggle: {
+			width: 34,
+			height: 34,
+			borderRadius: 17,
+			borderWidth: 1,
+			borderColor: theme.colors.borderSoft,
+			backgroundColor: theme.colors.mutedSurface,
+			alignItems: "center",
+			justifyContent: "center",
 		},
 		manageText: {
 			color: theme.colors.textMuted,
@@ -858,11 +1077,14 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 		},
 		balanceBlock: {
 			position: "relative",
-			marginBottom: 14,
+			marginBottom: 16,
 		},
 		heroLabel: {
 			color: theme.colors.textMuted,
 			fontSize: 11,
+			fontWeight: theme.typography.fontWeight.bold,
+			textTransform: "uppercase",
+			letterSpacing: 0.4,
 			marginBottom: 4,
 		},
 		amountRow: {
@@ -876,6 +1098,72 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			fontSize: 30,
 			fontWeight: theme.typography.fontWeight.extrabold,
 			letterSpacing: -0.6,
+		},
+		heroAmountDanger: {
+			color: theme.colors.danger,
+		},
+		heroPeriodRow: {
+			flexDirection: "row",
+			alignItems: "center",
+			gap: 8,
+			marginBottom: 12,
+			flexWrap: "wrap",
+		},
+		heroPeriodChip: {
+			borderWidth: 1,
+			borderColor: theme.colors.borderSoft,
+			borderRadius: 999,
+			backgroundColor: theme.colors.mutedSurface,
+			paddingHorizontal: 10,
+			paddingVertical: 5,
+		},
+		heroPeriodText: {
+			color: theme.colors.textSecondary,
+			fontSize: 11,
+			fontWeight: theme.typography.fontWeight.bold,
+		},
+		heroPeriodReset: {
+			minHeight: 30,
+			borderRadius: 999,
+			paddingHorizontal: 10,
+			alignItems: "center",
+			justifyContent: "center",
+			backgroundColor: theme.iconBubbles.primary.background,
+			borderWidth: 1,
+			borderColor: theme.iconBubbles.primary.border,
+		},
+		heroPeriodResetText: {
+			color: theme.iconBubbles.primary.color,
+			fontSize: 11,
+			fontWeight: theme.typography.fontWeight.extrabold,
+		},
+		heroMetricRow: {
+			flexDirection: "row",
+			gap: 10,
+		},
+		heroMetricCard: {
+			flex: 1,
+			borderWidth: 1,
+			borderColor: theme.colors.borderSoft,
+			borderRadius: 16,
+			backgroundColor: theme.colors.mutedSurface,
+			padding: 12,
+			gap: 3,
+		},
+		heroMetricLabel: {
+			color: theme.colors.textMuted,
+			fontSize: 11,
+			fontWeight: theme.typography.fontWeight.bold,
+		},
+		heroMetricValue: {
+			color: theme.colors.textPrimary,
+			fontSize: 15,
+			fontWeight: theme.typography.fontWeight.extrabold,
+		},
+		heroMetricSub: {
+			color: theme.colors.textDim,
+			fontSize: 10,
+			fontWeight: theme.typography.fontWeight.semibold,
 		},
 		quickActionRow: {
 			flexDirection: "row",
