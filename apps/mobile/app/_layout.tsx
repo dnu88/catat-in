@@ -6,6 +6,7 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import { I18nProvider, useI18n } from "../src/i18n/i18n-context";
 import { SupabaseProvider } from "../src/lib/supabase";
 import { FinanceContextProvider } from "../src/state/finance-context";
+import { ReportPeriodProvider } from "../src/state/report-period";
 import { ThemeProvider, useTheme } from "../src/theme/theme-context";
 import { createKaswiseStackScreenOptions } from "../src/navigation/transitions";
 
@@ -96,7 +97,9 @@ export default function RootLayout() {
 					<ThemeProvider>
 						<ErrorBoundary>
 							<FinanceContextProvider>
-								<ThemedRootStack />
+								<ReportPeriodProvider>
+									<ThemedRootStack />
+								</ReportPeriodProvider>
 							</FinanceContextProvider>
 						</ErrorBoundary>
 					</ThemeProvider>

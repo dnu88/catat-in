@@ -30,6 +30,11 @@ import { resolveCategoryVisual } from "../../src/theme/category-visuals";
 import { useI18n } from "../../src/i18n/i18n-context";
 import { useFinanceContext } from "../../src/state/finance-context";
 import {
+	formatReportPeriodLabel,
+	isDateInReportPeriod,
+	useReportPeriod,
+} from "../../src/state/report-period";
+import {
 	deleteTransaction,
 	listTransactions,
 	type Transaction,
@@ -39,6 +44,7 @@ import { getLocalizedCategoryName } from "../../src/services/category-taxonomy";
 
 type Filter = "all" | "income" | "expense";
 type Period = "week" | "month" | "year";
+type TransactionPeriod = "report" | Period;
 
 const DATE_ONLY_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/;
 
@@ -330,6 +336,7 @@ export default function TransactionsScreen() {
 	const { theme } = useTheme();
 	const { language } = useI18n();
 	const { activeContext, canCreate } = useFinanceContext();
+	const { activePeriod: reportPeriod } = useReportPeriod();
 	const router = ExpoRouter.useRouter();
 	const styles = useMemo(() => createStyles(theme), [theme]);
 	const activeContextKey =
@@ -339,7 +346,7 @@ export default function TransactionsScreen() {
 
 	const isEn = language === "en";
 	const [activeFilter, setActiveFilter] = useState<Filter>("all");
-	const [activePeriod, setActivePeriod] = useState<Period>("month");
+	const [activePeriod, setActivePeriod] = useState<TransactionPeriod>("report");
 	const [transactions, setTransactions] = useState<Transaction[]>([]);
 	const [categoryOptions, setCategoryOptions] = useState<Category[]>([]);
 	const [loading, setLoading] = useState(true);
@@ -395,9 +402,15 @@ export default function TransactionsScreen() {
 		}, [loadTransactions]),
 	);
 
+	const reportPeriodLabel = formatReportPeriodLabel(reportPeriod, isEn ? "en" : "id");
 	const periodTransactions = useMemo(
-		() => filterTransactionsByPeriod(transactions, activePeriod),
-		[activePeriod, transactions],
+		() =>
+			activePeriod === "report"
+				? transactions.filter((item) =>
+					isDateInReportPeriod(item.date || item.tanggal || item.created_at, reportPeriod),
+				)
+				: filterTransactionsByPeriod(transactions, activePeriod),
+		[activePeriod, reportPeriod, transactions],
 	);
 
 	const list = useMemo(
@@ -525,24 +538,37 @@ export default function TransactionsScreen() {
 
 			{loadError ? <StateMessage key="transactions-error" message={loadError} tone="error" /> : null}
 
+			<View testID="transactions-report-period-card" style={styles.reportPeriodCard}>
+				<Text style={styles.reportPeriodTitle}>
+					{isEn ? "Report period" : "Periode laporan"}
+				</Text>
+				<Text testID="transactions-report-period-label" style={styles.reportPeriodLabel}>
+					{reportPeriod.ruleName ? `${reportPeriod.ruleName} · ${reportPeriodLabel}` : reportPeriodLabel}
+				</Text>
+			</View>
+
 			<View testID="transactions-period-row" style={styles.periodRow}>
-				{(["week", "month", "year"] as Period[]).map((period) => (
+				{(["report", "week", "month", "year"] as TransactionPeriod[]).map((period) => (
 					<Pressable
 						key={period}
 						testID={`transactions-period-${period}`}
 						accessibilityRole="button"
 						accessibilityLabel={`${isEn ? "Choose period" : "Pilih periode"} ${
 							isEn
-								? period === "week"
-									? "Week"
-									: period === "month"
-										? "Month"
-										: "Year"
-								: period === "week"
-									? "Minggu"
-									: period === "month"
-										? "Bulan"
-										: "Tahun"
+								? period === "report"
+									? "Report"
+									: period === "week"
+										? "Week"
+										: period === "month"
+											? "Month"
+											: "Year"
+								: period === "report"
+									? "Laporan"
+									: period === "week"
+										? "Minggu"
+										: period === "month"
+											? "Bulan"
+											: "Tahun"
 						}`}
 						accessibilityState={{ selected: activePeriod === period }}
 						onPress={() => setActivePeriod(period)}
@@ -567,16 +593,20 @@ export default function TransactionsScreen() {
 							]}
 						>
 							{isEn
-								? period === "week"
-									? "Week"
-									: period === "month"
-										? "Month"
-										: "Year"
-								: period === "week"
-									? "Minggu"
-									: period === "month"
-										? "Bulan"
-										: "Tahun"}
+								? period === "report"
+									? "Report"
+									: period === "week"
+										? "Week"
+										: period === "month"
+											? "Month"
+											: "Year"
+								: period === "report"
+									? "Laporan"
+									: period === "week"
+										? "Minggu"
+										: period === "month"
+											? "Bulan"
+											: "Tahun"}
 						</Text>
 					</Pressable>
 				))}
@@ -640,6 +670,8 @@ export default function TransactionsScreen() {
 		activeFilter,
 		activePeriod,
 		isEn,
+		reportPeriod.ruleName,
+		reportPeriodLabel,
 		list.length,
 		loadError,
 		styles,
@@ -751,6 +783,26 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			color: theme.colors.textSecondary,
 			fontSize: theme.typography.fontSize.sm,
 			fontWeight: theme.typography.fontWeight.bold,
+		},
+		reportPeriodCard: {
+			backgroundColor: theme.colors.surface,
+			borderWidth: 1,
+			borderColor: theme.colors.borderSoft,
+			borderRadius: theme.radius.md,
+			paddingHorizontal: theme.spacing.md,
+			paddingVertical: theme.spacing.sm + 2,
+			marginBottom: theme.spacing.sm,
+		},
+		reportPeriodTitle: {
+			color: theme.colors.textMuted,
+			fontSize: 11,
+			fontWeight: theme.typography.fontWeight.bold,
+			marginBottom: 2,
+		},
+		reportPeriodLabel: {
+			color: lightBrand,
+			fontSize: 13,
+			fontWeight: theme.typography.fontWeight.extrabold,
 		},
 		periodRow: {
 			flexDirection: "row",

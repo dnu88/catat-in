@@ -11,6 +11,7 @@ import ReportsScreen from "../app/(tabs)/reports";
 import { ThemeProvider } from "../src/theme/theme-context";
 import { SupabaseProvider } from "../src/lib/supabase";
 import { I18nProvider } from "../src/i18n/i18n-context";
+import { ReportPeriodProvider } from "../src/state/report-period";
 
 let mockActiveContext:
 	| { type: "personal" }
@@ -182,7 +183,9 @@ function renderReports() {
 		<SupabaseProvider>
 			<I18nProvider>
 				<ThemeProvider>
-					<ReportsScreen />
+					<ReportPeriodProvider>
+						<ReportsScreen />
+					</ReportPeriodProvider>
 				</ThemeProvider>
 			</I18nProvider>
 		</SupabaseProvider>,

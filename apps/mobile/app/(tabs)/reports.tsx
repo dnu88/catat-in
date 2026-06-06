@@ -8,6 +8,7 @@ import {
 	Share,
 	Modal,
 	RefreshControl,
+	TextInput,
 } from "react-native";
 import { useFocusEffect, useRouter } from "expo-router";
 import Svg, { Circle } from "react-native-svg";
@@ -24,6 +25,15 @@ import {
 } from "../../src/theme/category-visuals";
 import { useI18n } from "../../src/i18n/i18n-context";
 import { useFinanceContext } from "../../src/state/finance-context";
+import {
+	buildCustomReportPeriod,
+	buildReportPeriod,
+	formatReportPeriodLabel,
+	formatSavedRuleSummary,
+	parseDateKey,
+	type ReportPeriodPreset,
+	useReportPeriod,
+} from "../../src/state/report-period";
 import { applyFinanceContextFilter } from "../../src/services/finance-context-query";
 import { listCategories, type Category } from "../../src/services/categories";
 import { markFirstUseReportsVisited } from "../../src/services/first-use-guide";
@@ -98,7 +108,7 @@ const categories = [
 ];
 
 type Tab = "overview" | "category" | "compare";
-type PeriodFilter = "month" | "3month" | "6month" | "year" | "custom";
+type PeriodFilter = ReportPeriodPreset | "custom" | "saved_rule";
 type ReportTransaction = {
 	amount: number;
 	transaction_type: "income" | "expense";
@@ -169,14 +179,14 @@ function stableCategoryIndex(categoryName: string, paletteLength: number) {
 	return hash;
 }
 
-const periodLabelsId: Record<PeriodFilter, string> = {
+const periodLabelsId: Record<Exclude<PeriodFilter, "saved_rule">, string> = {
 	month: "1 Bulan",
 	"3month": "3 Bulan",
 	"6month": "6 Bulan",
 	year: "1 Tahun",
 	custom: "Kustom",
 };
-const periodLabelsEn: Record<PeriodFilter, string> = {
+const periodLabelsEn: Record<Exclude<PeriodFilter, "saved_rule">, string> = {
 	month: "1 Month",
 	"3month": "3 Months",
 	"6month": "6 Months",
@@ -189,6 +199,13 @@ export default function ReportsScreen() {
 	const router = useRouter();
 	const { supabase } = useSupabase();
 	const { activeContext } = useFinanceContext();
+	const {
+		activePeriod,
+		savedRules,
+		setActivePeriod,
+		saveMonthlyCycleRule,
+		selectSavedRule,
+	} = useReportPeriod();
 	const { language } = useI18n();
 	const styles = useMemo(() => createStyles(theme), [theme]);
 	const [activeTab, setActiveTab] = useState<Tab>("overview");
@@ -202,6 +219,8 @@ export default function ReportsScreen() {
 		number | null
 	>(null);
 	const [showDateModal, setShowDateModal] = useState(false);
+	const [showSaveRuleModal, setShowSaveRuleModal] = useState(false);
+	const [ruleName, setRuleName] = useState("");
 	const [customStartYear, setCustomStartYear] = useState(
 		new Date().getFullYear(),
 	);
@@ -330,6 +349,15 @@ export default function ReportsScreen() {
 				modalCancel: "Cancel",
 				modalApply: "Apply",
 				modalDone: "Done",
+				savedRulesTitle: "Saved periods",
+				savedRulesEmpty: "Save a custom range to reuse it here.",
+				savedRulesCount: (count: number) => `${count} saved`,
+				saveRuleCta: "Save as rule",
+				saveRuleTitle: "Save period rule",
+				saveRuleName: "Rule name",
+				saveRuleHint: (startDay: number, endDay: number) => `Repeats every month from day ${startDay} to ${endDay}.`,
+				saveRuleConfirm: "Save rule",
+				savedRuleAccessibility: (name: string) => `Choose saved period ${name}`,
 				detailTitle: "Transactions",
 				noCategoryTransactions: "No transactions in this category.",
 				otherCategoryInsight: (percent: number) =>
@@ -339,6 +367,18 @@ export default function ReportsScreen() {
 				shareExpense: "Expense",
 				shareSavings: "Savings",
 				shareTxCount: "Transactions",
+				contextPersonal: "Personal",
+				contextHousehold: "Family",
+				shareA11y: "Share report",
+				manageBudgetA11y: "Manage budget wallets",
+				choosePeriodA11y: (label: string) => `Choose period ${label}`,
+				editCustomRangeA11y: "Edit custom date range",
+				chartColumnA11y: (label: string, year: number) => `View cashflow rhythm ${label} ${year}`,
+				donutA11y: "Expense composition by category",
+				openCategoryA11y: (label: string) => `Open category detail ${label}`,
+				closeDateRangeA11y: "Close date range",
+				closeCategoryDetailA11y: "Close category detail",
+				topExpenses: "Top 5 Expenses",
 				budgetWalletTitle: "Budget Wallets",
 				budgetWalletMeta:
 					"Personal budgets like Coffee, Ride-hailing, and Hangout.",
@@ -384,6 +424,15 @@ export default function ReportsScreen() {
 				modalCancel: "Batal",
 				modalApply: "Terapkan",
 				modalDone: "Selesai",
+				savedRulesTitle: "Aturan periode",
+				savedRulesEmpty: "Simpan rentang kustom agar bisa dipakai lagi di sini.",
+				savedRulesCount: (count: number) => `${count} tersimpan`,
+				saveRuleCta: "Simpan sebagai aturan",
+				saveRuleTitle: "Simpan aturan periode",
+				saveRuleName: "Nama aturan",
+				saveRuleHint: (startDay: number, endDay: number) => `Berulang tiap bulan dari tanggal ${startDay} sampai ${endDay}.`,
+				saveRuleConfirm: "Simpan aturan",
+				savedRuleAccessibility: (name: string) => `Pilih aturan periode ${name}`,
 				detailTitle: "Transaksi",
 				noCategoryTransactions: "Belum ada transaksi di kategori ini.",
 				otherCategoryInsight: (percent: number) =>
@@ -393,6 +442,18 @@ export default function ReportsScreen() {
 				shareExpense: "Pengeluaran",
 				shareSavings: "Tabungan",
 				shareTxCount: "Jumlah transaksi",
+				contextPersonal: "Pribadi",
+				contextHousehold: "Keluarga",
+				shareA11y: "Bagikan laporan",
+				manageBudgetA11y: "Kelola dompet budget",
+				choosePeriodA11y: (label: string) => `Pilih periode ${label}`,
+				editCustomRangeA11y: "Ubah rentang tanggal kustom",
+				chartColumnA11y: (label: string, year: number) => `Lihat ritme kas ${label} ${year}`,
+				donutA11y: "Komposisi pengeluaran berdasarkan kategori",
+				openCategoryA11y: (label: string) => `Buka detail kategori ${label}`,
+				closeDateRangeA11y: "Tutup rentang tanggal",
+				closeCategoryDetailA11y: "Tutup detail kategori",
+				topExpenses: "5 Pengeluaran Terbanyak",
 				budgetWalletTitle: "Dompet",
 				budgetWalletMeta: "Budget personal seperti Kopi, Ojol, dan Nongkrong.",
 				budgetWalletManage: "Kelola",
@@ -437,12 +498,30 @@ export default function ReportsScreen() {
 	const customStartIso = dateKey(customStartYear, customStartMonth, customStartDay);
 	const customEndIso = dateKey(customEndYear, customEndMonth, customEndDay);
 	const customRangeLabel = `${customStartDay} ${monthName(customStartMonth)} ${customStartYear} - ${customEndDay} ${monthName(customEndMonth)} ${customEndYear}`;
+
+	useEffect(() => {
+		setPeriodFilter(activePeriod.type);
+		if (activePeriod.type === "custom" || activePeriod.type === "saved_rule") {
+			const start = parseDateKey(activePeriod.startDate);
+			const end = parseDateKey(activePeriod.endDate);
+			setCustomStartYear(start.year);
+			setCustomStartMonth(start.month);
+			setCustomStartDay(start.day);
+			setCustomEndYear(end.year);
+			setCustomEndMonth(end.month);
+			setCustomEndDay(end.day);
+		}
+	}, [activePeriod]);
+
+	const activePeriodRangeLabel = formatReportPeriodLabel(activePeriod, isEn ? "en" : "id");
 	const periodDisplayLabel =
 		periodFilter === "custom"
 			? customRangeLabel
-			: periodFilter === "month"
-				? `${monthName(new Date().getMonth() + 1)} ${new Date().getFullYear()}`
-				: periodLabels[periodFilter];
+			: periodFilter === "saved_rule"
+				? `${activePeriod.ruleName ?? tx.savedRulesTitle} · ${activePeriodRangeLabel}`
+				: periodFilter === "month"
+					? `${monthName(new Date().getMonth() + 1)} ${new Date().getFullYear()}`
+					: periodLabels[periodFilter];
 	const formatRupiah = (valueInJuta: number) =>
 		`Rp ${(valueInJuta * 1_000_000).toLocaleString("id-ID")}`;
 	const formatCompactRupiah = (value: number) => {
@@ -514,7 +593,7 @@ export default function ReportsScreen() {
 					expense: 0,
 				});
 			}
-		} else if (periodFilter === "custom") {
+		} else if (periodFilter === "custom" || periodFilter === "saved_rule") {
 			const start = new Date(customStartYear, customStartMonth - 1, customStartDay);
 			const end = new Date(customEndYear, customEndMonth - 1, customEndDay);
 			const daySpan = Math.max(1, Math.round((end.getTime() - start.getTime()) / 86_400_000) + 1);
@@ -698,8 +777,25 @@ export default function ReportsScreen() {
 				.sort((a, b) => (b.date || "").localeCompare(a.date || ""))
 		: [];
 
+	const defaultRuleName = `${isEn ? "Cycle" : "Siklus"} ${customStartDay}–${customEndDay}`;
+
 	const openCustomDateModal = () => {
 		setShowDateModal(true);
+	};
+
+	const openSaveRuleModal = () => {
+		setRuleName(defaultRuleName);
+		setShowSaveRuleModal(true);
+	};
+
+	const handleSaveRule = () => {
+		saveMonthlyCycleRule({
+			name: ruleName.trim() || defaultRuleName,
+			startDay: customStartDay,
+			endDay: customEndDay,
+		});
+		setShowSaveRuleModal(false);
+		setShowDateModal(false);
 	};
 
 	const applyStartDate = (nextValue: string) => {
@@ -707,14 +803,26 @@ export default function ReportsScreen() {
 		if (!nextYear || !nextMonth || !nextDay) return;
 		const nextStart = new Date(nextYear, nextMonth - 1, nextDay);
 		const currentEnd = new Date(customEndYear, customEndMonth - 1, customEndDay);
+		let endYear = customEndYear;
+		let endMonth = customEndMonth;
+		let endDay = customEndDay;
+
 		setCustomStartYear(nextYear);
 		setCustomStartMonth(nextMonth);
 		setCustomStartDay(nextDay);
 		if (nextStart > currentEnd) {
-			setCustomEndYear(nextYear);
-			setCustomEndMonth(nextMonth);
-			setCustomEndDay(nextDay);
+			endYear = nextYear;
+			endMonth = nextMonth;
+			endDay = nextDay;
+			setCustomEndYear(endYear);
+			setCustomEndMonth(endMonth);
+			setCustomEndDay(endDay);
 		}
+		setPeriodFilter("custom");
+		setActivePeriod(buildCustomReportPeriod(
+			dateKey(nextYear, nextMonth, nextDay),
+			dateKey(endYear, endMonth, endDay),
+		));
 		setDataError(null);
 	};
 
@@ -723,14 +831,26 @@ export default function ReportsScreen() {
 		if (!nextYear || !nextMonth || !nextDay) return;
 		const currentStart = new Date(customStartYear, customStartMonth - 1, customStartDay);
 		const nextEnd = new Date(nextYear, nextMonth - 1, nextDay);
+		let startYear = customStartYear;
+		let startMonth = customStartMonth;
+		let startDay = customStartDay;
+
 		setCustomEndYear(nextYear);
 		setCustomEndMonth(nextMonth);
 		setCustomEndDay(nextDay);
 		if (nextEnd < currentStart) {
-			setCustomStartYear(nextYear);
-			setCustomStartMonth(nextMonth);
-			setCustomStartDay(nextDay);
+			startYear = nextYear;
+			startMonth = nextMonth;
+			startDay = nextDay;
+			setCustomStartYear(startYear);
+			setCustomStartMonth(startMonth);
+			setCustomStartDay(startDay);
 		}
+		setPeriodFilter("custom");
+		setActivePeriod(buildCustomReportPeriod(
+			dateKey(startYear, startMonth, startDay),
+			dateKey(nextYear, nextMonth, nextDay),
+		));
 		setDataError(null);
 	};
 
@@ -762,7 +882,7 @@ export default function ReportsScreen() {
 
 	const handleShare = async () => {
 		const periodText =
-			periodFilter === "custom" ? customRangeLabel : periodLabels[periodFilter];
+			periodFilter === "custom" || periodFilter === "saved_rule" ? periodDisplayLabel : periodLabels[periodFilter];
 		const shareText = [
 			`${tx.shareTitle} (${periodText})`,
 			`${tx.shareIncome}: ${formatRupiah(totalIncomeJuta)}`,
@@ -799,7 +919,7 @@ export default function ReportsScreen() {
 				let startDateString: string;
 				let endDateString: string;
 
-				if (periodFilter === "custom") {
+				if (periodFilter === "custom" || periodFilter === "saved_rule") {
 					startDate = new Date(
 						customStartYear,
 						customStartMonth - 1,
@@ -1026,7 +1146,7 @@ export default function ReportsScreen() {
 					<View style={styles.headerRight}>
 						<View testID="finance-context-badge" style={styles.contextBadge}>
 							<Text style={styles.contextBadgeText}>
-								{activeContext.type === "household" ? "Keluarga" : "Pribadi"}
+								{activeContext.type === "household" ? tx.contextHousehold : tx.contextPersonal}
 							</Text>
 						</View>
 						<View testID="reports-month-badge" style={styles.monthBadge}>
@@ -1034,7 +1154,7 @@ export default function ReportsScreen() {
 						</View>
 						<Pressable
 							accessibilityRole="button"
-							accessibilityLabel="Bagikan laporan"
+							accessibilityLabel={tx.shareA11y}
 							style={({ pressed }) => [
 								styles.shareButton,
 								pressed && { opacity: 0.7 },
@@ -1107,7 +1227,7 @@ export default function ReportsScreen() {
 						<Pressable
 							testID="reports-envelope-manage"
 							accessibilityRole="button"
-							accessibilityLabel="Kelola dompet budget"
+							accessibilityLabel={tx.manageBudgetA11y}
 							style={styles.envelopeManageButton}
 							onPress={() => router.push("/(tabs)/budgets" as never)}
 						>
@@ -1192,11 +1312,11 @@ export default function ReportsScreen() {
 					style={styles.periodScrollView}
 					contentContainerStyle={styles.periodRow}
 				>
-					{(Object.keys(periodLabels) as PeriodFilter[]).map((key) => (
+					{(Object.keys(periodLabels) as Exclude<PeriodFilter, "saved_rule">[]).map((key) => (
 						<Pressable
 							key={key}
 							accessibilityRole="button"
-							accessibilityLabel={`Pilih periode ${periodLabels[key]}`}
+							accessibilityLabel={tx.choosePeriodA11y(periodLabels[key])}
 							accessibilityState={{ selected: periodFilter === key }}
 							style={[
 								styles.periodChip,
@@ -1220,15 +1340,62 @@ export default function ReportsScreen() {
 						</Pressable>
 					))}
 				</ScrollView>
+
+				<View testID="reports-saved-rules-card" style={styles.savedRulesCard}>
+					<View style={styles.savedRulesHeader}>
+						<Text style={styles.savedRulesTitle}>{tx.savedRulesTitle}</Text>
+						<Text style={styles.savedRulesMeta}>{tx.savedRulesCount(savedRules.length)}</Text>
+					</View>
+					{savedRules.length === 0 ? (
+						<Text style={styles.savedRulesEmpty}>{tx.savedRulesEmpty}</Text>
+					) : (
+						<ScrollView
+							horizontal
+							showsHorizontalScrollIndicator={false}
+							contentContainerStyle={styles.savedRuleRow}
+						>
+							{savedRules.map((rule) => {
+								const selected = activePeriod.type === "saved_rule" && activePeriod.ruleId === rule.id;
+								return (
+									<Pressable
+										key={rule.id}
+										testID={`reports-saved-rule-${rule.id}`}
+										accessibilityRole="button"
+										accessibilityLabel={tx.savedRuleAccessibility(rule.name)}
+										accessibilityState={{ selected }}
+										style={[styles.savedRuleChip, selected && styles.savedRuleChipActive]}
+										onPress={() => selectSavedRule(rule.id)}
+									>
+										<Text style={[styles.savedRuleName, selected && styles.savedRuleNameActive]}>{rule.name}</Text>
+										<Text style={[styles.savedRuleSummary, selected && styles.savedRuleSummaryActive]}>
+											{formatSavedRuleSummary(rule, isEn ? "en" : "id")}
+										</Text>
+									</Pressable>
+								);
+							})}
+						</ScrollView>
+					)}
+				</View>
 				{periodFilter === "custom" && (
-					<Pressable
-						accessibilityRole="button"
-						accessibilityLabel="Ubah rentang tanggal kustom"
-						style={styles.customRangeBadge}
-						onPress={openCustomDateModal}
-					>
-						<Text style={styles.customRangeBadgeText}>{customRangeLabel}</Text>
-					</Pressable>
+					<View style={styles.customRulePrompt}>
+						<Pressable
+							accessibilityRole="button"
+							accessibilityLabel={tx.editCustomRangeA11y}
+							style={styles.customRangeBadge}
+							onPress={openCustomDateModal}
+						>
+							<Text style={styles.customRangeBadgeText}>{customRangeLabel}</Text>
+						</Pressable>
+						<Pressable
+							testID="reports-save-period-rule"
+							accessibilityRole="button"
+							accessibilityLabel={tx.saveRuleCta}
+							style={styles.saveRuleButton}
+							onPress={openSaveRuleModal}
+						>
+							<Text style={styles.saveRuleButtonText}>{tx.saveRuleCta}</Text>
+						</Pressable>
+					</View>
 				)}
 
 				{/* Loading/Error State */}
@@ -1284,7 +1451,7 @@ export default function ReportsScreen() {
 												key={chartData.keys[idx] ?? `${label}-${chartData.years[idx]}`}
 												testID={`reports-pulse-column-${idx}`}
 												accessibilityRole="button"
-												accessibilityLabel={`Lihat ritme kas ${label} ${chartData.years[idx]}`}
+												accessibilityLabel={tx.chartColumnA11y(label, chartData.years[idx] ?? new Date().getFullYear())}
 												accessibilityState={{ selected: selectedBar === idx }}
 												style={styles.lineColumn}
 												onPress={() =>
@@ -1379,7 +1546,7 @@ export default function ReportsScreen() {
 						</StaggeredEntrance>
 						<StaggeredEntrance index={3} testID="reports-entrance-history">
 							<View style={styles.top5Card}>
-							<Text style={styles.top5Title}>5 Pengeluaran Terbanyak</Text>
+							<Text style={styles.top5Title}>{tx.topExpenses}</Text>
 							<Text style={styles.top5Sub}>{periodDisplayLabel}</Text>
 							{top5Expenses.length === 0 ? (
 								<Text style={styles.infoText}>{tx.noCategoryTransactions}</Text>
@@ -1427,7 +1594,7 @@ export default function ReportsScreen() {
 										height={donutSize}
 										viewBox={`0 0 ${donutSize} ${donutSize}`}
 										accessibilityRole="image"
-										accessibilityLabel="Komposisi pengeluaran berdasarkan kategori"
+										accessibilityLabel={tx.donutA11y}
 										style={styles.donutSvg}
 									>
 										<Circle
@@ -1507,7 +1674,7 @@ export default function ReportsScreen() {
 									key={cat.label}
 									testID={`reports-category-row-${cat.id}`}
 									accessibilityRole="button"
-									accessibilityLabel={`Buka detail kategori ${cat.label}`}
+									accessibilityLabel={tx.openCategoryA11y(cat.label)}
 									style={({ pressed }) => [
 										styles.catRow,
 										idx === 0 && { borderTopWidth: 0 },
@@ -1715,14 +1882,66 @@ export default function ReportsScreen() {
 
 						<View style={styles.modalActions}>
 							<Pressable
+								testID="reports-save-period-rule-from-date-modal"
 								accessibilityRole="button"
-								accessibilityLabel="Tutup rentang tanggal"
+								accessibilityLabel={tx.saveRuleCta}
+								style={[styles.modalActionButton, styles.modalActionCancel]}
+								onPress={() => {
+									setShowDateModal(false);
+									openSaveRuleModal();
+								}}
+							>
+								<Text style={styles.modalActionCancelText}>{tx.saveRuleCta}</Text>
+							</Pressable>
+							<Pressable
+								accessibilityRole="button"
+								accessibilityLabel={tx.closeDateRangeA11y}
 								style={[styles.modalActionButton, styles.modalActionConfirm]}
 								onPress={() => setShowDateModal(false)}
 							>
-								<Text style={styles.modalActionConfirmText}>
-									{tx.modalDone}
-								</Text>
+								<Text style={styles.modalActionConfirmText}>{tx.modalDone}</Text>
+							</Pressable>
+						</View>
+					</View>
+				</View>
+			</Modal>
+
+			<Modal
+				visible={showSaveRuleModal}
+				transparent
+				animationType="slide"
+				onRequestClose={() => setShowSaveRuleModal(false)}
+			>
+				<View style={styles.modalOverlay}>
+					<View style={styles.modalContent}>
+						<Text style={styles.modalTitle}>{tx.saveRuleTitle}</Text>
+						<Text style={styles.saveRuleHint}>{tx.saveRuleHint(customStartDay, customEndDay)}</Text>
+						<Text style={styles.modalSectionTitle}>{tx.saveRuleName}</Text>
+						<TextInput
+							testID="reports-period-rule-name-input"
+							value={ruleName}
+							onChangeText={setRuleName}
+							placeholder={defaultRuleName}
+							placeholderTextColor={theme.colors.textMuted}
+							style={styles.ruleNameInput}
+						/>
+						<View style={styles.modalActions}>
+							<Pressable
+								accessibilityRole="button"
+								accessibilityLabel={tx.modalCancel}
+								style={[styles.modalActionButton, styles.modalActionCancel]}
+								onPress={() => setShowSaveRuleModal(false)}
+							>
+								<Text style={styles.modalActionCancelText}>{tx.modalCancel}</Text>
+							</Pressable>
+							<Pressable
+								testID="reports-confirm-save-period-rule"
+								accessibilityRole="button"
+								accessibilityLabel={tx.saveRuleConfirm}
+								style={[styles.modalActionButton, styles.modalActionConfirm]}
+								onPress={handleSaveRule}
+							>
+								<Text style={styles.modalActionConfirmText}>{tx.saveRuleConfirm}</Text>
 							</Pressable>
 						</View>
 					</View>
@@ -1744,7 +1963,7 @@ export default function ReportsScreen() {
 							<Pressable
 								testID="reports-category-detail-back"
 								accessibilityRole="button"
-								accessibilityLabel="Tutup detail kategori"
+								accessibilityLabel={tx.closeCategoryDetailA11y}
 								style={({ pressed }) => [
 									styles.detailBackButton,
 									pressed && { opacity: 0.72 },
@@ -1910,6 +2129,105 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 		},
 		periodChipTextActive: {
 			color: brandText,
+		},
+		savedRulesCard: {
+			backgroundColor: theme.colors.surface,
+			borderRadius: 18,
+			borderWidth: 1,
+			borderColor: theme.colors.borderSoft,
+			padding: 14,
+			gap: 10,
+		},
+		savedRulesHeader: {
+			flexDirection: "row",
+			alignItems: "center",
+			justifyContent: "space-between",
+			gap: 10,
+		},
+		savedRulesTitle: {
+			color: theme.colors.textPrimary,
+			fontSize: 13,
+			fontWeight: "800",
+		},
+		savedRulesMeta: {
+			color: theme.colors.textMuted,
+			fontSize: 11,
+			fontWeight: "700",
+		},
+		savedRulesEmpty: {
+			color: theme.colors.textMuted,
+			fontSize: 12,
+			fontWeight: "600",
+		},
+		savedRuleRow: {
+			gap: 8,
+			paddingRight: 2,
+		},
+		savedRuleChip: {
+			minWidth: 158,
+			minHeight: 56,
+			borderRadius: 14,
+			borderWidth: 1,
+			borderColor: theme.colors.borderSoft,
+			backgroundColor: theme.colors.mutedSurface,
+			paddingHorizontal: 12,
+			paddingVertical: 10,
+			gap: 3,
+		},
+		savedRuleChipActive: {
+			backgroundColor: brandSoftBg,
+			borderColor: brandSoftBorder,
+		},
+		savedRuleName: {
+			color: theme.colors.textPrimary,
+			fontSize: 13,
+			fontWeight: "800",
+		},
+		savedRuleNameActive: { color: brandText },
+		savedRuleSummary: {
+			color: theme.colors.textMuted,
+			fontSize: 11,
+			fontWeight: "600",
+		},
+		savedRuleSummaryActive: { color: brandText },
+		customRulePrompt: {
+			flexDirection: "row",
+			alignItems: "center",
+			gap: 8,
+			flexWrap: "wrap",
+		},
+		saveRuleButton: {
+			minHeight: 44,
+			justifyContent: "center",
+			borderRadius: 999,
+			borderWidth: 1,
+			borderColor: brandSoftBorder,
+			backgroundColor: brandSoftBg,
+			paddingHorizontal: 12,
+			paddingVertical: 8,
+		},
+		saveRuleButtonText: {
+			color: brandText,
+			fontSize: 12,
+			fontWeight: "800",
+		},
+		saveRuleHint: {
+			color: theme.colors.textSecondary,
+			fontSize: 12,
+			fontWeight: "600",
+			marginBottom: 8,
+		},
+		ruleNameInput: {
+			minHeight: 46,
+			borderRadius: 14,
+			borderWidth: 1,
+			borderColor: theme.colors.borderSoft,
+			backgroundColor: theme.colors.mutedSurface,
+			color: theme.colors.textPrimary,
+			fontSize: 14,
+			fontWeight: "700",
+			paddingHorizontal: 12,
+			marginBottom: 12,
 		},
 		loadingCard: {
 			backgroundColor: theme.colors.surface,
@@ -2420,6 +2738,8 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 		},
 		catBarFill: { height: "100%", borderRadius: 999 },
 		customRangeBadge: {
+			minHeight: 44,
+			justifyContent: "center",
 			backgroundColor: brandSoftBg,
 			borderWidth: 1,
 			borderColor: brandSoftBorder,

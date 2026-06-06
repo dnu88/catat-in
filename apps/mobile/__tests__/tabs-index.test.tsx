@@ -1,10 +1,11 @@
 import { fireEvent, render, waitFor } from "@testing-library/react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { StyleSheet, Text } from "react-native";
+import { Pressable, StyleSheet, Text } from "react-native";
 import type { StyleProp, TextStyle, ViewStyle } from "react-native";
 import { ThemeProvider } from "../src/theme/theme-context";
 import { I18nProvider } from "../src/i18n/i18n-context";
 import DashboardScreen from "../app/(tabs)/index";
+import { buildCustomReportPeriod, ReportPeriodProvider, useReportPeriod } from "../src/state/report-period";
 
 const mockPush = jest.fn();
 let mockEnvelopes: any[] = [];
@@ -83,11 +84,44 @@ jest.mock("../src/state/finance-context", () => ({
 	}),
 }));
 
+function currentMonthDate(day = 20) {
+	return `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+}
+
 function renderDashboard() {
 	return render(
 		<ThemeProvider>
 			<I18nProvider>
-				<DashboardScreen />
+				<ReportPeriodProvider>
+					<DashboardScreen />
+				</ReportPeriodProvider>
+			</I18nProvider>
+		</ThemeProvider>,
+	);
+}
+
+function DashboardWithPeriodControl() {
+	const { setActivePeriod } = useReportPeriod();
+	return (
+		<>
+			<Pressable
+				testID="set-custom-report-period"
+				onPress={() => setActivePeriod(buildCustomReportPeriod("2026-01-01", "2026-01-31"))}
+			>
+				<Text>Set custom report period</Text>
+			</Pressable>
+			<DashboardScreen />
+		</>
+	);
+}
+
+function renderDashboardWithPeriodControl() {
+	return render(
+		<ThemeProvider>
+			<I18nProvider>
+				<ReportPeriodProvider>
+					<DashboardWithPeriodControl />
+				</ReportPeriodProvider>
 			</I18nProvider>
 		</ThemeProvider>,
 	);
@@ -291,12 +325,18 @@ describe("DashboardScreen dark luxury Home parity", () => {
 		expect(screen.getByTestId("home-entrance-budget")).toBeTruthy();
 		expect(screen.getByTestId("home-entrance-recent")).toBeTruthy();
 
+		expect(screen.getByText("Sisa bulan ini")).toBeTruthy();
+		expect(screen.getByTestId("home-monthly-remaining").props.children).toBe(
+			"Rp 0",
+		);
 		expect(screen.getByText("Total saldo")).toBeTruthy();
+		expect(screen.getByText("Semua dompet aktif")).toBeTruthy();
+		expect(screen.getByText("Pengeluaran")).toBeTruthy();
 		expect(screen.getByTestId("home-total-balance").props.children).toBe(
 			"Rp 0",
 		);
 		expect(screen.queryByTestId("home-wallet-pill")).toBeNull();
-		expect(screen.getByText("Manage")).toBeTruthy();
+		expect(screen.getByText("Kelola")).toBeTruthy();
 		expect(screen.queryByText("↗ 15%")).toBeNull();
 
 		expect(screen.getByText("Input AI")).toBeTruthy();
@@ -320,13 +360,61 @@ describe("DashboardScreen dark luxury Home parity", () => {
 		expectTextOrder(getRenderedTextNodes(screen), [
 			"Halo",
 			expectedDate,
-			"Total saldo",
+			"Sisa bulan ini",
 			"Rp 0",
+			"Total saldo",
+			"Pengeluaran",
 			"Input AI",
 			"Anggaran",
 			"Terakhir",
 			"Belum ada transaksi",
 		]);
+	});
+
+	it("can hide and show dashboard nominal amounts", async () => {
+		mockWallets = [{ id: "wallet-1", name: "BCA", balance: 250000 }];
+		mockTransactions = [
+			{
+				id: "tx-current-expense",
+				merchant: "Kopi",
+				description: "Kopi",
+				category: "Groceries",
+				amount: 50000,
+				transaction_type: "expense",
+				date: currentMonthDate(),
+			},
+		];
+
+		const screen = renderDashboard();
+
+		await waitFor(() =>
+			expect(screen.getByTestId("home-monthly-remaining").props.children).toBe("- Rp 50.000"),
+		);
+		expect(screen.getByTestId("home-total-balance").props.children).toBe("Rp 250.000");
+		expect(screen.getByTestId("home-monthly-expense").props.children).toBe("Rp 50.000");
+
+		fireEvent.press(screen.getByTestId("home-amount-visibility-toggle"));
+
+		await waitFor(() => {
+			expect(screen.getByTestId("home-monthly-remaining").props.children).toBe("Rp ••••••");
+			expect(screen.getByTestId("home-total-balance").props.children).toBe("Rp ••••••");
+			expect(screen.getByTestId("home-monthly-expense").props.children).toBe("Rp ••••••");
+			expect(screen.getByTestId("home-recent-amount-tx-current-expense").props.children).toBe("Rp ••••••");
+		});
+		expect(AsyncStorage.setItem).toHaveBeenCalledWith(
+			"kaswise:dashboard-nominal-hidden",
+			"hidden",
+		);
+		expect(screen.getByText(/Nominal disembunyikan sampai/)).toBeTruthy();
+
+		fireEvent.press(screen.getByTestId("home-amount-visibility-toggle"));
+		await waitFor(() =>
+			expect(screen.getByTestId("home-monthly-remaining").props.children).toBe("- Rp 50.000"),
+		);
+		expect(AsyncStorage.setItem).toHaveBeenCalledWith(
+			"kaswise:dashboard-nominal-hidden",
+			"visible",
+		);
 	});
 
 	it("shows actionable envelope alerts without low-confidence review noise", async () => {
@@ -397,7 +485,7 @@ describe("DashboardScreen dark luxury Home parity", () => {
 				category: "Groceries",
 				amount: 25000,
 				transaction_type: "expense",
-				date: "2026-05-20",
+				date: currentMonthDate(),
 			},
 		];
 
@@ -452,7 +540,7 @@ describe("DashboardScreen dark luxury Home parity", () => {
 				category: "Groceries",
 				amount: 75000,
 				transaction_type: "expense",
-				date: "2026-05-20",
+				date: currentMonthDate(),
 			},
 			{
 				id: "tx-income",
@@ -461,7 +549,7 @@ describe("DashboardScreen dark luxury Home parity", () => {
 				category: "Salary",
 				amount: 1200000,
 				transaction_type: "income",
-				date: "2026-05-20",
+				date: currentMonthDate(),
 			},
 		];
 
@@ -471,6 +559,12 @@ describe("DashboardScreen dark luxury Home parity", () => {
 			expect(screen.getByTestId("home-total-balance").props.children).toBe(
 				"Rp 1.200.000",
 			),
+		);
+		expect(screen.getByTestId("home-monthly-remaining").props.children).toBe(
+			"Rp 1.125.000",
+		);
+		expect(screen.getByTestId("home-monthly-expense").props.children).toBe(
+			"Rp 75.000",
 		);
 		expect(screen.queryByText("Family Wallet")).toBeNull();
 		expect(screen.getByText("Family Mart")).toBeTruthy();
@@ -490,6 +584,57 @@ describe("DashboardScreen dark luxury Home parity", () => {
 		);
 		expect(listWallets).toHaveBeenCalledWith(mockActiveContext);
 		expect(listTransactions).toHaveBeenCalledWith(undefined, mockActiveContext);
+	});
+
+	it("lets the dashboard hero follow and reset the active report period", async () => {
+		mockTransactions = [
+			{
+				id: "tx-jan-income",
+				merchant: "January Payroll",
+				description: "Gaji Januari",
+				category: "Salary",
+				amount: 100000,
+				transaction_type: "income",
+				date: "2026-01-10",
+			},
+			{
+				id: "tx-jan-expense",
+				merchant: "Kopi Januari",
+				description: "Kopi",
+				category: "Groceries",
+				amount: 10000,
+				transaction_type: "expense",
+				date: "2026-01-11",
+			},
+			{
+				id: "tx-current-income",
+				merchant: "Current Payroll",
+				description: "Gaji",
+				category: "Salary",
+				amount: 50000,
+				transaction_type: "income",
+				date: currentMonthDate(),
+			},
+		];
+
+		const screen = renderDashboardWithPeriodControl();
+
+		await waitFor(() =>
+			expect(screen.getByTestId("home-monthly-remaining").props.children).toBe("Rp 50.000"),
+		);
+		fireEvent.press(screen.getByTestId("set-custom-report-period"));
+
+		await waitFor(() => {
+			expect(screen.getByText("Sisa periode ini")).toBeTruthy();
+			expect(getTextContent(screen.getByTestId("home-active-period-label").props.children)).toBe("Periode aktif: 1–31 Jan 2026");
+			expect(screen.getByTestId("home-monthly-remaining").props.children).toBe("Rp 90.000");
+		});
+
+		fireEvent.press(screen.getByTestId("home-period-reset"));
+		await waitFor(() => {
+			expect(screen.getByText("Sisa bulan ini")).toBeTruthy();
+			expect(screen.getByTestId("home-monthly-remaining").props.children).toBe("Rp 50.000");
+		});
 	});
 
 	it("routes visible Home actions to the expected tabs", async () => {

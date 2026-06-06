@@ -28,6 +28,11 @@ let mockActiveContext:
 	type: "personal",
 };
 let mockCanCreate = true;
+let mockReportPeriod: any = {
+	type: "month" as const,
+	startDate: `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, "0")}-01`,
+	endDate: `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, "0")}-${String(new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).getDate()).padStart(2, "0")}`,
+};
 let latestFocusCallback: null | (() => void | (() => void)) = null;
 
 function isoDate(date: Date): string {
@@ -100,6 +105,14 @@ jest.mock("../src/state/finance-context", () => ({
 	}),
 }));
 
+jest.mock("../src/state/report-period", () => {
+	const actual = jest.requireActual("../src/state/report-period");
+	return {
+		...actual,
+		useReportPeriod: () => ({ activePeriod: mockReportPeriod }),
+	};
+});
+
 const mockTransactions = [
 	{
 		id: "tx-1",
@@ -143,6 +156,11 @@ describe("transaction swipe actions", () => {
 		jest.clearAllMocks();
 		mockActiveContext = { type: "personal" };
 		mockCanCreate = true;
+		mockReportPeriod = {
+			type: "month",
+			startDate: `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, "0")}-01`,
+			endDate: `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, "0")}-${String(new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).getDate()).padStart(2, "0")}`,
+		};
 		latestFocusCallback = null;
 		mockListTransactions.mockResolvedValue(mockTransactions);
 		mockDeleteTransaction.mockResolvedValue(undefined);
@@ -476,7 +494,42 @@ describe("transaction swipe actions", () => {
 		}
 	});
 
-	it("filters the visible list by the selected period", async () => {
+
+	it("uses the active report period as the default transaction range", async () => {
+		mockReportPeriod = {
+			type: "saved_rule",
+			ruleId: "rule-25-24",
+			ruleName: "Siklus gajian",
+			startDate: "2026-05-25",
+			endDate: "2026-06-24",
+		};
+		mockListTransactions.mockResolvedValue([
+			{
+				...mockTransactions[0],
+				id: "tx-paycycle",
+				description: "Dalam siklus gajian",
+				catatan: "Dalam siklus gajian",
+				date: "2026-05-25",
+				tanggal: "2026-05-25",
+			},
+			{
+				...mockTransactions[0],
+				id: "tx-outside",
+				description: "Di luar siklus",
+				catatan: "Di luar siklus",
+				date: "2026-05-24",
+				tanggal: "2026-05-24",
+			},
+		]);
+
+		const screen = renderScreen();
+
+		await waitFor(() => expect(screen.getByText("Dalam siklus gajian")).toBeTruthy());
+		expect(screen.queryByText("Di luar siklus")).toBeNull();
+		expect(screen.getByTestId("transactions-report-period-label").props.children).toBe("Siklus gajian · 25 Mei – 24 Jun 2026");
+	});
+
+		it("filters the visible list by the selected period", async () => {
 		mockListTransactions.mockResolvedValue([
 			...mockTransactions,
 			{

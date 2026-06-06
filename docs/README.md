@@ -25,4 +25,5 @@ This directory is the canonical home for project documentation. Runtime code rem
 
 ## Current continuation handoff
 
-- `docs/handoffs/AI_CONTINUATION_HANDOFF_NEXT_STEPS_2026-06-05.md` — current next-step plan for future models.
+- `docs/handoffs/AI_CONTINUATION_HANDOFF_REPORT_PERIOD_RULES_DASHBOARD_PRIVACY_2026-06-06.md` — latest mobile/PWA report-period rules, dashboard privacy toggle, validation, and deployment notes.
+- `docs/handoffs/AI_CONTINUATION_HANDOFF_NEXT_STEPS_2026-06-05.md` — prior next-step plan for future models.

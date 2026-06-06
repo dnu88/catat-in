@@ -25,6 +25,7 @@ export function FinanceContextSwitcher({
 				)
 			: undefined;
 	const personalLabel = isEn ? "Personal" : "Pribadi";
+	const profileCaption = isEn ? "Profile" : "Profil";
 	const activeLabel = activeMembership?.households?.name ?? personalLabel;
 
 	const choosePersonal = () => {
@@ -53,7 +54,7 @@ export function FinanceContextSwitcher({
 					</Text>
 				</View>
 				<View style={styles.labelBlock}>
-					<Text style={styles.caption}>Profile</Text>
+					<Text style={styles.caption}>{profileCaption}</Text>
 					<Text style={styles.label} numberOfLines={1}>
 						{activeLabel}
 					</Text>

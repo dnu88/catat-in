@@ -46,6 +46,21 @@ jest.mock("../src/state/finance-context", () => ({
 	}),
 }));
 
+jest.mock("../src/state/report-period", () => {
+	const actual = jest.requireActual("../src/state/report-period");
+	const now = new Date();
+	return {
+		...actual,
+		useReportPeriod: () => ({
+			activePeriod: {
+				type: "month",
+				startDate: `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`,
+				endDate: `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate()).padStart(2, "0")}`,
+			},
+		}),
+	};
+});
+
 describe("light accent regressions", () => {
 	it("does not use neon green for selected settings chips in light theme", () => {
 		const screen = render(
