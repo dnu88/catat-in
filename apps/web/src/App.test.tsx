@@ -19,7 +19,8 @@ describe('Web UI foundation', () => {
   it('renders the public landing CTA without auth config', () => {
     render(<LandingPage />)
     expect(screen.getByTestId('web-landing-page')).toBeInTheDocument()
-    expect(screen.getAllByRole('link', { name: /Buka Kaswise PWA/i })[0]).toHaveAttribute('href', 'https://kaswise.com')
+    expect(screen.getAllByRole('link', { name: /Mulai gratis/i })[0]).toHaveAttribute('href', 'https://kaswise.com/register')
+    expect(screen.getAllByRole('link', { name: /^Masuk$/i })[0]).toHaveAttribute('href', 'https://kaswise.com/login')
     expect(screen.getAllByText(/beli kopi 35rb di Kopi Kenangan/i).length).toBeGreaterThan(0)
   })
 })
