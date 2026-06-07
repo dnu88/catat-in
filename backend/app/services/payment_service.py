@@ -53,6 +53,22 @@ def map_status(transaction_status: str, fraud_status: str | None) -> str:
     return "pending"
 
 
+def _core_client():
+    return midtransclient.CoreApi(
+        is_production=bool(settings.MIDTRANS_IS_PRODUCTION),
+        server_key=settings.MIDTRANS_SERVER_KEY or "",
+        client_key=settings.MIDTRANS_CLIENT_KEY or "",
+    )
+
+
+def fetch_and_sync_status(order_id: str) -> dict:
+    core = _core_client()
+    note = core.transactions.status(order_id)  # dict mirip notifikasi
+    internal = activate_premium_from_notification(note)
+    return {"order_id": order_id, "status": internal,
+            "midtrans_status": note.get("transaction_status")}
+
+
 def _snap_client():
     return midtransclient.Snap(
         is_production=bool(settings.MIDTRANS_IS_PRODUCTION),

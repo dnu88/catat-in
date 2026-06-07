@@ -5,7 +5,7 @@ from pydantic import BaseModel, field_validator
 from app.core.auth import get_current_user, _get_supabase_service_client
 from app.services.payment_service import (
     price_for, tier_for_count, count_paid_users, make_order_id,
-    create_snap_transaction,
+    create_snap_transaction, fetch_and_sync_status,
 )
 
 router = APIRouter()
@@ -47,3 +47,12 @@ async def create_payment(body: CreatePaymentRequest, current_user=Depends(get_cu
     return {"order_id": order_id, "amount": amount, "price_tier": tier,
             "plan": body.plan, "snap_token": snap["token"],
             "redirect_url": snap["redirect_url"]}
+
+
+@router.get("/{order_id}/status")
+async def payment_status(order_id: str, current_user=Depends(get_current_user)):
+    try:
+        return fetch_and_sync_status(order_id)
+    except Exception as exc:
+        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY,
+                            detail="Gagal cek status pembayaran.") from exc
