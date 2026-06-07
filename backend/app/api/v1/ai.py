@@ -90,12 +90,24 @@ async def analyze_receipt(
             detail=f"Ukuran file terlalu besar. Maksimal {settings.MAX_UPLOAD_SIZE_MB}MB.",
         )
 
-    try:
-        return await analyze_receipt_image(image_data, file.content_type)
-    except RuntimeError as exc:
+    state = load_state(current_user["user_id"])
+    decision = evaluate(is_premium=state["is_premium"], kind="photo",
+                        chat_count=state["chat_count"], photo_count=state["photo_count"])
+    if not decision.allowed:
         raise HTTPException(
-            status_code=status.HTTP_502_BAD_GATEWAY, detail=str(exc)
-        ) from exc
+            status_code=decision.status_code,
+            detail={"reason": decision.reason, "feature": "photo",
+                    "limit": state["photo_limit"], "used": state["photo_count"]},
+        )
+
+    try:
+        result = await analyze_receipt_image(image_data, file.content_type)
+    except RuntimeError as exc:
+        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(exc)) from exc
+
+    if result.get("readable") or result.get("total_amount"):
+        record_use(current_user["user_id"], state["period_ym"], "photo")
+    return result
 
 
 @router.post("/insight", dependencies=[Depends(rate_limit_ai), Depends(require_premium)])
