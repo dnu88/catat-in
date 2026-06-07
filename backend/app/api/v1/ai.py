@@ -10,6 +10,7 @@ from pydantic import BaseModel
 
 from app.core.auth import get_current_user, require_premium
 from app.core.config import settings
+from app.core.entitlements import load_state, record_use, evaluate
 from app.core.rate_limit import rate_limit_ai
 from app.services.ai_service import (
     analyze_receipt_image,
@@ -52,12 +53,24 @@ async def chat_input(body: ChatInputRequest, current_user=Depends(get_current_us
             detail="Teks terlalu panjang. Maksimal 500 karakter per pesan.",
         )
 
-    try:
-        return await extract_transaction_from_text(body.text)
-    except RuntimeError as exc:
+    state = load_state(current_user["user_id"])
+    decision = evaluate(is_premium=state["is_premium"], kind="chat",
+                        chat_count=state["chat_count"], photo_count=state["photo_count"])
+    if not decision.allowed:
         raise HTTPException(
-            status_code=status.HTTP_502_BAD_GATEWAY, detail=str(exc)
-        ) from exc
+            status_code=decision.status_code,
+            detail={"reason": decision.reason, "feature": "chat",
+                    "limit": state["chat_limit"], "used": state["chat_count"]},
+        )
+
+    try:
+        result = await extract_transaction_from_text(body.text)
+    except RuntimeError as exc:
+        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(exc)) from exc
+
+    if result.get("transactions"):
+        record_use(current_user["user_id"], state["period_ym"], "chat")
+    return result
 
 
 @router.post("/receipt", dependencies=[Depends(rate_limit_ai)])
