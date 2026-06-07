@@ -11,6 +11,7 @@ async def get_entitlements(current_user=Depends(get_current_user)):
     st = load_state(current_user["user_id"])
     return {
         "plan": "premium" if st["is_premium"] else "free",
+        "plan_expires_at": st.get("plan_expires_at"),
         "period_ym": st["period_ym"],
         "chat_used": st["chat_count"],
         "chat_limit": st["chat_limit"],

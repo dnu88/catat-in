@@ -45,12 +45,15 @@ def load_state(user_id: str) -> dict:
     client = _get_supabase_service_client()
     period = current_period_ym()
     is_premium = False
+    plan_expires_at = None
     chat_count = photo_count = 0
     if client is not None:
         prof = (client.table("profiles").select("plan_type,plan_expires_at")
                 .eq("id", user_id).limit(1).execute())
         prow = prof.data[0] if getattr(prof, "data", None) else None
         is_premium = _is_active_premium_profile(prow)
+        if prow:
+            plan_expires_at = prow.get("plan_expires_at")
         usage = (client.table("ai_usage").select("chat_count,photo_count")
                  .eq("user_id", user_id).eq("period_ym", period).limit(1).execute())
         urow = usage.data[0] if getattr(usage, "data", None) else None
@@ -59,6 +62,7 @@ def load_state(user_id: str) -> dict:
             photo_count = int(urow.get("photo_count", 0))
     return {
         "is_premium": is_premium,
+        "plan_expires_at": plan_expires_at,
         "period_ym": period,
         "chat_count": chat_count,
         "photo_count": photo_count,

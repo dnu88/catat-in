@@ -10,12 +10,14 @@ def _resp(data):
 def test_load_state_premium_and_counts():
     client = MagicMock()
     prof = client.table.return_value.select.return_value.eq.return_value.limit.return_value
-    prof.execute.return_value = _resp([{"plan_type": "premium", "plan_expires_at": None}])
+    prof.execute.return_value = _resp([{"plan_type": "premium",
+                                        "plan_expires_at": "2099-01-01T00:00:00+00:00"}])
     usage = client.table.return_value.select.return_value.eq.return_value.eq.return_value.limit.return_value
     usage.execute.return_value = _resp([{"chat_count": 5, "photo_count": 2}])
     with patch.object(ent, "_get_supabase_service_client", return_value=client):
         st = ent.load_state("user-1")
     assert st["is_premium"] is True
+    assert st["plan_expires_at"] == "2099-01-01T00:00:00+00:00"
     assert st["chat_count"] == 5 and st["photo_count"] == 2
     assert "period_ym" in st
 

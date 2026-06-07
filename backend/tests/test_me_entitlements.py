@@ -26,12 +26,14 @@ def test_entitlements_returns_plan_and_quota(client):
 
 
 def test_entitlements_premium_plan(client):
-    st = {"is_premium": True, "period_ym": "2026-06", "chat_count": 5, "photo_count": 2,
+    st = {"is_premium": True, "plan_expires_at": "2027-01-01T00:00:00+00:00",
+          "period_ym": "2026-06", "chat_count": 5, "photo_count": 2,
           "chat_limit": 200, "photo_limit": 100}
     with patch("app.api.v1.me.load_state", return_value=st):
         r = client.get("/api/v1/me/entitlements", headers={"Authorization": "Bearer x"})
     assert r.json()["plan"] == "premium"
     assert r.json()["photo_used"] == 2 and r.json()["photo_limit"] == 100
+    assert r.json()["plan_expires_at"] == "2027-01-01T00:00:00+00:00"
 
 
 def test_entitlements_requires_auth(client):
