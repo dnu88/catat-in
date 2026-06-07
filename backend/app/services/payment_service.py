@@ -1,5 +1,6 @@
 """Midtrans Snap: harga/promo, pembuatan transaksi, verifikasi notifikasi."""
 import hashlib
+import hmac
 import time
 import midtransclient
 from datetime import datetime, timedelta, timezone
@@ -33,7 +34,7 @@ def verify_notification_signature(payload: dict) -> bool:
     raw = (f"{payload.get('order_id','')}{payload.get('status_code','')}"
            f"{payload.get('gross_amount','')}{settings.MIDTRANS_SERVER_KEY or ''}")
     expected = hashlib.sha512(raw.encode()).hexdigest()
-    return expected == payload.get("signature_key", "")
+    return hmac.compare_digest(expected, payload.get("signature_key", ""))
 
 
 def map_status(transaction_status: str, fraud_status: str | None) -> str:
