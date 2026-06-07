@@ -8,7 +8,7 @@ from fastapi.responses import Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 
-from app.api.v1 import ai, imports, webhooks
+from app.api.v1 import ai, imports, webhooks, me
 from app.core.config import settings
 
 
@@ -66,6 +66,7 @@ API_PREFIX = "/api/v1"
 app.include_router(ai.router, prefix=f"{API_PREFIX}/ai", tags=["AI"])
 app.include_router(imports.router, prefix=f"{API_PREFIX}/imports", tags=["Import"])
 app.include_router(webhooks.router, prefix=f"{API_PREFIX}/webhooks", tags=["Webhooks"])
+app.include_router(me.router, prefix=f"{API_PREFIX}/me", tags=["Me"])
 
 
 @app.get("/health", tags=["System"])
