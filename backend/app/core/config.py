@@ -107,6 +107,22 @@ class Settings(BaseSettings):
     STORAGE_BUCKET_AVATARS: str = "avatars"
     MAX_UPLOAD_SIZE_MB: int = 10
 
+    # Freemium — model AI
+    ANTHROPIC_MODEL_EXTRACT: str = "claude-haiku-4-5"   # chat extract + OCR struk
+    ANTHROPIC_MODEL_INSIGHT: str = "claude-sonnet-4-6"  # AI Insight (penalaran)
+
+    # Freemium — kuota bulanan
+    FREE_CHAT_MONTHLY: int = 25
+    PREMIUM_CHAT_MONTHLY: int = 200
+    PREMIUM_PHOTO_MONTHLY: int = 100
+
+    # Freemium — harga (rupiah) & promo
+    PRICE_MONTHLY_PROMO: int = 29_000
+    PRICE_MONTHLY_NORMAL: int = 39_000
+    PRICE_YEARLY_PROMO: int = 249_000
+    PRICE_YEARLY_NORMAL: int = 349_000
+    PROMO_MAX_SUBSCRIBERS: int = 100
+
     # Rate limiting
     RATE_LIMIT_DEFAULT: int = 100
     RATE_LIMIT_AI_ENDPOINT: int = 20
