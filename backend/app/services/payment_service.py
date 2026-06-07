@@ -23,3 +23,26 @@ def duration_days(plan: str) -> int:
     if plan not in _DURATION_DAYS:
         raise ValueError(f"plan tak valid: {plan}")
     return _DURATION_DAYS[plan]
+
+
+def verify_notification_signature(payload: dict) -> bool:
+    raw = (f"{payload.get('order_id','')}{payload.get('status_code','')}"
+           f"{payload.get('gross_amount','')}{settings.MIDTRANS_SERVER_KEY or ''}")
+    expected = hashlib.sha512(raw.encode()).hexdigest()
+    return expected == payload.get("signature_key", "")
+
+
+def map_status(transaction_status: str, fraud_status: str | None) -> str:
+    if transaction_status in ("settlement",) or (
+        transaction_status == "capture" and fraud_status == "accept"
+    ):
+        return "paid"
+    if transaction_status == "capture":  # fraud challenge
+        return "pending"
+    if transaction_status == "pending":
+        return "pending"
+    if transaction_status in ("deny", "cancel"):
+        return "failed"
+    if transaction_status in ("expire", "failure"):
+        return "expired"
+    return "pending"
