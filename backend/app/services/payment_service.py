@@ -1,5 +1,7 @@
 """Midtrans Snap: harga/promo, pembuatan transaksi, verifikasi notifikasi."""
 import hashlib
+import time
+import midtransclient
 from app.core.config import settings
 
 _PRICES = {
@@ -46,3 +48,28 @@ def map_status(transaction_status: str, fraud_status: str | None) -> str:
     if transaction_status in ("expire", "failure"):
         return "expired"
     return "pending"
+
+
+def _snap_client():
+    return midtransclient.Snap(
+        is_production=bool(settings.MIDTRANS_IS_PRODUCTION),
+        server_key=settings.MIDTRANS_SERVER_KEY or "",
+        client_key=settings.MIDTRANS_CLIENT_KEY or "",
+    )
+
+
+def make_order_id(user_id: str) -> str:
+    return f"kw-{user_id[:8]}-{int(time.time())}"
+
+
+def create_snap_transaction(*, order_id: str, amount: int, plan: str, email: str) -> dict:
+    snap = _snap_client()
+    param = {
+        "transaction_details": {"order_id": order_id, "gross_amount": amount},
+        "enabled_payments": ["qris", "gopay", "shopeepay"],
+        "item_details": [{"id": f"premium-{plan}", "price": amount, "quantity": 1,
+                          "name": f"Kaswise Premium ({plan})"}],
+        "customer_details": {"email": email},
+    }
+    res = snap.create_transaction(param)
+    return {"token": res["token"], "redirect_url": res["redirect_url"]}
