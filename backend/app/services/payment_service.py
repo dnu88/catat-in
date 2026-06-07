@@ -2,7 +2,9 @@
 import hashlib
 import time
 import midtransclient
+from datetime import datetime, timedelta, timezone
 from app.core.config import settings
+from app.core.auth import _get_supabase_service_client
 
 _PRICES = {
     "monthly": {"promo": "PRICE_MONTHLY_PROMO", "normal": "PRICE_MONTHLY_NORMAL"},
@@ -73,3 +75,58 @@ def create_snap_transaction(*, order_id: str, amount: int, plan: str, email: str
     }
     res = snap.create_transaction(param)
     return {"token": res["token"], "redirect_url": res["redirect_url"]}
+
+
+def _now():
+    return datetime.now(timezone.utc)
+
+
+def count_paid_users() -> int:
+    client = _get_supabase_service_client()
+    if client is None:
+        return 0
+    res = client.table("payments").select("user_id").eq("status", "paid").execute()
+    rows = getattr(res, "data", None) or []
+    return len({r["user_id"] for r in rows})
+
+
+def activate_premium_from_notification(payload: dict) -> str:
+    """Idempoten: verifikasi signature dilakukan caller. Return status internal."""
+    client = _get_supabase_service_client()
+    order_id = payload.get("order_id", "")
+    new_status = map_status(payload.get("transaction_status", ""), payload.get("fraud_status"))
+    if client is None:
+        return new_status
+
+    pay = (client.table("payments").select("id,user_id,plan,status")
+           .eq("order_id", order_id).limit(1).execute())
+    row = pay.data[0] if getattr(pay, "data", None) else None
+    if row is None:
+        return new_status
+    if row["status"] == "paid":   # idempotensi
+        return "paid"
+
+    payment_update = {"midtrans_status": payload.get("transaction_status"),
+                      "status": new_status, "method": payload.get("payment_type"),
+                      "raw_payload": payload}
+
+    if new_status == "paid":
+        prof = (client.table("profiles").select("plan_expires_at")
+                .eq("id", row["user_id"]).limit(1).execute())
+        prow = prof.data[0] if getattr(prof, "data", None) else None
+        base = _now()
+        if prow and prow.get("plan_expires_at"):
+            try:
+                cur = datetime.fromisoformat(str(prow["plan_expires_at"]).replace("Z", "+00:00"))
+                base = max(base, cur)
+            except ValueError:
+                pass
+        until = base + timedelta(days=duration_days(row["plan"]))
+        client.table("profiles").update(
+            {"plan_type": "premium", "plan_expires_at": until.isoformat()}
+        ).eq("id", row["user_id"]).execute()
+        payment_update["paid_at"] = _now().isoformat()
+        payment_update["granted_until"] = until.isoformat()
+
+    client.table("payments").update(payment_update).eq("order_id", order_id).execute()
+    return new_status
