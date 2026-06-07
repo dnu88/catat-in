@@ -42,6 +42,14 @@ import {
 } from "../../src/services/transaction-classifier";
 import { listWallets, type Wallet } from "../../src/services/wallets";
 import { useFinanceContext } from "../../src/state/finance-context";
+import { useEntitlements } from "../../src/hooks/useEntitlements";
+
+export function photoLocked(ent: { photo_limit: number } | null): boolean {
+	return !!ent && ent.photo_limit === 0;
+}
+export function quotaLabel(ent: { chat_used: number; chat_limit: number } | null): string {
+	return ent ? `Chat AI: ${ent.chat_used}/${ent.chat_limit}` : "";
+}
 
 const modes = [
 	{
@@ -81,6 +89,7 @@ export default function CaptureScreen() {
 	const { language } = useI18n();
 	const router = useRouter();
 	const { activeContext } = useFinanceContext();
+	const { data: ent } = useEntitlements();
 	const isEn = language === "en";
 	const tx = useMemo(
 		() =>
@@ -615,6 +624,7 @@ export default function CaptureScreen() {
 					<View>
 						<Text style={styles.title}>{tx.title}</Text>
 						<Text style={styles.subtitle}>{tx.subtitle}</Text>
+						{quotaLabel(ent) ? <Text testID="capture-quota-label" style={styles.inputHelper}>{quotaLabel(ent)}</Text> : null}
 					</View>
 				</View>
 
@@ -627,7 +637,10 @@ export default function CaptureScreen() {
 								accessibilityRole="button"
 								accessibilityState={{ selected: activeMode === mode.id }}
 								style={[styles.modeChip, activeMode === mode.id && styles.modeChipActive]}
-								onPress={() => setActiveMode(mode.id)}
+								onPress={() => {
+									if (mode.id === "Foto" && photoLocked(ent)) { router.push("/upgrade"); return; }
+									setActiveMode(mode.id);
+								}}
 							>
 								<KaswiseIcon
 									name={mode.icon}
