@@ -98,9 +98,9 @@ async def extract_transaction_from_text(user_text: str) -> dict:
     try:
         client = _get_async_anthropic_client()
         response = await client.messages.create(
-            model=settings.ANTHROPIC_MODEL,
+            model=settings.ANTHROPIC_MODEL_EXTRACT,
             max_tokens=500,
-            system=TRANSACTION_EXTRACT_PROMPT,
+            system=[{"type": "text", "text": TRANSACTION_EXTRACT_PROMPT, "cache_control": {"type": "ephemeral"}}],
             messages=[{"role": "user", "content": user_text}],
         )
 
@@ -131,9 +131,9 @@ async def analyze_receipt_image(image_data: bytes, media_type: str = "image/jpeg
         image_b64 = base64.standard_b64encode(image_data).decode("utf-8")
         client = _get_async_anthropic_client()
         response = await client.messages.create(
-            model=settings.ANTHROPIC_MODEL,
+            model=settings.ANTHROPIC_MODEL_EXTRACT,
             max_tokens=800,
-            system=RECEIPT_ANALYSIS_PROMPT,
+            system=[{"type": "text", "text": RECEIPT_ANALYSIS_PROMPT, "cache_control": {"type": "ephemeral"}}],
             messages=[
                 {
                     "role": "user",
@@ -189,7 +189,7 @@ Format response: plain text, paragraf pendek, tidak perlu JSON."""
 
     client = _get_async_anthropic_client()
     response = await client.messages.create(
-        model=settings.ANTHROPIC_MODEL,
+        model=settings.ANTHROPIC_MODEL_INSIGHT,
         max_tokens=400,
         messages=[{"role": "user", "content": prompt}],
     )
