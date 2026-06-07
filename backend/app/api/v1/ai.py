@@ -136,6 +136,16 @@ async def legacy_process(
     input_type = (body.input_type or "").strip().lower()
 
     if input_type == "text":
+        state = load_state(current_user["user_id"])
+        decision = evaluate(is_premium=state["is_premium"], kind="chat",
+                            chat_count=state["chat_count"], photo_count=state["photo_count"])
+        if not decision.allowed:
+            raise HTTPException(
+                status_code=decision.status_code,
+                detail={"reason": decision.reason, "feature": "chat",
+                        "limit": state["chat_limit"], "used": state["chat_count"]},
+            )
+
         try:
             extracted = await extract_transaction_from_text(body.data or "")
         except RuntimeError as exc:
@@ -145,6 +155,9 @@ async def legacy_process(
         tx_list = extracted.get("transactions") or []
         top_tx = tx_list[0] if tx_list else {}
         confidence = float(top_tx.get("confidence") or 0.0)
+
+        if tx_list:
+            record_use(current_user["user_id"], state["period_ym"], "chat")
 
         if confidence >= 0.8:
             return {
@@ -171,6 +184,16 @@ async def legacy_process(
         }
 
     if input_type == "image":
+        state = load_state(current_user["user_id"])
+        decision = evaluate(is_premium=state["is_premium"], kind="photo",
+                            chat_count=state["chat_count"], photo_count=state["photo_count"])
+        if not decision.allowed:
+            raise HTTPException(
+                status_code=decision.status_code,
+                detail={"reason": decision.reason, "feature": "photo",
+                        "limit": state["photo_limit"], "used": state["photo_count"]},
+            )
+
         payload = body.data or ""
         if "," in payload:
             payload = payload.split(",", 1)[1]
@@ -186,6 +209,9 @@ async def legacy_process(
                 status_code=status.HTTP_502_BAD_GATEWAY, detail=str(exc)
             ) from exc
         confidence = float(analyzed.get("confidence") or 0.0)
+
+        if analyzed.get("readable") or analyzed.get("total_amount"):
+            record_use(current_user["user_id"], state["period_ym"], "photo")
 
         return {
             "transaction": {
