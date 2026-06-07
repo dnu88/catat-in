@@ -57,6 +57,16 @@ async def create_payment(body: CreatePaymentRequest, current_user=Depends(get_cu
             "redirect_url": snap["redirect_url"]}
 
 
+@router.get("/pricing")
+async def pricing(current_user=Depends(get_current_user)):
+    tier = tier_for_count(count_paid_users())
+    return {
+        "tier": tier,
+        "monthly": price_for("monthly", tier),
+        "yearly": price_for("yearly", tier),
+    }
+
+
 @router.get("/{order_id}/status")
 async def payment_status(order_id: str, current_user=Depends(get_current_user)):
     try:
