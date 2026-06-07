@@ -32,3 +32,14 @@ def test_create_payment_invalid_plan_422(client):
     r = client.post("/api/v1/payments/create", json={"plan": "weekly"},
                     headers={"Authorization": "Bearer x"})
     assert r.status_code == 422
+
+
+def test_create_payment_db_unavailable_503_no_snap(client):
+    """Jika service client None, gagal 503 SEBELUM Snap dibuat (jangan charged tanpa row)."""
+    with patch("app.api.v1.payments.count_paid_users", return_value=0), \
+         patch("app.api.v1.payments._get_supabase_service_client", return_value=None), \
+         patch("app.api.v1.payments.create_snap_transaction") as snap:
+        r = client.post("/api/v1/payments/create", json={"plan": "monthly"},
+                        headers={"Authorization": "Bearer x"})
+    assert r.status_code == 503
+    snap.assert_not_called()

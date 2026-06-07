@@ -1,6 +1,7 @@
 """Midtrans Snap: harga/promo, pembuatan transaksi, verifikasi notifikasi."""
 import hashlib
 import hmac
+import secrets
 import time
 import midtransclient
 from datetime import datetime, timedelta, timezone
@@ -78,7 +79,8 @@ def _snap_client():
 
 
 def make_order_id(user_id: str) -> str:
-    return f"kw-{user_id[:8]}-{int(time.time())}"
+    # ms + suffix acak agar tak bentrok untuk request di detik yang sama.
+    return f"kw-{user_id[:8]}-{int(time.time() * 1000)}-{secrets.token_hex(3)}"
 
 
 def create_snap_transaction(*, order_id: str, amount: int, plan: str, email: str) -> dict:
