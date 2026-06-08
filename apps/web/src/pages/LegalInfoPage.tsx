@@ -1,3 +1,5 @@
+import LanguageToggle from '@components/i18n/LanguageToggle'
+
 import ThemeToggle from '@components/theme/ThemeToggle'
 
 type LegalPageKind = 'help' | 'terms' | 'privacy' | 'contact'
@@ -165,6 +167,7 @@ export default function LegalInfoPage({ page }: { page: LegalPageKind }) {
         </a>
         <div className="landing-header-actions legal-header-actions">
           <ThemeToggle className="landing-theme-toggle" />
+          <LanguageToggle className="landing-language-toggle" />
           <nav className="landing-footer-links" aria-label="Menu informasi">
             <a href="/help">Bantuan</a>
             <a href="/terms">Syarat & ketentuan</a>

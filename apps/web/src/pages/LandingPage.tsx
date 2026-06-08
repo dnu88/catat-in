@@ -1,3 +1,5 @@
+import LanguageToggle from '@components/i18n/LanguageToggle'
+
 import ThemeToggle from '@components/theme/ThemeToggle'
 
 const appUrl = import.meta.env.VITE_KASWISE_APP_URL?.trim() || 'https://kaswise.com'
@@ -176,6 +178,7 @@ export default function LandingPage() {
 
         <div className="landing-header-actions">
           <ThemeToggle className="landing-theme-toggle" />
+          <LanguageToggle className="landing-language-toggle" />
           <a className="landing-nav-cta" href={appUrl}>Buka aplikasi</a>
         </div>
       </header>
@@ -231,7 +234,7 @@ export default function LandingPage() {
                 <span>Periode aktif</span>
                 <strong>Sisa periode ini</strong>
               </div>
-              <span className="landing-kw-bubble" aria-hidden="true">KW</span>
+              <span className="landing-profile-avatar" aria-hidden="true">RP</span>
             </div>
 
             <div className="landing-balance-card">
