@@ -1,0 +1,353 @@
+import { useI18nStore } from '@store/i18n.store'
+
+type Lang = 'id' | 'en'
+
+const t = {
+  id: {
+    brandTagline: 'Premium finance tracker',
+    nav: { product: 'Produk', masalah: 'Masalah', sistem: 'Cara kerja', periode: 'Periode', fitur: 'Fitur', faq: 'FAQ' },
+    ctaApp: 'Buka aplikasi',
+    hero: {
+      eyebrow: 'All-in-one finance tracker',
+      title: 'Kontrol uang harian tanpa spreadsheet.',
+      body: 'Kaswise membantu Anda mencatat transaksi cepat, menjaga budget, dan membaca cashflow sesuai periode hidup nyata seperti siklus gajian.',
+      primary: 'Buka Kaswise PWA',
+      secondary: 'Lihat cara kerja',
+      chips: ['PWA mobile-first', 'Budget & reports', 'Periode gajian'],
+    },
+    quickMenus: [
+      { label: 'Masalah', body: 'Kenapa uang terasa bocor' },
+      { label: 'Cara kerja', body: 'Catat, budget, review' },
+      { label: 'Periode gajian', body: 'Laporan 25–24 dan custom' },
+      { label: 'FAQ', body: 'Jawaban sebelum mulai' },
+    ],
+    heroStats: [
+      { value: '5 modul', label: 'Capture, wallet, budget, transaksi, dan laporan' },
+      { value: '25–24', label: 'Siap untuk siklus gajian dan periode custom' },
+      { value: 'PWA', label: 'Buka cepat dari browser atau layar utama' },
+    ],
+    mockup: {
+      status: 'Kaswise',
+      periodLabel: 'Periode aktif',
+      periodValue: 'Sisa periode ini',
+      cashflowLabel: 'Cashflow 25 Mei – 24 Jun',
+      cashflowHint: 'Pemasukan dikurangi pengeluaran untuk periode laporan aktif.',
+      inputLabel: 'Input cepat',
+      inputStatus: 'Siap dicek',
+      totalSaldoLabel: 'Total saldo semua dompet',
+      tabs: ['Beranda', 'Transaksi', 'Laporan'],
+    },
+    problem: {
+      kicker: 'Masalah yang nyata',
+      title: 'Uang sering bocor bukan karena besar, tapi karena tidak terlihat.',
+      items: [
+        { title: 'Transaksi kecil cepat terlupa', body: 'Kopi, parkir, transport, dan jajan kecil sering hilang dari catatan. Akumulasinya baru terasa di akhir periode.' },
+        { title: 'Budget tidak ikut update', body: 'Budget yang terpisah dari transaksi membuat Anda tetap harus menghitung ulang sebelum mengambil keputusan belanja.' },
+        { title: 'Laporan tidak cocok dengan tanggal gajian', body: 'Bulan kalender tidak selalu sama dengan realita cashflow. Banyak orang butuh periode seperti 25–24.' },
+        { title: 'Saldo sering dikira performa bulanan', body: 'Total saldo adalah aset di dompet aktif. Cashflow periode perlu dibaca terpisah agar keputusan lebih jelas.' },
+      ],
+    },
+    system: {
+      kicker: 'Cara kerja',
+      title: 'Dari catat transaksi sampai paham cashflow.',
+      steps: [
+        { title: 'Tulis seperti chat', body: 'Contoh: “beli kopi 35rb di Kopi Kenangan”. Kaswise membantu menyiapkan nominal, kategori, tanggal, dan dompet untuk dicek.' },
+        { title: 'Kaswise rapikan datanya', body: 'Transaksi tersimpan dengan konteks yang konsisten, sehingga dompet, budget kategori, dan riwayat transaksi langsung ikut bergerak.' },
+        { title: 'Review cashflow periode aktif', body: 'Dashboard, Reports, dan Transactions membaca periode yang sama agar Anda tahu sisa ruang belanja sebelum keputusan berikutnya.' },
+      ],
+    },
+    period: {
+      eyebrow: 'Pembeda utama',
+      title: 'Laporan mengikuti realita cashflow Anda, bukan cuma kalender.',
+      body: 'Banyak orang menerima gaji, membayar tagihan, dan mengatur belanja di siklus yang tidak selalu dimulai tanggal 1. Kaswise membuat periode laporan bisa mengikuti pola tersebut.',
+      highlights: [
+        'Pakai bulan kalender saat ingin membaca performa bulanan standar.',
+        'Pakai rentang custom untuk kebutuhan audit, liburan, tagihan, atau proyek tertentu.',
+        'Simpan aturan seperti 25–24 agar laporan mengikuti siklus gajian Anda.',
+        'Dashboard, Reports, dan Transactions tetap sinkron dengan periode aktif yang sama.',
+      ],
+    },
+    pricing: {
+      kicker: 'Harga',
+      title: 'Mulai gratis, upgrade saat butuh lebih.',
+      free: {
+        name: 'Gratis',
+        price: 'Rp0',
+        period: 'selamanya',
+        features: [
+          'Catat transaksi tanpa batas',
+          '1 dompet aktif',
+          '3 budget kategori',
+          'Laporan bulan kalender',
+          'Tema terang & gelap',
+        ],
+      },
+      premium: {
+        name: 'Premium',
+        priceMonthly: 'Rp29.000',
+        priceYearly: 'Rp249.000',
+        periodMonthly: '/bulan',
+        periodYearly: '/tahun',
+        badge: 'Promo 100 pertama',
+        features: [
+          'Semua fitur Gratis',
+          'Dompet tak terbatas',
+          'Budget tak terbatas',
+          'Laporan periode custom & 25–24',
+          'Mode sembunyikan nominal',
+          'Prioritas support',
+        ],
+      },
+      cta: 'Buka Kaswise gratis',
+    },
+    features: {
+      kicker: 'Fitur utama',
+      title: 'Satu tempat untuk mencatat, mengatur, dan membaca uang Anda.',
+      items: [
+        { label: 'Capture pintar', title: 'Input pendek, hasil tetap rapi', body: 'Cocok untuk transaksi kecil yang sering terlupa: kopi, parkir, transport, jajan, transfer, sampai tagihan rutin.', tone: 'primary' },
+        { label: 'Dompet & saldo', title: 'Pisahkan kas, bank, e-wallet, dan kartu', body: 'Pantau total saldo semua dompet aktif tanpa mencampurnya dengan performa bulanan atau cashflow periode.', tone: 'info' },
+        { label: 'Budget kategori', title: 'Tahu batas sebelum kebablasan', body: 'Budget makan, transport, belanja, dan kebutuhan lain tampil dengan sisa yang mudah dipahami setiap hari.', tone: 'warning' },
+        { label: 'Laporan periode', title: 'Bulan kalender atau siklus gajian', body: 'Pilih bulan ini, rentang custom, atau simpan aturan seperti 25–24 agar laporan mengikuti realita arus kas Anda.', tone: 'primary' },
+        { label: 'Transaksi', title: 'Cari dan audit pengeluaran cepat', body: 'Filter transaksi mengikuti periode laporan aktif, jadi dashboard, reports, dan daftar transaksi tetap sinkron.', tone: 'info' },
+        { label: 'Privasi mobile', title: 'Nominal bisa disembunyikan saat di luar', body: 'Mode sembunyikan nominal dan tema terang/gelap membantu Kaswise tetap nyaman dipakai di situasi harian.', tone: 'warning' },
+      ],
+    },
+    preview: {
+      kicker: 'Preview produk',
+      title: 'Tiga layar utama untuk keputusan uang harian.',
+      panels: [
+        { title: 'Dashboard', label: 'Sisa periode ini', value: 'Rp3.420.000', body: 'Hero menampilkan cashflow periode aktif. Total saldo semua dompet tetap dibaca sebagai metrik terpisah.' },
+        { title: 'Capture', label: 'Input cepat', value: 'beli kopi 35rb', body: 'Catat transaksi seperti percakapan, lalu cek hasil baca sebelum disimpan.' },
+        { title: 'Reports', label: 'Cycle Salary', value: '25 Mei – 24 Jun', body: 'Laporan mengikuti aturan periode yang Anda pilih, termasuk siklus gajian.' },
+      ],
+    },
+    security: {
+      eyebrow: 'Keamanan & kesiapan',
+      title: 'Data finansial perlu fondasi yang serius.',
+      body: 'Kaswise memakai Supabase dengan Row Level Security, autentikasi yang diperketat, dan validasi mobile/PWA sebelum perubahan dirilis ke production.',
+      items: [
+        'PWA sudah live dan bisa dipasang ke layar utama.',
+        'Akses data dibatasi per akun dengan autentikasi dan Row Level Security.',
+        'Fitur yang ditampilkan di landing mengikuti kemampuan produk Kaswise yang tersedia.',
+      ],
+    },
+    faq: {
+      kicker: 'FAQ',
+      title: 'Pertanyaan umum sebelum mulai menggunakan Kaswise.',
+      items: [
+        { q: 'Apa itu Kaswise?', a: 'Kaswise adalah personal finance PWA untuk mencatat transaksi, mengelola dompet, mengatur budget, dan membaca laporan cashflow harian maupun periode custom.' },
+        { q: 'Apakah bisa digunakan di HP?', a: 'Bisa. Kaswise dibuat mobile-first sebagai PWA, sehingga bisa dibuka dari browser dan dipasang ke layar utama perangkat yang mendukung.' },
+        { q: 'Apakah bisa pakai periode gajian seperti 25–24?', a: 'Bisa. Anda dapat memilih rentang custom dan menyimpan aturan periode bulanan agar laporan mengikuti siklus gajian atau tagihan.' },
+        { q: 'Apa beda Total saldo dan Sisa periode ini?', a: 'Total saldo adalah jumlah seluruh dompet aktif. Sisa periode ini adalah cashflow periode aktif: pemasukan dikurangi pengeluaran pada rentang laporan yang dipilih.' },
+        { q: 'Apakah data saya aman?', a: 'Kaswise menggunakan autentikasi dan pembatasan akses data per akun. Anda tetap perlu menjaga perangkat, email, dan kredensial login agar tidak digunakan pihak lain.' },
+        { q: 'Apakah Kaswise menggantikan nasihat keuangan?', a: 'Tidak. Kaswise adalah alat bantu pencatatan dan pengelolaan uang pribadi, bukan pengganti nasihat keuangan, pajak, investasi, atau hukum profesional.' },
+      ],
+    },
+    help: {
+      kicker: 'Pusat informasi',
+      title: 'Bantuan, syarat penggunaan, dan privasi dibuat mudah ditemukan.',
+      cards: [
+        { label: 'Bantuan', title: 'Butuh bantuan menggunakan Kaswise?', body: 'Mulai dari membuka PWA, mencatat transaksi, mengatur dompet, sampai membaca laporan periode aktif.', link: 'Buka bantuan' },
+        { label: 'Syarat & ketentuan', title: 'Gunakan Kaswise untuk pencatatan pribadi yang bertanggung jawab.', body: 'Informasi di Kaswise membantu pengelolaan uang harian dan bukan pengganti nasihat keuangan profesional.', link: 'Baca ketentuan' },
+        { label: 'Kebijakan privasi', title: 'Data finansial perlu perlindungan dan batas akses yang jelas.', body: 'Kaswise memakai autentikasi dan Row Level Security untuk membantu menjaga data sesuai akun pengguna.', link: 'Baca privasi' },
+      ],
+    },
+    finalCta: {
+      title: 'Mulai rapikan uang dari transaksi berikutnya.',
+      body: 'Buka PWA, catat pengeluaran pertama, lalu biarkan dompet, budget, transaksi, dan laporan periode ikut tersusun otomatis.',
+      button: 'Buka Kaswise PWA',
+    },
+    footer: {
+      brand: 'Premium finance tracker untuk kontrol uang harian.',
+      produk: 'Produk',
+      caraKerja: 'Cara kerja',
+      fitur: 'Fitur',
+      laporanPeriode: 'Laporan periode',
+      keamanan: 'Keamanan',
+      informasi: 'Informasi',
+      bantuan: 'Bantuan',
+      syarat: 'Syarat & ketentuan',
+      privasi: 'Kebijakan privasi',
+      kontak: 'Kontak support',
+      hubungi: 'Hubungi kami',
+      supportHint: 'Untuk bantuan produk, laporan masalah, atau pertanyaan privasi.',
+    },
+  },
+  en: {
+    brandTagline: 'Premium finance tracker',
+    nav: { product: 'Product', masalah: 'Problems', sistem: 'How it works', periode: 'Pay cycle', fitur: 'Features', faq: 'FAQ' },
+    ctaApp: 'Open app',
+    hero: {
+      eyebrow: 'All-in-one finance tracker',
+      title: 'Control daily money without spreadsheets.',
+      body: 'Kaswise helps you log transactions fast, track budgets, and read cashflow aligned with your real pay cycle.',
+      primary: 'Open Kaswise PWA',
+      secondary: 'See how it works',
+      chips: ['Mobile-first PWA', 'Budget & reports', 'Pay cycle ready'],
+    },
+    quickMenus: [
+      { label: 'Problems', body: 'Why money feels slippery' },
+      { label: 'How it works', body: 'Log, budget, review' },
+      { label: 'Pay cycle', body: '25–24 and custom periods' },
+      { label: 'FAQ', body: 'Answers before you start' },
+    ],
+    heroStats: [
+      { value: '5 modules', label: 'Capture, wallet, budget, transactions, reports' },
+      { value: '25–24', label: 'Ready for pay cycles and custom periods' },
+      { value: 'PWA', label: 'Open instantly from your browser or home screen' },
+    ],
+    mockup: {
+      status: 'Kaswise',
+      periodLabel: 'Active period',
+      periodValue: 'Remaining this period',
+      cashflowLabel: 'Cashflow 25 May – 24 Jun',
+      cashflowHint: 'Income minus spending for the active report period.',
+      inputLabel: 'Quick input',
+      inputStatus: 'Ready to save',
+      totalSaldoLabel: 'Total balance all wallets',
+      tabs: ['Home', 'Transactions', 'Reports'],
+    },
+    problem: {
+      kicker: 'Real problems',
+      title: 'Money leaks not because it is big, but because it is invisible.',
+      items: [
+        { title: 'Small transactions slip away', body: 'Coffee, parking, transport, and snacks disappear from your records. The total only hits at the end of the period.' },
+        { title: 'Budgets stay out of sync', body: 'A budget separated from transactions means you have to recalculate before every spending decision.' },
+        { title: 'Reports mismatch your pay cycle', body: 'Calendar months rarely match real cashflow. Many people need periods like the 25th to the 24th.' },
+        { title: 'Balance mistaken for monthly performance', body: 'Total balance is assets across active wallets. Cashflow needs to be read separately for clear decisions.' },
+      ],
+    },
+    system: {
+      kicker: 'How it works',
+      title: 'From logging a transaction to understanding cashflow.',
+      steps: [
+        { title: 'Write like you chat', body: 'Example: “coffee 35k at Kopi Kenangan”. Kaswise prepares the amount, category, date, and wallet for you to review.' },
+        { title: 'Kaswise tidies the data', body: 'Transactions save with consistent context, so wallets, budget categories, and history update automatically.' },
+        { title: 'Review active period cashflow', body: 'Dashboard, Reports, and Transactions all read the same active period so you know how much room is left before the next decision.' },
+      ],
+    },
+    period: {
+      eyebrow: 'Key differentiator',
+      title: 'Reports that follow your real cashflow, not just the calendar.',
+      body: 'Many people get paid, pay bills, and manage spending on cycles that do not always start on the 1st. Kaswise lets report periods follow those real patterns.',
+      highlights: [
+        'Use a calendar month when you want a standard monthly review.',
+        'Use a custom range for audits, holidays, bills, or specific projects.',
+        'Save rules like 25–24 so reports follow your actual pay cycle.',
+        'Dashboard, Reports, and Transactions stay in sync with the same active period.',
+      ],
+    },
+    pricing: {
+      kicker: 'Pricing',
+      title: 'Start free, upgrade when you need more.',
+      free: {
+        name: 'Free',
+        price: 'Rp0',
+        period: 'forever',
+        features: [
+          'Unlimited transactions',
+          '1 active wallet',
+          '3 budget categories',
+          'Calendar month reports',
+          'Light & dark theme',
+        ],
+      },
+      premium: {
+        name: 'Premium',
+        priceMonthly: 'Rp29,000',
+        priceYearly: 'Rp249,000',
+        periodMonthly: '/month',
+        periodYearly: '/year',
+        badge: 'First 100 promo',
+        features: [
+          'All Free features',
+          'Unlimited wallets',
+          'Unlimited budgets',
+          'Custom period reports & 25–24',
+          'Hide nominal amounts',
+          'Priority support',
+        ],
+      },
+      cta: 'Open Kaswise free',
+    },
+    features: {
+      kicker: 'Key features',
+      title: 'One place to log, manage, and read your money.',
+      items: [
+        { label: 'Smart capture', title: 'Short input, tidy results', body: 'Perfect for small transactions that slip away: coffee, parking, transport, snacks, transfers, and routine bills.', tone: 'primary' },
+        { label: 'Wallets & balance', title: 'Separate cash, bank, e-wallet, and cards', body: 'Track total balance across all active wallets without confusing it with monthly performance or period cashflow.', tone: 'info' },
+        { label: 'Budget categories', title: 'Know your limit before you overspend', body: 'Food, transport, shopping, and other needs shown with clear remaining amounts every day.', tone: 'warning' },
+        { label: 'Period reports', title: 'Calendar month or pay cycle', body: 'Pick this month, a custom range, or save a rule like 25–24 so reports match how your money actually flows.', tone: 'primary' },
+        { label: 'Transactions', title: 'Quick search and audit', body: 'Transaction filters follow the active report period, so Dashboard, Reports, and the transaction list stay in sync.', tone: 'info' },
+        { label: 'Mobile privacy', title: 'Hide amounts in public', body: 'Hide nominal mode and light/dark theme help Kaswise stay comfortable in everyday situations.', tone: 'warning' },
+      ],
+    },
+    preview: {
+      kicker: 'Product preview',
+      title: 'Three core screens for daily money decisions.',
+      panels: [
+        { title: 'Dashboard', label: 'Remaining this period', value: 'Rp3,420,000', body: 'The hero shows active period cashflow. Total balance across all wallets is read as a separate metric.' },
+        { title: 'Capture', label: 'Quick input', value: 'coffee 35k', body: 'Log transactions like a conversation, then review the parsed result before saving.' },
+        { title: 'Reports', label: 'Cycle Salary', value: '25 May – 24 Jun', body: 'Reports follow the period rule you choose, including your pay cycle.' },
+      ],
+    },
+    security: {
+      eyebrow: 'Security & readiness',
+      title: 'Financial data needs a serious foundation.',
+      body: 'Kaswise uses Supabase with Row Level Security, hardened authentication, and mobile/PWA validation before changes reach production.',
+      items: [
+        'PWA is live and can be installed to your home screen.',
+        'Data access is restricted per account with authentication and Row Level Security.',
+        'Features shown on this landing reflect the actual Kaswise product capabilities.',
+      ],
+    },
+    faq: {
+      kicker: 'FAQ',
+      title: 'Common questions before starting with Kaswise.',
+      items: [
+        { q: 'What is Kaswise?', a: 'Kaswise is a personal finance PWA for logging transactions, managing wallets, tracking budgets, and reading daily and custom-period cashflow reports.' },
+        { q: 'Can I use it on my phone?', a: 'Yes. Kaswise is built mobile-first as a PWA, so you can open it from your browser and install it on your home screen.' },
+        { q: 'Can I use a pay cycle like 25–24?', a: 'Yes. You can pick a custom range and save monthly period rules so reports follow your salary or billing cycle.' },
+        { q: 'What is the difference between Total Balance and Remaining This Period?', a: 'Total Balance is the sum of all active wallets. Remaining This Period is active period cashflow: income minus spending for the selected report range.' },
+        { q: 'Is my data safe?', a: 'Kaswise uses authentication and per-account data access controls. You still need to keep your device, email, and login credentials secure.' },
+        { q: 'Does Kaswise replace financial advice?', a: 'No. Kaswise is a personal money tracking and management tool, not a substitute for professional financial, tax, investment, or legal advice.' },
+      ],
+    },
+    help: {
+      kicker: 'Help center',
+      title: 'Help, terms, and privacy are easy to find.',
+      cards: [
+        { label: 'Help', title: 'Need help using Kaswise?', body: 'From opening the PWA, logging transactions, managing wallets, to reading active period reports.', link: 'Open help' },
+        { label: 'Terms & conditions', title: 'Use Kaswise for responsible personal tracking.', body: 'Information in Kaswise helps with daily money management and is not a substitute for professional financial advice.', link: 'Read terms' },
+        { label: 'Privacy policy', title: 'Financial data needs protection and clear boundaries.', body: 'Kaswise uses authentication and Row Level Security to help keep data tied to user accounts.', link: 'Read privacy' },
+      ],
+    },
+    finalCta: {
+      title: 'Start tidying your money from the next transaction.',
+      body: 'Open the PWA, log your first expense, and let wallets, budgets, transactions, and period reports organize themselves automatically.',
+      button: 'Open Kaswise PWA',
+    },
+    footer: {
+      brand: 'Premium finance tracker for daily money control.',
+      produk: 'Product',
+      caraKerja: 'How it works',
+      fitur: 'Features',
+      laporanPeriode: 'Period reports',
+      keamanan: 'Security',
+      informasi: 'Information',
+      bantuan: 'Help',
+      syarat: 'Terms & conditions',
+      privasi: 'Privacy policy',
+      kontak: 'Contact support',
+      hubungi: 'Contact us',
+      supportHint: 'For product help, issue reports, or privacy questions.',
+    },
+  },
+}
+
+export function useLandingCopy() {
+  const lang = useI18nStore((s) => s.language) as Lang
+  return t[lang] ?? t.id
+}
+
+export type LandingCopy = typeof t.id

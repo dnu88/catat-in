@@ -3411,3 +3411,126 @@ body {
     font-size: 11px;
   }
 }
+
+.landing-pricing-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  max-width: 780px;
+  margin: 0 auto;
+}
+
+.landing-pricing-card {
+  display: grid;
+  align-content: start;
+  gap: 18px;
+  border: 1px solid var(--ks-border-soft);
+  border-radius: var(--ks-radius-lg);
+  background: var(--ks-bg-card);
+  box-shadow: var(--ks-shadow-card);
+  padding: 24px;
+}
+
+.landing-pricing-premium {
+  border-color: color-mix(in srgb, var(--ks-brand-primary) 38%, var(--ks-border-soft));
+  background:
+    radial-gradient(circle at 100% 0%, var(--landing-accent-soft), transparent 48%),
+    var(--ks-bg-card);
+}
+
+.landing-pricing-header {
+  display: grid;
+  gap: 6px;
+  justify-items: center;
+  text-align: center;
+}
+
+.landing-pricing-header strong {
+  color: var(--ks-text-primary);
+  font-size: 16px;
+  font-weight: 900;
+}
+
+.landing-pricing-badge {
+  display: inline-flex;
+  min-height: 28px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--ks-bubble-warning-bd);
+  border-radius: var(--ks-radius-pill);
+  background: var(--ks-bubble-warning-bg);
+  color: var(--ks-bubble-warning-fg);
+  font-size: 11px;
+  font-weight: 850;
+  padding: 0 12px;
+  margin-top: 4px;
+}
+
+.landing-pricing-amount {
+  color: var(--ks-text-primary);
+  font-size: 36px;
+  font-weight: 900;
+  letter-spacing: -0.06em;
+  line-height: 1;
+  margin-top: 8px;
+}
+
+.landing-pricing-header small {
+  color: var(--ks-text-muted);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.landing-pricing-yearly {
+  color: var(--ks-text-secondary);
+  font-size: 13px;
+  font-weight: 800;
+  padding: 4px 0;
+}
+
+.landing-pricing-features {
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+  list-style: none;
+}
+
+.landing-pricing-features li {
+  position: relative;
+  min-height: 36px;
+  display: flex;
+  align-items: center;
+  padding-left: 26px;
+  color: var(--ks-text-secondary);
+  font-size: 13px;
+  font-weight: 750;
+}
+
+.landing-pricing-features li::before {
+  content: '✓';
+  position: absolute;
+  left: 0;
+  color: var(--ks-brand-primary);
+  font-weight: 900;
+}
+
+.landing-pricing-cta {
+  display: flex;
+  justify-content: center;
+  margin-top: 22px;
+}
+
+.landing-pricing-cta .landing-primary {
+  min-width: 240px;
+}
+
+@media (max-width: 720px) {
+  .landing-pricing-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .landing-pricing-card {
+    padding: 20px;
+  }
+}

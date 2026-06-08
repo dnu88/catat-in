@@ -1,159 +1,14 @@
+import { useLandingCopy } from '../lib/landing-i18n'
 import LanguageToggle from '@components/i18n/LanguageToggle'
-
 import ThemeToggle from '@components/theme/ThemeToggle'
 
 const appUrl = import.meta.env.VITE_KASWISE_APP_URL?.trim() || 'https://kaswise.com'
 const supportEmail = 'kaswise.id@gmail.com'
 const supportMailto = `mailto:${supportEmail}`
 
-const heroStats = [
-  { value: '5 modul', label: 'Capture, wallet, budget, transaksi, dan laporan' },
-  { value: '25–24', label: 'Siap untuk siklus gajian dan periode custom' },
-  { value: 'PWA', label: 'Buka cepat dari browser atau layar utama' },
-]
-
-const quickMenus = [
-  { href: '#masalah', label: 'Masalah', body: 'Kenapa uang terasa bocor' },
-  { href: '#sistem', label: 'Cara kerja', body: 'Catat, budget, review' },
-  { href: '#periode', label: 'Periode gajian', body: 'Laporan 25–24 dan custom' },
-  { href: '#faq', label: 'FAQ', body: 'Jawaban sebelum mulai' },
-]
-
-const problems = [
-  {
-    title: 'Transaksi kecil cepat terlupa',
-    body: 'Kopi, parkir, transport, dan jajan kecil sering hilang dari catatan. Akumulasinya baru terasa di akhir periode.',
-  },
-  {
-    title: 'Budget tidak ikut update',
-    body: 'Budget yang terpisah dari transaksi membuat Anda tetap harus menghitung ulang sebelum mengambil keputusan belanja.',
-  },
-  {
-    title: 'Laporan tidak cocok dengan tanggal gajian',
-    body: 'Bulan kalender tidak selalu sama dengan realita cashflow. Banyak orang butuh periode seperti 25–24.',
-  },
-  {
-    title: 'Saldo sering dikira performa bulanan',
-    body: 'Total saldo adalah aset di dompet aktif. Cashflow periode perlu dibaca terpisah agar keputusan lebih jelas.',
-  },
-]
-
-const dailySystem = [
-  {
-    title: 'Tulis seperti chat',
-    body: 'Contoh: “beli kopi 35rb di Kopi Kenangan”. Kaswise membantu menyiapkan nominal, kategori, tanggal, dan dompet untuk dicek.',
-  },
-  {
-    title: 'Kaswise rapikan datanya',
-    body: 'Transaksi tersimpan dengan konteks yang konsisten, sehingga dompet, budget kategori, dan riwayat transaksi langsung ikut bergerak.',
-  },
-  {
-    title: 'Review cashflow periode aktif',
-    body: 'Dashboard, Reports, dan Transactions membaca periode yang sama agar Anda tahu sisa ruang belanja sebelum keputusan berikutnya.',
-  },
-]
-
-const periodHighlights = [
-  'Pakai bulan kalender saat ingin membaca performa bulanan standar.',
-  'Pakai rentang custom untuk kebutuhan audit, liburan, tagihan, atau proyek tertentu.',
-  'Simpan aturan seperti 25–24 agar laporan mengikuti siklus gajian Anda.',
-  'Dashboard, Reports, dan Transactions tetap sinkron dengan periode aktif yang sama.',
-]
-
-const appHighlights = [
-  {
-    label: 'Capture pintar',
-    title: 'Input pendek, hasil tetap rapi',
-    body: 'Cocok untuk transaksi kecil yang sering terlupa: kopi, parkir, transport, jajan, transfer, sampai tagihan rutin.',
-    tone: 'primary',
-  },
-  {
-    label: 'Dompet & saldo',
-    title: 'Pisahkan kas, bank, e-wallet, dan kartu',
-    body: 'Pantau total saldo semua dompet aktif tanpa mencampurnya dengan performa bulanan atau cashflow periode.',
-    tone: 'info',
-  },
-  {
-    label: 'Budget kategori',
-    title: 'Tahu batas sebelum kebablasan',
-    body: 'Budget makan, transport, belanja, dan kebutuhan lain tampil dengan sisa yang mudah dipahami setiap hari.',
-    tone: 'warning',
-  },
-  {
-    label: 'Laporan periode',
-    title: 'Bulan kalender atau siklus gajian',
-    body: 'Pilih bulan ini, rentang custom, atau simpan aturan seperti 25–24 agar laporan mengikuti realita arus kas Anda.',
-    tone: 'primary',
-  },
-  {
-    label: 'Transaksi',
-    title: 'Cari dan audit pengeluaran cepat',
-    body: 'Filter transaksi mengikuti periode laporan aktif, jadi dashboard, reports, dan daftar transaksi tetap sinkron.',
-    tone: 'info',
-  },
-  {
-    label: 'Privasi mobile',
-    title: 'Nominal bisa disembunyikan saat di luar',
-    body: 'Mode sembunyikan nominal dan tema terang/gelap membantu Kaswise tetap nyaman dipakai di situasi harian.',
-    tone: 'warning',
-  },
-]
-
-const previewPanels = [
-  {
-    title: 'Dashboard',
-    label: 'Sisa periode ini',
-    value: 'Rp3.420.000',
-    body: 'Hero menampilkan cashflow periode aktif. Total saldo semua dompet tetap dibaca sebagai metrik terpisah.',
-  },
-  {
-    title: 'Capture',
-    label: 'Input cepat',
-    value: 'beli kopi 35rb',
-    body: 'Catat transaksi seperti percakapan, lalu cek hasil baca sebelum disimpan.',
-  },
-  {
-    title: 'Reports',
-    label: 'Cycle Salary',
-    value: '25 Mei – 24 Jun',
-    body: 'Laporan mengikuti aturan periode yang Anda pilih, termasuk siklus gajian.',
-  },
-]
-
-const trustItems = [
-  'PWA sudah live dan bisa dipasang ke layar utama.',
-  'Akses data dibatasi per akun dengan autentikasi dan Row Level Security.',
-  'Fitur yang ditampilkan di landing mengikuti kemampuan produk Kaswise yang tersedia.',
-]
-
-const faqs = [
-  {
-    question: 'Apa itu Kaswise?',
-    answer: 'Kaswise adalah personal finance PWA untuk mencatat transaksi, mengelola dompet, mengatur budget, dan membaca laporan cashflow harian maupun periode custom.',
-  },
-  {
-    question: 'Apakah bisa digunakan di HP?',
-    answer: 'Bisa. Kaswise dibuat mobile-first sebagai PWA, sehingga bisa dibuka dari browser dan dipasang ke layar utama perangkat yang mendukung.',
-  },
-  {
-    question: 'Apakah bisa pakai periode gajian seperti 25–24?',
-    answer: 'Bisa. Anda dapat memilih rentang custom dan menyimpan aturan periode bulanan agar laporan mengikuti siklus gajian atau tagihan.',
-  },
-  {
-    question: 'Apa beda Total saldo dan Sisa periode ini?',
-    answer: 'Total saldo adalah jumlah seluruh dompet aktif. Sisa periode ini adalah cashflow periode aktif: pemasukan dikurangi pengeluaran pada rentang laporan yang dipilih.',
-  },
-  {
-    question: 'Apakah data saya aman?',
-    answer: 'Kaswise menggunakan autentikasi dan pembatasan akses data per akun. Anda tetap perlu menjaga perangkat, email, dan kredensial login agar tidak digunakan pihak lain.',
-  },
-  {
-    question: 'Apakah Kaswise menggantikan nasihat keuangan?',
-    answer: 'Tidak. Kaswise adalah alat bantu pencatatan dan pengelolaan uang pribadi, bukan pengganti nasihat keuangan, pajak, investasi, atau hukum profesional.',
-  },
-]
-
 export default function LandingPage() {
+  const t = useLandingCopy()
+
   return (
     <main className="landing-page" data-testid="web-landing-page">
       <header className="landing-header" aria-label="Navigasi Kaswise">
@@ -163,49 +18,44 @@ export default function LandingPage() {
           </span>
           <span>
             <strong>kaswise</strong>
-            <small>Premium finance tracker</small>
+            <small>{t.brandTagline}</small>
           </span>
         </a>
 
         <nav className="landing-nav" aria-label="Navigasi landing">
-          <a href="#top">Produk</a>
-          <a href="#masalah">Masalah</a>
-          <a href="#sistem">Cara kerja</a>
-          <a href="#periode">Periode</a>
-          <a href="#fitur">Fitur</a>
-          <a href="#faq">FAQ</a>
+          <a href="#top">{t.nav.product}</a>
+          <a href="#masalah">{t.nav.masalah}</a>
+          <a href="#sistem">{t.nav.sistem}</a>
+          <a href="#periode">{t.nav.periode}</a>
+          <a href="#fitur">{t.nav.fitur}</a>
+          <a href="#faq">{t.nav.faq}</a>
         </nav>
 
         <div className="landing-header-actions">
           <ThemeToggle className="landing-theme-toggle" />
           <LanguageToggle className="landing-language-toggle" />
-          <a className="landing-nav-cta" href={appUrl}>Buka aplikasi</a>
+          <a className="landing-nav-cta" href={appUrl}>{t.ctaApp}</a>
         </div>
       </header>
 
       <section id="top" className="landing-hero landing-hero--ledger-grid" aria-labelledby="landing-title">
         <div className="landing-hero-copy">
-          <span className="landing-eyebrow">All-in-one finance tracker</span>
-          <h1 id="landing-title">Kontrol uang harian tanpa spreadsheet.</h1>
-          <p>
-            Kaswise membantu Anda mencatat transaksi cepat, menjaga budget, dan membaca cashflow
-            sesuai periode hidup nyata seperti siklus gajian.
-          </p>
+          <span className="landing-eyebrow">{t.hero.eyebrow}</span>
+          <h1 id="landing-title">{t.hero.title}</h1>
+          <p>{t.hero.body}</p>
 
           <div className="landing-actions" aria-label="Aksi utama">
-            <a className="landing-primary" href={appUrl}>Buka Kaswise PWA</a>
-            <a className="landing-secondary" href="#sistem">Lihat cara kerja</a>
+            <a className="landing-primary" href={appUrl}>{t.hero.primary}</a>
+            <a className="landing-secondary" href="#sistem">{t.hero.secondary}</a>
           </div>
 
           <div className="landing-proof-strip" aria-label="Ringkasan produk">
-            <span>PWA mobile-first</span>
-            <span>Budget & reports</span>
-            <span>Periode gajian</span>
+            {t.hero.chips.map((chip) => (<span key={chip}>{chip}</span>))}
           </div>
 
           <nav className="landing-quick-menu" aria-label="Pilih bagian landing page">
-            {quickMenus.map((item) => (
-              <a href={item.href} key={item.href}>
+            {t.quickMenus.map((item) => (
+              <a href={`#${item.label === t.quickMenus[0].label ? 'masalah' : item.label === t.quickMenus[1].label ? 'sistem' : item.label === t.quickMenus[2].label ? 'periode' : 'faq'}`} key={item.label}>
                 <strong>{item.label}</strong>
                 <span>{item.body}</span>
               </a>
@@ -213,7 +63,7 @@ export default function LandingPage() {
           </nav>
 
           <div className="landing-stat-grid" aria-label="Ringkasan kemampuan Kaswise">
-            {heroStats.map((item) => (
+            {t.heroStats.map((item) => (
               <div className="landing-stat-card" key={item.value}>
                 <strong>{item.value}</strong>
                 <span>{item.label}</span>
@@ -226,27 +76,27 @@ export default function LandingPage() {
           <div className="landing-device">
             <div className="landing-device-status" aria-hidden="true">
               <span>09:41</span>
-              <span>Kaswise</span>
+              <span>{t.mockup.status}</span>
             </div>
 
             <div className="landing-app-header">
               <div>
-                <span>Periode aktif</span>
-                <strong>Sisa periode ini</strong>
+                <span>{t.mockup.periodLabel}</span>
+                <strong>{t.mockup.periodValue}</strong>
               </div>
               <span className="landing-profile-avatar" aria-hidden="true">RP</span>
             </div>
 
             <div className="landing-balance-card">
-              <span className="landing-card-label">Cashflow 25 Mei – 24 Jun</span>
+              <span className="landing-card-label">{t.mockup.cashflowLabel}</span>
               <strong>Rp3.420.000</strong>
-              <p>Pemasukan dikurangi pengeluaran untuk periode laporan aktif.</p>
+              <p>{t.mockup.cashflowHint}</p>
             </div>
 
             <div className="landing-review-card">
               <div className="landing-review-head">
-                <span>Input cepat</span>
-                <strong>Siap dicek</strong>
+                <span>{t.mockup.inputLabel}</span>
+                <strong>{t.mockup.inputStatus}</strong>
               </div>
               <div className="landing-capture-card compact">
                 <p>beli kopi 35rb di Kopi Kenangan</p>
@@ -260,7 +110,7 @@ export default function LandingPage() {
 
             <div className="landing-budget-card">
               <div className="landing-budget-copy">
-                <span>Total saldo semua dompet</span>
+                <span>{t.mockup.totalSaldoLabel}</span>
                 <strong>Rp12.840.000</strong>
               </div>
               <div className="landing-progress" aria-label="Budget makan tersisa 72 persen">
@@ -269,9 +119,9 @@ export default function LandingPage() {
             </div>
 
             <div className="landing-tabbar" aria-hidden="true">
-              <span className="active">Beranda</span>
-              <span>Transaksi</span>
-              <span>Laporan</span>
+              {t.mockup.tabs.map((tab, i) => (
+                <span key={tab} className={i === 0 ? 'active' : ''}>{tab}</span>
+              ))}
             </div>
           </div>
         </div>
@@ -279,12 +129,12 @@ export default function LandingPage() {
 
       <section id="masalah" className="landing-section landing-problem-section" aria-labelledby="problem-title">
         <div className="landing-section-heading compact">
-          <p className="landing-section-kicker">Masalah yang nyata</p>
-          <h2 id="problem-title">Uang sering bocor bukan karena besar, tapi karena tidak terlihat.</h2>
+          <p className="landing-section-kicker">{t.problem.kicker}</p>
+          <h2 id="problem-title">{t.problem.title}</h2>
         </div>
 
         <div className="landing-problem-grid">
-          {problems.map((item) => (
+          {t.problem.items.map((item) => (
             <article className="landing-problem-card" key={item.title}>
               <h3>{item.title}</h3>
               <p>{item.body}</p>
@@ -295,12 +145,12 @@ export default function LandingPage() {
 
       <section id="sistem" className="landing-section landing-flow-section" aria-labelledby="flow-title">
         <div className="landing-section-heading">
-          <p className="landing-section-kicker">Cara kerja</p>
-          <h2 id="flow-title">Dari catat transaksi sampai paham cashflow.</h2>
+          <p className="landing-section-kicker">{t.system.kicker}</p>
+          <h2 id="flow-title">{t.system.title}</h2>
         </div>
 
         <div className="landing-flow-list">
-          {dailySystem.map((step, index) => (
+          {t.system.steps.map((step, index) => (
             <article className="landing-flow-item" key={step.title}>
               <span className="landing-step-number">0{index + 1}</span>
               <div>
@@ -314,28 +164,64 @@ export default function LandingPage() {
 
       <section id="periode" className="landing-section landing-period" aria-labelledby="period-title">
         <div>
-          <span className="landing-eyebrow">Pembeda utama</span>
-          <h2 id="period-title">Laporan mengikuti realita cashflow Anda, bukan cuma kalender.</h2>
-          <p>
-            Banyak orang menerima gaji, membayar tagihan, dan mengatur belanja di siklus yang tidak selalu dimulai tanggal 1.
-            Kaswise membuat periode laporan bisa mengikuti pola tersebut.
-          </p>
+          <span className="landing-eyebrow">{t.period.eyebrow}</span>
+          <h2 id="period-title">{t.period.title}</h2>
+          <p>{t.period.body}</p>
         </div>
         <ul className="landing-period-list">
-          {periodHighlights.map((item) => (
+          {t.period.highlights.map((item) => (
             <li key={item}>{item}</li>
           ))}
         </ul>
       </section>
 
+      <section id="harga" className="landing-section landing-pricing-section" aria-labelledby="pricing-title">
+        <div className="landing-section-heading compact">
+          <p className="landing-section-kicker">{t.pricing.kicker}</p>
+          <h2 id="pricing-title">{t.pricing.title}</h2>
+        </div>
+
+        <div className="landing-pricing-grid">
+          <article className="landing-pricing-card">
+            <div className="landing-pricing-header">
+              <strong>{t.pricing.free.name}</strong>
+              <span className="landing-pricing-amount">{t.pricing.free.price}</span>
+              <small>{t.pricing.free.period}</small>
+            </div>
+            <ul className="landing-pricing-features">
+              {t.pricing.free.features.map((f) => (<li key={f}>{f}</li>))}
+            </ul>
+          </article>
+
+          <article className="landing-pricing-card landing-pricing-premium">
+            <div className="landing-pricing-header">
+              <strong>{t.pricing.premium.name}</strong>
+              {t.pricing.premium.badge ? (
+                <span className="landing-pricing-badge">{t.pricing.premium.badge}</span>
+              ) : null}
+              <span className="landing-pricing-amount">{t.pricing.premium.priceMonthly}</span>
+              <small>{t.pricing.premium.periodMonthly}</small>
+              <span className="landing-pricing-yearly">{t.pricing.premium.priceYearly}{t.pricing.premium.periodYearly}</span>
+            </div>
+            <ul className="landing-pricing-features">
+              {t.pricing.premium.features.map((f) => (<li key={f}>{f}</li>))}
+            </ul>
+          </article>
+        </div>
+
+        <div className="landing-pricing-cta">
+          <a className="landing-primary" href={appUrl}>{t.pricing.cta}</a>
+        </div>
+      </section>
+
       <section id="fitur" className="landing-section landing-highlight-section" aria-labelledby="feature-title">
         <div className="landing-section-heading compact">
-          <p className="landing-section-kicker">Fitur utama</p>
-          <h2 id="feature-title">Satu tempat untuk mencatat, mengatur, dan membaca uang Anda.</h2>
+          <p className="landing-section-kicker">{t.features.kicker}</p>
+          <h2 id="feature-title">{t.features.title}</h2>
         </div>
 
         <div className="landing-highlight-grid landing-highlight-grid-large">
-          {appHighlights.map((item) => (
+          {t.features.items.map((item) => (
             <article className="landing-highlight-card" key={item.title}>
               <span className={`landing-icon-bubble landing-icon-bubble-${item.tone}`}>{item.label.slice(0, 2)}</span>
               <div>
@@ -350,12 +236,12 @@ export default function LandingPage() {
 
       <section className="landing-section landing-preview-section" aria-labelledby="preview-title">
         <div className="landing-section-heading compact">
-          <p className="landing-section-kicker">Preview produk</p>
-          <h2 id="preview-title">Tiga layar utama untuk keputusan uang harian.</h2>
+          <p className="landing-section-kicker">{t.preview.kicker}</p>
+          <h2 id="preview-title">{t.preview.title}</h2>
         </div>
 
         <div className="landing-preview-grid">
-          {previewPanels.map((panel) => (
+          {t.preview.panels.map((panel) => (
             <article className="landing-preview-card" key={panel.title}>
               <div className="landing-preview-window">
                 <span>{panel.title}</span>
@@ -371,16 +257,13 @@ export default function LandingPage() {
 
       <section id="keamanan" className="landing-section landing-trust" aria-labelledby="trust-title">
         <div className="landing-trust-copy">
-          <span className="landing-eyebrow">Keamanan & kesiapan</span>
-          <h2 id="trust-title">Data finansial perlu fondasi yang serius.</h2>
-          <p>
-            Kaswise memakai Supabase dengan Row Level Security, autentikasi yang diperketat,
-            dan validasi mobile/PWA sebelum perubahan dirilis ke production.
-          </p>
+          <span className="landing-eyebrow">{t.security.eyebrow}</span>
+          <h2 id="trust-title">{t.security.title}</h2>
+          <p>{t.security.body}</p>
         </div>
 
         <ul className="landing-trust-list">
-          {trustItems.map((item) => (
+          {t.security.items.map((item) => (
             <li key={item}>{item}</li>
           ))}
         </ul>
@@ -388,15 +271,15 @@ export default function LandingPage() {
 
       <section id="faq" className="landing-section landing-faq" aria-labelledby="faq-title">
         <div className="landing-section-heading compact">
-          <p className="landing-section-kicker">FAQ</p>
-          <h2 id="faq-title">Pertanyaan umum sebelum mulai menggunakan Kaswise.</h2>
+          <p className="landing-section-kicker">{t.faq.kicker}</p>
+          <h2 id="faq-title">{t.faq.title}</h2>
         </div>
 
         <div className="landing-faq-list">
-          {faqs.map((item) => (
-            <details className="landing-faq-item" key={item.question}>
-              <summary>{item.question}</summary>
-              <p>{item.answer}</p>
+          {t.faq.items.map((item) => (
+            <details className="landing-faq-item" key={item.q}>
+              <summary>{item.q}</summary>
+              <p>{item.a}</p>
             </details>
           ))}
         </div>
@@ -404,31 +287,19 @@ export default function LandingPage() {
 
       <section id="bantuan" className="landing-section landing-help" aria-labelledby="help-title">
         <div className="landing-section-heading compact">
-          <p className="landing-section-kicker">Pusat informasi</p>
-          <h2 id="help-title">Bantuan, syarat penggunaan, dan privasi dibuat mudah ditemukan.</h2>
+          <p className="landing-section-kicker">{t.help.kicker}</p>
+          <h2 id="help-title">{t.help.title}</h2>
         </div>
 
         <div className="landing-help-grid">
-          <article className="landing-help-card" id="bantuan-produk">
-            <span className="landing-card-label">Bantuan</span>
-            <h3>Butuh bantuan menggunakan Kaswise?</h3>
-            <p>Mulai dari membuka PWA, mencatat transaksi, mengatur dompet, sampai membaca laporan periode aktif.</p>
-            <a href="/help">Buka bantuan</a>
-          </article>
-
-          <article className="landing-help-card" id="syarat-ketentuan">
-            <span className="landing-card-label">Syarat & ketentuan</span>
-            <h3>Gunakan Kaswise untuk pencatatan pribadi yang bertanggung jawab.</h3>
-            <p>Informasi di Kaswise membantu pengelolaan uang harian dan bukan pengganti nasihat keuangan profesional.</p>
-            <a href="/terms">Baca ketentuan</a>
-          </article>
-
-          <article className="landing-help-card" id="kebijakan-privasi">
-            <span className="landing-card-label">Kebijakan privasi</span>
-            <h3>Data finansial perlu perlindungan dan batas akses yang jelas.</h3>
-            <p>Kaswise memakai autentikasi dan Row Level Security untuk membantu menjaga data sesuai akun pengguna.</p>
-            <a href="/privacy">Baca privasi</a>
-          </article>
+          {t.help.cards.map((card) => (
+            <article className="landing-help-card" key={card.label}>
+              <span className="landing-card-label">{card.label}</span>
+              <h3>{card.title}</h3>
+              <p>{card.body}</p>
+              <a href={card.label === t.help.cards[0].label ? '/help' : card.label === t.help.cards[1].label ? '/terms' : '/privacy'}>{card.link}</a>
+            </article>
+          ))}
         </div>
       </section>
 
@@ -436,38 +307,35 @@ export default function LandingPage() {
         <span className="landing-logo-shell landing-logo-shell-large" aria-hidden="true">
           <img src="/brand/logo-kaswise-mark.svg" alt="" />
         </span>
-        <h2>Mulai rapikan uang dari transaksi berikutnya.</h2>
-        <p>
-          Buka PWA, catat pengeluaran pertama, lalu biarkan dompet, budget,
-          transaksi, dan laporan periode ikut tersusun otomatis.
-        </p>
-        <a className="landing-primary" href={appUrl}>Buka Kaswise PWA</a>
+        <h2>{t.finalCta.title}</h2>
+        <p>{t.finalCta.body}</p>
+        <a className="landing-primary" href={appUrl}>{t.finalCta.button}</a>
       </section>
 
       <footer className="landing-footer landing-footer-rich">
         <div className="landing-footer-brand">
           <strong>Kaswise</strong>
-          <span>Premium finance tracker untuk kontrol uang harian.</span>
+          <span>{t.footer.brand}</span>
           <small>© 2026 Kaswise. All rights reserved.</small>
         </div>
         <nav className="landing-footer-column" aria-label="Menu produk">
-          <strong>Produk</strong>
-          <a href="#sistem">Cara kerja</a>
-          <a href="#fitur">Fitur</a>
-          <a href="#periode">Laporan periode</a>
-          <a href="#keamanan">Keamanan</a>
+          <strong>{t.footer.produk}</strong>
+          <a href="#sistem">{t.footer.caraKerja}</a>
+          <a href="#fitur">{t.footer.fitur}</a>
+          <a href="#periode">{t.footer.laporanPeriode}</a>
+          <a href="#keamanan">{t.footer.keamanan}</a>
         </nav>
         <nav className="landing-footer-column" aria-label="Menu informasi">
-          <strong>Informasi</strong>
-          <a href="/help">Bantuan</a>
-          <a href="/terms">Syarat & ketentuan</a>
-          <a href="/privacy">Kebijakan privasi</a>
-          <a href="/contact">Kontak support</a>
+          <strong>{t.footer.informasi}</strong>
+          <a href="/help">{t.footer.bantuan}</a>
+          <a href="/terms">{t.footer.syarat}</a>
+          <a href="/privacy">{t.footer.privasi}</a>
+          <a href="/contact">{t.footer.kontak}</a>
         </nav>
         <div className="landing-footer-column">
-          <strong>Hubungi kami</strong>
+          <strong>{t.footer.hubungi}</strong>
           <a href={supportMailto}>{supportEmail}</a>
-          <span>Untuk bantuan produk, laporan masalah, atau pertanyaan privasi.</span>
+          <span>{t.footer.supportHint}</span>
         </div>
       </footer>
     </main>
