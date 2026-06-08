@@ -13,6 +13,8 @@ import { KaswiseLogoMark } from "../../src/components/brand/KaswiseLogoMark";
 import { IconBubble } from "../../src/components/ui";
 import { useTheme } from "../../src/theme/theme-context";
 import { useI18n } from "../../src/i18n/i18n-context";
+import { useEntitlements } from "../../src/hooks/useEntitlements";
+import { planStatusLabel } from "../../src/utils/plan-labels";
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
@@ -382,6 +384,7 @@ export default function SettingsScreen() {
 	const { theme, preference, setPreference } = useTheme();
 	const { language, setLanguage, t } = useI18n();
 	const styles = useMemo(() => createStyles(theme), [theme]);
+	const { data: entitlements, loading: entitlementsLoading } = useEntitlements();
 	const [dailyReminder, setDailyReminder] = useState(true);
 	const [billReminder, setBillReminder] = useState(true);
 	const [budgetAlert, setBudgetAlert] = useState(true);
@@ -1041,6 +1044,70 @@ export default function SettingsScreen() {
 							{passwordMessage.message}
 						</Text>
 					) : null}
+				</View>
+
+				{/* Plan / Paket Section */}
+				<View key="settings-plan" testID="settings-plan" style={styles.sectionCard}>
+					<Text style={styles.sectionTitle}>
+						{language === "id" ? "Paket" : "Plan"}
+					</Text>
+					<Text style={styles.sectionSub}>
+						{language === "id"
+							? "Status langganan dan upgrade ke Premium."
+							: "Subscription status and premium upgrade."}
+					</Text>
+					{entitlementsLoading ? (
+						<ActivityIndicator style={{ marginTop: 6 }} />
+					) : (
+						<>
+							<View style={styles.navigationRow}>
+								<View style={styles.navigationCopy}>
+									<IconBubble name="card" tone="primary" size={32} />
+									<View style={styles.navigationTextBlock}>
+										<Text style={styles.navigationTitle}>
+											{planStatusLabel(entitlements)}
+										</Text>
+										{entitlements?.plan === "premium" && entitlements.plan_expires_at ? (
+											<Text style={styles.navigationHelper}>
+												{language === "id" ? "Berlaku sampai " : "Valid until "}
+												{new Date(entitlements.plan_expires_at).toLocaleDateString(
+													language === "id" ? "id-ID" : "en-US",
+													{ year: "numeric", month: "long", day: "numeric" }
+												)}
+											</Text>
+										) : (
+											<Text style={styles.navigationHelper}>
+												{language === "id" ? "Akses dasar dengan batasan." : "Basic access with limits."}
+											</Text>
+										)}
+									</View>
+								</View>
+							</View>
+							{entitlements?.plan !== "premium" ? (
+								<Pressable
+									testID="settings-upgrade-button"
+									accessibilityRole="button"
+									style={styles.primaryButton}
+									onPress={() => router.push("/upgrade")}
+								>
+									<Text style={styles.primaryButtonText}>
+										{language === "id" ? "Upgrade ke Premium" : "Upgrade to Premium"}
+									</Text>
+								</Pressable>
+							) : (
+								<Pressable
+									testID="settings-extend-button"
+									accessibilityRole="button"
+									style={styles.primaryButton}
+									onPress={() => router.push("/upgrade")}
+								>
+									<Text style={styles.primaryButtonText}>
+										{language === "id" ? "Perpanjang" : "Extend"}
+									</Text>
+								</Pressable>
+							)}
+						</>
+					)}
 				</View>
 
 				{/* Family Section */}
