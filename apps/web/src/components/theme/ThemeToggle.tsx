@@ -1,21 +1,30 @@
+import { Moon, Sun } from '@phosphor-icons/react'
 import { useThemeStore } from '@store/theme.store'
 
-export default function ThemeToggle() {
+type ThemeToggleProps = {
+  className?: string
+}
+
+export default function ThemeToggle({ className = '' }: ThemeToggleProps) {
   const { currentMode, setPreference } = useThemeStore()
+  const isDark = currentMode === 'dark'
+  const Icon = isDark ? Sun : Moon
+  const nextLabel = isDark ? 'Ganti ke tema terang' : 'Ganti ke tema gelap'
 
   const onToggle = () => {
-    setPreference(currentMode === 'dark' ? 'light' : 'dark')
+    setPreference(isDark ? 'light' : 'dark')
   }
 
   return (
     <button
-      className="btn btn-secondary"
+      className={`theme-toggle ${className}`.trim()}
       onClick={onToggle}
-      aria-label="Theme toggle"
-      title="Theme"
+      aria-label={`Theme toggle, ${nextLabel}`}
+      title={nextLabel}
       type="button"
     >
-      {currentMode === 'dark' ? '☀️ Theme' : '🌙 Theme'}
+      <Icon aria-hidden="true" size={18} weight="bold" />
+      <span>{isDark ? 'Terang' : 'Gelap'}</span>
     </button>
   )
 }

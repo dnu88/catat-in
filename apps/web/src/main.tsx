@@ -7,6 +7,7 @@ import "./index.css";
 import { applyWebTheme, resolveThemeMode } from "@theme/web-theme";
 
 const LandingPage = lazy(() => import("@pages/LandingPage"));
+const LegalInfoPage = lazy(() => import("@pages/LegalInfoPage"));
 const LegacyApp = lazy(() => import("./legacy/LegacyApp"));
 
 function bootstrapTheme() {
@@ -39,6 +40,10 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
 			<Suspense fallback={<LoadingShell />}>
 				<Routes>
 					<Route path="/" element={<LandingPage />} />
+					<Route path="/help" element={<LegalInfoPage page="help" />} />
+					<Route path="/terms" element={<LegalInfoPage page="terms" />} />
+					<Route path="/privacy" element={<LegalInfoPage page="privacy" />} />
+					<Route path="/contact" element={<LegalInfoPage page="contact" />} />
 					<Route path="/*" element={<LegacyApp />} />
 				</Routes>
 			</Suspense>
