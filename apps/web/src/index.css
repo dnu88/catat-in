@@ -3534,3 +3534,71 @@ body {
     padding: 20px;
   }
 }
+
+.landing-pricing-table {
+  display: grid;
+  gap: 2px;
+}
+
+.landing-pricing-row {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+  min-height: 38px;
+  padding: 6px 14px;
+  border-radius: var(--ks-radius-sm);
+  background: var(--ks-bg-card);
+}
+
+.landing-pricing-row:first-child {
+  background: color-mix(in srgb, var(--ks-brand-primary) 10%, var(--ks-bg-card));
+}
+
+.landing-pricing-feat-label {
+  color: var(--ks-text-secondary);
+  font-size: 13px;
+  font-weight: 750;
+}
+
+.landing-pricing-feat-free {
+  color: var(--ks-text-muted);
+  font-size: 12px;
+  font-weight: 800;
+  text-align: center;
+}
+
+.landing-pricing-feat-premium {
+  color: var(--ks-brand-primary);
+  font-size: 12px;
+  font-weight: 900;
+  text-align: center;
+}
+
+.landing-pricing-alltiers {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--ks-border-soft);
+}
+
+.landing-pricing-alltiers p {
+  color: var(--ks-text-muted);
+  font-size: 12px;
+  font-weight: 750;
+  line-height: 1.6;
+  text-align: center;
+  margin: 0;
+}
+
+@media (max-width: 720px) {
+  .landing-pricing-row {
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    padding: 8px 10px;
+  }
+
+  .landing-pricing-feat-label {
+    grid-column: 1 / -1;
+    font-size: 12px;
+  }
+}

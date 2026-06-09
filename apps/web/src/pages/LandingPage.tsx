@@ -188,9 +188,18 @@ export default function LandingPage() {
               <span className="landing-pricing-amount">{t.pricing.free.price}</span>
               <small>{t.pricing.free.period}</small>
             </div>
-            <ul className="landing-pricing-features">
-              {t.pricing.free.features.map((f) => (<li key={f}>{f}</li>))}
-            </ul>
+            <div className="landing-pricing-table">
+              {t.pricing.free.features.map((item, i) => {
+                const prem = t.pricing.premium.features[i]
+                return (
+                  <div className="landing-pricing-row" key={item.f}>
+                    <span className="landing-pricing-feat-label">{item.f}</span>
+                    <span className="landing-pricing-feat-free">{item.v}</span>
+                    <span className="landing-pricing-feat-premium">{prem?.v ?? ''}</span>
+                  </div>
+                )
+              })}
+            </div>
           </article>
 
           <article className="landing-pricing-card landing-pricing-premium">
@@ -203,9 +212,9 @@ export default function LandingPage() {
               <small>{t.pricing.premium.periodMonthly}</small>
               <span className="landing-pricing-yearly">{t.pricing.premium.priceYearly}{t.pricing.premium.periodYearly}</span>
             </div>
-            <ul className="landing-pricing-features">
-              {t.pricing.premium.features.map((f) => (<li key={f}>{f}</li>))}
-            </ul>
+            <div className="landing-pricing-alltiers">
+              <p>{t.pricing.allTiers}</p>
+            </div>
           </article>
         </div>
 
