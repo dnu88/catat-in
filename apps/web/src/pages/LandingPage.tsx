@@ -188,18 +188,17 @@ export default function LandingPage() {
               <span className="landing-pricing-amount">{t.pricing.free.price}</span>
               <small>{t.pricing.free.period}</small>
             </div>
-            <div className="landing-pricing-table">
-              {t.pricing.free.features.map((item, i) => {
-                const prem = t.pricing.premium.features[i]
-                return (
-                  <div className="landing-pricing-row" key={item.f}>
-                    <span className="landing-pricing-feat-label">{item.f}</span>
-                    <span className="landing-pricing-feat-free">{item.v}</span>
-                    <span className="landing-pricing-feat-premium">{prem?.v ?? ''}</span>
-                  </div>
-                )
-              })}
-            </div>
+            <ul className="landing-pricing-features">
+              {t.pricing.free.items.map((item) => (
+                <li key={item.label} className={item.included ? '' : 'landing-pricing-excluded'}>
+                  <span className="landing-pricing-feat-icon" aria-hidden="true">
+                    {item.included ? '✓' : '✗'}
+                  </span>
+                  <span className="landing-pricing-feat-text">{item.label}</span>
+                  {item.value ? <span className="landing-pricing-feat-val">{item.value}</span> : null}
+                </li>
+              ))}
+            </ul>
           </article>
 
           <article className="landing-pricing-card landing-pricing-premium">
@@ -212,11 +211,19 @@ export default function LandingPage() {
               <small>{t.pricing.premium.periodMonthly}</small>
               <span className="landing-pricing-yearly">{t.pricing.premium.priceYearly}{t.pricing.premium.periodYearly}</span>
             </div>
-            <div className="landing-pricing-alltiers">
-              <p>{t.pricing.allTiers}</p>
-            </div>
+            <ul className="landing-pricing-features">
+              {t.pricing.premium.items.map((item) => (
+                <li key={item.label}>
+                  <span className="landing-pricing-feat-icon" aria-hidden="true">✓</span>
+                  <span className="landing-pricing-feat-text">{item.label}</span>
+                  {item.value ? <span className="landing-pricing-feat-val">{item.value}</span> : null}
+                </li>
+              ))}
+            </ul>
           </article>
         </div>
+
+        <p className="landing-pricing-note">{t.pricing.allTiers}</p>
 
         <div className="landing-pricing-cta">
           <a className="landing-primary" href={appUrl}>{t.pricing.cta}</a>

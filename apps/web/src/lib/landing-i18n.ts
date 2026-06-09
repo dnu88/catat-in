@@ -74,10 +74,13 @@ const t = {
         name: 'Gratis',
         price: 'Rp0',
         period: 'selamanya',
-        features: [
-          { f: 'Chat AI', v: '25/bulan' },
-          { f: 'Foto OCR struk', v: '—' },
-          { f: 'AI Insight', v: '—' },
+        items: [
+          { label: 'Chat AI', value: '25/bulan', included: true },
+          { label: 'Foto OCR struk', value: null, included: false },
+          { label: 'AI Insight', value: null, included: false },
+          { label: 'Transaksi & dompet', value: null, included: true },
+          { label: 'Budget kategori', value: null, included: true },
+          { label: 'Laporan periode', value: null, included: true },
         ],
       },
       premium: {
@@ -87,10 +90,13 @@ const t = {
         periodMonthly: '/bulan',
         periodYearly: '/tahun',
         badge: 'Promo 100 pertama',
-        features: [
-          { f: 'Chat AI', v: '200/bulan' },
-          { f: 'Foto OCR struk', v: '100/bulan' },
-          { f: 'AI Insight', v: '✓' },
+        items: [
+          { label: 'Chat AI', value: '200/bulan', included: true },
+          { label: 'Foto OCR struk', value: '100/bulan', included: true },
+          { label: 'AI Insight', value: null, included: true },
+          { label: 'Transaksi & dompet', value: null, included: true },
+          { label: 'Budget kategori', value: null, included: true },
+          { label: 'Laporan periode', value: null, included: true },
         ],
       },
       cta: 'Buka Kaswise gratis',
@@ -240,10 +246,13 @@ const t = {
         name: 'Free',
         price: 'Rp0',
         period: 'forever',
-        features: [
-          { f: 'Chat AI', v: '25/month' },
-          { f: 'Photo OCR receipt', v: '—' },
-          { f: 'AI Insight', v: '—' },
+        items: [
+          { label: 'Chat AI', value: '25/month', included: true },
+          { label: 'Photo OCR receipt', value: null, included: false },
+          { label: 'AI Insight', value: null, included: false },
+          { label: 'Transactions & wallets', value: null, included: true },
+          { label: 'Budget categories', value: null, included: true },
+          { label: 'Period reports', value: null, included: true },
         ],
       },
       premium: {
@@ -253,10 +262,13 @@ const t = {
         periodMonthly: '/month',
         periodYearly: '/year',
         badge: 'First 100 promo',
-        features: [
-          { f: 'Chat AI', v: '200/month' },
-          { f: 'Photo OCR receipt', v: '100/month' },
-          { f: 'AI Insight', v: '✓' },
+        items: [
+          { label: 'Chat AI', value: '200/month', included: true },
+          { label: 'Photo OCR receipt', value: '100/month', included: true },
+          { label: 'AI Insight', value: null, included: true },
+          { label: 'Transactions & wallets', value: null, included: true },
+          { label: 'Budget categories', value: null, included: true },
+          { label: 'Period reports', value: null, included: true },
         ],
       },
       cta: 'Open Kaswise free',
