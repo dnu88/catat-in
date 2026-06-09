@@ -1,9 +1,25 @@
-import { useEffect, useState, useCallback, useRef } from "react";
-import { View, Text, Pressable, ActivityIndicator } from "react-native";
+import { useEffect, useState, useCallback, useRef, useMemo } from "react";
+import {
+  View,
+  Text,
+  Pressable,
+  ActivityIndicator,
+  StyleSheet,
+} from "react-native";
 import * as WebBrowser from "expo-web-browser";
 import { router } from "expo-router";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { ScrollView } from "react-native";
+
+import { KaswiseLogoMark } from "../src/components/brand/KaswiseLogoMark";
 import { supabase } from "../src/lib/supabase";
-import { getPricing, createPayment, getPaymentStatus, type Pricing } from "../src/services/billing";
+import {
+  getPricing,
+  createPayment,
+  getPaymentStatus,
+  type Pricing,
+} from "../src/services/billing";
+import { useTheme } from "../src/theme/theme-context";
 
 const rp = (n: number) => `Rp${n.toLocaleString("id-ID")}`;
 
@@ -11,7 +27,11 @@ const POLL_INTERVAL = 2000;
 const MAX_POLLS = 30;
 
 export default function UpgradeScreen() {
+  const { theme } = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
+
   const [pricing, setPricing] = useState<Pricing | null>(null);
+  const [pricingError, setPricingError] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
   const [phase, setPhase] = useState<"idle" | "polling" | "paid" | "error">("idle");
   const [orderId, setOrderId] = useState<string | null>(null);
@@ -50,43 +70,54 @@ export default function UpgradeScreen() {
     }
   }, [orderId, stopPolling]);
 
-  const startPolling = useCallback((id: string) => {
-    pollCountRef.current = 0;
-    setOrderId(id);
-    setPhase("polling");
-    setPollError(null);
-    // Check immediately once, then set interval
-    if (intervalRef.current) clearInterval(intervalRef.current);
-    intervalRef.current = setInterval(() => {
-      const currentId = id;
-      if (!currentId) return;
-      getPaymentStatus(supabase, currentId)
-        .then((result) => {
-          pollCountRef.current += 1;
-          if (result.status === "paid" || result.status === "settlement") {
-            stopPolling();
-            setPhase("paid");
-            setTimeout(() => router.back(), 1500);
-          } else if (pollCountRef.current >= MAX_POLLS) {
-            stopPolling();
-            setPhase("error");
-            setPollError("Pembayaran masih diproses. Silakan cek nanti di pengaturan.");
-          }
-        })
-        .catch(() => {
-          if (pollCountRef.current >= MAX_POLLS) {
-            stopPolling();
-            setPhase("error");
-            setPollError("Gagal memeriksa status. Coba lagi nanti.");
-          }
-        });
-    }, POLL_INTERVAL);
-  }, [stopPolling]);
+  const startPolling = useCallback(
+    (id: string) => {
+      pollCountRef.current = 0;
+      setOrderId(id);
+      setPhase("polling");
+      setPollError(null);
+      if (intervalRef.current) clearInterval(intervalRef.current);
+      intervalRef.current = setInterval(() => {
+        const currentId = id;
+        if (!currentId) return;
+        getPaymentStatus(supabase, currentId)
+          .then((result) => {
+            pollCountRef.current += 1;
+            if (result.status === "paid" || result.status === "settlement") {
+              stopPolling();
+              setPhase("paid");
+              setTimeout(() => router.back(), 1500);
+            } else if (pollCountRef.current >= MAX_POLLS) {
+              stopPolling();
+              setPhase("error");
+              setPollError(
+                "Pembayaran masih diproses. Silakan cek nanti di pengaturan."
+              );
+            }
+          })
+          .catch(() => {
+            if (pollCountRef.current >= MAX_POLLS) {
+              stopPolling();
+              setPhase("error");
+              setPollError("Gagal memeriksa status. Coba lagi nanti.");
+            }
+          });
+      }, POLL_INTERVAL);
+    },
+    [stopPolling]
+  );
+
+  const fetchPricing = useCallback(() => {
+    setPricingError(false);
+    getPricing(supabase)
+      .then(setPricing)
+      .catch(() => setPricingError(true));
+  }, []);
 
   useEffect(() => {
-    getPricing(supabase).then(setPricing).catch(() => setPricing(null));
+    fetchPricing();
     return stopPolling;
-  }, [stopPolling]);
+  }, [fetchPricing, stopPolling]);
 
   async function buy(plan: "monthly" | "yearly") {
     setBusy(plan);
@@ -101,51 +132,338 @@ export default function UpgradeScreen() {
     }
   }
 
-  if (!pricing) return <ActivityIndicator testID="upgrade-loading" />;
-  const isPromo = pricing.tier === "promo";
+  // Loading state
+  if (!pricing && !pricingError) {
+    return (
+      <SafeAreaView style={styles.screen}>
+        <View style={styles.centeredPhase}>
+          <ActivityIndicator testID="upgrade-loading" size="large" color={theme.colors.brandPrimary} />
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  // Pricing error state
+  if (pricingError && !pricing) {
+    return (
+      <SafeAreaView style={styles.screen}>
+        <View style={styles.centeredPhase}>
+          <Text style={styles.errorTitle}>Gagal memuat harga</Text>
+          <Text style={styles.errorBody}>Periksa koneksi internet Anda dan coba lagi.</Text>
+          <Pressable style={styles.retryButton} onPress={fetchPricing}>
+            <Text style={styles.retryButtonText}>Coba Lagi</Text>
+          </Pressable>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  const isPromo = pricing!.tier === "promo";
+  const brandText =
+    theme.mode === "light"
+      ? theme.colors.brandPrimaryDeep
+      : theme.colors.brandPrimary;
 
   return (
-    <View>
-      <Text accessibilityRole="header">Kaswise Premium</Text>
-      {isPromo ? <Text>Harga perkenalan untuk 100 pengguna pertama</Text> : null}
-      <Text>Foto struk OCR, chat AI 200/bulan, AI Insight</Text>
-
-      {phase === "idle" ? (
-        <>
-          <Pressable testID="upgrade-monthly" disabled={busy !== null} onPress={() => buy("monthly")}>
-            <Text>Bulanan {rp(pricing.monthly)}{busy === "monthly" ? " ..." : ""}</Text>
-          </Pressable>
-          <Pressable testID="upgrade-yearly" disabled={busy !== null} onPress={() => buy("yearly")}>
-            <Text>Tahunan {rp(pricing.yearly)} (hemat 2 bulan){busy === "yearly" ? " ..." : ""}</Text>
-          </Pressable>
-        </>
-      ) : null}
-
-      {phase === "polling" ? (
-        <>
-          <ActivityIndicator testID="upgrade-polling" />
-          <Text testID="upgrade-polling-text">Memeriksa status pembayaran...</Text>
-          <Pressable testID="upgrade-retry-check" onPress={pollStatusImpl}>
-            <Text>Saya sudah bayar</Text>
-          </Pressable>
-        </>
-      ) : null}
-
-      {phase === "paid" ? (
-        <View testID="upgrade-success">
-          <Text>✅ Pembayaran berhasil!</Text>
-          <Text>Akun Anda sekarang Premium.</Text>
+    <SafeAreaView style={styles.screen}>
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Header */}
+        <View style={styles.header}>
+          <KaswiseLogoMark size={40} />
+          <Text accessibilityRole="header" style={styles.title}>
+            Kaswise Premium
+          </Text>
+          <Text style={styles.subtitle}>
+            Foto struk OCR, chat AI 200/bulan, AI Insight
+          </Text>
         </View>
-      ) : null}
 
-      {phase === "error" ? (
-        <View testID="upgrade-poll-error">
-          <Text testID="upgrade-poll-error-text">{pollError}</Text>
-          <Pressable testID="upgrade-retry-check" onPress={() => orderId ? startPolling(orderId) : null}>
-            <Text>Cek lagi</Text>
-          </Pressable>
-        </View>
-      ) : null}
-    </View>
+        {/* Promo badge */}
+        {isPromo ? (
+          <View style={styles.promoBadge}>
+            <Text style={styles.promoBadgeText}>
+              Harga perkenalan untuk 100 pengguna pertama
+            </Text>
+          </View>
+        ) : null}
+
+        {/* Plan cards — idle phase */}
+        {phase === "idle" ? (
+          <>
+            <Pressable
+              testID="upgrade-monthly"
+              disabled={busy !== null}
+              style={({ pressed }) => [
+                styles.planCard,
+                pressed && styles.planCardPressed,
+                busy !== null && styles.planCardDisabled,
+              ]}
+              onPress={() => buy("monthly")}
+            >
+              <View style={styles.planCardInner}>
+                <View style={styles.planLabelRow}>
+                  <Text style={styles.planLabel}>Bulanan</Text>
+                  {busy === "monthly" ? (
+                    <ActivityIndicator size="small" color={brandText} />
+                  ) : null}
+                </View>
+                <Text style={styles.planPrice}>{rp(pricing!.monthly)}</Text>
+                <Text style={styles.planPerMonth}>/bulan</Text>
+              </View>
+            </Pressable>
+
+            <Pressable
+              testID="upgrade-yearly"
+              disabled={busy !== null}
+              style={({ pressed }) => [
+                styles.planCard,
+                styles.planCardYearly,
+                pressed && styles.planCardPressed,
+                busy !== null && styles.planCardDisabled,
+              ]}
+              onPress={() => buy("yearly")}
+            >
+              <View style={styles.bestValueBadge}>
+                <Text style={styles.bestValueBadgeText}>HEMAT</Text>
+              </View>
+              <View style={styles.planCardInner}>
+                <View style={styles.planLabelRow}>
+                  <Text style={styles.planLabel}>Tahunan</Text>
+                  {busy === "yearly" ? (
+                    <ActivityIndicator size="small" color={brandText} />
+                  ) : null}
+                </View>
+                <Text style={styles.planPrice}>{rp(pricing!.yearly)}</Text>
+                <Text style={styles.planPerMonth}>hemat 2 bulan</Text>
+              </View>
+            </Pressable>
+          </>
+        ) : null}
+
+        {/* Polling phase */}
+        {phase === "polling" ? (
+          <View style={styles.phaseCard}>
+            <ActivityIndicator
+              testID="upgrade-polling"
+              size="large"
+              color={theme.colors.brandPrimary}
+            />
+            <Text testID="upgrade-polling-text" style={styles.phaseText}>
+              Memeriksa status pembayaran...
+            </Text>
+            <Pressable testID="upgrade-retry-check" style={styles.retryButton} onPress={pollStatusImpl}>
+              <Text style={styles.retryButtonText}>Saya sudah bayar</Text>
+            </Pressable>
+          </View>
+        ) : null}
+
+        {/* Success phase */}
+        {phase === "paid" ? (
+          <View testID="upgrade-success" style={styles.phaseCard}>
+            <Text style={styles.successIcon}>✅</Text>
+            <Text style={styles.phaseTitle}>Pembayaran berhasil!</Text>
+            <Text style={styles.phaseText}>Akun Anda sekarang Premium.</Text>
+          </View>
+        ) : null}
+
+        {/* Error phase */}
+        {phase === "error" ? (
+          <View testID="upgrade-poll-error" style={styles.phaseCard}>
+            <Text testID="upgrade-poll-error-text" style={styles.errorTitle}>
+              {pollError}
+            </Text>
+            <Pressable
+              testID="upgrade-retry-check"
+              style={styles.retryButton}
+              onPress={() => (orderId ? startPolling(orderId) : null)}
+            >
+              <Text style={styles.retryButtonText}>Cek lagi</Text>
+            </Pressable>
+          </View>
+        ) : null}
+      </ScrollView>
+    </SafeAreaView>
   );
+}
+
+function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
+  const brandText =
+    theme.mode === "light"
+      ? theme.colors.brandPrimaryDeep
+      : theme.colors.brandPrimary;
+
+  return StyleSheet.create({
+    screen: {
+      flex: 1,
+      backgroundColor: theme.colors.background,
+    },
+    scrollContent: {
+      flexGrow: 1,
+      paddingHorizontal: theme.spacing.lg,
+      paddingTop: theme.spacing.xl,
+      paddingBottom: theme.spacing["3xl"],
+      gap: theme.spacing.lg,
+    },
+    centeredPhase: {
+      flex: 1,
+      justifyContent: "center",
+      alignItems: "center",
+      padding: theme.spacing.xl,
+      gap: theme.spacing.lg,
+    },
+    // Header
+    header: {
+      alignItems: "center",
+      gap: theme.spacing.sm,
+      paddingTop: theme.spacing.lg,
+      paddingBottom: theme.spacing.md,
+    },
+    title: {
+      fontSize: 22,
+      fontWeight: "800",
+      color: theme.colors.textPrimary,
+      textAlign: "center",
+    },
+    subtitle: {
+      fontSize: 14,
+      color: theme.colors.textSecondary,
+      textAlign: "center",
+      lineHeight: 20,
+    },
+    // Promo badge
+    promoBadge: {
+      backgroundColor: brandText,
+      borderRadius: theme.radius.pill,
+      paddingHorizontal: theme.spacing.lg,
+      paddingVertical: theme.spacing.sm,
+      alignSelf: "center",
+    },
+    promoBadgeText: {
+      color: theme.colors.textInverse,
+      fontSize: 11,
+      fontWeight: "800",
+      textTransform: "uppercase",
+      letterSpacing: 0.4,
+    },
+    // Plan cards
+    planCard: {
+      backgroundColor: theme.colors.surface,
+      borderRadius: theme.radius.xl,
+      borderWidth: 1,
+      borderColor: theme.colors.borderSoft,
+      padding: theme.spacing.xl,
+      ...theme.shadow.sm,
+    },
+    planCardYearly: {
+      borderColor: brandText,
+      borderWidth: 2,
+    },
+    planCardPressed: {
+      opacity: 0.85,
+      transform: [{ scale: 0.98 }],
+    },
+    planCardDisabled: {
+      opacity: 0.5,
+    },
+    planCardInner: {
+      gap: theme.spacing.xs,
+    },
+    planLabelRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+    },
+    planLabel: {
+      fontSize: 15,
+      fontWeight: "700",
+      color: theme.colors.textPrimary,
+      textTransform: "uppercase",
+      letterSpacing: 0.4,
+    },
+    planPrice: {
+      fontSize: 28,
+      fontWeight: "800",
+      color: theme.colors.textPrimary,
+      marginTop: theme.spacing.sm,
+    },
+    planPerMonth: {
+      fontSize: 13,
+      color: theme.colors.textMuted,
+      fontWeight: "600",
+    },
+    bestValueBadge: {
+      position: "absolute",
+      top: -1,
+      right: theme.spacing.lg,
+      backgroundColor: brandText,
+      borderBottomLeftRadius: theme.radius.sm,
+      borderBottomRightRadius: theme.radius.sm,
+      paddingHorizontal: theme.spacing.md,
+      paddingVertical: theme.spacing.xs,
+    },
+    bestValueBadgeText: {
+      color: theme.colors.textInverse,
+      fontSize: 10,
+      fontWeight: "800",
+      letterSpacing: 0.8,
+    },
+    // Phase cards (polling, success, error)
+    phaseCard: {
+      backgroundColor: theme.colors.surface,
+      borderRadius: theme.radius.xl,
+      borderWidth: 1,
+      borderColor: theme.colors.borderSoft,
+      padding: theme.spacing["2xl"],
+      alignItems: "center",
+      gap: theme.spacing.lg,
+      ...theme.shadow.sm,
+    },
+    phaseTitle: {
+      fontSize: 20,
+      fontWeight: "800",
+      color: theme.colors.textPrimary,
+      textAlign: "center",
+    },
+    phaseText: {
+      fontSize: 14,
+      color: theme.colors.textSecondary,
+      textAlign: "center",
+      lineHeight: 20,
+    },
+    successIcon: {
+      fontSize: 48,
+    },
+    // Error & retry
+    errorTitle: {
+      fontSize: 16,
+      fontWeight: "700",
+      color: theme.colors.danger,
+      textAlign: "center",
+    },
+    errorBody: {
+      fontSize: 14,
+      color: theme.colors.textSecondary,
+      textAlign: "center",
+      lineHeight: 20,
+    },
+    retryButton: {
+      backgroundColor: theme.colors.buttonPrimaryBg,
+      borderRadius: theme.radius.pill,
+      minHeight: 44,
+      alignItems: "center",
+      justifyContent: "center",
+      paddingHorizontal: theme.spacing.xl,
+      paddingVertical: theme.spacing.md,
+      minWidth: 140,
+    },
+    retryButtonText: {
+      color: theme.colors.buttonPrimaryText,
+      fontSize: 14,
+      fontWeight: "800",
+      letterSpacing: 0.2,
+    },
+  });
 }
