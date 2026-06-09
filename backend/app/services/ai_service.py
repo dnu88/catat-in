@@ -7,10 +7,11 @@ Wrapper untuk Anthropic Claude API:
 """
 
 import base64
+import html
 import json
 import re
 from functools import lru_cache
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 import anthropic
 
@@ -171,30 +172,199 @@ async def analyze_receipt_image(image_data: bytes, media_type: str = "image/jpeg
         raise RuntimeError(f"Claude API error: {exc}") from exc
 
 
-async def generate_financial_insight(user_data: dict, period: str = "monthly") -> str:
+async def generate_financial_insight(user_data: dict, period: str = "monthly") -> dict:
+    """Generate a structured financial insight dict from Claude.
+
+    Always returns a dict with all required keys. If the API key is missing or
+    Claude fails, a graceful fallback dict is returned — never raises.
+    """
+    context = {
+        "period": period,
+        "transaction_count": user_data.get("transaction_count", 0),
+        "has_previous_period": user_data.get("has_previous_period", False),
+        "other_category_percent": user_data.get("other_category_percent"),
+    }
+
     if not settings.ANTHROPIC_API_KEY:
-        return (
-            "Insight AI premium belum aktif karena ANTHROPIC_API_KEY belum diisi. "
-            "Sementara ini gunakan laporan dashboard untuk memantau income/expense."
+        return normalize_insight_response(
+            {
+                "period": period,
+                "summary": (
+                    "Insight AI belum tersedia sementara. "
+                    "Gunakan laporan dashboard untuk memantau income/expense."
+                ),
+                "highlights": [],
+                "recommendations": [],
+                "risk_flags": [],
+            },
+            context,
         )
 
     prompt = f"""Kamu adalah financial advisor AI untuk aplikasi Catat.in.
-Berikan analisis singkat dan actionable (max 3 poin) berdasarkan data keuangan berikut dalam Bahasa Indonesia.
-Gunakan bahasa yang ramah, bukan menghakimi.
+Tugasmu: analisis data keuangan pengguna dan berikan insight yang actionable.
 
-Data keuangan {period}:
+ATURAN PENTING:
+- Response HARUS berupa JSON valid SAJA. Tidak boleh ada teks di luar JSON.
+- Jangan gunakan markdown, code fence, atau penjelasan apapun di luar JSON.
+- Gunakan Bahasa Indonesia yang ramah, tidak menghakimi.
+- Jangan mengarang angka di luar data yang diberikan.
+- Jangan memberikan saran investasi, pajak, atau hukum.
+- Berikan rekomendasi yang actionable (bisa langsung dilakukan pengguna).
+- Jika data kurang, akui keterbatasan data — jangan mengada-ada.
+
+FORMAT JSON yang harus dikembalikan:
+{{
+  "summary": "ringkasan analisis keuangan",
+  "highlights": ["poin penting 1", "poin penting 2"],
+  "recommendations": ["saran 1", "saran 2"],
+  "risk_flags": ["flag risiko 1"]
+}}
+
+{period_keterangan(period)}:
 {json.dumps(user_data, ensure_ascii=False, indent=2)}
 
-Format response: plain text, paragraf pendek, tidak perlu JSON."""
+INGAT: HANYA kembalikan JSON. Tidak boleh ada teks lain."""
 
-    client = _get_async_anthropic_client()
-    response = await client.messages.create(
-        model=settings.ANTHROPIC_MODEL_INSIGHT,
-        max_tokens=400,
-        messages=[{"role": "user", "content": prompt}],
+    try:
+        client = _get_async_anthropic_client()
+        response = await client.messages.create(
+            model=settings.ANTHROPIC_MODEL_INSIGHT,
+            max_tokens=600,
+            messages=[{"role": "user", "content": prompt}],
+        )
+        raw_text = response.content[0].text.strip()
+        cleaned = _strip_json_code_block(raw_text)
+        parsed = json.loads(cleaned)
+        return normalize_insight_response(parsed, context)
+
+    except (json.JSONDecodeError, anthropic.APIError, Exception) as exc:
+        error_msg = (
+            "Maaf, insight AI gagal diproses. "
+            "Silakan coba lagi nanti atau gunakan laporan dashboard."
+        )
+        return normalize_insight_response(
+            {
+                "period": period,
+                "summary": error_msg,
+                "highlights": [],
+                "recommendations": [],
+                "risk_flags": [],
+            },
+            context,
+        )
+
+
+def period_keterangan(period: str) -> str:
+    """Human-readable period label in Bahasa Indonesia."""
+    labels = {
+        "monthly": "Data keuangan bulan ini",
+        "weekly": "Data keuangan minggu ini",
+        "yearly": "Data keuangan tahun ini",
+        "daily": "Data keuangan hari ini",
+    }
+    return labels.get(period, f"Data keuangan ({period})")
+
+
+def normalize_insight_response(raw: dict, context: dict) -> dict:
+    """Ensure the insight response dict is safe, well-shaped, and complete.
+
+    Returns a dict with all required keys. Missing keys are filled with safe
+    defaults. Arrays are capped, strings are sanitized, and HTML/script tags
+    are stripped.
+    """
+    now = datetime.now(tz=timezone.utc).isoformat()
+
+    # --- period: context > raw > default -----------------------------------
+    period = context.get("period") or raw.get("period") or "monthly"
+
+    # --- summary -----------------------------------------------------------
+    summary = _sanitize_string(raw.get("summary") or "", max_len=500)
+
+    # --- highlights (max 3) ------------------------------------------------
+    highlights = _clean_array(raw.get("highlights"), max_items=3, max_item_len=200)
+
+    # --- recommendations (max 2) -------------------------------------------
+    recommendations = _clean_array(
+        raw.get("recommendations"), max_items=2, max_item_len=200
     )
 
-    return response.content[0].text.strip()
+    # --- risk_flags (max 2) ------------------------------------------------
+    risk_flags = _clean_array(raw.get("risk_flags"), max_items=2, max_item_len=200)
+
+    # --- data_quality ------------------------------------------------------
+    raw_dq = raw.get("data_quality") if isinstance(raw.get("data_quality"), dict) else {}
+    data_quality = {
+        "transaction_count": int(
+            context.get("transaction_count")
+            or raw_dq.get("transaction_count")
+            or 0
+        ),
+        "has_previous_period": bool(
+            context.get("has_previous_period")
+            or raw_dq.get("has_previous_period")
+            or False
+        ),
+        "other_category_percent": _safe_float(
+            context.get("other_category_percent")
+            if context.get("other_category_percent") is not None
+            else raw_dq.get("other_category_percent")
+        ),
+    }
+
+    return {
+        "period": period,
+        "generated_at": now,
+        "summary": summary,
+        "highlights": highlights,
+        "recommendations": recommendations,
+        "risk_flags": risk_flags,
+        "data_quality": data_quality,
+    }
+
+
+# ---------------------------------------------------------------------------
+# Internal helpers for normalize_insight_response
+# ---------------------------------------------------------------------------
+
+def _sanitize_string(value: str, max_len: int = 500) -> str:
+    """Strip HTML tags, unescape HTML entities, and cap length."""
+    if not isinstance(value, str):
+        value = str(value) if value else ""
+    # Remove HTML tags
+    cleaned = re.sub(r"<[^>]*>", "", value)
+    # Unescape HTML entities (e.g., &amp; → &)
+    cleaned = html.unescape(cleaned)
+    # Collapse whitespace
+    cleaned = re.sub(r"\s+", " ", cleaned).strip()
+    if len(cleaned) > max_len:
+        cleaned = cleaned[:max_len].rsplit(" ", 1)[0]
+    return cleaned
+
+
+def _clean_array(value, max_items: int, max_item_len: int) -> list[str]:
+    """Normalize a list of strings: ensure list, strip empties, cap items, sanitize."""
+    if not isinstance(value, list):
+        return []
+    result: list[str] = []
+    for item in value:
+        if not isinstance(item, str):
+            continue
+        cleaned = _sanitize_string(item, max_len=max_item_len)
+        if cleaned:
+            result.append(cleaned)
+        if len(result) >= max_items:
+            break
+    return result
+
+
+def _safe_float(value) -> float | None:
+    """Convert to float if possible, else None."""
+    if value is None:
+        return None
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
 
 
 def _extract_transaction_locally(user_text: str) -> dict:
