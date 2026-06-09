@@ -17,17 +17,17 @@ export default function LandingPage() {
             <img src="/brand/logo-kaswise-mark.svg" alt="" />
           </span>
           <span>
-            <strong>kaswise</strong>
+            <strong>Kaswise</strong>
             <small>{t.brandTagline}</small>
           </span>
         </a>
 
         <nav className="landing-nav" aria-label="Navigasi landing">
           <a href="#top">{t.nav.product}</a>
-          <a href="#masalah">{t.nav.masalah}</a>
           <a href="#sistem">{t.nav.sistem}</a>
           <a href="#periode">{t.nav.periode}</a>
           <a href="#fitur">{t.nav.fitur}</a>
+          <a href="#harga">{t.nav.harga}</a>
           <a href="#faq">{t.nav.faq}</a>
         </nav>
 

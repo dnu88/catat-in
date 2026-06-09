@@ -5,7 +5,7 @@ type Lang = 'id' | 'en'
 const t = {
   id: {
     brandTagline: 'Premium finance tracker',
-    nav: { product: 'Produk', masalah: 'Masalah', sistem: 'Cara kerja', periode: 'Periode', fitur: 'Fitur', faq: 'FAQ' },
+    nav: { product: 'Produk', masalah: 'Masalah', sistem: 'Cara kerja', periode: 'Periode', fitur: 'Fitur', harga: 'Harga', faq: 'FAQ' },
     ctaApp: 'Buka aplikasi',
     hero: {
       eyebrow: 'All-in-one finance tracker',
@@ -177,7 +177,7 @@ const t = {
   },
   en: {
     brandTagline: 'Premium finance tracker',
-    nav: { product: 'Product', masalah: 'Problems', sistem: 'How it works', periode: 'Pay cycle', fitur: 'Features', faq: 'FAQ' },
+    nav: { product: 'Product', masalah: 'Problems', sistem: 'How it works', periode: 'Pay cycle', fitur: 'Features', harga: 'Pricing', faq: 'FAQ' },
     ctaApp: 'Open app',
     hero: {
       eyebrow: 'All-in-one finance tracker',
