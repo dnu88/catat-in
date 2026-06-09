@@ -22,3 +22,5 @@ This directory is the canonical home for project documentation. Runtime code rem
 ## Root docs intentionally kept
 
 `CLAUDE.md` remains at repo root as an agent/tooling entrypoint. All other root markdown docs were moved under `docs/*` during Cleanup Phase 2.
+
+- [Web Landing Language Toggle + Profile Avatar Polish](./handoffs/AI_CONTINUATION_HANDOFF_WEB_LANDING_LANGUAGE_PROFILE_2026-06-08.md)
