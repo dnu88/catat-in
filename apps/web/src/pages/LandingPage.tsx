@@ -86,7 +86,7 @@ export default function LandingPage() {
                 <span>{t.mockup.periodLabel}</span>
                 <strong>{t.mockup.periodValue}</strong>
               </div>
-              <span className="landing-profile-avatar" aria-hidden="true">RP</span>
+              <span className="landing-profile-avatar" aria-hidden="true">KW</span>
             </div>
 
             <div className="landing-balance-card">
