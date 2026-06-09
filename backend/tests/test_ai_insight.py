@@ -75,8 +75,24 @@ class TestAIInsightPremiumGuard:
         """Premium user receives 200 OK from /api/v1/ai/insight."""
         app.dependency_overrides[require_premium] = override_require_premium_pass
 
-        mock_insight = "Pengeluaran Anda bulan ini naik 15% dibandingkan bulan lalu."
+        mock_context = {"transaction_count": 5, "income_total": 1000000}
+        mock_insight = {
+            "period": "monthly",
+            "summary": "Pengeluaran bulan ini naik 15% dibandingkan bulan lalu.",
+            "highlights": ["Makan di luar meningkat 20%"],
+            "recommendations": ["Kurangi jajan di luar"],
+            "risk_flags": [],
+            "data_quality": {
+                "transaction_count": 5,
+                "has_previous_period": True,
+                "other_category_percent": None,
+            },
+        }
+
         with patch(
+            "app.api.v1.ai.build_ai_insight_context",
+            return_value=mock_context,
+        ), patch(
             "app.api.v1.ai.generate_financial_insight",
             new=AsyncMock(return_value=mock_insight),
         ):
@@ -87,5 +103,4 @@ class TestAIInsightPremiumGuard:
 
         assert response.status_code == 200
         data = response.json()
-        assert "insight" in data
-        assert data["insight"] == mock_insight
+        assert data == mock_insight

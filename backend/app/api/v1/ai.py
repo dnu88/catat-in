@@ -17,6 +17,7 @@ from app.services.ai_service import (
     extract_transaction_from_text,
     generate_financial_insight,
 )
+from app.services.ai_insight_data import build_ai_insight_context
 
 
 router = APIRouter()
@@ -114,19 +115,16 @@ async def analyze_receipt(
 async def get_financial_insight(
     body: InsightRequest, current_user=Depends(get_current_user)
 ):
-    user_financial_data = {
-        "user_id": current_user["user_id"],
-        "period": body.period,
-    }
+    context = build_ai_insight_context(current_user["user_id"], body.period)
 
     try:
-        insight = await generate_financial_insight(user_financial_data, body.period)
+        insight = await generate_financial_insight(context, body.period)
     except RuntimeError as exc:
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY, detail=str(exc)
         ) from exc
 
-    return {"insight": insight}
+    return insight
 
 
 @router.post("/process", dependencies=[Depends(rate_limit_ai)])
