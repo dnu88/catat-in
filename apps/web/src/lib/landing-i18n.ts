@@ -5,7 +5,7 @@ type Lang = 'id' | 'en'
 const t = {
   id: {
     brandTagline: 'Premium Finance Tracker',
-    nav: { product: 'Produk', masalah: 'Masalah', sistem: 'Cara kerja', periode: 'Periode', fitur: 'Fitur', harga: 'Harga', faq: 'FAQ' },
+    nav: { product: 'Produk', masalah: 'Realita', sistem: 'Cara kerja', periode: 'Periode', fitur: 'Fitur', harga: 'Harga', faq: 'FAQ' },
     ctaApp: 'Buka aplikasi',
     hero: {
       eyebrow: 'All-in-one finance tracker',
@@ -16,7 +16,7 @@ const t = {
       chips: ['PWA mobile-first', 'Budget & reports', 'Periode gajian'],
     },
     quickMenus: [
-      { label: 'Masalah', body: 'Kenapa uang terasa bocor' },
+      { label: 'Realita', body: 'Kenapa uang terasa bocor' },
       { label: 'Cara kerja', body: 'Catat, budget, review' },
       { label: 'Periode gajian', body: 'Laporan 25–24 dan custom' },
       { label: 'FAQ', body: 'Jawaban sebelum mulai' },
@@ -38,7 +38,7 @@ const t = {
       tabs: ['Beranda', 'Transaksi', 'Laporan'],
     },
     problem: {
-      kicker: 'Masalah yang nyata',
+      kicker: 'Realita',
       title: 'Uang sering bocor bukan karena besar, tapi karena tidak terlihat.',
       items: [
         { title: 'Transaksi kecil cepat terlupa', body: 'Kopi, parkir, transport, dan jajan kecil sering hilang dari catatan. Akumulasinya baru terasa di akhir periode.' },
@@ -177,7 +177,7 @@ const t = {
   },
   en: {
     brandTagline: 'Premium Finance Tracker',
-    nav: { product: 'Product', masalah: 'Problems', sistem: 'How it works', periode: 'Pay cycle', fitur: 'Features', harga: 'Pricing', faq: 'FAQ' },
+    nav: { product: 'Product', masalah: 'Reality', sistem: 'How it works', periode: 'Pay cycle', fitur: 'Features', harga: 'Pricing', faq: 'FAQ' },
     ctaApp: 'Open app',
     hero: {
       eyebrow: 'All-in-one finance tracker',
@@ -188,7 +188,7 @@ const t = {
       chips: ['Mobile-first PWA', 'Budget & reports', 'Pay cycle ready'],
     },
     quickMenus: [
-      { label: 'Problems', body: 'Why money feels slippery' },
+      { label: 'Reality', body: 'Why money feels slippery' },
       { label: 'How it works', body: 'Log, budget, review' },
       { label: 'Pay cycle', body: '25–24 and custom periods' },
       { label: 'FAQ', body: 'Answers before you start' },
