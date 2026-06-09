@@ -2415,21 +2415,22 @@ body {
 
 .landing-profile-avatar {
   position: relative;
-  width: 42px;
-  height: 42px;
+  width: 44px;
+  height: 44px;
   flex: 0 0 auto;
-  display: grid;
-  place-items: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   border: 1px solid color-mix(in srgb, var(--ks-brand-primary) 38%, var(--ks-border-soft));
   border-radius: 50%;
   background:
     radial-gradient(circle at 32% 28%, color-mix(in srgb, var(--ks-brand-primary) 30%, transparent), transparent 60%),
     linear-gradient(180deg, var(--ks-bg-elevated), var(--ks-bg-deep));
   color: var(--ks-text-primary);
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 800;
-  letter-spacing: -0.02em;
-  line-height: 1;
+  letter-spacing: -0.03em;
+  line-height: 0;
   box-shadow:
     inset 0 0 0 1px color-mix(in srgb, var(--ks-brand-primary) 14%, transparent),
     0 1px 0 color-mix(in srgb, var(--ks-bg-card) 60%, transparent);
@@ -2438,10 +2439,10 @@ body {
 .landing-profile-avatar::after {
   content: "";
   position: absolute;
-  right: -2px;
-  bottom: -2px;
-  width: 10px;
-  height: 10px;
+  right: -1px;
+  bottom: -1px;
+  width: 11px;
+  height: 11px;
   border-radius: 50%;
   background: var(--ks-status-success);
   border: 2px solid var(--ks-bg-deep);

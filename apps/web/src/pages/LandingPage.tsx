@@ -91,7 +91,7 @@ export default function LandingPage() {
 
             <div className="landing-balance-card">
               <span className="landing-card-label">{t.mockup.cashflowLabel}</span>
-              <strong>Rp3.420.000</strong>
+              <strong>Rp 3.420.000</strong>
               <p>{t.mockup.cashflowHint}</p>
             </div>
 
@@ -104,7 +104,7 @@ export default function LandingPage() {
                 <p>beli kopi 35rb di Kopi Kenangan</p>
               </div>
               <div className="landing-chip-row" aria-label="Hasil pembacaan transaksi">
-                <span>Rp35.000</span>
+                <span>Rp 35.000</span>
                 <span>Makan & Minum</span>
                 <span>Hari ini</span>
               </div>
@@ -113,7 +113,7 @@ export default function LandingPage() {
             <div className="landing-budget-card">
               <div className="landing-budget-copy">
                 <span>{t.mockup.totalSaldoLabel}</span>
-                <strong>Rp12.840.000</strong>
+                <strong>Rp 12.840.000</strong>
               </div>
               <div className="landing-progress" aria-label="Budget makan tersisa 72 persen">
                 <span />

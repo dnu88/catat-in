@@ -4,7 +4,7 @@ type Lang = 'id' | 'en'
 
 const t = {
   id: {
-    brandTagline: 'Premium finance tracker',
+    brandTagline: 'Premium Finance Tracker',
     nav: { product: 'Produk', masalah: 'Masalah', sistem: 'Cara kerja', periode: 'Periode', fitur: 'Fitur', harga: 'Harga', faq: 'FAQ' },
     ctaApp: 'Buka aplikasi',
     hero: {
@@ -72,7 +72,7 @@ const t = {
       title: 'Mulai gratis, upgrade saat butuh lebih.',
       free: {
         name: 'Gratis',
-        price: 'Rp0',
+        price: 'Rp 0',
         period: 'selamanya',
         items: [
           { label: 'Chat AI', value: '25/bulan', included: true },
@@ -85,8 +85,8 @@ const t = {
       },
       premium: {
         name: 'Premium',
-        priceMonthly: 'Rp29.000',
-        priceYearly: 'Rp249.000',
+        priceMonthly: 'Rp 29.000',
+        priceYearly: 'Rp 249.000',
         periodMonthly: '/bulan',
         periodYearly: '/tahun',
         badge: 'Promo 100 pertama',
@@ -118,7 +118,7 @@ const t = {
       kicker: 'Preview produk',
       title: 'Tiga layar utama untuk keputusan uang harian.',
       panels: [
-        { title: 'Dashboard', label: 'Sisa periode ini', value: 'Rp3.420.000', body: 'Hero menampilkan cashflow periode aktif. Total saldo semua dompet tetap dibaca sebagai metrik terpisah.' },
+        { title: 'Dashboard', label: 'Sisa periode ini', value: 'Rp 3.420.000',body: 'Hero menampilkan cashflow periode aktif. Total saldo semua dompet tetap dibaca sebagai metrik terpisah.' },
         { title: 'Capture', label: 'Input cepat', value: 'beli kopi 35rb', body: 'Catat transaksi seperti percakapan, lalu cek hasil baca sebelum disimpan.' },
         { title: 'Reports', label: 'Cycle Salary', value: '25 Mei – 24 Jun', body: 'Laporan mengikuti aturan periode yang Anda pilih, termasuk siklus gajian.' },
       ],
@@ -176,7 +176,7 @@ const t = {
     },
   },
   en: {
-    brandTagline: 'Premium finance tracker',
+    brandTagline: 'Premium Finance Tracker',
     nav: { product: 'Product', masalah: 'Problems', sistem: 'How it works', periode: 'Pay cycle', fitur: 'Features', harga: 'Pricing', faq: 'FAQ' },
     ctaApp: 'Open app',
     hero: {
@@ -244,7 +244,7 @@ const t = {
       title: 'Start free, upgrade when you need more.',
       free: {
         name: 'Free',
-        price: 'Rp0',
+        price: 'Rp 0',
         period: 'forever',
         items: [
           { label: 'Chat AI', value: '25/month', included: true },
@@ -257,8 +257,8 @@ const t = {
       },
       premium: {
         name: 'Premium',
-        priceMonthly: 'Rp29,000',
-        priceYearly: 'Rp249,000',
+        priceMonthly: 'Rp 29,000',
+        priceYearly: 'Rp 249,000',
         periodMonthly: '/month',
         periodYearly: '/year',
         badge: 'First 100 promo',
@@ -290,7 +290,7 @@ const t = {
       kicker: 'Product preview',
       title: 'Three core screens for daily money decisions.',
       panels: [
-        { title: 'Dashboard', label: 'Remaining this period', value: 'Rp3,420,000', body: 'The hero shows active period cashflow. Total balance across all wallets is read as a separate metric.' },
+        { title: 'Dashboard', label: 'Remaining this period', value: 'Rp 3,420,000', body: 'The hero shows active period cashflow. Total balance across all wallets is read as a separate metric.' },
         { title: 'Capture', label: 'Quick input', value: 'coffee 35k', body: 'Log transactions like a conversation, then review the parsed result before saving.' },
         { title: 'Reports', label: 'Cycle Salary', value: '25 May – 24 Jun', body: 'Reports follow the period rule you choose, including your pay cycle.' },
       ],
