@@ -18,7 +18,7 @@ export default function AuthShell({ tagline, features = [], children }: AuthShel
           <div className="auth-logo-mark" aria-hidden>
             <Logo size={72} variant="dark" />
           </div>
-          <h1 className="auth-logo-name">kaswise</h1>
+          <h1 className="auth-logo-name">Kaswise</h1>
           <p className="auth-tagline">{tagline}</p>
           {features.length ? (
             <div className="auth-features">

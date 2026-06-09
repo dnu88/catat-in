@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { kaswiseTokens } from '@kaswise/shared/theme'
 import { buildCssVariables } from './web-theme'
 
-describe('kaswise shared tokens', () => {
+describe('Kaswise shared tokens', () => {
   it('has light and dark theme with required root keys', () => {
     expect(kaswiseTokens.light.color.bg.base).toBeTypeOf('string')
     expect(kaswiseTokens.dark.color.bg.base).toBeTypeOf('string')

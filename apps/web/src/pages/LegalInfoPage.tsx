@@ -161,7 +161,7 @@ export default function LegalInfoPage({ page }: { page: LegalPageKind }) {
             <img src="/brand/logo-kaswise-mark.svg" alt="" />
           </span>
           <span>
-            <strong>kaswise</strong>
+            <strong>Kaswise</strong>
             <small>Premium finance tracker</small>
           </span>
         </a>

@@ -146,7 +146,7 @@ export default function AppLayout() {
             <Logo size={36} variant="light" />
           </div>
 					<div>
-						<div className="sidebar-logo-text">kaswise</div>
+						<div className="sidebar-logo-text">Kaswise</div>
 						<div className="sidebar-logo-sub">Catat Keuangan, Bijak Setiap Hari</div>
 					</div>
 				</div>

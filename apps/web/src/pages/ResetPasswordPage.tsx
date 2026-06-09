@@ -65,7 +65,7 @@ export default function ResetPasswordPage() {
       <div className="auth-card-header">
         <h2 className="auth-card-title">{language === 'id' ? 'Atur password baru' : 'Set new password'}</h2>
         <p className="auth-card-subtitle">
-          {language === 'id' ? 'Masukkan password baru untuk akun kaswise kamu.' : 'Enter a new password for your kaswise account.'}
+          {language === 'id' ? 'Masukkan password baru untuk akun Kaswise kamu.' : 'Enter a new password for your Kaswise account.'}
         </p>
       </div>
 
