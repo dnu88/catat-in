@@ -213,7 +213,7 @@ export function AiInsightCard({
                   <KaswiseIcon
                     name="check"
                     size={14}
-                    color={theme.colors.statusSuccess}
+                    color={theme.colors.success}
                     weight="bold"
                   />
                 </View>
@@ -230,7 +230,7 @@ export function AiInsightCard({
               <KaswiseIcon
                 name="insight"
                 size={16}
-                color={theme.colors.statusWarning}
+                color={theme.colors.warning}
                 weight="bold"
               />
               <Text style={styles(theme).riskTitle}>Perhatian</Text>
@@ -355,7 +355,7 @@ function styles(theme: ReturnType<typeof useTheme>["theme"]) {
       marginTop: theme.spacing.sm,
     },
     errorText: {
-      color: theme.colors.statusError,
+      color: theme.colors.danger,
       fontSize: theme.typography.fontSize.md,
       textAlign: "center",
       lineHeight: theme.typography.fontSize.md * theme.typography.lineHeight.relaxed,
@@ -407,7 +407,7 @@ function styles(theme: ReturnType<typeof useTheme>["theme"]) {
       marginBottom: theme.spacing.xs,
     },
     riskTitle: {
-      color: theme.colors.statusWarning,
+      color: theme.colors.warning,
       fontSize: theme.typography.fontSize.md,
       fontWeight: theme.typography.fontWeight.semibold,
     },
@@ -420,7 +420,7 @@ function styles(theme: ReturnType<typeof useTheme>["theme"]) {
       paddingVertical: theme.spacing.sm,
     },
     riskText: {
-      color: theme.colors.statusWarning,
+      color: theme.colors.warning,
       fontSize: theme.typography.fontSize.sm,
       lineHeight: theme.typography.fontSize.sm * theme.typography.lineHeight.relaxed,
     },

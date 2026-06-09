@@ -83,14 +83,14 @@ jest.mock("react-native/Libraries/Share/Share", () => ({
 
 // Minimal supabase mock (same pattern as reports-screen.test.tsx)
 jest.mock("../src/lib/supabase", () => {
-  const chain = {
-    select: jest.fn(() => chain),
-    eq: jest.fn(() => chain),
-    gte: jest.fn(() => chain),
-    lte: jest.fn(async () => ({ data: [], error: null })),
-    order: jest.fn(() => chain),
-    limit: jest.fn(() => chain),
-    single: jest.fn(async () => ({ data: null, error: null })),
+  const chain: Record<string, jest.Mock> = {
+    select: jest.fn((): typeof chain => chain),
+    eq: jest.fn((): typeof chain => chain),
+    gte: jest.fn((): typeof chain => chain),
+    lte: jest.fn(async (): Promise<{ data: never[]; error: null }> => ({ data: [], error: null })),
+    order: jest.fn((): typeof chain => chain),
+    limit: jest.fn((): typeof chain => chain),
+    single: jest.fn(async (): Promise<{ data: null; error: null }> => ({ data: null, error: null })),
   };
   return {
     useSupabase: () => ({ supabase: { rpc: jest.fn(), from: jest.fn(() => chain), auth: { getUser: jest.fn(async () => ({ data: { user: null }, error: null })) } } }),
