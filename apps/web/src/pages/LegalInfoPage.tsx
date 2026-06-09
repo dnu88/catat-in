@@ -162,7 +162,7 @@ export default function LegalInfoPage({ page }: { page: LegalPageKind }) {
           </span>
           <span>
             <strong>Kaswise</strong>
-            <small>Premium finance tracker</small>
+            <small>Premium Finance Tracker</small>
           </span>
         </a>
         <div className="landing-header-actions legal-header-actions">

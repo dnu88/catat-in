@@ -160,7 +160,7 @@ const t = {
       button: 'Buka Kaswise PWA',
     },
     footer: {
-      brand: 'Premium finance tracker untuk kontrol uang harian.',
+      brand: 'Premium Finance Tracker untuk kontrol uang harian.',
       produk: 'Produk',
       caraKerja: 'Cara kerja',
       fitur: 'Fitur',
@@ -332,7 +332,7 @@ const t = {
       button: 'Open Kaswise PWA',
     },
     footer: {
-      brand: 'Premium finance tracker for daily money control.',
+      brand: 'Premium Finance Tracker for daily money control.',
       produk: 'Product',
       caraKerja: 'How it works',
       fitur: 'Features',
