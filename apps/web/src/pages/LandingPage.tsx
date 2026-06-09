@@ -1,23 +1,28 @@
 import { useLandingCopy } from '../lib/landing-i18n'
 import LanguageToggle from '@components/i18n/LanguageToggle'
 import ThemeToggle from '@components/theme/ThemeToggle'
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 const appUrl = import.meta.env.VITE_KASWISE_APP_URL?.trim() || 'https://kaswise.com'
 const supportEmail = 'kaswise.id@gmail.com'
 const supportMailto = `mailto:${supportEmail}`
 
+/* sections yang punya nav link di header */
+const NAV_SECTIONS = ['top', 'sistem', 'periode', 'fitur', 'harga', 'faq']
+
 export default function LandingPage() {
   const t = useLandingCopy()
   const mainRef = useRef<HTMLElement>(null)
+  const [activeNav, setActiveNav] = useState('top')
 
-  /* Scroll-triggered section reveal */
+  /* Scroll reveal + active nav tracking */
   useEffect(() => {
     const container = mainRef.current
     if (!container) return
 
+    /* ── reveal observer ── */
     const reveals = container.querySelectorAll<HTMLElement>('.landing-reveal')
-    const observer = new IntersectionObserver(
+    const revealObs = new IntersectionObserver(
       (entries) => {
         for (const entry of entries) {
           if (entry.isIntersecting) {
@@ -27,9 +32,32 @@ export default function LandingPage() {
       },
       { threshold: 0.12, rootMargin: '0px 0px -30px 0px' },
     )
+    reveals.forEach((el) => revealObs.observe(el))
 
-    reveals.forEach((el) => observer.observe(el))
-    return () => observer.disconnect()
+    /* ── active nav observer ── */
+    const sectionEls = NAV_SECTIONS
+      .map((id) => container.querySelector<HTMLElement>(`[data-nav-section="${id}"]`))
+      .filter(Boolean) as HTMLElement[]
+
+    const navObs = new IntersectionObserver(
+      (entries) => {
+        /* ambil section paling atas yang masih terlihat */
+        const visible = entries
+          .filter((e) => e.isIntersecting)
+          .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top)
+
+        if (visible.length > 0) {
+          setActiveNav(visible[0].target.getAttribute('data-nav-section') || 'top')
+        }
+      },
+      { threshold: 0.20, rootMargin: '-80px 0px -50% 0px' },
+    )
+    sectionEls.forEach((el) => navObs.observe(el))
+
+    return () => {
+      revealObs.disconnect()
+      navObs.disconnect()
+    }
   }, [])
 
   return (
@@ -46,12 +74,22 @@ export default function LandingPage() {
         </a>
 
         <nav className="landing-nav" aria-label="Navigasi landing">
-          <a href="#top">{t.nav.product}</a>
-          <a href="#sistem">{t.nav.sistem}</a>
-          <a href="#periode">{t.nav.periode}</a>
-          <a href="#fitur">{t.nav.fitur}</a>
-          <a href="#harga">{t.nav.harga}</a>
-          <a href="#faq">{t.nav.faq}</a>
+          {[
+            { href: '#top', key: 'top', label: t.nav.product },
+            { href: '#sistem', key: 'sistem', label: t.nav.sistem },
+            { href: '#periode', key: 'periode', label: t.nav.periode },
+            { href: '#fitur', key: 'fitur', label: t.nav.fitur },
+            { href: '#harga', key: 'harga', label: t.nav.harga },
+            { href: '#faq', key: 'faq', label: t.nav.faq },
+          ].map((item) => (
+            <a
+              key={item.key}
+              href={item.href}
+              className={activeNav === item.key ? 'active' : ''}
+            >
+              {item.label}
+            </a>
+          ))}
         </nav>
 
         <div className="landing-header-actions">
@@ -61,7 +99,7 @@ export default function LandingPage() {
         </div>
       </header>
 
-      <section id="top" className="landing-hero landing-hero--ledger-grid" aria-labelledby="landing-title">
+      <section id="top" data-nav-section="top" className="landing-hero landing-hero--ledger-grid" aria-labelledby="landing-title">
         <div className="landing-hero-copy">
           <span className="landing-eyebrow landing-stagger landing-stagger-d1">{t.hero.eyebrow}</span>
           <h1 id="landing-title" className="landing-stagger landing-stagger-d2">{t.hero.title}</h1>
@@ -172,7 +210,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      <section id="sistem" className="landing-section landing-flow-section landing-reveal" aria-labelledby="flow-title">
+      <section id="sistem" data-nav-section="sistem" className="landing-section landing-flow-section landing-reveal" aria-labelledby="flow-title">
         <div className="landing-section-heading">
           <p className="landing-section-kicker">{t.system.kicker}</p>
           <h2 id="flow-title">{t.system.title}</h2>
@@ -191,7 +229,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      <section id="periode" className="landing-section landing-period landing-reveal" aria-labelledby="period-title">
+      <section id="periode" data-nav-section="periode" className="landing-section landing-period landing-reveal" aria-labelledby="period-title">
         <div>
           <span className="landing-eyebrow">{t.period.eyebrow}</span>
           <h2 id="period-title">{t.period.title}</h2>
@@ -204,7 +242,7 @@ export default function LandingPage() {
         </ul>
       </section>
 
-      <section id="harga" className="landing-section landing-pricing-section landing-reveal" aria-labelledby="pricing-title">
+      <section id="harga" data-nav-section="harga" className="landing-section landing-pricing-section landing-reveal" aria-labelledby="pricing-title">
         <div className="landing-section-heading compact">
           <p className="landing-section-kicker">{t.pricing.kicker}</p>
           <h2 id="pricing-title">{t.pricing.title}</h2>
@@ -259,7 +297,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      <section id="fitur" className="landing-section landing-highlight-section landing-reveal" aria-labelledby="feature-title">
+      <section id="fitur" data-nav-section="fitur" className="landing-section landing-highlight-section landing-reveal" aria-labelledby="feature-title">
         <div className="landing-section-heading compact">
           <p className="landing-section-kicker">{t.features.kicker}</p>
           <h2 id="feature-title">{t.features.title}</h2>
@@ -314,7 +352,7 @@ export default function LandingPage() {
         </ul>
       </section>
 
-      <section id="faq" className="landing-section landing-faq landing-reveal" aria-labelledby="faq-title">
+      <section id="faq" data-nav-section="faq" className="landing-section landing-faq landing-reveal" aria-labelledby="faq-title">
         <div className="landing-section-heading compact">
           <p className="landing-section-kicker">{t.faq.kicker}</p>
           <h2 id="faq-title">{t.faq.title}</h2>

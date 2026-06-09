@@ -1875,6 +1875,10 @@ body {
   --landing-accent-soft: oklch(0.52 0.14 134 / 0.14);
 }
 
+.landing-page {
+  scroll-behavior: smooth;
+}
+
 .landing-header,
 .landing-hero,
 .landing-section,
@@ -2111,10 +2115,12 @@ body {
   color: var(--ks-text-secondary);
   font-size: 12px;
   font-weight: 800;
+  transition: background 0.2s var(--ease-out-quart), color 0.2s var(--ease-out-quart);
 }
 
 .landing-nav a:hover,
-.landing-nav a:focus-visible {
+.landing-nav a:focus-visible,
+.landing-nav a.active {
   background: var(--ks-bubble-primary-bg);
   color: var(--ks-brand-primary);
   outline: none;
@@ -2663,6 +2669,15 @@ body {
 
 .landing-section {
   padding: 72px 0;
+  scroll-margin-top: 100px;
+}
+
+.landing-hero {
+  scroll-margin-top: 100px;
+}
+
+.landing-final-cta {
+  scroll-margin-top: 100px;
 }
 
 .landing-section-heading {
