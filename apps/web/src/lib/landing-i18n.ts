@@ -76,10 +76,10 @@ const t = {
         period: 'selamanya',
         features: [
           'Catat transaksi tanpa batas',
+          '25 chat AI per bulan',
           '1 dompet aktif',
           '3 budget kategori',
           'Laporan bulan kalender',
-          'Tema terang & gelap',
         ],
       },
       premium: {
@@ -246,10 +246,10 @@ const t = {
         period: 'forever',
         features: [
           'Unlimited transactions',
+          '25 AI chat / month',
           '1 active wallet',
           '3 budget categories',
           'Calendar month reports',
-          'Light & dark theme',
         ],
       },
       premium: {
