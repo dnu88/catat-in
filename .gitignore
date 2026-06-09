@@ -83,3 +83,9 @@ docker-compose.override.yml
 
 # Production secrets
 .env.production
+# Local Pi runtime state
+.atl/
+# Tooling artifacts
+.pi/
+.impeccable/
+.crew/
