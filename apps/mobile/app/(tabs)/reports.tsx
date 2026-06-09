@@ -32,6 +32,10 @@ import {
 	reportCategoryRoleColors,
 	reportDefaultCategoryColors,
 } from "../../src/theme/report-palettes";
+import { AiInsightCard } from "../../src/components/ai/AiInsightCard";
+import type { AiInsight } from "../../src/services/ai-insights";
+import { getAiInsight, AiInsightPremiumRequiredError } from "../../src/services/ai-insights";
+import { useEntitlements } from "../../src/hooks/useEntitlements";
 
 const categories = [
 	{
@@ -188,6 +192,8 @@ export default function ReportsScreen() {
 	const router = useRouter();
 	const { supabase } = useSupabase();
 	const { activeContext } = useFinanceContext();
+	const { data: entitlements } = useEntitlements();
+	const isPremium = entitlements?.plan === "premium";
 	const { language } = useI18n();
 	const styles = useMemo(() => createStyles(theme), [theme]);
 	const [activeTab, setActiveTab] = useState<Tab>("overview");
@@ -253,11 +259,35 @@ export default function ReportsScreen() {
 	const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(
 		null,
 	);
+	const [aiInsight, setAiInsight] = useState<AiInsight | null>(null);
+	const [aiInsightLoading, setAiInsightLoading] = useState(false);
+	const [aiInsightError, setAiInsightError] = useState<string | null>(null);
 
 	const otherCategoryPercent = dynamicCategories.find(
 		(category) => category.id === "other_expenses" || getCategoryCanonicalId(category.label) === "other_expenses",
 	)?.percent ?? 0;
 	const shouldShowOtherCategoryInsight = otherCategoryPercent >= 10;
+
+	const handleGenerateAiInsight = useCallback(async () => {
+		if (!isPremium) {
+			router.push('/upgrade' as never);
+			return;
+		}
+		setAiInsightLoading(true);
+		setAiInsightError(null);
+		try {
+			const result = await getAiInsight(supabase, periodFilter);
+			setAiInsight(result);
+		} catch (err) {
+			if (err instanceof AiInsightPremiumRequiredError) {
+				setAiInsightError('Fitur ini hanya tersedia untuk pengguna Premium.');
+			} else {
+				setAiInsightError(err instanceof Error ? err.message : 'Gagal memuat insight AI.');
+			}
+		} finally {
+			setAiInsightLoading(false);
+		}
+	}, [isPremium, supabase, periodFilter]);
 
 	const categoryRoleColors = reportCategoryRoleColors[theme.mode];
 
@@ -1083,6 +1113,17 @@ export default function ReportsScreen() {
 						<Text style={styles.summarySavingRate}>{savingRate}</Text>
 					</View>
 					</View>
+				</StaggeredEntrance>
+
+				<StaggeredEntrance index={1} testID="reports-entrance-ai-insight">
+					<AiInsightCard
+						insight={aiInsight}
+						loading={aiInsightLoading}
+						error={aiInsightError}
+						isPremium={isPremium}
+						onGenerate={handleGenerateAiInsight}
+						onUpgrade={() => router.push('/upgrade' as never)}
+					/>
 				</StaggeredEntrance>
 
 				<StaggeredEntrance index={2} testID="reports-entrance-recommendation">

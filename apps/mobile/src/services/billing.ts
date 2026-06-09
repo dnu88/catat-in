@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { getApiBaseUrl } from "./receipt-intake";
+import { authHeader } from "./api-client";
 
 export type Entitlements = {
   plan: "free" | "premium";
@@ -16,13 +17,6 @@ export type CreatedPayment = {
   order_id: string; amount: number; price_tier: string; plan: string;
   snap_token: string; redirect_url: string;
 };
-
-async function authHeader(supabase: SupabaseClient): Promise<Record<string, string>> {
-  const { data } = await supabase.auth.getSession();
-  const token = data.session?.access_token;
-  if (!token) throw new Error("Sesi tidak ditemukan. Silakan login ulang.");
-  return { Authorization: `Bearer ${token}` };
-}
 
 export async function getEntitlements(supabase: SupabaseClient): Promise<Entitlements> {
   const res = await fetch(`${getApiBaseUrl()}/api/v1/me/entitlements`, {
