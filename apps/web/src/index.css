@@ -3376,11 +3376,25 @@ body {
   }
 
   .landing-section {
-    padding: 52px 0;
+    padding: 40px 0;
+  }
+
+  .landing-section-heading {
+    margin-bottom: 16px;
   }
 
   .landing-hero h1 {
     font-size: clamp(34px, 11vw, 48px);
+  }
+
+  .landing-section h2,
+  .landing-final-cta h2 {
+    font-size: clamp(26px, 6vw, 40px);
+  }
+
+  .landing-hero p {
+    margin-top: 12px;
+    font-size: 15px;
   }
 
   .landing-flow-item {
@@ -3419,9 +3433,12 @@ body {
     display: none;
   }
 
-  .landing-stat-grid,
-  .landing-quick-menu {
+  .landing-stat-grid {
     grid-template-columns: 1fr;
+  }
+
+  .landing-quick-menu {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .landing-budget-card,
@@ -3432,6 +3449,34 @@ body {
 
   .landing-progress {
     width: 100%;
+  }
+
+  .landing-device {
+    width: min(100%, 380px);
+  }
+}
+
+/* ── Mobile animation tuning ── */
+@media (max-width: 640px) {
+  .landing-stagger {
+    animation-duration: 0.35s;
+  }
+
+  .landing-stagger-d1  { animation-delay: 0.03s; }
+  .landing-stagger-d2  { animation-delay: 0.06s; }
+  .landing-stagger-d3  { animation-delay: 0.10s; }
+  .landing-stagger-d4  { animation-delay: 0.14s; }
+  .landing-stagger-d5  { animation-delay: 0.18s; }
+  .landing-stagger-d6  { animation-delay: 0.22s; }
+  .landing-stagger-d7  { animation-delay: 0.26s; }
+
+  .landing-reveal {
+    transition-duration: 0.4s;
+  }
+
+  .landing-device-entrance {
+    animation-duration: 0.45s;
+    animation-delay: 0.28s;
   }
 }
 
