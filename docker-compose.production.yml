@@ -5,6 +5,19 @@ services:
       dockerfile: Dockerfile
     container_name: kaswise-backend
     restart: unless-stopped
+    # ── Container hardening (rekonstruksi dari overlay lama yang hilang) ──
+    # Disamakan persis dengan konfigurasi container live: read-only rootfs,
+    # drop semua capability, no-new-privileges, tmpfs untuk /tmp, batas resource.
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp
+    mem_limit: 768m
+    cpus: 1.0
+    pids_limit: 256
     expose:
       - "8000"           # Hanya expose ke Docker network, tidak ke host langsung
     environment:
