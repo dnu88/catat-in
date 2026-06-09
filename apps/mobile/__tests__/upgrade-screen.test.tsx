@@ -115,10 +115,13 @@ afterEach(() => {
 });
 
 test("shows promo prices and opens Snap on upgrade", async () => {
-  const { getByText, getByTestId } = render(<UpgradeScreen />);
+  const { getByText, getByTestId, unmount } = render(<UpgradeScreen />);
   await waitFor(() => getByText(/29.000/));
+
   fireEvent.press(getByTestId("upgrade-monthly"));
+
   await waitFor(() => expect(mockOpen).toHaveBeenCalledWith("https://snap/x"));
+  unmount();
 });
 
 test("starts polling after browser dismiss", async () => {
