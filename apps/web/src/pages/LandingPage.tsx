@@ -74,6 +74,8 @@ export default function LandingPage() {
 
         <div className="landing-device-wrap" aria-label="Preview antarmuka Kaswise">
           <div className="landing-device">
+            <div className="landing-device-notch" aria-hidden="true" />
+
             <div className="landing-device-status" aria-hidden="true">
               <span>09:41</span>
               <span>{t.mockup.status}</span>
@@ -123,6 +125,8 @@ export default function LandingPage() {
                 <span key={tab} className={i === 0 ? 'active' : ''}>{tab}</span>
               ))}
             </div>
+
+            <div className="landing-device-home-bar" aria-hidden="true" />
           </div>
         </div>
       </section>
