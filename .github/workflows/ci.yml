@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, feat/*]
   pull_request:
     branches: [main]
   workflow_dispatch:
@@ -59,6 +59,37 @@ jobs:
       - name: Run backend tests
         working-directory: backend
         run: pytest -q
+
+  mobile-quality-gate:
+    name: Mobile PWA quality gate (typecheck + tests + build)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: TypeScript type-check
+        run: pnpm --filter mobile type-check
+
+      - name: Critical regression tests
+        run: pnpm --filter mobile test tabs-index reports-screen reports-ai-insight transactions-swipe-actions -- --runInBand
+
+      - name: Export PWA (build check)
+        run: pnpm --filter mobile export:pwa
+
+      - name: Bundle marker audit
+        run: pnpm --filter mobile check:bundle
 
   e2e-smoke:
     name: E2E smoke (Playwright)
