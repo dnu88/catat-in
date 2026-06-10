@@ -68,6 +68,24 @@ jest.mock("../src/state/finance-context", () => ({
   }),
 }));
 
+jest.mock("../src/state/report-period", () => {
+  const actual = jest.requireActual("../src/state/report-period");
+  const activePeriod = actual.buildReportPeriod("month");
+  return {
+    ...actual,
+    useReportPeriod: () => ({
+      activePeriod,
+      savedRules: [],
+      setActivePeriod: jest.fn(),
+      resetToCurrentMonth: jest.fn(),
+      saveMonthlyCycleRule: jest.fn(),
+      updateSavedRule: jest.fn(),
+      deleteSavedRule: jest.fn(),
+      selectSavedRule: jest.fn(),
+    }),
+  };
+});
+
 jest.mock("expo-router", () => ({
   useFocusEffect: (callback: () => void | (() => void)) => {
     const React = require("react");

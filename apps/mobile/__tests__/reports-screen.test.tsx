@@ -23,7 +23,7 @@ const mockTransactions = [
 		amount: 125000,
 		transaction_type: "income",
 		category: "Pendapatan",
-		date: "2026-05-05",
+		date: "2026-06-05",
 		description: "Bonus modern schema",
 		merchant: "Klien",
 	},
@@ -31,7 +31,7 @@ const mockTransactions = [
 		nominal: 500000,
 		type: "expense",
 		kategori: "Makan",
-		tanggal: "2026-05-01",
+		tanggal: "2026-06-01",
 		catatan: "Nasi padang",
 		merchant: "RM Sederhana",
 	},
@@ -39,7 +39,7 @@ const mockTransactions = [
 		nominal: 350000,
 		type: "expense",
 		kategori: "Belanja",
-		tanggal: "2026-05-02",
+		tanggal: "2026-06-02",
 		catatan: "Groceries",
 		merchant: "Supermarket",
 	},
@@ -47,7 +47,7 @@ const mockTransactions = [
 		nominal: 200000,
 		type: "expense",
 		kategori: "Transport",
-		tanggal: "2026-05-03",
+		tanggal: "2026-06-03",
 		catatan: "Taxi",
 		merchant: "Grab",
 	},
@@ -55,7 +55,7 @@ const mockTransactions = [
 		nominal: 150000,
 		type: "expense",
 		kategori: "Kesehatan",
-		tanggal: "2026-05-04",
+		tanggal: "2026-06-04",
 		catatan: "Vitamin",
 		merchant: "Apotek",
 	},
@@ -141,6 +141,40 @@ jest.mock("../src/state/finance-context", () => ({
 	}),
 }));
 
+jest.mock("../src/state/report-period", () => {
+	const actual = jest.requireActual("../src/state/report-period");
+	const activePeriod = actual.buildReportPeriod("month");
+	const savedRule = {
+		id: "rule-1",
+		name: "Gajian 25",
+		startDay: 25,
+		endDay: 24,
+		createdAt: "2026-06-06T00:00:00.000Z",
+		updatedAt: "2026-06-06T00:00:00.000Z",
+	};
+	return {
+		...actual,
+		useReportPeriod: () => ({
+			activePeriod,
+			savedRules: [savedRule],
+			setActivePeriod: jest.fn(),
+			resetToCurrentMonth: jest.fn(),
+			saveMonthlyCycleRule: jest.fn(),
+			updateSavedRule: jest.fn(),
+			deleteSavedRule: jest.fn(),
+			selectSavedRule: jest.fn(),
+		}),
+	};
+});
+
+jest.mock("../src/hooks/useEntitlements", () => ({
+	useEntitlements: () => ({
+		data: { plan: "premium" },
+		loading: false,
+		refresh: jest.fn(),
+	}),
+}));
+
 jest.mock("expo-router", () => ({
 	useFocusEffect: (callback: () => void | (() => void)) => {
 		const React = require("react");
@@ -201,6 +235,8 @@ describe("ReportsScreen visual parity", () => {
 		expect(screen.getByText("Kelola")).toBeTruthy();
 		expect(screen.queryByText(/Amplop/i)).toBeNull();
 		expect(screen.getByTestId("reports-entrance-summary")).toBeTruthy();
+		expect(screen.getByTestId("reports-entrance-ai-insight")).toBeTruthy();
+		expect(screen.getByTestId("reports-saved-rules-card")).toBeTruthy();
 		expect(screen.getByTestId("reports-entrance-chart")).toBeTruthy();
 		expect(screen.getByTestId("reports-entrance-recommendation")).toBeTruthy();
 		expect(screen.getByTestId("reports-entrance-history")).toBeTruthy();
@@ -468,13 +504,10 @@ describe("ReportsScreen visual parity", () => {
 		const screen = renderReports();
 
 		fireEvent.press(screen.getByText("Kustom"));
-		expect(screen.getByLabelText("Kurangi tahun mulai")).toBeTruthy();
-		expect(screen.getByLabelText("Tambah tahun mulai")).toBeTruthy();
-		expect(screen.getByLabelText("Pilih tanggal mulai 15")).toBeTruthy();
-		expect(screen.getByLabelText("Pilih tanggal selesai 20")).toBeTruthy();
-		fireEvent.press(await screen.findByTestId("reports-start-day-15"));
-		fireEvent.press(await screen.findByTestId("reports-end-day-20"));
-		fireEvent.press(screen.getByLabelText("Terapkan rentang tanggal"));
+		expect(screen.getByTestId("reports-start-date-wheel-picker")).toBeTruthy();
+		expect(screen.getByTestId("reports-end-date-wheel-picker")).toBeTruthy();
+		fireEvent.press(await screen.findByTestId("reports-start-date-wheel-picker-date-item-15"));
+		fireEvent.press(await screen.findByTestId("reports-end-date-wheel-picker-date-item-20"));
 
 		await waitFor(() => {
 			expect((globalThis as any).__reportsQueryChain.then).toHaveBeenCalled();

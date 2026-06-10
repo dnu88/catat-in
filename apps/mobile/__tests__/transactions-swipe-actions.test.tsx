@@ -100,6 +100,24 @@ jest.mock("../src/state/finance-context", () => ({
 	}),
 }));
 
+jest.mock("../src/state/report-period", () => {
+	const actual = jest.requireActual("../src/state/report-period");
+	const activePeriod = actual.buildReportPeriod("month");
+	return {
+		...actual,
+		useReportPeriod: () => ({
+			activePeriod,
+			savedRules: [],
+			setActivePeriod: jest.fn(),
+			resetToCurrentMonth: jest.fn(),
+			saveMonthlyCycleRule: jest.fn(),
+			updateSavedRule: jest.fn(),
+			deleteSavedRule: jest.fn(),
+			selectSavedRule: jest.fn(),
+		}),
+	};
+});
+
 const mockTransactions = [
 	{
 		id: "tx-1",
@@ -253,6 +271,8 @@ describe("transaction swipe actions", () => {
 
 		expect(headerStyle.marginBottom).toBeGreaterThanOrEqual(12);
 		expect(periodRowStyle.marginBottom).toBeGreaterThanOrEqual(16);
+		expect(screen.getByTestId("transactions-period-report")).toBeTruthy();
+		expect(screen.getByTestId("transactions-report-period-label")).toBeTruthy();
 		expect(statRowStyle.marginTop).toBeGreaterThanOrEqual(4);
 		expect(statRowStyle.marginBottom).toBeGreaterThanOrEqual(20);
 		expect(filterScrollerStyle.marginTop).toBeGreaterThanOrEqual(4);

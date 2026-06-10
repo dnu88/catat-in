@@ -83,6 +83,24 @@ jest.mock("../src/state/finance-context", () => ({
 	}),
 }));
 
+jest.mock("../src/state/report-period", () => {
+	const actual = jest.requireActual("../src/state/report-period");
+	const activePeriod = actual.buildReportPeriod("month");
+	return {
+		...actual,
+		useReportPeriod: () => ({
+			activePeriod,
+			savedRules: [],
+			setActivePeriod: jest.fn(),
+			resetToCurrentMonth: jest.fn(),
+			saveMonthlyCycleRule: jest.fn(),
+			updateSavedRule: jest.fn(),
+			deleteSavedRule: jest.fn(),
+			selectSavedRule: jest.fn(),
+		}),
+	};
+});
+
 function renderDashboard() {
 	return render(
 		<ThemeProvider>
@@ -287,6 +305,11 @@ describe("DashboardScreen dark luxury Home parity", () => {
 		).toBeTruthy();
 
 		expect(screen.getByTestId("home-entrance-hero")).toBeTruthy();
+		expect(screen.getByTestId("home-theme-toggle")).toBeTruthy();
+		expect(screen.getByTestId("home-amount-visibility-toggle")).toBeTruthy();
+		expect(screen.getByTestId("home-monthly-remaining")).toBeTruthy();
+		expect(screen.getByTestId("home-active-period-label")).toBeTruthy();
+		expect(screen.getByTestId("home-monthly-expense")).toBeTruthy();
 		expect(screen.getByTestId("home-entrance-actions")).toBeTruthy();
 		expect(screen.getByTestId("home-entrance-budget")).toBeTruthy();
 		expect(screen.getByTestId("home-entrance-recent")).toBeTruthy();
@@ -296,7 +319,7 @@ describe("DashboardScreen dark luxury Home parity", () => {
 			"Rp 0",
 		);
 		expect(screen.queryByTestId("home-wallet-pill")).toBeNull();
-		expect(screen.getByText("Manage")).toBeTruthy();
+		expect(screen.getByText("Kelola")).toBeTruthy();
 		expect(screen.queryByText("↗ 15%")).toBeNull();
 
 		expect(screen.getByText("Input AI")).toBeTruthy();
