@@ -218,7 +218,7 @@ INGAT: HANYA kembalikan JSON. Tidak boleh ada teks lain."""
         client = _get_async_anthropic_client()
         response = await client.messages.create(
             model=settings.ANTHROPIC_MODEL_INSIGHT,
-            max_tokens=600,
+            max_tokens=2048,
             messages=[{"role": "user", "content": prompt}],
         )
         raw_text = response.content[0].text.strip()
@@ -227,6 +227,10 @@ INGAT: HANYA kembalikan JSON. Tidak boleh ada teks lain."""
         return normalize_insight_response(parsed, context)
 
     except (json.JSONDecodeError, anthropic.APIError, Exception) as exc:
+        import logging
+        logging.getLogger("app.services.ai_service").exception(
+            "generate_financial_insight failed for period=%s", period
+        )
         error_msg = (
             "Maaf, insight AI gagal diproses. "
             "Silakan coba lagi nanti atau gunakan laporan dashboard."
