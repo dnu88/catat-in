@@ -1,0 +1,78 @@
+#!/bin/bash
+# pre-push hook: blocks push if mobile PWA quality gate fails
+# WARNING: This runs before EVERY push. Keep it fast (~30s).
+# Use SKIP_MOBILE_CHECK=1 to bypass: SKIP_MOBILE_CHECK=1 git push
+
+set -euo pipefail
+
+# Only run if mobile files changed in the commits being pushed
+CHANGED=$(git diff --name-only HEAD 2>/dev/null || true)
+if [ -z "$CHANGED" ]; then
+  # First push of new branch — check all files since we can't diff
+  CHANGED="$(git ls-files apps/mobile/ | head -1)"
+fi
+
+if ! echo "$CHANGED" | grep -q '^apps/mobile/' && [ "${SKIP_MOBILE_CHECK:-}" != "force" ]; then
+  exit 0
+fi
+
+if [ "${SKIP_MOBILE_CHECK:-}" = "1" ]; then
+  echo "⚠️  SKIP_MOBILE_CHECK=1 — mobile quality gate bypassed"
+  exit 0
+fi
+
+echo ""
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "🛡️  Mobile PWA quality gate (pre-push)"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo ""
+
+ROOT="$(git rev-parse --show-toplevel)"
+cd "$ROOT/apps/mobile"
+
+FAIL=0
+
+# 1. TypeScript
+echo "  [1/3] TypeScript type-check..."
+if pnpm type-check > /dev/null 2>&1; then
+  echo "  ✅  type-check passed"
+else
+  echo "  ❌  type-check FAILED"
+  FAIL=1
+fi
+
+# 2. Critical tests
+echo "  [2/3] Critical regression tests..."
+if pnpm test tabs-index reports-screen reports-ai-insight transactions-swipe-actions -- --runInBand --silent > /dev/null 2>&1; then
+  echo "  ✅  tests passed"
+else
+  echo "  ❌  tests FAILED"
+  FAIL=1
+fi
+
+# 3. Bundle markers
+echo "  [3/3] Bundle marker check..."
+if node scripts/check-bundle-markers.mjs > /dev/null 2>&1; then
+  echo "  ✅  markers present"
+else
+  echo "  ❌  markers MISSING — rebuild with: pnpm --filter mobile export:pwa"
+  FAIL=1
+fi
+
+echo ""
+
+if [ $FAIL -eq 1 ]; then
+  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  echo "❌  PUSH BLOCKED — quality gate failed"
+  echo ""
+  echo "  Fix: pnpm --filter mobile predeploy"
+  echo "  Bypass (emergency only): SKIP_MOBILE_CHECK=1 git push"
+  echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+  exit 1
+fi
+
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "✅  Quality gate passed — pushing..."
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo ""
+exit 0
