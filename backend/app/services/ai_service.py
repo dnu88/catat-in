@@ -178,6 +178,7 @@ async def generate_financial_insight(user_data: dict, period: str = "monthly") -
     Always returns a dict with all required keys. If the API key is missing or
     Claude fails, a graceful fallback dict is returned — never raises.
     """
+    user_data = user_data or {}
     context = {
         "period": period,
         "transaction_count": user_data.get("transaction_count", 0),
@@ -186,19 +187,7 @@ async def generate_financial_insight(user_data: dict, period: str = "monthly") -
     }
 
     if not settings.ANTHROPIC_API_KEY:
-        return normalize_insight_response(
-            {
-                "period": period,
-                "summary": (
-                    "Insight AI belum tersedia sementara. "
-                    "Gunakan laporan dashboard untuk memantau income/expense."
-                ),
-                "highlights": [],
-                "recommendations": [],
-                "risk_flags": [],
-            },
-            context,
-        )
+        return normalize_insight_response(_build_local_insight_payload(user_data, period), context)
 
     prompt = f"""Kamu adalah financial advisor AI untuk aplikasi Catat.in.
 Tugasmu: analisis data keuangan pengguna dan berikan insight yang actionable.
@@ -242,16 +231,9 @@ INGAT: HANYA kembalikan JSON. Tidak boleh ada teks lain."""
             "Maaf, insight AI gagal diproses. "
             "Silakan coba lagi nanti atau gunakan laporan dashboard."
         )
-        return normalize_insight_response(
-            {
-                "period": period,
-                "summary": error_msg,
-                "highlights": [],
-                "recommendations": [],
-                "risk_flags": [],
-            },
-            context,
-        )
+        fallback = _build_local_insight_payload(user_data, period)
+        fallback["summary"] = f"{error_msg} Berikut ringkasan lokal dari data yang tersedia."
+        return normalize_insight_response(fallback, context)
 
 
 def period_keterangan(period: str) -> str:
@@ -365,6 +347,93 @@ def _safe_float(value) -> float | None:
         return float(value)
     except (TypeError, ValueError):
         return None
+
+
+def _build_local_insight_payload(user_data: dict, period: str) -> dict:
+    """Build deterministic insight from aggregate context.
+
+    Used when Claude is unavailable or returns an unusable response, so Premium
+    users still see useful information instead of an empty card.
+    """
+    transaction_count = int(user_data.get("transaction_count") or 0)
+    income_total = _safe_float(user_data.get("income_total")) or 0.0
+    expense_total = _safe_float(user_data.get("expense_total")) or 0.0
+    net_total = _safe_float(user_data.get("net_total"))
+    if net_total is None:
+        net_total = income_total - expense_total
+    top_categories = user_data.get("top_categories")
+    if not isinstance(top_categories, list):
+        top_categories = []
+    previous_period = user_data.get("previous_period")
+    if not isinstance(previous_period, dict):
+        previous_period = None
+    other_category_percent = _safe_float(user_data.get("other_category_percent")) or 0.0
+
+    if transaction_count == 0:
+        return {
+            "period": period,
+            "summary": "Belum ada transaksi pada periode ini, jadi Insight AI belum bisa membaca pola pengeluaran.",
+            "highlights": [
+                "Transaksi periode ini masih kosong.",
+                "Insight akan muncul lebih akurat setelah ada pemasukan dan pengeluaran yang tercatat.",
+            ],
+            "recommendations": [
+                "Catat minimal beberapa transaksi rutin seperti makan, transport, tagihan, dan pemasukan.",
+                "Gunakan kategori yang konsisten agar AI bisa menemukan pola bulan ini.",
+            ],
+            "risk_flags": [],
+        }
+
+    top_category = top_categories[0] if top_categories else None
+    top_category_name = top_category.get("category") if isinstance(top_category, dict) else None
+    top_category_percent = _safe_float(top_category.get("percent")) if isinstance(top_category, dict) else None
+
+    summary = (
+        f"Periode ini mencatat {transaction_count} transaksi dengan cashflow bersih {_format_rupiah(net_total)}. "
+        f"Total pemasukan {_format_rupiah(income_total)} dan pengeluaran {_format_rupiah(expense_total)}."
+    )
+
+    highlights = [f"Total pengeluaran periode ini {_format_rupiah(expense_total)}."]
+    if income_total > 0:
+        highlights.append(f"Total pemasukan periode ini {_format_rupiah(income_total)}.")
+    if top_category_name and top_category_percent is not None:
+        highlights.append(
+            f"Kategori terbesar adalah {top_category_name}, sekitar {top_category_percent:.1f}% dari pengeluaran."
+        )
+    if previous_period:
+        prev_expense = _safe_float(previous_period.get("expense_total")) or 0.0
+        if prev_expense > 0:
+            change = ((expense_total - prev_expense) / prev_expense) * 100
+            arah = "naik" if change >= 0 else "turun"
+            highlights.append(f"Pengeluaran {arah} {abs(change):.1f}% dibanding periode sebelumnya.")
+
+    recommendations = []
+    if top_category_name:
+        recommendations.append(f"Cek ulang pengeluaran {top_category_name} dan tetapkan batas mingguan agar tetap terkendali.")
+    recommendations.append("Rapikan kategori Lainnya atau transaksi tanpa merchant supaya laporan berikutnya lebih detail.")
+    if net_total < 0:
+        recommendations.append("Prioritaskan pengeluaran wajib dan tunda belanja non-esensial sampai cashflow kembali positif.")
+    else:
+        recommendations.append("Sisihkan sebagian surplus ke tabungan atau budget wallet sebelum dipakai untuk belanja variabel.")
+
+    risk_flags = []
+    if net_total < 0:
+        risk_flags.append("Cashflow periode ini negatif; pengeluaran lebih besar dari pemasukan.")
+    if other_category_percent >= 10:
+        risk_flags.append(f"Kategori di luar top kategori masih {other_category_percent:.1f}%, laporan bisa kurang tajam.")
+
+    return {
+        "period": period,
+        "summary": summary,
+        "highlights": highlights[:3],
+        "recommendations": recommendations[:2],
+        "risk_flags": risk_flags[:2],
+    }
+
+
+def _format_rupiah(value: float) -> str:
+    amount = int(round(value))
+    return f"Rp {amount:,}".replace(",", ".")
 
 
 def _extract_transaction_locally(user_text: str) -> dict:

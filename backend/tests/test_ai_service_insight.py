@@ -181,13 +181,20 @@ async def test_insight_no_api_key_returns_graceful_dict():
     """When ANTHROPIC_API_KEY is not set, return graceful dict (not old string)."""
     with patch.object(ai_service.settings, "ANTHROPIC_API_KEY", None):
         result = await ai_service.generate_financial_insight(
-            user_data={"sample": "data"}, period="monthly"
+            user_data={
+                "transaction_count": 8,
+                "income_total": 5_000_000,
+                "expense_total": 1_250_000,
+                "net_total": 3_750_000,
+                "top_categories": [{"category": "Makan", "amount": 600_000, "percent": 48.0}],
+            },
+            period="monthly",
         )
     assert isinstance(result, dict)
     assert result["period"] == "monthly"
-    assert "belum tersedia" in result["summary"]
-    assert result["highlights"] == []
-    assert result["recommendations"] == []
+    assert "8 transaksi" in result["summary"]
+    assert result["highlights"]
+    assert result["recommendations"]
     assert result["risk_flags"] == []
     assert "generated_at" in result
     assert "data_quality" in result
@@ -299,7 +306,7 @@ async def test_insight_handles_code_fenced_json():
 
 @pytest.mark.asyncio
 async def test_insight_claude_api_error_returns_error_dict():
-    """When Claude API raises, return error dict instead of crashing."""
+    """When Claude API raises, return local fallback dict instead of crashing."""
     fake_client = AsyncMock()
     fake_client.messages.create = AsyncMock(
         side_effect=Exception("Service unavailable")
@@ -308,14 +315,14 @@ async def test_insight_claude_api_error_returns_error_dict():
     with patch.object(ai_service, "_get_async_anthropic_client", return_value=fake_client), \
          patch.object(ai_service.settings, "ANTHROPIC_API_KEY", "sk-test"):
         result = await ai_service.generate_financial_insight(
-            user_data={}, period="monthly"
+            user_data={"transaction_count": 3, "expense_total": 90_000}, period="monthly"
         )
 
     assert isinstance(result, dict)
     assert "error" in result["summary"].lower() or "gagal" in result["summary"].lower()
-    assert result["highlights"] == []
-    assert result["recommendations"] == []
-    assert result["risk_flags"] == []
+    assert result["highlights"]
+    assert result["recommendations"]
+    assert result["risk_flags"]
     assert "data_quality" in result
 
 
