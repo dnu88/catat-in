@@ -382,7 +382,7 @@ function createBudgets({
 
 export default function SettingsScreen() {
 	const { supabase } = useSupabase();
-	const { theme, preference, setPreference } = useTheme();
+	const { theme } = useTheme();
 	const { language, setLanguage, t } = useI18n();
 	const styles = useMemo(() => createStyles(theme), [theme]);
 	const { data: entitlements, loading: entitlementsLoading } = useEntitlements();
@@ -940,12 +940,6 @@ export default function SettingsScreen() {
 		}
 	};
 
-	const themeLabels = {
-		system: language === "id" ? "Sistem" : "System",
-		light: language === "id" ? "Terang" : "Light",
-		dark: language === "id" ? "Gelap" : "Dark",
-	};
-
 	return (
 		<PageEntrance testID="settings-page-entrance" style={styles.screen}>
 			<ScrollView
@@ -1177,53 +1171,6 @@ export default function SettingsScreen() {
 						</View>
 						<Text style={styles.navigationChevron}>›</Text>
 					</Pressable>
-				</View>
-
-				{/* Theme Section */}
-				<View key="settings-appearance" testID="settings-appearance" style={styles.sectionCard}>
-					<Text style={styles.sectionTitle}>
-						{language === "id" ? "Tampilan" : "Appearance"}
-					</Text>
-					<Text style={styles.sectionSub}>
-						{language === "id"
-							? "Pilih tema yang nyaman di mata."
-							: "Choose a comfortable theme."}
-					</Text>
-
-					<View style={styles.themeGrid}>
-						{(["system", "light", "dark"] as const).map((mode) => (
-							<Pressable
-								key={mode}
-								testID={`settings-theme-${mode}`}
-								accessibilityRole="button"
-								accessibilityLabel={`${language === "id" ? "Pilih tema" : "Choose theme"} ${themeLabels[mode]}`}
-								accessibilityState={{ selected: preference === mode }}
-								onPress={() => setPreference(mode)}
-								style={[
-									styles.themeChip,
-									preference === mode && {
-										backgroundColor:
-											theme.mode === "light"
-												? theme.colors.brandPrimaryDeep
-												: theme.colors.brandPrimary,
-										borderColor:
-											theme.mode === "light"
-												? theme.colors.brandPrimaryDeep
-												: theme.colors.brandPrimary,
-									},
-								]}
-							>
-								<Text
-									style={[
-										styles.themeChipText,
-										preference === mode && { color: theme.colors.textInverse },
-									]}
-								>
-									{themeLabels[mode]}
-								</Text>
-							</Pressable>
-						))}
-					</View>
 				</View>
 
 				{/* Language Section */}

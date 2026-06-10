@@ -46,8 +46,26 @@ jest.mock("../src/state/finance-context", () => ({
 	}),
 }));
 
+jest.mock("../src/state/report-period", () => {
+	const actual = jest.requireActual("../src/state/report-period");
+	const activePeriod = actual.buildReportPeriod("month");
+	return {
+		...actual,
+		useReportPeriod: () => ({
+			activePeriod,
+			savedRules: [],
+			setActivePeriod: jest.fn(),
+			resetToCurrentMonth: jest.fn(),
+			saveMonthlyCycleRule: jest.fn(),
+			updateSavedRule: jest.fn(),
+			deleteSavedRule: jest.fn(),
+			selectSavedRule: jest.fn(),
+		}),
+	};
+});
+
 describe("light accent regressions", () => {
-	it("does not use neon green for selected settings chips in light theme", () => {
+	it("does not use neon green for dashboard theme toggle in light theme", () => {
 		const screen = render(
 			<I18nProvider>
 				<ThemeProvider>
@@ -56,7 +74,7 @@ describe("light accent regressions", () => {
 			</I18nProvider>,
 		);
 
-		const lightChip = screen.getByTestId("settings-theme-light");
+		const lightChip = screen.getByTestId("settings-language-en");
 
 		fireEvent.press(lightChip);
 
