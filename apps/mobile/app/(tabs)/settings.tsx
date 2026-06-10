@@ -898,9 +898,17 @@ export default function SettingsScreen() {
 
 		setLogoutLoading(true);
 		animateLogoutButton(0.96);
+
+		// Navigasi dulu, signOut di background — jangan block UI
+		router.replace("/(auth)/login");
+
 		try {
-			await supabase.auth.signOut();
-			router.replace("/(auth)/login");
+			await Promise.race([
+				supabase.auth.signOut(),
+				new Promise((_, reject) => setTimeout(() => reject(new Error("timeout")), 5000)),
+			]);
+		} catch {
+			// signOut gagal atau timeout — session akan expire sendiri
 		} finally {
 			setLogoutLoading(false);
 			animateLogoutButton(1);

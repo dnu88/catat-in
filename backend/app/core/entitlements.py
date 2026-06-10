@@ -75,5 +75,9 @@ def record_use(user_id: str, period_ym: str, kind: str) -> None:
     client = _get_supabase_service_client()
     if client is None:
         return
-    client.rpc("increment_ai_usage",
-               {"p_user_id": user_id, "p_period": period_ym, "p_kind": kind}).execute()
+    try:
+        client.rpc("increment_ai_usage",
+                   {"p_user_id": user_id, "p_period": period_ym, "p_kind": kind}).execute()
+    except Exception:
+        # Jangan gagalkan respons hanya karena pencatatan kuota gagal.
+        pass

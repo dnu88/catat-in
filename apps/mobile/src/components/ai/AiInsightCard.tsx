@@ -5,6 +5,7 @@ import {
   ActivityIndicator,
   StyleSheet,
 } from "react-native";
+import { useMemo } from "react";
 import { useTheme } from "../../theme/theme-context";
 import { KaswiseIcon } from "../icons/kaswise-icons";
 import { IconBubble } from "../ui/IconBubble";
@@ -29,6 +30,7 @@ export function AiInsightCard({
   onUpgrade,
 }: Props) {
   const { theme } = useTheme();
+  const s = useMemo(() => styles(theme), [theme]);
 
   // --- State determination (in priority order) ---
   const isError = error != null && error !== "";
@@ -38,11 +40,11 @@ export function AiInsightCard({
 
   function renderHeader(iconName: "insight" | "lock", iconTone: "primary" | "warning") {
     return (
-      <View style={styles(theme).headerRow}>
+      <View style={s.headerRow}>
         <IconBubble name={iconName} tone={iconTone} size={40} />
         <Text
           testID="ai-insight-title"
-          style={styles(theme).title}
+          style={s.title}
         >
           Insight AI Bulan Ini
         </Text>
@@ -52,9 +54,9 @@ export function AiInsightCard({
 
   function renderLockedState() {
     return (
-      <View testID="ai-insight-card" style={styles(theme).card}>
+      <View testID="ai-insight-card" style={s.card}>
         {renderHeader("lock", "warning")}
-        <Text testID="ai-insight-body" style={styles(theme).body}>
+        <Text testID="ai-insight-body" style={s.body}>
           Dapatkan ringkasan pola pengeluaran dan rekomendasi praktis dari AI.
         </Text>
         <Pressable
@@ -63,12 +65,12 @@ export function AiInsightCard({
           accessibilityRole="button"
           accessibilityLabel="Upgrade Premium"
           style={({ pressed }) => [
-            styles(theme).ctaButton,
-            styles(theme).ctaButtonPrimary,
-            pressed && styles(theme).ctaButtonPressed,
+            s.ctaButton,
+            s.ctaButtonPrimary,
+            pressed && s.ctaButtonPressed,
           ]}
         >
-          <Text style={styles(theme).ctaButtonPrimaryText}>
+          <Text style={s.ctaButtonPrimaryText}>
             Upgrade Premium
           </Text>
         </Pressable>
@@ -78,9 +80,9 @@ export function AiInsightCard({
 
   function renderEmptyPremiumState() {
     return (
-      <View testID="ai-insight-card" style={styles(theme).card}>
+      <View testID="ai-insight-card" style={s.card}>
         {renderHeader("insight", "primary")}
-        <Text testID="ai-insight-body" style={styles(theme).body}>
+        <Text testID="ai-insight-body" style={s.body}>
           Analisis AI siap membantu membaca pola keuanganmu bulan ini.
         </Text>
         <Pressable
@@ -89,12 +91,12 @@ export function AiInsightCard({
           accessibilityRole="button"
           accessibilityLabel="Buat Insight AI"
           style={({ pressed }) => [
-            styles(theme).ctaButton,
-            styles(theme).ctaButtonPrimary,
-            pressed && styles(theme).ctaButtonPressed,
+            s.ctaButton,
+            s.ctaButtonPrimary,
+            pressed && s.ctaButtonPressed,
           ]}
         >
-          <Text style={styles(theme).ctaButtonPrimaryText}>
+          <Text style={s.ctaButtonPrimaryText}>
             Buat Insight AI
           </Text>
         </Pressable>
@@ -104,15 +106,15 @@ export function AiInsightCard({
 
   function renderLoadingState() {
     return (
-      <View testID="ai-insight-card" style={styles(theme).card}>
-        <View style={styles(theme).centeredContent}>
+      <View testID="ai-insight-card" style={s.card}>
+        <View style={s.centeredContent}>
           <ActivityIndicator
             size="large"
             color={theme.colors.brandPrimary}
           />
           <Text
             testID="ai-insight-loading-text"
-            style={styles(theme).loadingText}
+            style={s.loadingText}
           >
             Menganalisis laporan...
           </Text>
@@ -123,10 +125,10 @@ export function AiInsightCard({
 
   function renderErrorState() {
     return (
-      <View testID="ai-insight-card" style={styles(theme).card}>
-        <View style={styles(theme).centeredContent}>
+      <View testID="ai-insight-card" style={s.card}>
+        <View style={s.centeredContent}>
           <IconBubble name="insight" tone="danger" size={48} />
-          <Text testID="ai-insight-error-text" style={styles(theme).errorText}>
+          <Text testID="ai-insight-error-text" style={s.errorText}>
             {error}
           </Text>
           <Pressable
@@ -135,12 +137,12 @@ export function AiInsightCard({
             accessibilityRole="button"
             accessibilityLabel="Coba lagi"
             style={({ pressed }) => [
-              styles(theme).ctaButton,
-              styles(theme).ctaButtonOutline,
-              pressed && styles(theme).ctaButtonPressed,
+              s.ctaButton,
+              s.ctaButtonOutline,
+              pressed && s.ctaButtonPressed,
             ]}
           >
-            <Text style={styles(theme).ctaButtonOutlineText}>
+            <Text style={s.ctaButtonOutlineText}>
               Coba lagi
             </Text>
           </Pressable>
@@ -179,22 +181,22 @@ export function AiInsightCard({
     if (!insight) return null;
 
     return (
-      <View testID="ai-insight-card" style={styles(theme).card}>
+      <View testID="ai-insight-card" style={s.card}>
         {renderHeader("insight", "primary")}
 
         {/* Summary */}
-        <Text testID="ai-insight-summary" style={styles(theme).summary}>
+        <Text testID="ai-insight-summary" style={s.summary}>
           {insight.summary}
         </Text>
 
         {/* Highlights */}
         {insight.highlights.length > 0 && (
-          <View testID="ai-insight-highlights" style={styles(theme).section}>
-            <Text style={styles(theme).sectionTitle}>Sorotan</Text>
+          <View testID="ai-insight-highlights" style={s.section}>
+            <Text style={s.sectionTitle}>Sorotan</Text>
             {insight.highlights.map((item, idx) => (
-              <View key={`hl-${idx}`} style={styles(theme).listItem}>
-                <Text style={styles(theme).bullet}>•</Text>
-                <Text style={styles(theme).listItemText}>{item}</Text>
+              <View key={`hl-${idx}`} style={s.listItem}>
+                <Text style={s.bullet}>•</Text>
+                <Text style={s.listItemText}>{item}</Text>
               </View>
             ))}
           </View>
@@ -204,12 +206,12 @@ export function AiInsightCard({
         {insight.recommendations.length > 0 && (
           <View
             testID="ai-insight-recommendations"
-            style={styles(theme).section}
+            style={s.section}
           >
-            <Text style={styles(theme).sectionTitle}>Rekomendasi</Text>
+            <Text style={s.sectionTitle}>Rekomendasi</Text>
             {insight.recommendations.map((item, idx) => (
-              <View key={`rec-${idx}`} style={styles(theme).listItem}>
-                <View style={styles(theme).checkBadge}>
+              <View key={`rec-${idx}`} style={s.listItem}>
+                <View style={s.checkBadge}>
                   <KaswiseIcon
                     name="check"
                     size={14}
@@ -217,7 +219,7 @@ export function AiInsightCard({
                     weight="bold"
                   />
                 </View>
-                <Text style={styles(theme).listItemText}>{item}</Text>
+                <Text style={s.listItemText}>{item}</Text>
               </View>
             ))}
           </View>
@@ -225,26 +227,26 @@ export function AiInsightCard({
 
         {/* Risk Flags */}
         {insight.risk_flags.length > 0 && (
-          <View testID="ai-insight-risk-flags" style={styles(theme).section}>
-            <View style={styles(theme).riskHeader}>
+          <View testID="ai-insight-risk-flags" style={s.section}>
+            <View style={s.riskHeader}>
               <KaswiseIcon
                 name="insight"
                 size={16}
                 color={theme.colors.warning}
                 weight="bold"
               />
-              <Text style={styles(theme).riskTitle}>Perhatian</Text>
+              <Text style={s.riskTitle}>Perhatian</Text>
             </View>
             {insight.risk_flags.map((flag, idx) => (
-              <View key={`rf-${idx}`} style={styles(theme).riskItem}>
-                <Text style={styles(theme).riskText}>{flag}</Text>
+              <View key={`rf-${idx}`} style={s.riskItem}>
+                <Text style={s.riskText}>{flag}</Text>
               </View>
             ))}
           </View>
         )}
 
         {/* Timestamp */}
-        <Text testID="ai-insight-timestamp" style={styles(theme).timestamp}>
+        <Text testID="ai-insight-timestamp" style={s.timestamp}>
           {formatTimestamp(insight.generated_at)}
         </Text>
 
@@ -255,9 +257,9 @@ export function AiInsightCard({
           accessibilityRole="button"
           accessibilityLabel="Refresh insight"
           style={({ pressed }) => [
-            styles(theme).ctaButton,
-            styles(theme).ctaButtonOutline,
-            pressed && styles(theme).ctaButtonPressed,
+            s.ctaButton,
+            s.ctaButtonOutline,
+            pressed && s.ctaButtonPressed,
           ]}
         >
           <KaswiseIcon
@@ -266,7 +268,7 @@ export function AiInsightCard({
             color={theme.colors.brandPrimary}
             weight="bold"
           />
-          <Text style={styles(theme).ctaButtonOutlineText}>Refresh</Text>
+          <Text style={s.ctaButtonOutlineText}>Refresh</Text>
         </Pressable>
       </View>
     );
