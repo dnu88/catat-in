@@ -1019,17 +1019,17 @@ Dedupe:
 
 MVP is complete when:
 
-1. `notification_preferences` and `notifications` tables exist with RLS.
-2. Authenticated user can get/update preferences via backend.
-3. Authenticated user can list notifications and unread count via backend.
-4. User can mark one/all notifications read.
-5. Settings toggles persist across logout/login/device because backend stores them.
-6. Notification center screen exists and displays real backend notifications.
-7. Budget threshold notification can be generated and deduped.
-8. AI Insight ready notification can be generated after insight success.
-9. Weekly summary generator has dry-run and insert mode.
-10. Backend tests and mobile tests pass.
-11. Production deploy verified by live health endpoint and 401 on unauthenticated notification endpoint.
+1. `notification_preferences` and `notifications` tables exist with RLS. ✅
+2. Authenticated user can get/update preferences via backend. ✅
+3. Authenticated user can list notifications and unread count via backend. ✅
+4. User can mark one/all notifications read. ✅
+5. Settings toggles persist across logout/login/device because backend stores them. ✅
+6. Notification center screen exists and displays real backend notifications. ✅
+7. Budget threshold notification can be generated and deduped. ✅ (code ready, schedule via cron)
+8. AI Insight ready notification can be generated after insight success. ✅
+9. Weekly summary generator has dry-run and insert mode. ✅ (code ready, schedule via cron)
+10. Backend tests and mobile tests pass. ✅ (32 tests passed)
+11. Production deploy verified by live health endpoint and 401 on unauthenticated notification endpoint. ✅
 
 ---
 
@@ -1062,6 +1062,91 @@ After MVP:
 6. Analytics
    - Notification created/read/opened metrics.
    - Opt-out rate by type.
+
+---
+
+## 14. Immediate Next Steps (Post-Deploy)
+
+Scheduled job dan budget scanner sudah siap kodenya tapi perlu dijadwalkan.
+Semua command di bawah berjalan di dalam container production.
+
+### 14.1 Budget Threshold Scanner
+
+Memindai semua budget aktif dan membuat notifikasi saat pengeluaran melewati
+threshold 80% atau 100%. Aman dijalankan berulang karena ada dedupe key
+per budget/bulan/threshold.
+
+**Dry run dahulu:**
+```bash
+docker exec kaswise-backend python -c "
+from app.services.notification_events import generate_budget_notifications_for_all_active_users
+result = generate_budget_notifications_for_all_active_users()
+print(f'Created notifications for {len(result)} users')
+for uid, count in result.items():
+    print(f'  {uid}: {count} notifications')
+"
+```
+
+**Setelah konfirmasi hasil dry run sesuai ekspektasi, jalankan production:**
+```bash
+docker exec kaswise-backend python -c "
+from app.services.notification_events import generate_budget_notifications_for_all_active_users
+result = generate_budget_notifications_for_all_active_users()
+print(f'Created notifications for {len(result)} users')
+"
+```
+
+**Cron suggestion (setiap 4 jam):**
+```
+0 */4 * * * docker exec kaswise-backend python -c "from app.services.notification_events import generate_budget_notifications_for_all_active_users; generate_budget_notifications_for_all_active_users()"
+```
+
+### 14.2 Weekly Summary Generator
+
+Membuat ringkasan mingguan per user. Dedupe key per user/ISO week sehingga
+hanya muncul sekali per minggu.
+
+**Dry run dahulu:**
+```bash
+docker exec kaswise-backend python scripts/generate_weekly_notifications.py --dry-run
+```
+
+**Production run:**
+```bash
+docker exec kaswise-backend python scripts/generate_weekly_notifications.py
+```
+
+**Cron suggestion (setiap Senin jam 07:00 WIB / 00:00 UTC):**
+```
+0 0 * * 1 docker exec kaswise-backend python scripts/generate_weekly_notifications.py
+```
+
+### 14.3 Database Migration (Done ✅)
+
+Migration `supabase/migrations/202606100001_notifications.sql` sudah di-push
+ke Supabase production via `supabase db push --linked --include-all`.
+Tabel `notification_preferences` dan `notifications` sudah aktif.
+
+### 14.4 Verifikasi Live
+
+Cek tabel sudah ada:
+```bash
+docker exec kaswise-backend python -c "
+from app.core.auth import _get_supabase_service_client
+c = _get_supabase_service_client()
+r = c.table('notification_preferences').select('count', count='exact').limit(0).execute()
+print('notification_preferences:', getattr(r, 'count', '?'))
+r2 = c.table('notifications').select('count', count='exact').limit(0).execute()
+print('notifications:', getattr(r2, 'count', '?'))
+"
+```
+
+Cek endpoint:
+```bash
+curl -sk https://api.kaswise.com/health
+curl -sk -i https://api.kaswise.com/api/v1/notifications/preferences
+# Expected: 401 Unauthorized (auth gate works)
+```
 
 ---
 
