@@ -14,7 +14,7 @@ Panduan untuk Claude Code agar langsung paham konteks project tanpa eksplorasi u
 catat-in/
 ├── apps/web/          # [LEGACY] React + Vite (maintenance-only)
 ├── apps/mobile/       # [ACTIVE] Expo (Android/iOS/Web PWA) — mobile-first
-├── backend/           # [LEGACY] FastAPI Python (maintenance-only)
+├── backend/           # FastAPI Python — AI, Import, Webhook, Midtrans, Notifications
 └── packages/shared/   # TypeScript types bersama
 ```
 
@@ -191,6 +191,16 @@ Store transaksi di dashboard hanya mengambil 5 transaksi terakhir (untuk list "t
 | `backend/app/api/v1/webhooks.py`         | Endpoint webhook handler                           |
 | `backend/app/core/auth.py`               | Verifikasi Supabase JWT                            |
 | `backend/app/services/ai_service.py`     | Integrasi Claude API (chat extract, OCR, insights) |
+| `backend/app/services/ai_insight_data.py` | Query Supabase + aggregasi untuk AI insight        |
+
+### Mobile State & UI
+
+| File | Peran |
+|------|-------|
+| `apps/mobile/src/state/report-period.tsx` | Shared report period state + provider |
+| `apps/mobile/src/components/date/IOSWheelDatePicker.tsx` | Date picker custom period |
+| `apps/mobile/src/components/ai/AiInsightCard.tsx` | Card insight AI di Reports |
+| `apps/mobile/src/services/ai-insights.ts` | Client service AI insight |
 | `backend/app/services/import_service.py` | Parser CSV/Excel bank statement                    |
 
 ### Shared
@@ -228,6 +238,86 @@ Auth: Supabase JWT diverifikasi di `backend/app/core/auth.py`.
 
 - Midtrans payment integration sudah ada scaffolding tapi belum fully implemented
 - Mobile app terkoneksi langsung ke Supabase; backend FastAPI hanya untuk AI/Import/Webhook
+- Backend test `test_ai_insight.py` gagal karena `TrustedHostMiddleware` + TestClient (pre-existing, bukan regresi)
+
+## Sistem Report Period
+
+Mobile punya sistem shared report period (`apps/mobile/src/state/report-period.tsx`) yang menyinkronkan periode aktif antar halaman Dashboard, Reports, dan Transactions.
+
+**Tipe periode:**
+| Tipe | Deskripsi |
+|------|-----------|
+| `month` / `3month` / `6month` / `year` | Preset kalender |
+| `custom` | Rentang tanggal bebas (iOS wheel picker) |
+| `saved_rule` | Aturan siklus bulanan tersimpan (misal: Gajian 25) |
+
+**Provider:** `ReportPeriodProvider` di `apps/mobile/app/_layout.tsx` — semua screen bisa pakai `useReportPeriod()`.
+
+**File kunci:**
+- `apps/mobile/src/state/report-period.tsx` — state, provider, helper (`buildReportPeriod`, `isDateInReportPeriod`, `formatReportPeriodLabel`)
+- `apps/mobile/src/components/date/IOSWheelDatePicker.tsx` — date picker ala iPhone untuk custom period
+
+## AI Insight (Period-Aware)
+
+AI Insight (`POST /api/v1/ai/insight`) sekarang mengikuti active report period. Jika user memilih custom period 25 Mei - 24 Juni, backend query transaksi di rentang tersebut.
+
+**Flow:**
+1. Frontend `getAiInsight(supabase, type, startDate, endDate)` kirim `type` + `start_date`/`end_date`
+2. Backend `build_ai_insight_context(user_id, period, start_date, end_date)` query Supabase dengan rentang custom
+3. Claude menghasilkan insight JSON terstruktur
+
+**File kunci:**
+- `apps/mobile/src/services/ai-insights.ts` — client service
+- `backend/app/api/v1/ai.py` — endpoint + `InsightRequest` (terima `start_date`/`end_date`)
+- `backend/app/services/ai_service.py` — Anthropic call (`max_tokens=2048`, jangan dikurangi)
+- `backend/app/services/ai_insight_data.py` — query Supabase + aggregasi data
+
+**⚠️ Penting:** `max_tokens=2048` di `generate_financial_insight()` — kalau kurang, JSON terpotong dan insight gagal.
+
+## Sistem Pengaman Deploy (3-Lapis)
+
+### 1. Bundle marker check
+- File: `apps/mobile/scripts/required-markers.json` (20 testID wajib)
+- Script: `apps/mobile/scripts/check-bundle-markers.mjs`
+- Command: `pnpm --filter mobile check:bundle`
+- Terintegrasi di `deploy:pwa` — deploy gagal kalau marker hilang
+
+### 2. Pre-push git hook
+- File: `.githooks/pre-push`
+- Jalan otomatis setiap `git push`, cek: type-check → test → marker
+- Bypass: `SKIP_MOBILE_CHECK=1 git push`
+- Tracked di repo via `git config core.hooksPath .githooks`
+
+### 3. Cron monitor (Hermes)
+- Job ID: `f6c49fb9c6db` — `kaswise-pwa-marker-guard`
+- Jadwal: setiap hari jam 09:00 WIB
+- Cek marker di bundle live, alert ke Telegram IR Assistant kalau ada yang hilang
+- Silent kalau semua OK
+
+### 4. CI/CD (GitHub Actions)
+- `.github/workflows/ci.yml` — trigger di `feat/*` dan PR ke `main`
+- Job `mobile-quality-gate`: type-check → test → export → marker audit
+
+### Pipeline deploy aman:
+```bash
+pnpm --filter mobile predeploy   # type-check + test + check:bundle
+pnpm --filter mobile deploy:pwa  # deploy + auto marker guard
+```
+
+## Catatan UI/UX
+
+- **Toggle tema**: hanya di dashboard header (`home-theme-toggle`), TIDAK di Settings
+- **Hide/view nominal**: di dashboard header (`home-amount-visibility-toggle`)
+- **Saved report period rules**: di Reports tab, dengan modal kelola (rename/delete)
+- **iOS date wheel**: muncul saat pilih "Kustom" di Reports → pilih start + end date
+
+## Script Kunci
+
+| Script | Peran |
+|--------|-------|
+| `apps/mobile/scripts/deploy-pwa.mjs` | Deploy PWA + auto marker guard |
+| `apps/mobile/scripts/check-bundle-markers.mjs` | Verifikasi marker di bundle |
+| `apps/mobile/scripts/required-markers.json` | Daftar 20 testID wajib |
 
 ## Cara Menjalankan
 
@@ -235,15 +325,20 @@ Auth: Supabase JWT diverifikasi di `backend/app/core/auth.py`.
 # Install dependencies
 pnpm install
 
-# Web frontend (dari root atau apps/web)
-pnpm --filter web dev
+# Mobile
+cd apps/mobile
+npx expo start
+
+# Mobile PWA (build + deploy)
+pnpm --filter mobile export:pwa
+pnpm --filter mobile predeploy    # quality gate
+pnpm --filter mobile deploy:pwa   # deploy + auto marker guard
 
 # Backend Python
 cd backend
 pip install -r requirements.txt
 uvicorn main:app --reload
 
-# Mobile
-cd apps/mobile
-npx expo start
+# Backend Docker (production)
+docker compose -f docker-compose.production.yml --env-file .env.production up -d --build backend
 ```
