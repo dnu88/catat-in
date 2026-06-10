@@ -148,26 +148,35 @@ def _compute_totals(rows: list[dict]) -> tuple[int, float, float, float]:
     return transaction_count, income_total, expense_total, net_total
 
 
-def build_ai_insight_context(user_id: str, period: str = "monthly") -> dict | None:
+def build_ai_insight_context(
+    user_id: str,
+    period: str = "monthly",
+    start_date: str | None = None,
+    end_date: str | None = None,
+) -> dict | None:
     """Return compact, privacy-conscious financial context for AI insight.
 
     Args:
         user_id: Supabase user UUID.
-        period: Time window identifier. For MVP only 'monthly' is implemented;
-                unknown values fall back to monthly.
+        period: Time window identifier (for labeling only when date range given).
+        start_date: Override period start (YYYY-MM-DD). If provided, skips
+                    calendar-based boundary computation.
+        end_date: Override period end (YYYY-MM-DD).
 
     Returns:
         dict with aggregated data, or None if Supabase client is unavailable.
-
-    The returned dict NEVER contains raw catatan/notes or full transaction lists
-    — only aggregate statistics suitable as LLM context.
     """
     client = _get_supabase_service_client()
     if client is None:
         return None
 
     now = _now()
-    period_start, period_end = _period_boundaries(now, period)
+
+    if start_date and end_date:
+        period_start = start_date
+        period_end = end_date
+    else:
+        period_start, period_end = _period_boundaries(now, period)
 
     # Query current period
     rows = _fetch_transactions(client, user_id, period_start, period_end)

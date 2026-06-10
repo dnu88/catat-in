@@ -157,3 +157,20 @@ test("getAiInsight maps UI month filter to backend monthly period", async () => 
   const [, opts] = (global.fetch as jest.Mock).mock.calls[0];
   expect(JSON.parse(opts.body)).toEqual({ period: "monthly" });
 });
+
+test("getAiInsight sends start_date and end_date when provided", async () => {
+  global.fetch = jest.fn(async () => ({
+    ok: true,
+    status: 200,
+    json: async () => mockAiInsightResponse,
+  })) as any;
+
+  await getAiInsight(fakeSupabase, "custom", "2026-05-25", "2026-06-24");
+
+  const [, opts] = (global.fetch as jest.Mock).mock.calls[0];
+  expect(JSON.parse(opts.body)).toEqual({
+    period: "custom",
+    start_date: "2026-05-25",
+    end_date: "2026-06-24",
+  });
+});

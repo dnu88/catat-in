@@ -295,7 +295,12 @@ export default function ReportsScreen() {
 		setAiInsightLoading(true);
 		setAiInsightError(null);
 		try {
-			const result = await getAiInsight(supabase, periodFilter);
+			const result = await getAiInsight(
+				supabase,
+				activePeriod.type,
+				activePeriod.startDate,
+				activePeriod.endDate,
+			);
 			setAiInsight(result);
 		} catch (err) {
 			if (err instanceof AiInsightPremiumRequiredError) {
@@ -306,7 +311,7 @@ export default function ReportsScreen() {
 		} finally {
 			setAiInsightLoading(false);
 		}
-	}, [isPremium, router, supabase, periodFilter]);
+	}, [isPremium, router, supabase, activePeriod]);
 
 	const otherCategoryPercent = dynamicCategories.find(
 		(category) => category.id === "other_expenses" || getCategoryCanonicalId(category.label) === "other_expenses",

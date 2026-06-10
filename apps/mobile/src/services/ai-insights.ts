@@ -30,15 +30,21 @@ function toBackendInsightPeriod(period: string) {
 export async function getAiInsight(
   supabase: SupabaseClient,
   period: string = "monthly",
+  startDate?: string,
+  endDate?: string,
 ): Promise<AiInsight> {
   const backendPeriod = toBackendInsightPeriod(period);
+  const body: Record<string, string> = { period: backendPeriod };
+  if (startDate) body.start_date = startDate;
+  if (endDate) body.end_date = endDate;
+
   const res = await fetch(`${getApiBaseUrl()}/api/v1/ai/insight`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       ...(await authHeader(supabase)),
     },
-    body: JSON.stringify({ period: backendPeriod }),
+    body: JSON.stringify(body),
   });
 
   if (res.status === 402 || res.status === 403) {

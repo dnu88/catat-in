@@ -34,6 +34,8 @@ class ChatInputRequest(BaseModel):
 
 class InsightRequest(BaseModel):
     period: str = "monthly"
+    start_date: str | None = None
+    end_date: str | None = None
 
 
 class LegacyProcessRequest(BaseModel):
@@ -114,7 +116,10 @@ async def analyze_receipt(
 async def get_financial_insight(
     body: InsightRequest, current_user=Depends(get_current_user)
 ):
-    context = build_ai_insight_context(current_user["user_id"], body.period)
+    context = build_ai_insight_context(
+        current_user["user_id"], body.period,
+        start_date=body.start_date, end_date=body.end_date,
+    )
 
     try:
         insight = await generate_financial_insight(context, body.period)
