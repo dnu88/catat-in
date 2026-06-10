@@ -1065,14 +1065,18 @@ After MVP:
 
 ---
 
-## 14. Immediate Next Steps (Post-Deploy)
+## 14. Immediate Next Steps (Post-Deploy) — ✅ DONE 2026-06-10
 
-Scheduled job dan budget scanner sudah siap kodenya tapi perlu dijadwalkan.
-Semua command di bawah berjalan di dalam container production.
+Scheduled job dan budget scanner sudah siap dan dijadwalkan via Hermes cron.
 
-### 14.1 Budget Threshold Scanner
+### 14.1 Budget Threshold Scanner ✅
 
-Memindai semua budget aktif dan membuat notifikasi saat pengeluaran melewati
+**Status:** Active — Hermes cron job `6475dced5997` (`kaswise-budget-threshold-scanner`)
+- Jadwal: setiap 4 jam (`0 */4 * * *`)
+- Delivery: local (silent)
+- Dry run verified: `generate_budget_notifications_for_all_active_users()` berjalan tanpa error
+
+Command manual (untuk debug):
 threshold 80% atau 100%. Aman dijalankan berulang karena ada dedupe key
 per budget/bulan/threshold.
 
@@ -1101,10 +1105,17 @@ print(f'Created notifications for {len(result)} users')
 0 */4 * * * docker exec kaswise-backend python -c "from app.services.notification_events import generate_budget_notifications_for_all_active_users; generate_budget_notifications_for_all_active_users()"
 ```
 
-### 14.2 Weekly Summary Generator
+### 14.2 Weekly Summary Generator ✅
+
+**Status:** Active — Hermes cron job `c97b81ff6645` (`kaswise-weekly-summary`)
+- Jadwal: setiap Senin jam 07:00 WIB (`0 7 * * 1`)
+- Delivery: local (silent)
+- Dry run verified: 3 users detected, 1-8 transactions each
 
 Membuat ringkasan mingguan per user. Dedupe key per user/ISO week sehingga
 hanya muncul sekali per minggu.
+
+Command manual (untuk debug):
 
 **Dry run dahulu:**
 ```bash
