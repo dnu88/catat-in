@@ -18,6 +18,7 @@ from app.services.ai_service import (
     generate_financial_insight,
 )
 from app.services.ai_insight_data import build_ai_insight_context
+from app.services.notification_service import create_notification
 
 
 router = APIRouter()
@@ -121,6 +122,23 @@ async def get_financial_insight(
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY, detail=str(exc)
         ) from exc
+
+    # Fire-and-forget: create AI Insight ready notification.
+    # Failure must not break the insight response.
+    try:
+        create_notification(
+            current_user["user_id"],
+            "ai_insight_ready",
+            "Insight AI siap dibaca",
+            "Ringkasan AI untuk periode ini sudah siap.",
+            data={
+                "period": body.period,
+                "target_path": "/(tabs)/reports",
+            },
+            dedupe_key=f"ai_insight_ready:{current_user['user_id']}:{body.period}:{insight.get('generated_at', '')[:10]}",
+        )
+    except Exception:
+        pass
 
     return insight
 

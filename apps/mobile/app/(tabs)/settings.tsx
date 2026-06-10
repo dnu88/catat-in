@@ -15,6 +15,7 @@ import { useTheme } from "../../src/theme/theme-context";
 import { useI18n } from "../../src/i18n/i18n-context";
 import { useEntitlements } from "../../src/hooks/useEntitlements";
 import { planStatusLabel } from "../../src/utils/plan-labels";
+import { getNotificationPreferences, updateNotificationPreferences, type NotificationPreferences } from "../../src/services/notifications";
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
@@ -388,6 +389,8 @@ export default function SettingsScreen() {
 	const [dailyReminder, setDailyReminder] = useState(true);
 	const [billReminder, setBillReminder] = useState(true);
 	const [budgetAlert, setBudgetAlert] = useState(true);
+	const [notifPrefs, setNotifPrefs] = useState<NotificationPreferences | null>(null);
+	const [notifPrefsLoading, setNotifPrefsLoading] = useState(false);
 	const [profileLoading, setProfileLoading] = useState(true);
 	const [profileName, setProfileName] = useState("");
 	const [profileEmail, setProfileEmail] = useState("");
@@ -465,21 +468,36 @@ export default function SettingsScreen() {
 	useEffect(() => {
 		let active = true;
 		const loadNotifications = async () => {
-			const [daily, bill, budget] = await AsyncStorage.multiGet([
-				NOTIFICATION_KEYS.dailyReminder,
-				NOTIFICATION_KEYS.billReminder,
-				NOTIFICATION_KEYS.budgetAlert,
-			]);
-			if (!active) return;
-			if (daily[1] !== null) setDailyReminder(daily[1] === "true");
-			if (bill[1] !== null) setBillReminder(bill[1] === "true");
-			if (budget[1] !== null) setBudgetAlert(budget[1] === "true");
+			// Load from backend first.
+			try {
+				setNotifPrefsLoading(true);
+				const prefs = await getNotificationPreferences(supabase);
+				if (active) {
+					setNotifPrefs(prefs);
+					setDailyReminder(prefs.daily_reminder_enabled);
+					setBillReminder(prefs.bill_reminder_enabled);
+					setBudgetAlert(prefs.budget_alert_enabled);
+				}
+			} catch {
+				// Fallback: load from legacy AsyncStorage (migration path).
+				const [daily, bill, budget] = await AsyncStorage.multiGet([
+					NOTIFICATION_KEYS.dailyReminder,
+					NOTIFICATION_KEYS.billReminder,
+					NOTIFICATION_KEYS.budgetAlert,
+				]);
+				if (!active) return;
+				if (daily[1] !== null) setDailyReminder(daily[1] === "true");
+				if (bill[1] !== null) setBillReminder(bill[1] === "true");
+				if (budget[1] !== null) setBudgetAlert(budget[1] === "true");
+			} finally {
+				if (active) setNotifPrefsLoading(false);
+			}
 		};
 		loadNotifications();
 		return () => {
 			active = false;
 		};
-	}, []);
+	}, [supabase]);
 
 	const placeholderName = language === "id" ? "Memuat..." : "Loading...";
 	const fallbackName = profileEmail
@@ -513,7 +531,7 @@ export default function SettingsScreen() {
 	const toggleDailyReminder = () => {
 		setDailyReminder((v) => {
 			const next = !v;
-			AsyncStorage.setItem(NOTIFICATION_KEYS.dailyReminder, String(next));
+			updateNotificationPreferences(supabase, { daily_reminder_enabled: next }).catch(() => {});
 			return next;
 		});
 	};
@@ -521,7 +539,7 @@ export default function SettingsScreen() {
 	const toggleBillReminder = () => {
 		setBillReminder((v) => {
 			const next = !v;
-			AsyncStorage.setItem(NOTIFICATION_KEYS.billReminder, String(next));
+			updateNotificationPreferences(supabase, { bill_reminder_enabled: next }).catch(() => {});
 			return next;
 		});
 	};
@@ -529,9 +547,16 @@ export default function SettingsScreen() {
 	const toggleBudgetAlert = () => {
 		setBudgetAlert((v) => {
 			const next = !v;
-			AsyncStorage.setItem(NOTIFICATION_KEYS.budgetAlert, String(next));
+			updateNotificationPreferences(supabase, { budget_alert_enabled: next }).catch(() => {});
 			return next;
 		});
+	};
+
+	const toggleNotifEnabled = () => {
+		if (!notifPrefs) return;
+		const next = !notifPrefs.enabled;
+		setNotifPrefs({ ...notifPrefs, enabled: next });
+		updateNotificationPreferences(supabase, { enabled: next }).catch(() => {});
 	};
 
 	const openProfileSheet = () => {
@@ -1253,10 +1278,28 @@ export default function SettingsScreen() {
 							: "Manage important reminders."}
 					</Text>
 
+					{notifPrefs != null ? (
+						<ToggleRow
+							icon="notifications"
+							tone="primary"
+							title={language === "id" ? "Notifikasi Aktif" : "Notifications On"}
+							helper={
+								language === "id"
+									? "Matikan semua notifikasi sekaligus"
+									: "Turn off all notifications at once"
+							}
+							value={notifPrefs.enabled}
+							onToggle={toggleNotifEnabled}
+							theme={theme}
+						/>
+					) : notifPrefsLoading ? (
+						<ActivityIndicator style={{ marginTop: 6 }} />
+					) : null}
+
 					<ToggleRow
 						icon="chart"
 						tone="info"
-						title={language === "id" ? "Ringkasan Harian" : "Daily Summary"}
+						title={language === "id" ? "Pengingat Harian" : "Daily Summary"}
 						helper={
 							language === "id"
 								? "Notifikasi kondisi keuangan setiap malam"
