@@ -274,6 +274,34 @@ AI Insight (`POST /api/v1/ai/insight`) sekarang mengikuti active report period. 
 
 **⚠️ Penting:** `max_tokens=2048` di `generate_financial_insight()` — kalau kurang, JSON terpotong dan insight gagal.
 
+## Sistem Notifikasi
+
+Fitur notifikasi in-app sudah MVP complete. Database, API, mobile screen, dan settings sync ke backend semua aktif.
+
+**Tipe notifikasi aktif:**
+| Tipe | Trigger | Dedupe |
+|------|---------|--------|
+| `ai_insight_ready` | Setelah AI Insight berhasil dibuat | per user/periode/tanggal |
+| `budget_threshold` | Budget usage lewat 80% atau 100% | per budget/bulan/threshold |
+| `weekly_summary` | Ringkasan mingguan otomatis | per user/ISO week |
+
+**File kunci:**
+- `backend/app/api/v1/notifications.py` — API endpoints (preferences, list, unread, read)
+- `backend/app/models/notifications.py` — Pydantic models
+- `backend/app/services/notification_service.py` — CRUD + preferences
+- `backend/app/services/notification_events.py` — Event generator (budget, weekly)
+- `backend/scripts/generate_weekly_notifications.py` — Weekly summary script
+- `apps/mobile/app/notifications.tsx` — Notification center screen
+- `apps/mobile/src/services/notifications.ts` — Mobile client service
+- `supabase/migrations/202606100001_notifications.sql` — DB migration
+
+**Scheduled jobs:**
+- Budget scanner: Hermes cron `6475dced5997` setiap 4 jam
+- Weekly summary: Hermes cron `c97b81ff6645` setiap Senin 07:00 WIB
+- Dry run weekly: `docker exec kaswise-backend python3 scripts/generate_weekly_notifications.py --dry-run`
+
+**Endpoint:** Semua di `/api/v1/notifications/*` — auth required (401 tanpa token).
+
 ## Sistem Pengaman Deploy (3-Lapis)
 
 ### 1. Bundle marker check
@@ -289,10 +317,12 @@ AI Insight (`POST /api/v1/ai/insight`) sekarang mengikuti active report period. 
 - Tracked di repo via `git config core.hooksPath .githooks`
 
 ### 3. Cron monitor (Hermes)
-- Job ID: `f6c49fb9c6db` — `kaswise-pwa-marker-guard`
-- Jadwal: setiap hari jam 09:00 WIB
-- Cek marker di bundle live, alert ke Telegram IR Assistant kalau ada yang hilang
-- Silent kalau semua OK
+
+| Job ID | Name | Jadwal | Fungsi |
+|--------|------|--------|--------|
+| `f6c49fb9c6db` | `kaswise-pwa-marker-guard` | Setiap hari 09:00 | Cek marker bundle live, alert kalau hilang |
+| `6475dced5997` | `kaswise-budget-threshold-scanner` | Setiap 4 jam | Scan budget, buat notifikasi threshold 80%/100% |
+| `c97b81ff6645` | `kaswise-weekly-summary` | Setiap Senin 07:00 | Generate ringkasan mingguan per user |
 
 ### 4. CI/CD (GitHub Actions)
 - `.github/workflows/ci.yml` — trigger di `feat/*` dan PR ke `main`
