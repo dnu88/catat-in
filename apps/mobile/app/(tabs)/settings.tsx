@@ -1280,7 +1280,7 @@ export default function SettingsScreen() {
 
 					{notifPrefs != null ? (
 						<ToggleRow
-							icon="notifications"
+							icon="notification"
 							tone="primary"
 							title={language === "id" ? "Notifikasi Aktif" : "Notifications On"}
 							helper={

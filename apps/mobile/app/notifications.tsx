@@ -9,15 +9,15 @@ import {
 import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useTheme } from "../../src/theme/theme-context";
-import { useSupabase } from "../../src/lib/supabase";
-import { KaswiseIcon } from "../../src/components/icons/kaswise-icons";
+import { useTheme } from "../src/theme/theme-context";
+import { useSupabase } from "../src/lib/supabase";
+import { KaswiseIcon } from "../src/components/icons/kaswise-icons";
 import {
   listNotifications,
   markNotificationRead,
   markAllNotificationsRead,
   type NotificationItem,
-} from "../../src/services/notifications";
+} from "../src/services/notifications";
 
 function formatRelativeTime(isoString: string): string {
   const date = new Date(isoString);
