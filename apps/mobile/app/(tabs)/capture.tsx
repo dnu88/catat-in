@@ -27,6 +27,7 @@ import { createEnvelopeAllocation } from "../../src/services/budget-envelopes";
 import { createTransaction } from "../../src/services/transactions";
 import {
 	analyzeReceiptImage,
+	analyzeTransactionText,
 	getReceiptAuthSession,
 	receiptExtractionToDraft,
 	uploadReceiptImage,
@@ -89,7 +90,7 @@ export default function CaptureScreen() {
 	const { language } = useI18n();
 	const router = useRouter();
 	const { activeContext } = useFinanceContext();
-	const { data: ent } = useEntitlements();
+	const { data: ent, refresh: refreshEntitlements } = useEntitlements();
 	const isEn = language === "en";
 	const tx = useMemo(
 		() =>
@@ -279,6 +280,9 @@ export default function CaptureScreen() {
 				return;
 			}
 
+			await analyzeTransactionText(supabase, value);
+			void refreshEntitlements();
+
 			const categoriesForClassification =
 				categoryOptions.length > 0
 					? categoryOptions
@@ -421,6 +425,7 @@ export default function CaptureScreen() {
 			}
 
 			const extraction = await analyzeReceiptImage(supabase, receiptAsset);
+			void refreshEntitlements();
 			const uploadedPath = await uploadReceiptImageBestEffort(userId, receiptAsset);
 			const draft = receiptExtractionToDraft(extraction);
 			if (!draft) {

@@ -10,7 +10,7 @@ jest.mock("../src/components/ui", () => ({ IconBubble: () => null }));
 jest.mock("../src/components/icons/kaswise-icons", () => ({ KaswiseIcon: () => null }));
 jest.mock("../src/services/budget-envelopes", () => ({ createEnvelopeAllocation: jest.fn() }));
 jest.mock("../src/services/transactions", () => ({ createTransaction: jest.fn() }));
-jest.mock("../src/services/receipt-intake", () => ({ analyzeReceiptImage: jest.fn(), getReceiptAuthSession: jest.fn(), receiptExtractionToDraft: jest.fn(), uploadReceiptImage: jest.fn() }));
+jest.mock("../src/services/receipt-intake", () => ({ analyzeReceiptImage: jest.fn(), analyzeTransactionText: jest.fn(), getReceiptAuthSession: jest.fn(), receiptExtractionToDraft: jest.fn(), uploadReceiptImage: jest.fn() }));
 jest.mock("../src/services/categories", () => ({ listCategories: jest.fn(async () => []) }));
 jest.mock("../src/services/wallets", () => ({ listWallets: jest.fn(async () => []) }));
 jest.mock("../src/state/finance-context", () => ({ useFinanceContext: () => ({ activeContext: { type: "personal" }, canCreate: true }) }));

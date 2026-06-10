@@ -69,8 +69,7 @@ async def chat_input(body: ChatInputRequest, current_user=Depends(get_current_us
     except RuntimeError as exc:
         raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(exc)) from exc
 
-    if result.get("transactions"):
-        record_use(current_user["user_id"], state["period_ym"], "chat")
+    record_use(current_user["user_id"], state["period_ym"], "chat")
     return result
 
 
@@ -106,8 +105,7 @@ async def analyze_receipt(
     except RuntimeError as exc:
         raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(exc)) from exc
 
-    if result.get("readable") or result.get("total_amount"):
-        record_use(current_user["user_id"], state["period_ym"], "photo")
+    record_use(current_user["user_id"], state["period_ym"], "photo")
     return result
 
 
@@ -154,8 +152,7 @@ async def legacy_process(
         top_tx = tx_list[0] if tx_list else {}
         confidence = float(top_tx.get("confidence") or 0.0)
 
-        if tx_list:
-            record_use(current_user["user_id"], state["period_ym"], "chat")
+        record_use(current_user["user_id"], state["period_ym"], "chat")
 
         if confidence >= 0.8:
             return {
@@ -208,8 +205,7 @@ async def legacy_process(
             ) from exc
         confidence = float(analyzed.get("confidence") or 0.0)
 
-        if analyzed.get("readable") or analyzed.get("total_amount"):
-            record_use(current_user["user_id"], state["period_ym"], "photo")
+        record_use(current_user["user_id"], state["period_ym"], "photo")
 
         return {
             "transaction": {

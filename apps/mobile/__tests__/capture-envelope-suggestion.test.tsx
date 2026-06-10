@@ -31,6 +31,7 @@ const mockLaunchImageLibraryAsync = jest.fn(async (..._args: unknown[]) => ({
 const mockGetReceiptAuthSession = jest.fn<Promise<{ access_token: string; user: { id: string } } | null>, unknown[]>(async () => ({ access_token: "token", user: { id: "user-1" } }));
 const mockUploadReceiptImage = jest.fn(async (..._args: unknown[]) => "user-1/receipt.jpg");
 const mockAnalyzeReceiptImage = jest.fn(async (..._args: unknown[]) => ({ total_amount: 125000, merchant: "RM Sederhana", confidence: 0.92 }));
+const mockAnalyzeTransactionText = jest.fn(async (..._args: unknown[]) => ({ transactions: [{ amount: 25000 }] }));
 const mockReceiptExtractionToDraft = jest.fn((..._args: unknown[]) => ({
 	amount: 125000,
 	transactionType: "expense",
@@ -107,6 +108,7 @@ jest.mock("../src/services/receipt-intake", () => ({
 	getReceiptAuthSession: (...args: unknown[]) => mockGetReceiptAuthSession(...args),
 	uploadReceiptImage: (...args: unknown[]) => mockUploadReceiptImage(...args),
 	analyzeReceiptImage: (...args: unknown[]) => mockAnalyzeReceiptImage(...args),
+	analyzeTransactionText: (...args: unknown[]) => mockAnalyzeTransactionText(...args),
 	receiptExtractionToDraft: (...args: unknown[]) => mockReceiptExtractionToDraft(...args),
 }));
 
@@ -163,6 +165,7 @@ describe("Capture envelope suggestion", () => {
 		mockGetReceiptAuthSession.mockClear();
 		mockUploadReceiptImage.mockClear();
 		mockAnalyzeReceiptImage.mockClear();
+		mockAnalyzeTransactionText.mockClear();
 		mockReceiptExtractionToDraft.mockClear();
 		mockInsert.mockImplementation((payload) => ({
 			select: () => ({

@@ -132,6 +132,12 @@ async function readErrorDetail(response: Response) {
 		const payload = await response.json();
 		const detail = (payload as { detail?: unknown }).detail;
 		if (typeof detail === "string" && detail.trim()) return detail.trim();
+		if (detail && typeof detail === "object") {
+			const typed = detail as { reason?: unknown; feature?: unknown; limit?: unknown; used?: unknown };
+			if (typed.reason === "premium_only") return "Fitur ini hanya tersedia untuk pengguna Premium.";
+			if (typed.reason === "quota_exhausted") return "Kuota AI bulan ini sudah habis. Upgrade Premium untuk melanjutkan.";
+			if (typed.reason === "fair_use") return "Batas pemakaian wajar AI bulan ini sudah tercapai.";
+		}
 	} catch {}
 	return null;
 }
@@ -155,6 +161,36 @@ export async function uploadReceiptImage(
 
 	if (error) throw error;
 	return data.path;
+}
+
+export type TextAiExtraction = {
+	transactions?: unknown[];
+};
+
+export async function analyzeTransactionText(
+	supabase: SupabaseClient,
+	text: string,
+): Promise<TextAiExtraction> {
+	const session = await getReceiptAuthSession(supabase);
+	if (!session?.access_token) {
+		throw new Error("Sesi login tidak ditemukan. Silakan login ulang.");
+	}
+
+	const response = await fetch(`${getApiBaseUrl()}/api/v1/ai/chat`, {
+		method: "POST",
+		headers: {
+			"Content-Type": "application/json",
+			Authorization: `Bearer ${session.access_token}`,
+		},
+		body: JSON.stringify({ text }),
+	});
+
+	if (!response.ok) {
+		const detail = await readErrorDetail(response);
+		throw new Error(detail ?? "Transaksi belum berhasil diproses. Coba lagi sebentar.");
+	}
+
+	return response.json();
 }
 
 export async function analyzeReceiptImage(

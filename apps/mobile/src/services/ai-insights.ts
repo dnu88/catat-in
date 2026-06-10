@@ -22,17 +22,23 @@ export class AiInsightPremiumRequiredError extends Error {
   }
 }
 
+function toBackendInsightPeriod(period: string) {
+  if (period === "month") return "monthly";
+  return period;
+}
+
 export async function getAiInsight(
   supabase: SupabaseClient,
   period: string = "monthly",
 ): Promise<AiInsight> {
+  const backendPeriod = toBackendInsightPeriod(period);
   const res = await fetch(`${getApiBaseUrl()}/api/v1/ai/insight`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       ...(await authHeader(supabase)),
     },
-    body: JSON.stringify({ period }),
+    body: JSON.stringify({ period: backendPeriod }),
   });
 
   if (res.status === 402 || res.status === 403) {

@@ -144,3 +144,16 @@ test("getAiInsight defaults period to monthly when not provided", async () => {
   const [, opts] = (global.fetch as jest.Mock).mock.calls[0];
   expect(JSON.parse(opts.body)).toEqual({ period: "monthly" });
 });
+
+test("getAiInsight maps UI month filter to backend monthly period", async () => {
+  global.fetch = jest.fn(async () => ({
+    ok: true,
+    status: 200,
+    json: async () => mockAiInsightResponse,
+  })) as any;
+
+  await getAiInsight(fakeSupabase, "month");
+
+  const [, opts] = (global.fetch as jest.Mock).mock.calls[0];
+  expect(JSON.parse(opts.body)).toEqual({ period: "monthly" });
+});

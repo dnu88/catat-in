@@ -78,6 +78,21 @@ def record_use(user_id: str, period_ym: str, kind: str) -> None:
     try:
         client.rpc("increment_ai_usage",
                    {"p_user_id": user_id, "p_period": period_ym, "p_kind": kind}).execute()
+        return
     except Exception:
-        # Jangan gagalkan respons hanya karena pencatatan kuota gagal.
+        # Fallback untuk environment/prod yang RPC-nya gagal walau table ada.
+        # Service-role backend tetap menjaga boundary: client tidak bisa write langsung.
         pass
+
+    usage = (client.table("ai_usage").select("chat_count,photo_count")
+             .eq("user_id", user_id).eq("period_ym", period_ym).limit(1).execute())
+    row = usage.data[0] if getattr(usage, "data", None) else None
+    chat_count = int((row or {}).get("chat_count", 0)) + (1 if kind == "chat" else 0)
+    photo_count = int((row or {}).get("photo_count", 0)) + (1 if kind == "photo" else 0)
+    payload = {
+        "user_id": user_id,
+        "period_ym": period_ym,
+        "chat_count": chat_count,
+        "photo_count": photo_count,
+    }
+    client.table("ai_usage").upsert(payload, on_conflict="user_id,period_ym").execute()
