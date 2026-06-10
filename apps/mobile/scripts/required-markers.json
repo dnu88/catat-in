@@ -1,0 +1,22 @@
+[
+  "home-theme-toggle",
+  "home-amount-visibility-toggle",
+  "home-active-period-label",
+  "home-total-balance",
+  "home-monthly-remaining",
+  "home-monthly-expense",
+  "reports-entrance-ai-insight",
+  "reports-entrance-recommendation",
+  "reports-saved-rules-card",
+  "reports-start-date-wheel-picker",
+  "reports-end-date-wheel-picker",
+  "reports-save-period-rule-from-date-modal",
+  "transactions-report-period-label",
+  "transactions-period-row",
+  "notifications-mark-all-read",
+  "notifications-empty",
+  "ai-insight-card",
+  "reports-period-rule-name-input",
+  "home-entrance-hero",
+  "home-entrance-budget"
+]

@@ -1,6 +1,7 @@
 import { cpSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { execSync } from 'node:child_process'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const appDir = resolve(__dirname, '..')
@@ -153,3 +154,15 @@ const safeServerSource = join(repoDir, 'ops', 'pwa', 'server.py')
 if (existsSync(safeServerSource)) cpSync(safeServerSource, join(targetDir, 'server.py'))
 
 console.log(`Deployed mobile PWA dist to ${targetDir}`)
+
+// Automated bundle marker check — prevents deploy of incomplete features
+try {
+  execSync('node scripts/check-bundle-markers.mjs', {
+    cwd: appDir,
+    stdio: 'inherit',
+  })
+  console.log('✅  Bundle marker check passed')
+} catch {
+  console.error('⚠️  Bundle marker check failed — deploy is blocked. Run "pnpm --filter mobile check:bundle" to debug.')
+  process.exit(1)
+}
