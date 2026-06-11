@@ -6,6 +6,7 @@ import { useFocusEffect, useRouter } from "expo-router";
 import { FinanceContextSwitcher } from "../../src/components/FinanceContextSwitcher";
 import { PageEntrance, StaggeredEntrance } from "../../src/components/motion";
 import { KaswiseIcon } from "../../src/components/icons/kaswise-icons";
+import { NotificationBell } from "../../src/components/notifications/NotificationBell";
 import { PROFILE_AVATARS, ProfileAvatarIllustration, readProfileVisualMetadata } from "../../src/components/profile/ProfileAvatar";
 import { EmptyState } from "../../src/components/ui";
 import { useI18n } from "../../src/i18n/i18n-context";
@@ -611,6 +612,7 @@ export default function DashboardScreen() {
 								color={theme.colors.textSecondary}
 							/>
 						</Pressable>
+						<NotificationBell pollIntervalMs={60000} />
 						<View testID="home-avatar" style={styles.avatarWrap}>
 							{profilePhotoUrl ? (
 								<Image
