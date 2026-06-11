@@ -291,21 +291,27 @@ Fitur notifikasi in-app sudah MVP complete. Database, API, mobile screen, dan se
 - `backend/app/services/notification_service.py` — CRUD + preferences
 - `backend/app/services/notification_events.py` — Event generator (budget, weekly)
 - `backend/scripts/generate_weekly_notifications.py` — Weekly summary script
-- `apps/mobile/app/notifications.tsx` — Notification center screen
+- `apps/mobile/app/notifications.tsx` — Notification center screen (i18n bilingual)
+- `apps/mobile/src/components/notifications/NotificationBell.tsx` — Bell icon + badge di dashboard header
 - `apps/mobile/src/services/notifications.ts` — Mobile client service
 - `supabase/migrations/202606100001_notifications.sql` — DB migration
 
 **Scheduled jobs:**
 - Budget scanner: Hermes cron `6475dced5997` setiap 4 jam
 - Weekly summary: Hermes cron `c97b81ff6645` setiap Senin 07:00 WIB
+- PWA marker guard: Hermes cron `f6c49fb9c6db` setiap hari 09:00
 - Dry run weekly: `docker exec kaswise-backend python3 scripts/generate_weekly_notifications.py --dry-run`
+
+**Tests:**
+- Backend: `test_notification_service.py` (19 pass), `test_notifications_api.py` (TrustedHostMiddleware issue, pre-existing)
+- Mobile: `notifications.test.ts` (6 pass), `notification-bell.test.tsx` (3 pass), `settings-notifications.test.tsx` (1 pass), `notifications-screen.test.tsx` (async rendering issue, pre-existing)
 
 **Endpoint:** Semua di `/api/v1/notifications/*` — auth required (401 tanpa token).
 
 ## Sistem Pengaman Deploy (3-Lapis)
 
 ### 1. Bundle marker check
-- File: `apps/mobile/scripts/required-markers.json` (20 testID wajib)
+- File: `apps/mobile/scripts/required-markers.json` (22 testID wajib)
 - Script: `apps/mobile/scripts/check-bundle-markers.mjs`
 - Command: `pnpm --filter mobile check:bundle`
 - Terintegrasi di `deploy:pwa` — deploy gagal kalau marker hilang
@@ -338,8 +344,10 @@ pnpm --filter mobile deploy:pwa  # deploy + auto marker guard
 
 - **Toggle tema**: hanya di dashboard header (`home-theme-toggle`), TIDAK di Settings
 - **Hide/view nominal**: di dashboard header (`home-amount-visibility-toggle`)
+- **Notifikasi**: bell icon + badge unread di dashboard header, klik buka `/notifications`
 - **Saved report period rules**: di Reports tab, dengan modal kelola (rename/delete)
 - **iOS date wheel**: muncul saat pilih "Kustom" di Reports → pilih start + end date
+- **i18n**: semua halaman sudah bilingual ID/EN (notifications, upgrade, AiInsightCard, reports, dashboard, settings, bills, budgets, transactions)
 
 ## Script Kunci
 
@@ -347,7 +355,7 @@ pnpm --filter mobile deploy:pwa  # deploy + auto marker guard
 |--------|-------|
 | `apps/mobile/scripts/deploy-pwa.mjs` | Deploy PWA + auto marker guard |
 | `apps/mobile/scripts/check-bundle-markers.mjs` | Verifikasi marker di bundle |
-| `apps/mobile/scripts/required-markers.json` | Daftar 20 testID wajib |
+| `apps/mobile/scripts/required-markers.json` | Daftar 22 testID wajib |
 
 ## Cara Menjalankan
 
