@@ -645,26 +645,35 @@ export default function TransactionsScreen() {
 				contentContainerStyle={styles.filterContent}
 			>
 				{(["all", "income", "expense"] as Filter[]).map((filter) => (
-					<FilterChip
-						key={filter}
-						label={
-							isEn
-								? filter === "all"
-									? "All"
-									: filter === "income"
-										? "Income"
-										: "Expense"
-								: filter === "all"
-									? "Semua"
-									: filter === "income"
-										? "Pemasukan"
-										: "Pengeluaran"
-						}
-						selected={activeFilter === filter}
-						onPress={() => setActiveFilter(filter)}
-					/>
+				  <FilterChip
+				    key={filter}
+				    label={
+				      isEn
+				        ? filter === "all"
+				          ? "All"
+				          : filter === "income"
+				            ? "Income"
+				            : "Expense"
+				        : filter === "all"
+				          ? "Semua"
+				          : filter === "income"
+				            ? "Pemasukan"
+				            : "Pengeluaran"
+				    }
+				    selected={activeFilter === filter}
+				    onPress={() => setActiveFilter(filter)}
+				  />
 				))}
-			</ScrollView>
+				{/* Navigation chip ke Bills */}
+				<View testID="transactions-bills-chip">
+				  <FilterChip
+				    key="bills"
+				    label={isEn ? "Bills" : "Tagihan"}
+				    selected={false}
+				    onPress={() => router.push("/(tabs)/bills" as never)}
+				  />
+				</View>
+				</ScrollView>
 		</StaggeredStack>
 	), [
 		activeFilter,

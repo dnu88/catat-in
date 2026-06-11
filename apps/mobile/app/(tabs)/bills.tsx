@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   FlatList,
   Pressable,
@@ -25,6 +25,31 @@ import { useTheme } from "../../src/theme/theme-context";
 import { useI18n } from "../../src/i18n/i18n-context";
 import { useFinanceContext } from "../../src/state/finance-context";
 import { listBills, createBill, updateBill, type Bill, type BillCreate } from "../../src/services/bills";
+import { formatLocalDate } from "../../src/services/budget-envelopes";
+
+// --- Pure helpers (outside component to avoid re-creation on every render) ---
+function parseRupiahInput(raw: string): number {
+  const digits = raw.replace(/[^0-9]/g, "");
+  return Number(digits || 0);
+}
+
+function clampDueDay(raw: string): number {
+  const day = Number(raw);
+  if (!Number.isFinite(day)) return new Date().getDate();
+  return Math.min(Math.max(Math.round(day), 1), 31);
+}
+
+function resolveNextDueDate(dueDay: number, recurrence: "monthly" | "once", reference = new Date()): string {
+  const year = reference.getFullYear();
+  const month = reference.getMonth();
+  const today = reference.getDate();
+  if (recurrence === "monthly" && dueDay < today) {
+    const next = new Date(year, month + 1, 1);
+    return formatLocalDate(new Date(next.getFullYear(), next.getMonth(), Math.min(dueDay, new Date(next.getFullYear(), next.getMonth() + 1, 0).getDate())));
+  }
+  const lastDay = new Date(year, month + 1, 0).getDate();
+  return formatLocalDate(new Date(year, month, Math.min(dueDay, lastDay)));
+}
 
 type BillStatus = "paid" | "upcoming" | "overdue";
 
@@ -174,45 +199,16 @@ export default function BillsScreen() {
 	const [recurrenceInput, setRecurrenceInput] = useState<"monthly" | "once">("monthly");
 	const [notifyBeforeDays, setNotifyBeforeDays] = useState(3);
 	const [savingBill, setSavingBill] = useState(false);
+	const mountedRef = useRef(true);
 
-	function parseRupiahInput(raw: string): number {
-	  const digits = raw.replace(/[^0-9]/g, "");
-	  return Number(digits || 0);
-	}
-
-	function clampDueDay(raw: string): number {
-	  const day = Number(raw);
-	  if (!Number.isFinite(day)) return new Date().getDate();
-	  return Math.min(Math.max(Math.round(day), 1), 31);
-	}
-
-	function formatLocalDate(date: Date): string {
-	  const y = date.getFullYear();
-	  const m = String(date.getMonth() + 1).padStart(2, "0");
-	  const d = String(date.getDate()).padStart(2, "0");
-	  return `${y}-${m}-${d}`;
-	}
-
-	function resolveNextDueDate(dueDay: number, recurrence: "monthly" | "once", reference = new Date()): string {
-	  const year = reference.getFullYear();
-	  const month = reference.getMonth();
-	  const today = reference.getDate();
-	  if (recurrence === "monthly" && dueDay < today) {
-	    const next = new Date(year, month + 1, 1);
-	    return formatLocalDate(new Date(next.getFullYear(), next.getMonth(), Math.min(dueDay, new Date(next.getFullYear(), next.getMonth() + 1, 0).getDate())));
-	  }
-	  const lastDay = new Date(year, month + 1, 0).getDate();
-	  return formatLocalDate(new Date(year, month, Math.min(dueDay, lastDay)));
-	}
-
-	function resetCreateForm() {
+	const resetCreateForm = useCallback(() => {
 	  setNameInput("");
 	  setAmountInput("");
 	  setDueDayInput(String(new Date().getDate()));
 	  setRecurrenceInput("monthly");
 	  setNotifyBeforeDays(3);
 	  setShowCreate(false);
-	}
+	}, []);
 
 	const saveBill = async () => {
 	  if (savingBill) return;
@@ -243,25 +239,34 @@ export default function BillsScreen() {
 	  }
 	};
 
-	useEffect(() => {
-		loadBills();
-	}, [activeContext]);
-
-	const loadBills = async () => {
+	const loadBills = useCallback(async () => {
+		const ctx = activeContext; // snapshot for this invocation
 		setLoading(true);
 		try {
 			setLoadError(null);
-			const data = await listBills(activeContext);
+			const data = await listBills(ctx);
+			if (!mountedRef.current) return; // ignore stale responses
 			setBills(data);
 		} catch (error) {
+			if (!mountedRef.current) return;
 		  console.error("Error loading bills:", error);
 		  setLoadError(isEn ? "Failed to load bills. Try again later." : "Gagal memuat tagihan. Coba lagi sebentar.");
 		} finally {
+			if (!mountedRef.current) return;
 			setLoading(false);
 		}
-	};
+	}, [activeContext, isEn]);
 
-	const markAsPaid = async (id: string) => {
+	useEffect(() => {
+		loadBills();
+	}, [loadBills]);
+
+	useEffect(() => {
+		mountedRef.current = true;
+		return () => { mountedRef.current = false; };
+	}, []);
+
+	const markAsPaid = useCallback(async (id: string) => {
 	  if (payingId) return;
 	  const bill = bills.find((b) => b.id === id);
 	  if (!bill) return;
@@ -303,7 +308,7 @@ export default function BillsScreen() {
 	  } finally {
 	    setPayingId(null);
 	  }
-	};
+	}, [payingId, bills, activeContext, isEn, loadBills]);
 
 	const billsWithStatus = useMemo(
 		() =>
@@ -359,7 +364,7 @@ export default function BillsScreen() {
 
 	const keyExtractor = (item: BillWithStatus) => item.id;
 
-	const listHeader = useMemo(() => (
+	const listHeader = (
 		<StaggeredStack testIDPrefix="bills-entrance">
 		  <ScreenHeader
 		    key="bills-header"
@@ -531,15 +536,7 @@ export default function BillsScreen() {
 				))}
 			</ScrollView>
 		</StaggeredStack>
-	), [
-		activeContext.type,
-		canCreate,
-		filter,
-		loadError,
-		overdueCount,
-		styles,
-		totalUpcoming,
-	]);
+	);
 
 	const ListEmpty = () => (
 	  <EmptyState
