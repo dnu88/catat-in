@@ -26,6 +26,8 @@ import { useI18n } from "../../src/i18n/i18n-context";
 import { useFinanceContext } from "../../src/state/finance-context";
 import { listBills, createBill, updateBill, type Bill, type BillCreate } from "../../src/services/bills";
 import { formatLocalDate } from "../../src/services/budget-envelopes";
+import { listCategories, type Category } from "../../src/services/categories";
+import { resolveCategoryVisual } from "../../src/theme/category-visuals";
 
 // --- Pure helpers (outside component to avoid re-creation on every render) ---
 function parseRupiahInput(raw: string): number {
@@ -53,16 +55,6 @@ function resolveNextDueDate(dueDay: number, recurrence: "monthly" | "once", refe
 
 type BillStatus = "paid" | "upcoming" | "overdue";
 
-const billIcons: Record<string, KaswiseIconName> = {
-	Internet: "insight",
-	Listrik: "budgets",
-	Netflix: "insight",
-	Spotify: "insight",
-	Asuransi: "budgets",
-	Air: "budgets",
-	Telepon: "notification",
-};
-
 type FilterStatus = "all" | BillStatus;
 
 type BillWithStatus = Bill & { status: BillStatus };
@@ -75,6 +67,7 @@ type BillRowProps = {
   onMarkPaid: (id: string) => void;
   canUpdate: boolean;
   isEn: boolean;
+  categories: Category[];
 };
 
 function BillRow({
@@ -85,7 +78,18 @@ function BillRow({
   onMarkPaid,
   canUpdate,
   isEn,
+  categories,
 }: BillRowProps) {
+  // Resolve category visual — use user-defined color if available
+  const categoryVisual = resolveCategoryVisual({
+    categoryName: bill.name,
+    categories,
+    mode: theme.mode,
+    fallbackIcon: "bills" as KaswiseIconName,
+  });
+  const iconColor = categoryVisual.color;
+  const billIcon = categoryVisual.icon as KaswiseIconName;
+
   const statusColor =
     bill.status === "paid"
       ? theme.colors.success
@@ -116,23 +120,13 @@ function BillRow({
   const payingLabel = isEn ? "Processing..." : "Memproses...";
   const payLabel = isEn ? "Mark Paid" : "Tandai Lunas";
 
-  const iconKey =
-    Object.keys(billIcons).find((key) => bill.name.includes(key)) || "bills";
-  const icon = billIcons[iconKey] || "bills";
-
   return (
     <View style={styles.billCard}>
       <View style={styles.billTop}>
         <View style={styles.billLeft}>
           <IconBubble
-            name={icon as KaswiseIconName}
-            tone={
-              bill.status === "paid"
-                ? "success"
-                : bill.status === "overdue"
-                  ? "danger"
-                  : "warning"
-            }
+            name={billIcon}
+            color={iconColor}
             size={44}
           />
           <View style={{ flex: 1 }}>
@@ -190,6 +184,12 @@ export default function BillsScreen() {
 	const [loading, setLoading] = useState(true);
 	const [loadError, setLoadError] = useState<string | null>(null);
 	const [payingId, setPayingId] = useState<string | null>(null);
+	const [categories, setCategories] = useState<Category[]>([]);
+
+	// Load categories for icon color matching
+	useEffect(() => {
+	  listCategories().then(setCategories).catch(() => {});
+	}, []);
 
 	// --- Simple bill create form state (Tasks 2-4) ---
 	const [showCreate, setShowCreate] = useState(false);
@@ -359,6 +359,7 @@ export default function BillsScreen() {
 	    onMarkPaid={markAsPaid}
 	    canUpdate={canCreate}
 	    isEn={isEn}
+	    categories={categories}
 	  />
 	);
 
