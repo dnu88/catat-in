@@ -308,10 +308,30 @@ Fitur notifikasi in-app sudah MVP complete. Database, API, mobile screen, dan se
 
 **Endpoint:** Semua di `/api/v1/notifications/*` — auth required (401 tanpa token).
 
+## Simple Bill Reminder
+
+Fitur tagihan sederhana: buat, lihat, tandai lunas, bulanan auto-rollover.
+
+**Flow:**
+- `+ Baru` → form inline (nama, nominal, tanggal jatuh tempo, bulanan/sekali, ingatkan H-3/H-1/Hari H)
+- Simpan → `createBill()` ke Supabase `bill_reminders` table
+- Tandai lunas → **bulanan**: mundur ke bulan depan + catat pembayaran di `payment_history`; **sekali**: tandai `is_paid: true`
+- Filter: Semua / Akan Datang / Terlambat / Lunas
+
+**File kunci:**
+- `apps/mobile/app/(tabs)/bills.tsx` — screen + form UI (i18n bilingual)
+- `apps/mobile/src/services/bills.ts` — Supabase CRUD (finance context support)
+- `backend/scripts/generate_bill_reminder_notifications.py` — cron generator (dry-run ready, belum dijadwalkan)
+
+**UX rules:**
+- Form ≤ 5 field (name, amount, due day, recurrence, notify)
+- Tidak ada halaman terpisah — form inline di bawah header
+- Bilingual: semua string ID/EN mengikuti bahasa yang dipilih
+
 ## Sistem Pengaman Deploy (3-Lapis)
 
 ### 1. Bundle marker check
-- File: `apps/mobile/scripts/required-markers.json` (22 testID wajib)
+- File: `apps/mobile/scripts/required-markers.json` (24 testID wajib)
 - Script: `apps/mobile/scripts/check-bundle-markers.mjs`
 - Command: `pnpm --filter mobile check:bundle`
 - Terintegrasi di `deploy:pwa` — deploy gagal kalau marker hilang
@@ -355,7 +375,7 @@ pnpm --filter mobile deploy:pwa  # deploy + auto marker guard
 |--------|-------|
 | `apps/mobile/scripts/deploy-pwa.mjs` | Deploy PWA + auto marker guard |
 | `apps/mobile/scripts/check-bundle-markers.mjs` | Verifikasi marker di bundle |
-| `apps/mobile/scripts/required-markers.json` | Daftar 22 testID wajib |
+| `apps/mobile/scripts/required-markers.json` | Daftar 24 testID wajib |
 
 ## Cara Menjalankan
 
