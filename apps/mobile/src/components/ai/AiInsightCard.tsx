@@ -7,6 +7,7 @@ import {
 } from "react-native";
 import { useMemo } from "react";
 import { useTheme } from "../../theme/theme-context";
+import { useI18n } from "../../i18n/i18n-context";
 import { KaswiseIcon } from "../icons/kaswise-icons";
 import { IconBubble } from "../ui/IconBubble";
 import { StaggeredEntrance } from "../motion/entrance";
@@ -30,6 +31,8 @@ export function AiInsightCard({
   onUpgrade,
 }: Props) {
   const { theme } = useTheme();
+  const { language } = useI18n();
+  const isEn = language === "en";
   const s = useMemo(() => styles(theme), [theme]);
 
   // --- State determination (in priority order) ---
@@ -57,13 +60,13 @@ export function AiInsightCard({
       <View testID="ai-insight-card" style={s.card}>
         {renderHeader("lock", "warning")}
         <Text testID="ai-insight-body" style={s.body}>
-          Dapatkan ringkasan pola pengeluaran dan rekomendasi praktis dari AI.
+          {isEn ? "Get AI-powered spending pattern summaries and practical recommendations." : "Dapatkan ringkasan pola pengeluaran dan rekomendasi praktis dari AI."}
         </Text>
         <Pressable
           testID="ai-insight-upgrade-btn"
           onPress={onUpgrade}
           accessibilityRole="button"
-          accessibilityLabel="Upgrade Premium"
+          accessibilityLabel={isEn ? "Upgrade to Premium" : "Upgrade Premium"}
           style={({ pressed }) => [
             s.ctaButton,
             s.ctaButtonPrimary,
@@ -71,7 +74,7 @@ export function AiInsightCard({
           ]}
         >
           <Text style={s.ctaButtonPrimaryText}>
-            Upgrade Premium
+            {isEn ? "Upgrade to Premium" : "Upgrade Premium"}
           </Text>
         </Pressable>
       </View>
@@ -83,13 +86,13 @@ export function AiInsightCard({
       <View testID="ai-insight-card" style={s.card}>
         {renderHeader("insight", "primary")}
         <Text testID="ai-insight-body" style={s.body}>
-          Analisis AI siap membantu membaca pola keuanganmu bulan ini.
+          {isEn ? "AI analysis is ready to help you understand your finances this month." : "Analisis AI siap membantu membaca pola keuanganmu bulan ini."}
         </Text>
         <Pressable
           testID="ai-insight-generate-btn"
           onPress={onGenerate}
           accessibilityRole="button"
-          accessibilityLabel="Buat Insight AI"
+          accessibilityLabel={isEn ? "Generate AI Insight" : "Buat Insight AI"}
           style={({ pressed }) => [
             s.ctaButton,
             s.ctaButtonPrimary,
@@ -97,7 +100,7 @@ export function AiInsightCard({
           ]}
         >
           <Text style={s.ctaButtonPrimaryText}>
-            Buat Insight AI
+            {isEn ? "Generate AI Insight" : "Buat Insight AI"}
           </Text>
         </Pressable>
       </View>
@@ -116,7 +119,7 @@ export function AiInsightCard({
             testID="ai-insight-loading-text"
             style={s.loadingText}
           >
-            Menganalisis laporan...
+            {isEn ? "Analyzing report..." : "Menganalisis laporan..."}
           </Text>
         </View>
       </View>
@@ -135,7 +138,7 @@ export function AiInsightCard({
             testID="ai-insight-retry-btn"
             onPress={onGenerate}
             accessibilityRole="button"
-            accessibilityLabel="Coba lagi"
+            accessibilityLabel={isEn ? "Try again" : "Coba lagi"}
             style={({ pressed }) => [
               s.ctaButton,
               s.ctaButtonOutline,
@@ -143,7 +146,7 @@ export function AiInsightCard({
             ]}
           >
             <Text style={s.ctaButtonOutlineText}>
-              Coba lagi
+              {isEn ? "Try again" : "Coba lagi"}
             </Text>
           </Pressable>
         </View>
@@ -160,20 +163,20 @@ export function AiInsightCard({
       const diffHours = Math.floor(diffMs / 3600000);
       const diffDays = Math.floor(diffMs / 86400000);
 
-      if (diffMinutes < 1) return "Diperbarui barusan";
+      if (diffMinutes < 1) return isEn ? "Updated just now" : "Diperbarui barusan";
       if (diffMinutes < 60)
-        return `Diperbarui ${diffMinutes} menit lalu`;
+        return isEn ? `Updated ${diffMinutes} min ago` : `Diperbarui ${diffMinutes} menit lalu`;
       if (diffHours < 24)
-        return `Diperbarui ${diffHours} jam lalu`;
+        return isEn ? `Updated ${diffHours}h ago` : `Diperbarui ${diffHours} jam lalu`;
       if (diffDays < 7)
-        return `Diperbarui ${diffDays} hari lalu`;
+        return isEn ? `Updated ${diffDays}d ago` : `Diperbarui ${diffDays} hari lalu`;
 
       const day = String(date.getDate()).padStart(2, "0");
       const month = String(date.getMonth() + 1).padStart(2, "0");
       const year = date.getFullYear();
-      return `Diperbarui ${day}/${month}/${year}`;
+      return isEn ? `Updated ${day}/${month}/${year}` : `Diperbarui ${day}/${month}/${year}`;
     } catch {
-      return "Diperbarui";
+      return isEn ? "Updated" : "Diperbarui";
     }
   }
 
@@ -192,7 +195,7 @@ export function AiInsightCard({
         {/* Highlights */}
         {insight.highlights.length > 0 && (
           <View testID="ai-insight-highlights" style={s.section}>
-            <Text style={s.sectionTitle}>Sorotan</Text>
+            <Text style={s.sectionTitle}>{isEn ? "Highlights" : "Sorotan"}</Text>
             {insight.highlights.map((item, idx) => (
               <View key={`hl-${idx}`} style={s.listItem}>
                 <Text style={s.bullet}>•</Text>
@@ -208,7 +211,7 @@ export function AiInsightCard({
             testID="ai-insight-recommendations"
             style={s.section}
           >
-            <Text style={s.sectionTitle}>Rekomendasi</Text>
+            <Text style={s.sectionTitle}>{isEn ? "Recommendations" : "Rekomendasi"}</Text>
             {insight.recommendations.map((item, idx) => (
               <View key={`rec-${idx}`} style={s.listItem}>
                 <View style={s.checkBadge}>
@@ -235,7 +238,7 @@ export function AiInsightCard({
                 color={theme.colors.warning}
                 weight="bold"
               />
-              <Text style={s.riskTitle}>Perhatian</Text>
+              <Text style={s.riskTitle}>{isEn ? "Attention" : "Perhatian"}</Text>
             </View>
             {insight.risk_flags.map((flag, idx) => (
               <View key={`rf-${idx}`} style={s.riskItem}>
@@ -255,7 +258,7 @@ export function AiInsightCard({
           testID="ai-insight-refresh-btn"
           onPress={onGenerate}
           accessibilityRole="button"
-          accessibilityLabel="Refresh insight"
+          accessibilityLabel={isEn ? "Refresh insight" : "Refresh"}
           style={({ pressed }) => [
             s.ctaButton,
             s.ctaButtonOutline,
@@ -268,7 +271,7 @@ export function AiInsightCard({
             color={theme.colors.brandPrimary}
             weight="bold"
           />
-          <Text style={s.ctaButtonOutlineText}>Refresh</Text>
+          <Text style={s.ctaButtonOutlineText}>{isEn ? "Refresh" : "Refresh"}</Text>
         </Pressable>
       </View>
     );

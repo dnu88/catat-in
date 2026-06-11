@@ -10,6 +10,7 @@ import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTheme } from "../src/theme/theme-context";
+import { useI18n } from "../src/i18n/i18n-context";
 import { useSupabase } from "../src/lib/supabase";
 import { KaswiseIcon } from "../src/components/icons/kaswise-icons";
 import {
@@ -19,7 +20,7 @@ import {
   type NotificationItem,
 } from "../src/services/notifications";
 
-function formatRelativeTime(isoString: string): string {
+function formatRelativeTime(isoString: string, isEn: boolean): string {
   const date = new Date(isoString);
   const now = new Date();
   const diffMs = now.getTime() - date.getTime();
@@ -27,10 +28,10 @@ function formatRelativeTime(isoString: string): string {
   const diffHr = Math.floor(diffMs / 3600000);
   const diffDay = Math.floor(diffMs / 86400000);
 
-  if (diffMin < 1) return "Barusan";
-  if (diffMin < 60) return `${diffMin}m lalu`;
-  if (diffHr < 24) return `${diffHr}j lalu`;
-  if (diffDay < 7) return `${diffDay}h lalu`;
+  if (diffMin < 1) return isEn ? "Just now" : "Barusan";
+  if (diffMin < 60) return isEn ? `${diffMin}m ago` : `${diffMin}m lalu`;
+  if (diffHr < 24) return isEn ? `${diffHr}h ago` : `${diffHr}j lalu`;
+  if (diffDay < 7) return isEn ? `${diffDay}d ago` : `${diffDay}h lalu`;
   const day = String(date.getDate()).padStart(2, "0");
   const month = String(date.getMonth() + 1).padStart(2, "0");
   return `${day}/${month}/${date.getFullYear()}`;
@@ -51,6 +52,8 @@ function NotificationIcon({ type }: { type: string }) {
 
 export default function NotificationsScreen() {
   const { theme } = useTheme();
+  const { language } = useI18n();
+  const isEn = language === "en";
   const { supabase } = useSupabase();
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -122,7 +125,7 @@ export default function NotificationsScreen() {
             weight="bold"
           />
         </Pressable>
-        <Text style={s.title}>Notifikasi</Text>
+        <Text style={s.title}>{isEn ? "Notifications" : "Notifikasi"}</Text>
         {unreadCount > 0 && (
           <Pressable
             testID="notifications-mark-all-read"
@@ -130,7 +133,7 @@ export default function NotificationsScreen() {
             onPress={handleMarkAllRead}
             style={s.markAllBtn}
           >
-            <Text style={s.markAllText}>Tandai semua dibaca</Text>
+            <Text style={s.markAllText}>{isEn ? "Mark all read" : "Tandai semua dibaca"}</Text>
           </Pressable>
         )}
       </View>
@@ -148,7 +151,7 @@ export default function NotificationsScreen() {
             color={theme.colors.textMuted}
             weight="regular"
           />
-          <Text style={s.emptyText}>Belum ada notifikasi.</Text>
+          <Text style={s.emptyText}>{isEn ? "No notifications yet." : "Belum ada notifikasi."}</Text>
         </View>
       ) : (
         <FlatList
@@ -174,7 +177,7 @@ export default function NotificationsScreen() {
                 </View>
                 {!item.read_at && <View testID={`unread-dot-${item.id}`} style={s.unreadDot} />}
               </View>
-              <Text style={s.itemTime}>{formatRelativeTime(item.created_at)}</Text>
+              <Text style={s.itemTime}>{formatRelativeTime(item.created_at, isEn)}</Text>
             </Pressable>
           )}
         />

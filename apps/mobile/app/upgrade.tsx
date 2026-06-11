@@ -20,6 +20,7 @@ import {
   type Pricing,
 } from "../src/services/billing";
 import { useTheme } from "../src/theme/theme-context";
+import { useI18n } from "../src/i18n/i18n-context";
 
 const rp = (n: number) => `Rp${n.toLocaleString("id-ID")}`;
 
@@ -28,6 +29,8 @@ const MAX_POLLS = 30;
 
 export default function UpgradeScreen() {
   const { theme } = useTheme();
+  const { language } = useI18n();
+  const isEn = language === "en";
   const styles = useMemo(() => createStyles(theme), [theme]);
 
   const [pricing, setPricing] = useState<Pricing | null>(null);
@@ -59,13 +62,13 @@ export default function UpgradeScreen() {
       } else if (pollCountRef.current >= MAX_POLLS) {
         stopPolling();
         setPhase("error");
-        setPollError("Pembayaran masih diproses. Silakan cek nanti di pengaturan.");
+        setPollError(isEn ? "Payment is still processing. Please check later in settings." : "Pembayaran masih diproses. Silakan cek nanti di pengaturan.");
       }
     } catch {
       if (pollCountRef.current >= MAX_POLLS) {
         stopPolling();
         setPhase("error");
-        setPollError("Gagal memeriksa status. Coba lagi nanti.");
+        setPollError(isEn ? "Failed to check payment status. Please try again." : "Gagal memeriksa status. Coba lagi nanti.");
       }
     }
   }, [orderId, stopPolling]);
@@ -99,7 +102,7 @@ export default function UpgradeScreen() {
             if (pollCountRef.current >= MAX_POLLS) {
               stopPolling();
               setPhase("error");
-              setPollError("Gagal memeriksa status. Coba lagi nanti.");
+              setPollError(isEn ? "Failed to check payment status. Please try again." : "Gagal memeriksa status. Coba lagi nanti.");
             }
           });
       }, POLL_INTERVAL);
@@ -148,10 +151,10 @@ export default function UpgradeScreen() {
     return (
       <SafeAreaView style={styles.screen}>
         <View style={styles.centeredPhase}>
-          <Text style={styles.errorTitle}>Gagal memuat harga</Text>
-          <Text style={styles.errorBody}>Periksa koneksi internet Anda dan coba lagi.</Text>
+          <Text style={styles.errorTitle}>{isEn ? "Failed to load pricing" : "Gagal memuat harga"}</Text>
+          <Text style={styles.errorBody}>{isEn ? "Check your internet connection and try again." : "Periksa koneksi internet Anda dan coba lagi."}</Text>
           <Pressable style={styles.retryButton} onPress={fetchPricing}>
-            <Text style={styles.retryButtonText}>Coba Lagi</Text>
+            <Text style={styles.retryButtonText}>{isEn ? "Try Again" : "Coba Lagi"}</Text>
           </Pressable>
         </View>
       </SafeAreaView>
@@ -177,7 +180,7 @@ export default function UpgradeScreen() {
             Kaswise Premium
           </Text>
           <Text style={styles.subtitle}>
-            Foto struk OCR, chat AI 200/bulan, AI Insight
+            {isEn ? "OCR receipts, AI chat 200/month, AI Insight" : "Foto struk OCR, chat AI 200/bulan, AI Insight"}
           </Text>
         </View>
 
@@ -185,7 +188,7 @@ export default function UpgradeScreen() {
         {isPromo ? (
           <View style={styles.promoBadge}>
             <Text style={styles.promoBadgeText}>
-              Harga perkenalan untuk 100 pengguna pertama
+              {isEn ? "Launch price for the first 100 users" : "Harga perkenalan untuk 100 pengguna pertama"}
             </Text>
           </View>
         ) : null}
@@ -205,13 +208,13 @@ export default function UpgradeScreen() {
             >
               <View style={styles.planCardInner}>
                 <View style={styles.planLabelRow}>
-                  <Text style={styles.planLabel}>Bulanan</Text>
+                  <Text style={styles.planLabel}>{isEn ? "Monthly" : "Bulanan"}</Text>
                   {busy === "monthly" ? (
                     <ActivityIndicator size="small" color={brandText} />
                   ) : null}
                 </View>
                 <Text style={styles.planPrice}>{rp(pricing!.monthly)}</Text>
-                <Text style={styles.planPerMonth}>/bulan</Text>
+                <Text style={styles.planPerMonth}>{isEn ? "/month" : "/bulan"}</Text>
               </View>
             </Pressable>
 
@@ -231,13 +234,13 @@ export default function UpgradeScreen() {
               </View>
               <View style={styles.planCardInner}>
                 <View style={styles.planLabelRow}>
-                  <Text style={styles.planLabel}>Tahunan</Text>
+                  <Text style={styles.planLabel}>{isEn ? "Yearly" : "Tahunan"}</Text>
                   {busy === "yearly" ? (
                     <ActivityIndicator size="small" color={brandText} />
                   ) : null}
                 </View>
                 <Text style={styles.planPrice}>{rp(pricing!.yearly)}</Text>
-                <Text style={styles.planPerMonth}>hemat 2 bulan</Text>
+                <Text style={styles.planPerMonth}>{isEn ? "save 2 months" : "hemat 2 bulan"}</Text>
               </View>
             </Pressable>
           </>
@@ -252,10 +255,10 @@ export default function UpgradeScreen() {
               color={theme.colors.brandPrimary}
             />
             <Text testID="upgrade-polling-text" style={styles.phaseText}>
-              Memeriksa status pembayaran...
+              {isEn ? "Checking payment status..." : "Memeriksa status pembayaran..."}
             </Text>
             <Pressable testID="upgrade-retry-check" style={styles.retryButton} onPress={pollStatusImpl}>
-              <Text style={styles.retryButtonText}>Saya sudah bayar</Text>
+              <Text style={styles.retryButtonText}>{isEn ? "I already paid" : "Saya sudah bayar"}</Text>
             </Pressable>
           </View>
         ) : null}
@@ -264,8 +267,8 @@ export default function UpgradeScreen() {
         {phase === "paid" ? (
           <View testID="upgrade-success" style={styles.phaseCard}>
             <Text style={styles.successIcon}>✅</Text>
-            <Text style={styles.phaseTitle}>Pembayaran berhasil!</Text>
-            <Text style={styles.phaseText}>Akun Anda sekarang Premium.</Text>
+            <Text style={styles.phaseTitle}>{isEn ? "Payment successful!" : "Pembayaran berhasil!"}</Text>
+            <Text style={styles.phaseText}>{isEn ? "Your account is now Premium." : "Akun Anda sekarang Premium."}</Text>
           </View>
         ) : null}
 
@@ -280,7 +283,7 @@ export default function UpgradeScreen() {
               style={styles.retryButton}
               onPress={() => (orderId ? startPolling(orderId) : null)}
             >
-              <Text style={styles.retryButtonText}>Cek lagi</Text>
+              <Text style={styles.retryButtonText}>{isEn ? "Check again" : "Cek lagi"}</Text>
             </Pressable>
           </View>
         ) : null}
