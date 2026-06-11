@@ -81,7 +81,7 @@ async function getBillPermissionRow(id: string): Promise<FinancePermissionRow> {
 
 export async function updateBill(
 	id: string,
-	updates: Partial<BillCreate & { is_paid?: boolean }>,
+	updates: Partial<BillCreate & { is_paid?: boolean; payment_history?: Record<string, unknown>[]; next_due_date?: string }>,
 	context: FinanceContext = defaultContext,
 ): Promise<Bill> {
 	const userId = await getCurrentUserId();
