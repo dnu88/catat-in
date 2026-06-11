@@ -1286,7 +1286,7 @@ export default function SettingsScreen() {
 
 				{/* App Info */}
 				<View key="settings-app-info" testID="settings-app-info" style={styles.appInfo}>
-					<Text style={styles.appName}>kaswise v1.0.0</Text>
+					<Text style={styles.appName}>Kaswise v1.0.0</Text>
 					<Text style={styles.appTagline}>
 						{language === "id"
 							? "Catat Keuangan, Bijak Setiap Hari"
