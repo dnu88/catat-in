@@ -679,9 +679,11 @@ Once branch protection is available, require these GitHub Actions job names:
 - `Web quality gate (typecheck + unit + build)`
 - `Mobile PWA quality gate (typecheck + tests + build)`
 
-Optional later, after Firebase/E2E secrets are fully configured and the job no longer only skips:
+Optional later, after the stale Firebase-gated E2E workflow is replaced with the current Kaswise stack (Supabase/no-Firebase):
 
 - `E2E smoke (Playwright)`
+
+Do not treat missing Firebase secrets as a valid reason for skipped E2E checks. Kaswise no longer uses Firebase; any Firebase-gated CI condition is stale and should be removed or replaced before `E2E smoke (Playwright)` becomes a required branch-protection check.
 
 ### Recommended branch protection rules
 
