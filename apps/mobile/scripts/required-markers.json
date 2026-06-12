@@ -27,5 +27,8 @@
   "reports-entrance-recommendation",
   "ai-insight-card",
   "transactions-report-period-label",
-  "transactions-period-row"
+  "transactions-period-row",
+  "home-transaction-review-card",
+  "home-review-action",
+  "transactions-review-chip"
 ]

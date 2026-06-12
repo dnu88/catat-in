@@ -608,6 +608,9 @@ git commit -m "feat: show concise budget alerts on dashboard"
 
 ## Milestone 3 — Transaction Review Queue
 
+> **✅ COMPLETED 2026-06-12** — Branch `feat/milestone3-transaction-review`, PR #14.
+> All three tasks implemented, 32 bundle markers verified, deployed to live PWA.
+
 ### Task 11: Create transaction review service helper
 
 **Objective:** Count transactions that need review without adding a new table.

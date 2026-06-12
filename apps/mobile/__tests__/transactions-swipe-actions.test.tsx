@@ -73,6 +73,7 @@ jest.mock("expo-router", () => ({
 		latestFocusCallback = callback;
 		React.useEffect(() => callback(), [callback]);
 	},
+	useLocalSearchParams: () => ({}),
 }));
 
 jest.mock("../src/services/transactions", () => ({
@@ -523,5 +524,119 @@ describe("transaction swipe actions", () => {
 		await waitFor(() =>
 			expect(screen.getByText("Bonus tahunan")).toBeTruthy(),
 		);
+	});
+
+	it("shows only reviewable transactions when review filter is active", async () => {
+		const today = currentIsoDate();
+		const baseTx = (overrides: any = {}) => ({
+			user_id: "user-1",
+			wallet_id: "wallet-1",
+			transaction_type: "expense" as const,
+			type: "expense",
+			nominal: 35000,
+			amount: 35000,
+			catatan: "Kopi sore",
+			description: "Kopi sore",
+			tanggal: today,
+			date: today,
+			note: null,
+			payment_method: null,
+			receipt_url: null,
+			group_id: null,
+			is_shared: false,
+			visibility: null,
+			ai_confidence: null,
+			ai_extracted: null,
+			household_id: null,
+			created_by: "user-1",
+			on_behalf_of: null,
+			is_disputed: false,
+			dispute_resolved_at: null,
+			created_at: "2026-06-01T00:00:00Z",
+			updated_at: "2026-06-01T00:00:00Z",
+			review_required: false,
+			confidence: 0.9,
+			...overrides,
+		});
+
+		mockListTransactions.mockResolvedValue([
+			{ ...baseTx({ id: "tx-clean" }), category: "Makan", kategori: "Makan", merchant: "Warung" },
+			{ ...baseTx({ id: "tx-lainnya" }), category: "Lainnya", kategori: "Lainnya", merchant: "Toko" },
+			{ ...baseTx({ id: "tx-lowconf", confidence: 0.5 }), category: "Makan", kategori: "Makan", merchant: "Kafe" },
+			{ ...baseTx({ id: "tx-review", review_required: true }), category: "Transport", kategori: "Transport", merchant: "Parkir" },
+		]);
+		const screen = renderScreen();
+
+		await waitFor(() =>
+			expect(screen.getByText("Warung")).toBeTruthy(),
+		);
+
+		// Press the "Perlu dicek" chip via accessibility label
+		fireEvent.press(screen.getByLabelText("Perlu dicek"));
+
+		await waitFor(() => {
+			// Clean tx with merchant "Warung" should be hidden
+			expect(screen.queryByText("Warung")).toBeNull();
+		});
+		// Reviewable transactions should still show
+		expect(screen.getByText("Toko")).toBeTruthy();
+		expect(screen.getByText("Kafe")).toBeTruthy();
+		expect(screen.getByText("Parkir")).toBeTruthy();
+	});
+
+	it("shows empty state when no transactions need review", async () => {
+		const today = currentIsoDate();
+		const cleanTx = {
+			id: "tx-clean",
+			user_id: "user-1",
+			wallet_id: "wallet-1",
+			transaction_type: "expense" as const,
+			type: "expense",
+			nominal: 35000,
+			amount: 35000,
+			kategori: "Makan",
+			category: "Makan",
+			catatan: "Kopi sore",
+			description: "Kopi sore",
+			merchant: "Warung",
+			tanggal: today,
+			date: today,
+			note: null,
+			payment_method: null,
+			receipt_url: null,
+			group_id: null,
+			is_shared: false,
+			visibility: null,
+			ai_confidence: null,
+			ai_extracted: null,
+			household_id: null,
+			created_by: "user-1",
+			on_behalf_of: null,
+			is_disputed: false,
+			dispute_resolved_at: null,
+			created_at: "2026-06-01T00:00:00Z",
+			updated_at: "2026-06-01T00:00:00Z",
+			review_required: false,
+			confidence: 0.9,
+		};
+
+		mockListTransactions.mockResolvedValue([cleanTx]);
+		const screen = renderScreen();
+
+		await waitFor(() =>
+			expect(screen.getByText("Semua")).toBeTruthy(),
+		);
+
+		// Press the "Perlu dicek" chip via accessibility label
+		fireEvent.press(screen.getByLabelText("Perlu dicek"));
+
+		await waitFor(() =>
+			expect(
+				screen.getByText("Tidak ada transaksi yang perlu dicek"),
+			).toBeTruthy(),
+		);
+		expect(
+			screen.getByText("Semua transaksi sudah rapi. Kerja bagus!"),
+		).toBeTruthy();
 	});
 });

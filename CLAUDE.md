@@ -375,7 +375,7 @@ pnpm --filter mobile deploy:pwa  # deploy + auto marker guard
 |--------|-------|
 | `apps/mobile/scripts/deploy-pwa.mjs` | Deploy PWA + auto marker guard |
 | `apps/mobile/scripts/check-bundle-markers.mjs` | Verifikasi marker di bundle |
-| `apps/mobile/scripts/required-markers.json` | Daftar 24 testID wajib |
+| `apps/mobile/scripts/required-markers.json` | Daftar 29 testID wajib (disinkronkan dari registry) |
 
 ## Cara Menjalankan
 
@@ -400,3 +400,44 @@ uvicorn main:app --reload
 # Backend Docker (production)
 docker compose -f docker-compose.production.yml --env-file .env.production up -d --build backend
 ```
+
+## Simple Awareness Roadmap (2026-06-12)
+
+### Milestone 1 (✅ Done): Simple Bill Reminder
+- Bill reminder notification test + preferences respect (`feat/bill-reminder-notification-test`)
+- Cron job `7d8d17b17cfe` runs daily 07:00 for bill notifications
+- PR #12 merged to main
+
+### Milestone 2 (✅ Done): Budget Active Period Polish
+- Simplify copy: "dompet"/"wallet" → "budget"/"anggaran"
+- Default budget period from active report period
+- Status sentence per budget card (safe/near/over with i18n)
+- Branch `feat/milestone2-budget-polish`, PR #13 merged to main
+
+### Milestone 3 (🚧 In progress): Transaction Review Queue
+- **Task 11:** `transaction-review.ts` service — query & flag transactions needing review
+  - Criteria: `review_required=true`, `confidence<0.75`, `Lainnya`/`Other` category, missing fields
+- **Task 12:** Dashboard review CTA card — shows between budget & recent sections
+  - testID: `home-transaction-review-card`, `home-review-action`
+  - Navigates to `/transactions?review=1`
+- **Task 13:** Transaction list review filter chip — "Perlu dicek"/"Needs review"
+  - testID: `transactions-review-chip`
+  - Reads `?review=1` param for auto-activation
+- Branch: `feat/milestone3-transaction-review`
+
+### Milestone 4 (planned): Documentation, Quality Gate, Deploy
+
+**New files for Milestone 3:**
+| File | Purpose |
+|------|---------|
+| `apps/mobile/src/services/transaction-review.ts` | Review summary service |
+| `apps/mobile/src/services/transaction-review.test.ts` | Service unit tests (9 pass) |
+
+**Modified files for Milestone 3:**
+| File | Change |
+|------|--------|
+| `apps/mobile/src/services/transactions.ts` | Export `normalizeTransaction`, add `review_required` & `confidence` to `Transaction` type |
+| `apps/mobile/app/(tabs)/index.tsx` | Review CTA card with state, i18n, loading |
+| `apps/mobile/app/(tabs)/transactions.tsx` | Review filter chip, `isReviewable()`, query param support |
+| `apps/mobile/__tests__/tabs-index.test.tsx` | Review card tests (3 new tests) |
+| `apps/mobile/__tests__/transactions-swipe-actions.test.tsx` | Review filter tests (2 new tests) |
