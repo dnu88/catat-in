@@ -105,5 +105,17 @@
     "markers": ["transactions-report-period-label", "transactions-period-row"],
     "tests": ["apps/mobile/__tests__/transactions-swipe-actions.test.tsx"],
     "verification": "Transactions screen must show active period context and avoid losing period filter UI."
+  },
+  {
+    "id": "transactions.review_queue",
+    "description": "Dashboard shows transaction review CTA and transactions screen supports review filter when transactions need cleanup.",
+    "critical": true,
+    "markers": ["home-transaction-review-card", "home-review-action", "transactions-review-chip"],
+    "tests": [
+      "apps/mobile/src/services/transaction-review.test.ts",
+      "apps/mobile/__tests__/tabs-index.test.tsx",
+      "apps/mobile/__tests__/transactions-swipe-actions.test.tsx"
+    ],
+    "verification": "Dashboard must render review CTA when count>0, transactions must show 'Perlu dicek' filter chip, and the review filter must hide clean transactions."
   }
 ]
