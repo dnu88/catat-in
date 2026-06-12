@@ -6,9 +6,19 @@ const __dirname = dirname(fileURLToPath(import.meta.url))
 const appDir = resolve(__dirname, '..')
 const liveUrl = (process.env.KASWISE_LIVE_URL || 'https://kaswise.com/').replace(/\/+$/, '/')
 const timeoutMs = Number(process.env.KASWISE_LIVE_VERIFY_TIMEOUT_MS || 20000)
+const silentSuccess = process.env.KASWISE_LIVE_VERIFY_SILENT === '1'
+const skipLocalBundleCheck = process.env.KASWISE_LIVE_VERIFY_SKIP_LOCAL_BUNDLE === '1'
 
 function readRequiredMarkers() {
-  return JSON.parse(readFileSync(join(__dirname, 'required-markers.json'), 'utf8'))
+  const registry = JSON.parse(readFileSync(join(__dirname, 'live-feature-registry.json'), 'utf8'))
+  const markers = []
+  for (const feature of registry) {
+    for (const marker of feature.markers ?? []) {
+      if (typeof marker === 'string' && marker.trim() && !markers.includes(marker)) markers.push(marker)
+    }
+  }
+  if (markers.length === 0) throw new Error('No markers found in live-feature-registry.json')
+  return markers
 }
 
 function readLocalBundleName() {
@@ -39,7 +49,7 @@ if (!liveBundleName) {
   process.exit(1)
 }
 
-const localBundleName = readLocalBundleName()
+const localBundleName = skipLocalBundleCheck ? null : readLocalBundleName()
 if (localBundleName && liveBundleName !== localBundleName) {
   console.error(`❌ Live bundle mismatch: live=${liveBundleName}, local dist=${localBundleName}`)
   process.exit(1)
@@ -56,5 +66,7 @@ if (missing.length > 0) {
   process.exit(1)
 }
 
-console.log(`✅ Live URL references ${liveBundleName}`)
-console.log(`✅ All ${requiredMarkers.length} required markers present in live bundle`)
+if (!silentSuccess) {
+  console.log(`✅ Live URL references ${liveBundleName}`)
+  console.log(`✅ All ${requiredMarkers.length} required markers present in live bundle`)
+}

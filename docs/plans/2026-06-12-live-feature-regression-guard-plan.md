@@ -684,8 +684,8 @@ Current status by layer:
 Remaining actions for 100% enforcement:
 
 1. ~~Upgrade GitHub to a plan that supports branch protection on private repos, or make the repo public, then enable required checks on `main`.~~ Done on 2026-06-12 by making the repository public and enabling branch protection required checks on `main`.
-2. Replace or remove the stale Firebase-gated E2E job in CI. Kaswise no longer uses Firebase, so missing Firebase secrets must not be treated as a valid skip reason.
-3. Prove the live marker cron guard by running it and confirming successful status/delivery behavior.
+2. ~~Replace or remove the stale Firebase-gated E2E job in CI. Kaswise no longer uses Firebase, so missing Firebase secrets must not be treated as a valid skip reason.~~ Done in branch hardening: the Firebase-gated `E2E smoke (Playwright)` job was removed from `.github/workflows/ci.yml` and kept out of branch-protection required checks until a current no-Firebase/Supabase smoke test is written.
+3. ~~Prove the live marker cron guard by running it and confirming successful status/delivery behavior.~~ Done in branch hardening: `kaswise-pwa-marker-guard` was converted to a script-only watchdog (`no_agent=true`) backed by `/home/Danu88/.hermes/profiles/coding/scripts/kaswise_pwa_marker_guard.sh`. The wrapper runs `node apps/mobile/scripts/verify-live-url.mjs` with silent-success env vars, checks the live `https://kaswise.com/` bundle against `live-feature-registry.json`, exits `0`, and emits no stdout when all markers are present. Any missing marker or infrastructure failure exits non-zero so Hermes sends an error alert to Telegram.
 4. Only after E2E is rewritten for the current no-Firebase/Supabase stack should `E2E smoke (Playwright)` be considered for required branch protection.
 
 ### Current branch protection status
