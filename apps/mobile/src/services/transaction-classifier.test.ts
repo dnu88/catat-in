@@ -184,6 +184,41 @@ describe("transaction text classifier", () => {
 	  );
 	  // Should produce 2+ transactions: kopi & nasi goreng (F&B) + parkir (Transport)
 	  expect(result.length).toBeGreaterThanOrEqual(2);
+
+	  // Verify amounts and categories are reasonable
+	  const amounts = result.map((r) => r.amount);
+	  expect(amounts).toContain(25000); // kopi
+	  expect(amounts).toContain(5000);  // parkir
+	  expect(amounts).toContain(15000); // nasi goreng
+
+	  const categoryNames = result.map((r) => r.categoryName);
+	  // Key check: at least one non-food category must appear
+	  const hasTransportOrOther = categoryNames.some(
+	    (name) => name === "Transport" || name === "Other expenses"
+	  );
+	  expect(hasTransportOrOther).toBe(true);
+	});
+
+	it("handles the user\"s exact example: kopi + sarapan + parkir", () => {
+	  const result = classifyTransactionTextBatch(
+	    "beli kopi 25rb, sarapan 15rb, parkir 5rb",
+	    categories,
+	    fixedDate,
+	  );
+	  // All three amounts should be detected as separate transactions
+	  expect(result.length).toBeGreaterThanOrEqual(2);
+
+	  const amounts = result.map((r) => r.amount);
+	  expect(amounts).toContain(25000);
+	  expect(amounts).toContain(15000);
+	  expect(amounts).toContain(5000);
+
+	  // Every transaction must have a valid category
+	  result.forEach((r) => {
+	    expect(r.categoryName).toBeTruthy();
+	    expect(r.amount).toBeGreaterThan(0);
+	    expect(r.confidence).toBeGreaterThan(0);
+	  });
 	});
 
 	it("may keep single when all items are same food category", () => {
