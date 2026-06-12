@@ -159,21 +159,46 @@ describe("transaction text classifier", () => {
 	});
 
 	it("splits mixed grocery and F&B notes when each amount is available", () => {
-		const result = classifyTransactionTextBatch(
-			"belanja beras 100rb dan kopi latte siap minum 35rb",
-			categories,
-			fixedDate,
-		);
+	  const result = classifyTransactionTextBatch(
+	    "belanja beras 100rb dan kopi latte siap minum 35rb",
+	    categories,
+	    fixedDate,
+	  );
 
-		expect(result).toHaveLength(2);
-		expect(result[0]).toMatchObject({
-			amount: 100000,
-			categoryName: "Groceries",
-		});
-		expect(result[1]).toMatchObject({
-			amount: 35000,
-			categoryName: "Food & Beverage",
-		});
+	  expect(result).toHaveLength(2);
+	  expect(result[0]).toMatchObject({
+	    amount: 100000,
+	    categoryName: "Groceries",
+	  });
+	  expect(result[1]).toMatchObject({
+	    amount: 35000,
+	    categoryName: "Food & Beverage",
+	  });
+	});
+
+	it("splits when segments have distinct categories", () => {
+	  const result = classifyTransactionTextBatch(
+	    "kopi 25rb, parkir 5rb, nasi goreng 15rb",
+	    categories,
+	    fixedDate,
+	  );
+	  // Should produce 2+ transactions: kopi & nasi goreng (F&B) + parkir (Transport)
+	  expect(result.length).toBeGreaterThanOrEqual(2);
+	});
+
+	it("may keep single when all items are same food category", () => {
+	  const result = classifyTransactionTextBatch(
+	    "kopi 25rb dan roti 15rb dan nasi goreng 20rb",
+	    categories,
+	    fixedDate,
+	  );
+	  // All food items — classifier may produce 1 or 3 valid segments
+	  // The important thing: each has valid amount and category
+	  expect(result.length).toBeGreaterThanOrEqual(1);
+	  result.forEach((r) => {
+	    expect(r.amount).toBeGreaterThan(0);
+	    expect(r.categoryName).toBeTruthy();
+	  });
 	});
 
 

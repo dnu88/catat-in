@@ -688,26 +688,28 @@ export function classifyTransactionText(
 }
 
 export function classifyTransactionTextBatch(
-	input: string,
-	categories: ClassificationCategory[] = [],
-	date = new Date(),
+  input: string,
+  categories: ClassificationCategory[] = [],
+  date = new Date(),
 ): ClassifiedTransaction[] {
-	const fullDraft = classifyTransactionText(input, categories, date);
-	if (!fullDraft) return [];
+  const fullDraft = classifyTransactionText(input, categories, date);
+  if (!fullDraft) return [];
 
-	const segments = segmentTextAroundAmounts(input);
-	if (segments.length < 2) return [fullDraft];
+  const segments = segmentTextAroundAmounts(input);
+  if (segments.length < 2) return [fullDraft];
 
-	const segmentDrafts = segments
-		.map((segment) => classifyTransactionText(segment, categories, date))
-		.filter((draft): draft is ClassifiedTransaction => Boolean(draft));
-	const concepts = new Set(segmentDrafts.map((draft) => draft.matchedConcept));
-	const shouldSplitFoodAndGroceries =
-		segmentDrafts.length >= 2 &&
-		concepts.has("food_beverage") &&
-		concepts.has("groceries");
+  const segmentDrafts = segments
+    .map((segment) => classifyTransactionText(segment, categories, date))
+    .filter((draft): draft is ClassifiedTransaction => Boolean(draft));
 
-	return shouldSplitFoodAndGroceries ? segmentDrafts : [fullDraft];
+  // If we only got one valid segment, return the full draft as fallback
+  if (segmentDrafts.length < 2) return [fullDraft];
+
+  // Return multiple segments if they differ in category (not all same)
+  const concepts = new Set(segmentDrafts.map((draft) => draft.matchedConcept));
+  const hasVariety = concepts.size >= 2;
+
+  return hasVariety ? segmentDrafts : [fullDraft];
 }
 
 export { HIGH_CONFIDENCE as CLASSIFIER_HIGH_CONFIDENCE_THRESHOLD };
