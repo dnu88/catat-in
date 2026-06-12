@@ -19,6 +19,7 @@
     "verify:live-url": "node scripts/verify-live-url.mjs",
     "predeploy": "pnpm quality:live",
     "deploy:pwa": "node scripts/deploy-pwa.mjs",
+    "report:release": "node scripts/generate-release-report.mjs",
     "test:golive": "playwright test -c playwright.golive.config.ts",
     "test:golive:headed": "playwright test -c playwright.golive.config.ts --headed",
     "test:golive:debug": "playwright test -c playwright.golive.config.ts --debug --project=kaswise-live-mobile-chrome",
