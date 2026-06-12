@@ -213,6 +213,13 @@ runLiveQualityGate()
 assertDistExists()
 deployDistToTarget()
 verifyTargetBundleMarkers()
+
+try {
+  console.log('📊 Generating marker diff report (non-blocking)...')
+  run('node scripts/marker-diff-report.mjs')
+} catch {
+  console.warn('⚠️  Marker diff report failed (non-blocking) — review before merging')
+}
 verifyLiveUrl()
 run('node scripts/generate-release-report.mjs')
 console.log('✅  Deploy completed with live regression guards')
