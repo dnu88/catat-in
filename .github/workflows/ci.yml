@@ -79,17 +79,8 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: TypeScript type-check
-        run: pnpm --filter mobile type-check
-
-      - name: Critical regression tests
-        run: pnpm --filter mobile test tabs-index reports-screen reports-ai-insight transactions-swipe-actions -- --runInBand
-
-      - name: Export PWA (build check)
-        run: pnpm --filter mobile export:pwa
-
-      - name: Bundle marker audit
-        run: pnpm --filter mobile check:bundle
+      - name: Mobile live quality gate
+        run: pnpm --filter mobile quality:live
 
   e2e-smoke:
     name: E2E smoke (Playwright)

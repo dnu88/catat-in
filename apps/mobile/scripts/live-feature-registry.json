@@ -1,0 +1,109 @@
+[
+  {
+    "id": "capture.multi_text_transactions",
+    "description": "AI capture can create multiple transaction drafts from one text chat while preserving single-transaction behavior.",
+    "critical": true,
+    "markers": ["capture-receipt-preview", "capture-receipt-confirm"],
+    "tests": [
+      "apps/mobile/src/services/transaction-classifier.test.ts",
+      "backend/tests/test_ai_service_model.py"
+    ],
+    "verification": "Input like 'beli kopi 25rb, sarapan 15rb, parkir 5rb' must create three transaction drafts with appropriate categories."
+  },
+  {
+    "id": "capture.itemized_receipt",
+    "description": "Receipt scan can create one transaction draft per readable receipt item and categorize items by product name.",
+    "critical": true,
+    "markers": ["capture-receipt-preview", "capture-receipt-confirm"],
+    "tests": [
+      "apps/mobile/src/services/receipt-intake.test.ts",
+      "apps/mobile/src/services/receipt-item-categorizer.test.ts"
+    ],
+    "verification": "A receipt extraction with multiple items must produce multiple drafts whose amounts, categories, merchant, and date remain accurate."
+  },
+  {
+    "id": "manual_transaction.date_wheel",
+    "description": "Manual transaction create/edit form uses the iOS-style wheel date picker with explicit date confirmation.",
+    "critical": true,
+    "markers": ["transaction-date-wheel-picker", "transaction-date-confirm"],
+    "tests": ["apps/mobile/__tests__/transaction-new-edit-mode.test.tsx"],
+    "verification": "Manual transaction screen must render the wheel picker and save the confirmed date."
+  },
+  {
+    "id": "text_capture.natural_language_dates",
+    "description": "Text classifier and backend fallback parse Indonesian natural-language dates and strip date text from notes.",
+    "critical": true,
+    "markers": [],
+    "tests": [
+      "apps/mobile/src/services/transaction-classifier.test.ts",
+      "backend/tests/test_ai_service_model.py"
+    ],
+    "verification": "Inputs like 'Beli kopi 1rb tanggal 01 Juni 2026' and 'beli susu 15rb tgl 2/6/2026' must store ISO dates and clean notes."
+  },
+  {
+    "id": "reports.custom_period_and_saved_rules",
+    "description": "Reports screen keeps custom period wheel pickers and saved monthly cycle rule controls.",
+    "critical": true,
+    "markers": [
+      "reports-start-date-wheel-picker",
+      "reports-end-date-wheel-picker",
+      "reports-saved-rules-card",
+      "reports-save-period-rule-from-date-modal",
+      "reports-period-rule-name-input"
+    ],
+    "tests": ["apps/mobile/__tests__/reports-screen.test.tsx"],
+    "verification": "Reports period modal must expose start/end wheel pickers and saved-rule controls."
+  },
+  {
+    "id": "transactions.bills_chip_filter",
+    "description": "Bills remain integrated into the existing Transactions flow through chips/cards, not as an extra tab.",
+    "critical": true,
+    "markers": ["transactions-bills-chip", "bills-create-card", "bills-add-button"],
+    "tests": ["apps/mobile/__tests__/transactions-swipe-actions.test.tsx"],
+    "verification": "Transactions screen must keep the Bills chip/filter path and bill creation entry points."
+  },
+  {
+    "id": "home.dashboard_privacy_period",
+    "description": "Home dashboard preserves privacy/theme toggles, active period label, and main financial summary cards.",
+    "critical": true,
+    "markers": [
+      "home-theme-toggle",
+      "home-amount-visibility-toggle",
+      "home-active-period-label",
+      "home-total-balance",
+      "home-monthly-remaining",
+      "home-monthly-expense",
+      "home-entrance-hero",
+      "home-entrance-budget"
+    ],
+    "tests": ["apps/mobile/__tests__/tabs-index.test.tsx"],
+    "verification": "Home dashboard must render privacy/theme controls, active period, total balance, monthly remaining, expense, hero, and budget sections."
+  },
+  {
+    "id": "notifications.in_app_bell",
+    "description": "In-app notification bell, unread badge, mark-all-read action, and empty state stay available.",
+    "critical": true,
+    "markers": ["notification-bell", "notification-bell-badge", "notifications-mark-all-read", "notifications-empty"],
+    "tests": ["apps/mobile/__tests__/tabs-index.test.tsx"],
+    "verification": "Notification bell/badge and notification screen actions must remain in the PWA bundle."
+  },
+  {
+    "id": "reports.ai_insight_entry",
+    "description": "Reports AI insight and recommendation entry cards remain present for the freemium AI monetization flow.",
+    "critical": true,
+    "markers": ["reports-entrance-ai-insight", "reports-entrance-recommendation", "ai-insight-card"],
+    "tests": [
+      "apps/mobile/__tests__/reports-ai-insight.test.tsx",
+      "apps/mobile/__tests__/reports-screen.test.tsx"
+    ],
+    "verification": "Reports must continue to render AI insight entry points and the AI insight card."
+  },
+  {
+    "id": "transactions.report_period_filter",
+    "description": "Transactions screen respects the active report period and renders period context rows.",
+    "critical": true,
+    "markers": ["transactions-report-period-label", "transactions-period-row"],
+    "tests": ["apps/mobile/__tests__/transactions-swipe-actions.test.tsx"],
+    "verification": "Transactions screen must show active period context and avoid losing period filter UI."
+  }
+]
