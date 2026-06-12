@@ -100,7 +100,7 @@ async def extract_transaction_from_text(user_text: str) -> dict:
         client = _get_async_anthropic_client()
         response = await client.messages.create(
             model=settings.ANTHROPIC_MODEL_EXTRACT,
-            max_tokens=500,
+            max_tokens=2048,
             system=[{"type": "text", "text": TRANSACTION_EXTRACT_PROMPT, "cache_control": {"type": "ephemeral"}}],
             messages=[{"role": "user", "content": user_text}],
         )
@@ -442,43 +442,86 @@ def _format_rupiah(value: float) -> str:
 
 def _extract_transaction_locally(user_text: str) -> dict:
     text = (user_text or "").strip().lower()
-    amount = _extract_amount(text)
-    tx_type = _infer_type(text)
-    category = _infer_category(text, tx_type)
-    wallet_hint = _extract_wallet_hint(text)
-    merchant = _extract_merchant(text)
-    date_hint = _extract_relative_date(text)
+    segments = _split_text_around_amounts(text)
 
-    if amount <= 0:
-        return {
-            "transactions": [],
-            "unclear": "Nominal belum terbaca. Coba tulis seperti 45rb, 120000, atau 1.5jt.",
-        }
+    transactions = []
+    for segment in segments:
+        amount = _extract_amount(segment)
+        if amount <= 0:
+            continue
+        tx_type = _infer_type(segment)
+        category = _infer_category(segment, tx_type)
+        wallet_hint = _extract_wallet_hint(segment) or _extract_wallet_hint(text)
+        merchant = _extract_merchant(segment)
+        date_hint = _extract_relative_date(segment) or _extract_relative_date(text)
 
-    confidence = 0.62
-    if wallet_hint:
-        confidence += 0.14
-    if merchant:
-        confidence += 0.08
-    if category != "other":
-        confidence += 0.1
-    confidence = min(confidence, 0.94)
+        confidence = 0.62
+        if wallet_hint:
+            confidence += 0.14
+        if merchant:
+            confidence += 0.08
+        if category != "other":
+            confidence += 0.1
+        confidence = min(confidence, 0.94)
 
-    return {
-        "transactions": [
+        note = _strip_amounts(segment) or None
+        transactions.append(
             {
                 "type": tx_type,
                 "amount": amount,
                 "category": category,
                 "merchant": merchant,
-                "note": None,
+                "note": note,
                 "wallet_hint": wallet_hint,
                 "date": date_hint,
                 "confidence": confidence,
             }
-        ],
-        "unclear": None if wallet_hint else "Wallet belum terbaca otomatis. Pilih wallet saat review.",
+        )
+
+    if not transactions:
+        return {
+            "transactions": [],
+            "unclear": "Nominal belum terbaca. Coba tulis seperti 45rb, 120000, atau 1.5jt.",
+        }
+
+    has_wallet_hint = any(tx.get("wallet_hint") for tx in transactions)
+    return {
+        "transactions": transactions,
+        "unclear": None if has_wallet_hint else "Wallet belum terbaca otomatis. Pilih wallet saat review.",
     }
+
+
+def _amount_matches(text: str) -> list[re.Match[str]]:
+    return list(re.finditer(r"(?:rp\s*)?\d+(?:[.,]\d+)?\s*(?:rb|ribu|jt|juta|k|m)\b|rp\s*[\d.,]+|\b\d[\d.]{3,}\b|\b\d{4,}\b", text))
+
+
+def _split_text_around_amounts(text: str) -> list[str]:
+    matches = _amount_matches(text)
+    if len(matches) < 2:
+        return [text]
+
+    segments: list[str] = []
+    for index, match in enumerate(matches):
+        start = 0 if index == 0 else matches[index - 1].end()
+        end = len(text) if index == len(matches) - 1 else match.end()
+        segment = re.sub(
+            r"^\s*(?:dan|lalu|terus|kemudian|,|;|\+)\s*",
+            "",
+            text[start:end],
+            flags=re.IGNORECASE,
+        ).strip()
+        if segment:
+            segments.append(segment)
+    return segments or [text]
+
+
+def _strip_amounts(text: str) -> str:
+    return re.sub(
+        r"(?:rp\s*)?\d+(?:[.,]\d+)?\s*(?:rb|ribu|jt|juta|k|m)\b|rp\s*[\d.,]+|\b\d[\d.]{3,}\b|\b\d{4,}\b",
+        " ",
+        text,
+        flags=re.IGNORECASE,
+    ).strip(" ,.;:-")
 
 
 def _extract_amount(text: str) -> float:
@@ -518,7 +561,7 @@ def _infer_category(text: str, tx_type: str) -> str:
             return "investment"
         return "other"
 
-    if any(word in text for word in ["makan", "kopi", "warteg", "resto"]):
+    if any(word in text for word in ["makan", "sarapan", "kopi", "warteg", "resto"]):
         return "food"
     if any(word in text for word in ["bensin", "transport", "parkir", "tol"]):
         return "transport"

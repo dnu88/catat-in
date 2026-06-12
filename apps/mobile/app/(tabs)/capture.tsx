@@ -36,10 +36,14 @@ import {
 	type ReceiptTransactionDraft,
 } from "../../src/services/receipt-intake";
 import { listCategories, type Category } from "../../src/services/categories";
-import { getLocalizedCategoryName } from "../../src/services/category-taxonomy";
+import {
+	getCategoryCanonicalId,
+	getLocalizedCategoryName,
+} from "../../src/services/category-taxonomy";
 import {
 	classifyTransactionTextBatch,
 	CLASSIFIER_HIGH_CONFIDENCE_THRESHOLD,
+	type ClassifiedTransaction,
 } from "../../src/services/transaction-classifier";
 import { listWallets, type Wallet } from "../../src/services/wallets";
 import { useFinanceContext } from "../../src/state/finance-context";
@@ -83,6 +87,84 @@ type ModeId = (typeof modes)[number]["id"];
 const enabledModes = modes.filter(
 	(mode) => mode.id === "Teks" || mode.id === "Foto",
 );
+
+type AiTextTransaction = {
+	type?: unknown;
+	amount?: unknown;
+	category?: unknown;
+	merchant?: unknown;
+	note?: unknown;
+	date?: unknown;
+	confidence?: unknown;
+};
+
+function normalizeAiDate(value: unknown) {
+	const today = new Date();
+	if (typeof value !== "string" || !value.trim() || value === "today") {
+		return today.toISOString().slice(0, 10);
+	}
+	if (value === "yesterday") {
+		const yesterday = new Date(today);
+		yesterday.setDate(today.getDate() - 1);
+		return yesterday.toISOString().slice(0, 10);
+	}
+	return /^\d{4}-\d{2}-\d{2}$/.test(value) ? value : today.toISOString().slice(0, 10);
+}
+
+function resolveAiCategoryName(
+	category: unknown,
+	categories: Category[],
+	language: "id" | "en",
+) {
+	const rawName = typeof category === "string" && category.trim() ? category.trim() : "other";
+	const canonicalId = getCategoryCanonicalId(rawName);
+	const existing = categories.find(
+		(option) => getCategoryCanonicalId(option.name) === canonicalId,
+	);
+	if (existing) return getLocalizedCategoryName(existing.name, language);
+	return getLocalizedCategoryName(rawName, language) || (language === "en" ? "Other expenses" : "Lainnya");
+}
+
+function aiExtractionToDrafts(
+	extraction: { transactions?: unknown[] } | null | undefined,
+	categories: Category[],
+	language: "id" | "en",
+	fallbackInput: string,
+): ClassifiedTransaction[] {
+	const transactions = Array.isArray(extraction?.transactions)
+		? extraction.transactions
+		: [];
+
+	return transactions
+		.map((raw): ClassifiedTransaction | null => {
+			const item = raw as AiTextTransaction;
+			const amount = Number(item.amount ?? 0);
+			if (!Number.isFinite(amount) || amount <= 0) return null;
+
+			const transactionType = item.type === "income" ? "income" : "expense";
+			const categoryName = resolveAiCategoryName(item.category, categories, language);
+			const note = typeof item.note === "string" && item.note.trim()
+				? item.note.trim()
+				: fallbackInput;
+			const confidence = Number(item.confidence ?? 0.82);
+
+			return {
+				transactionType,
+				amount,
+				categoryId: null,
+				categoryName,
+				merchant: typeof item.merchant === "string" && item.merchant.trim()
+					? item.merchant.trim()
+					: null,
+				note,
+				date: normalizeAiDate(item.date),
+				confidence: Number.isFinite(confidence) ? Math.max(0, Math.min(confidence, 1)) : 0.82,
+				matchedKeywords: [],
+				matchedConcept: getCategoryCanonicalId(categoryName) || "unknown",
+			};
+		})
+		.filter((draft): draft is ClassifiedTransaction => Boolean(draft));
+}
 
 export default function CaptureScreen() {
 	const { supabase } = useSupabase();
@@ -280,7 +362,7 @@ export default function CaptureScreen() {
 				return;
 			}
 
-			await analyzeTransactionText(supabase, value);
+			const aiExtraction = await analyzeTransactionText(supabase, value);
 			void refreshEntitlements();
 
 			const categoriesForClassification =
@@ -291,10 +373,17 @@ export default function CaptureScreen() {
 				...category,
 				name: getLocalizedCategoryName(category.name, isEn ? "en" : "id"),
 			}));
-			const quickDrafts = classifyTransactionTextBatch(
+			const localDrafts = classifyTransactionTextBatch(
 				value,
 				localizedCategoriesForClassification,
 			);
+			const aiDrafts = aiExtractionToDrafts(
+				aiExtraction,
+				categoriesForClassification,
+				isEn ? "en" : "id",
+				value,
+			);
+			const quickDrafts = aiDrafts.length > localDrafts.length ? aiDrafts : localDrafts;
 			const quickDraft = quickDrafts[0] ?? null;
 
 			if (!quickDraft) {
