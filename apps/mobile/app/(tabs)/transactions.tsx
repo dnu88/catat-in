@@ -52,9 +52,11 @@ const OTHER_CATEGORY_NAMES = ["Lainnya", "Other", "Other expenses"];
 
 function isReviewable(tx: Transaction): boolean {
 	if (tx.review_required === true) return true;
-	if (typeof tx.confidence === "number" && tx.confidence < 0.75) return true;
+	if (typeof tx.confidence === "number" && tx.confidence < 0.5) return true;
 	if (OTHER_CATEGORY_NAMES.includes(tx.category ?? "")) return true;
-	if (!tx.amount || !tx.category || !tx.date) return true;
+	if (tx.amount == null || tx.amount <= 0) return true;
+	if (!tx.category?.trim()) return true;
+	if (!tx.date || tx.date.trim() === "") return true;
 	return false;
 }
 

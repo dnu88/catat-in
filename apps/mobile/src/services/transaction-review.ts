@@ -32,9 +32,14 @@ function needsReview(tx: Transaction): {
   const flags = {
     review_required: tx.review_required === true,
     low_confidence:
-      typeof tx.confidence === "number" && tx.confidence < 0.75,
+      typeof tx.confidence === "number" && tx.confidence < 0.5,
     other_category: OTHER_CATEGORY_NAMES.includes(tx.category ?? ""),
-    missing_fields: !tx.amount || !tx.category || !tx.date,
+    missing_fields:
+      tx.amount == null ||
+      tx.amount <= 0 ||
+      !tx.category?.trim() ||
+      !tx.date ||
+      tx.date.trim() === "",
   };
 
   return flags;

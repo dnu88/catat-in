@@ -562,7 +562,7 @@ describe("transaction swipe actions", () => {
 		mockListTransactions.mockResolvedValue([
 			{ ...baseTx({ id: "tx-clean" }), category: "Makan", kategori: "Makan", merchant: "Warung" },
 			{ ...baseTx({ id: "tx-lainnya" }), category: "Lainnya", kategori: "Lainnya", merchant: "Toko" },
-			{ ...baseTx({ id: "tx-lowconf", confidence: 0.5 }), category: "Makan", kategori: "Makan", merchant: "Kafe" },
+			{ ...baseTx({ id: "tx-lowconf", confidence: 0.3 }), category: "Makan", kategori: "Makan", merchant: "Kafe" },
 			{ ...baseTx({ id: "tx-review", review_required: true }), category: "Transport", kategori: "Transport", merchant: "Parkir" },
 		]);
 		const screen = renderScreen();
