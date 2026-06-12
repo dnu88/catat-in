@@ -52,6 +52,11 @@ jest.mock("../src/services/transactions", () => ({
 	listTransactions: jest.fn(async () => mockTransactions),
 }));
 
+let mockReviewSummary: { summary: { count: number; reasons: any } } | null = null;
+jest.mock("../src/services/transaction-review", () => ({
+	getTransactionReviewSummary: jest.fn(async () => mockReviewSummary),
+}));
+
 jest.mock("../src/services/categories", () => ({
 	listCategories: jest.fn(async () => [
 		{
@@ -578,5 +583,69 @@ describe("DashboardScreen dark luxury Home parity", () => {
 			) ||
 				SOFT_GREEN_BORDERS.includes(primaryBubbleStyle.borderColor as string),
 		).toBe(true);
+	});
+
+	it("shows transaction review CTA when review count > 0", async () => {
+		mockReviewSummary = {
+			summary: {
+				count: 3,
+				reasons: {
+					review_required: 1,
+					low_confidence: 1,
+					other_category: 1,
+					missing_fields: 0,
+				},
+			},
+		};
+
+		const screen = renderDashboard();
+
+		await waitFor(() =>
+			expect(screen.getByTestId("home-transaction-review-card")).toBeTruthy(),
+		);
+		expect(screen.getByText("3 transaksi perlu dicek")).toBeTruthy();
+		expect(
+			screen.getByText(
+				"Rapikan kategori agar laporan dan Insight AI lebih akurat.",
+			),
+		).toBeTruthy();
+		expect(screen.getByText("Cek sekarang")).toBeTruthy();
+		expect(screen.getByTestId("home-review-action")).toBeTruthy();
+
+		fireEvent.press(screen.getByTestId("home-review-action"));
+		expect(mockPush).toHaveBeenLastCalledWith("/(tabs)/transactions?review=1");
+	});
+
+	it("hides transaction review card when count is 0", async () => {
+		mockReviewSummary = {
+			summary: {
+				count: 0,
+				reasons: {
+					review_required: 0,
+					low_confidence: 0,
+					other_category: 0,
+					missing_fields: 0,
+				},
+			},
+		};
+
+		const screen = renderDashboard();
+
+		await waitFor(() =>
+			expect(screen.getByText("Halo")).toBeTruthy(),
+		);
+		expect(screen.queryByTestId("home-transaction-review-card")).toBeNull();
+		expect(screen.queryByText("Cek sekarang")).toBeNull();
+	});
+
+	it("hides transaction review card when summary is null", async () => {
+		mockReviewSummary = null;
+
+		const screen = renderDashboard();
+
+		await waitFor(() =>
+			expect(screen.getByText("Halo")).toBeTruthy(),
+		);
+		expect(screen.queryByTestId("home-transaction-review-card")).toBeNull();
 	});
 });

@@ -23,6 +23,10 @@ import {
 	listTransactions,
 	type Transaction,
 } from "../../src/services/transactions";
+import {
+	getTransactionReviewSummary,
+	type TransactionReviewSummary,
+} from "../../src/services/transaction-review";
 import { listWallets, type Wallet } from "../../src/services/wallets";
 import { listCategories, type Category } from "../../src/services/categories";
 import { getLocalizedCategoryName } from "../../src/services/category-taxonomy";
@@ -151,6 +155,9 @@ export default function DashboardScreen() {
 						remainingUntil: (amount: number, day: string, month: string) =>
 							`Rp${amount.toLocaleString("id-ID")} left until ${day}/${month}`,
 						attention: "Active budget wallet needs attention",
+						reviewTitle: (count: number) => `${count} ${count === 1 ? "transaction needs" : "transactions need"} review`,
+						reviewBody: "Clean up categories so reports and AI Insight stay accurate.",
+						reviewCta: "Review now",
 					}
 				: {
 						budget: "Anggaran",
@@ -203,6 +210,9 @@ export default function DashboardScreen() {
 						remainingUntil: (amount: number, day: string, month: string) =>
 							`Rp${amount.toLocaleString("id-ID")} tersisa sampai ${day}/${month}`,
 						attention: "Dompet aktif yang perlu perhatian",
+						reviewTitle: (count: number) => `${count} transaksi perlu dicek`,
+						reviewBody: "Rapikan kategori agar laporan dan Insight AI lebih akurat.",
+						reviewCta: "Cek sekarang",
 					},
 		[isEn],
 	);
@@ -212,6 +222,7 @@ export default function DashboardScreen() {
 	const [recentTransactions, setRecentTransactions] = useState<Transaction[]>(
 		[],
 	);
+	const [reviewSummary, setReviewSummary] = useState<TransactionReviewSummary | null>(null);
 	const [categoryOptions, setCategoryOptions] = useState<Category[]>([]);
 	const [userName, setUserName] = useState("");
 	const [userEmail, setUserEmail] = useState("");
@@ -270,6 +281,7 @@ export default function DashboardScreen() {
 						setProfileAvatarKey("");
 						setWallets([]);
 						setRecentTransactions([]);
+						setReviewSummary(null);
 						setCategoryOptions([]);
 						setGuideUserId("");
 						setFirstUseGuideState({});
@@ -319,6 +331,14 @@ export default function DashboardScreen() {
 					supabase,
 					activeEnvelopes.map((envelope) => envelope.id),
 				);
+
+				// Load transaction review summary
+				const reviewResult = await getTransactionReviewSummary(activeContext)
+					.catch(() => null);
+				if (isMounted() && reviewResult) {
+					setReviewSummary(reviewResult.summary);
+				}
+
 				const summaries = activeEnvelopes.map((envelope) => ({
 					envelope,
 					progress: buildEnvelopeProgress(envelope, allocations),
@@ -333,6 +353,7 @@ export default function DashboardScreen() {
 				if (isMounted()) {
 					console.error("Error loading home envelope alerts:", error);
 					setEnvelopeAlerts([]);
+					setReviewSummary(null);
 					setGuideStateReady(true);
 					setActiveBudgetCount(0);
 				}
@@ -883,7 +904,41 @@ export default function DashboardScreen() {
 					</View>
 				</StaggeredEntrance>
 
-				<StaggeredEntrance index={4} testID="home-entrance-recent">
+				{reviewSummary && reviewSummary.count > 0 ? (
+					<StaggeredEntrance index={4} testID="home-entrance-review">
+						<View testID="home-transaction-review-card" style={styles.sectionCard}>
+							<View style={styles.sectionTopRow}>
+								<View style={{ flexDirection: "row", alignItems: "center", gap: theme.spacing.sm }}>
+									<View
+										style={{
+											width: 32,
+											height: 32,
+											borderRadius: theme.radius.pill,
+											backgroundColor: colorWithAlpha(theme.colors.warning, "18"),
+											alignItems: "center",
+											justifyContent: "center",
+										}}
+									>
+										<KaswiseIcon name="notification" color={theme.colors.warning} size={16} weight="bold" />
+									</View>
+									<Text style={styles.sectionTitle}>{tx.reviewTitle(reviewSummary.count)}</Text>
+								</View>
+								<Pressable
+									testID="home-review-action"
+									accessibilityRole="button"
+									accessibilityLabel={tx.reviewCta}
+									hitSlop={12}
+									onPress={() => router.push("/(tabs)/transactions?review=1" as never)}
+								>
+									<Text style={[styles.sectionAction, { color: theme.colors.warning }]}>{tx.reviewCta}</Text>
+								</Pressable>
+							</View>
+							<Text style={[styles.budgetMeta, { marginTop: theme.spacing.xs }]}>{tx.reviewBody}</Text>
+						</View>
+					</StaggeredEntrance>
+				) : null}
+
+				<StaggeredEntrance index={reviewSummary && reviewSummary.count > 0 ? 5 : 4} testID="home-entrance-recent">
 					<View style={styles.sectionCard}>
 						<View style={styles.sectionTopRow}>
 							<Text style={styles.sectionTitle}>{tx.recentTitle}</Text>
