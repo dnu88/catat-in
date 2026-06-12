@@ -808,6 +808,171 @@ These remain intentionally redundant. A production regression should have to byp
 
 ---
 
+## Next Steps for the Next Model
+
+The 5-layer guard is now operational. The next model should not rework the guard from scratch. Execute only these follow-up improvements, in small PRs, with verification after each change.
+
+### Priority 1 — GitHub Actions Node 24 readiness
+
+Why:
+
+- Current CI passes, but GitHub warns that Node.js 20 actions are deprecated.
+- This is not a product bug, but it can become a future CI blocker if ignored.
+
+Scope:
+
+1. Inspect `.github/workflows/ci.yml`.
+2. Update action versions only if newer stable versions exist and support the current repo workflow.
+3. Keep required check names unchanged:
+   - `Backend quality gate (pytest)`
+   - `Web quality gate (typecheck + unit + build)`
+   - `Mobile PWA quality gate (typecheck + tests + build)`
+4. Do not add the old Firebase-gated E2E job back.
+5. Open a PR and confirm all required checks pass.
+
+Verification:
+
+```bash
+gh workflow run ci.yml --ref <branch> || true
+gh pr checks <pr-number> --repo dnu88/catat-in --watch
+gh api repos/dnu88/catat-in/branches/main/protection \
+  --jq '.required_status_checks.contexts'
+```
+
+Acceptance criteria:
+
+- CI passes on PR and after merge to `main`.
+- Branch protection still lists the same three required checks.
+- No Firebase secret condition is reintroduced.
+
+### Priority 2 — Current-stack E2E smoke test, optional but recommended
+
+Why:
+
+- The previous Playwright E2E was Firebase-gated and stale.
+- Kaswise no longer uses Firebase, so any new E2E must target the current no-Firebase/Supabase/backend stack.
+
+Scope:
+
+1. Do not restore the removed Firebase-gated job.
+2. First audit current web auth/runtime dependencies.
+3. Add a minimal smoke that can run reliably in CI without private Firebase secrets.
+4. Start with public, low-flake assertions only, for example:
+   - app shell renders,
+   - login/register/forgot-password routes render,
+   - invalid login shows a controlled error if the backend mock or test env supports it.
+5. If backend/Supabase credentials are required and not safely available in CI, stop at a documented plan rather than adding a fake green check.
+6. Only after the smoke is stable should it be considered for branch protection.
+
+Verification:
+
+```bash
+pnpm --filter @kaswise/web test:e2e
+# or the exact package script discovered in apps/web/package.json
+```
+
+Acceptance criteria:
+
+- E2E passes locally and in CI without Firebase secrets.
+- New CI job has a clear, stable job name.
+- The job is not added to branch protection until it has proven stable.
+
+### Priority 3 — Release report artifact
+
+Why:
+
+- The guard blocks regressions, but a release report gives better auditability.
+
+Scope:
+
+1. Extend mobile deploy/predeploy flow to write a release report artifact containing:
+   - commit SHA,
+   - branch,
+   - bundle file,
+   - marker count,
+   - commands/tests executed,
+   - live verification result,
+   - timestamp.
+2. Store it in a predictable path such as `apps/mobile/dist/release-report.json` or `docs/releases/<date>-<sha>.md`.
+3. Avoid secrets in the report.
+
+Verification:
+
+```bash
+pnpm --filter mobile quality:live
+pnpm --filter mobile deploy:pwa
+```
+
+Acceptance criteria:
+
+- Report is generated during deploy/predeploy.
+- Report includes the live marker verification result.
+- Report does not contain credentials or tokens.
+
+### Priority 4 — Candidate-vs-live marker diff report
+
+Why:
+
+- Marker checks currently fail when required markers are missing.
+- A diff report would make intentional additions/removals easier to review before deploy.
+
+Scope:
+
+1. Add a script that compares candidate bundle markers against live bundle markers.
+2. Output added markers, removed markers, and unchanged marker count.
+3. Fail only on removals of registry-required markers unless explicitly approved by registry changes.
+4. Integrate into deploy logging first; do not make it a hard gate until stable.
+
+Verification:
+
+```bash
+pnpm --filter mobile export:pwa
+pnpm --filter mobile check:bundle
+pnpm --filter mobile verify:live-url
+```
+
+Acceptance criteria:
+
+- Diff report clearly lists marker additions/removals.
+- Required marker removals fail or are visibly flagged.
+- Normal deploy remains green.
+
+### Priority 5 — Stronger PR review rule, only when another reviewer exists
+
+Why:
+
+- `required_pull_request_reviews` is currently intentionally `null` to avoid blocking solo maintenance.
+- If another reviewer becomes available, requiring approval would strengthen release discipline.
+
+Scope:
+
+1. Confirm with the user that another reviewer is available.
+2. Enable at least one required approval on `main`.
+3. Keep required status checks unchanged.
+4. Verify solo maintenance is not blocked unexpectedly.
+
+Verification:
+
+```bash
+gh api repos/dnu88/catat-in/branches/main/protection \
+  --jq '{required_pull_request_reviews, required_status_checks}'
+```
+
+Acceptance criteria:
+
+- `main` requires approval only after user confirms reviewer availability.
+- Backend/Web/Mobile required checks remain enforced.
+
+### Do Not Do
+
+- Do not reintroduce Firebase-gated CI or Firebase secrets.
+- Do not rename required CI job names without updating branch protection in the same PR.
+- Do not weaken `main` branch protection.
+- Do not remove `quality:live`, registry validation, bundle marker checks, or live URL verification.
+- Do not modify production deploy behavior without running the full deploy verification path.
+
+---
+
 ## Risks and Mitigations
 
 ### Risk: deploy becomes slow
@@ -866,25 +1031,20 @@ Tahap 1 should be mostly scripts, registry, tests, and deploy safety.
 
 ---
 
-## Tahap 2 / Later Enhancements
+## Later Enhancements Snapshot
 
-After Tahap 1 is stable:
+The detailed executable follow-up list is in **Next Steps for the Next Model** above. Short version:
 
-1. Make `required-markers.json` generated from registry.
-2. Add Playwright smoke tests against staging/live.
-3. Enforce GitHub branch protection required checks.
-4. Add preview deploy URL for feature branches.
-5. Add release report artifact:
-   - commit SHA
-   - branch
-   - bundle file
-   - marker count
-   - tests executed
-   - live verification result
-6. Add candidate-vs-live diff report that lists marker additions/removals before deploy.
+1. Prepare GitHub Actions for Node 24 runtime changes.
+2. Add a new no-Firebase/Supabase-compatible Playwright smoke test only if it can run reliably in CI.
+3. Add release report artifacts for deploy auditability.
+4. Add candidate-vs-live marker diff reporting.
+5. Consider required PR approvals only when another reviewer is available.
+
+Do not treat these as blockers for the current 5-layer guard; they are follow-up hardening items.
 
 ---
 
 ## Final Handoff Note
 
-The next model should implement Tahap 1 in small commits. Do not skip verification. The purpose is not only to fix the current bug; it is to stop the pattern of replacing working live features during future deploys.
+The current 5-layer guard is implemented, documented, and verified. The next model should execute the **Next Steps for the Next Model** section as incremental hardening work, not as a redo of the guard implementation. Keep required CI check names stable, never reintroduce Firebase-gated E2E, and verify every PR through branch protection before merging.
