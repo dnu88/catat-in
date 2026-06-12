@@ -53,6 +53,8 @@ def generate_bill_reminders(dry_run: bool = False) -> list[dict]:
         prefs = get_preferences(user_id)
         if not prefs.get("enabled", True):
             continue
+        if not prefs.get("bill_reminder_enabled", False):
+            continue
 
         bill_name = bill.get("name", "Tagihan")
         amount = bill.get("amount", 0)
