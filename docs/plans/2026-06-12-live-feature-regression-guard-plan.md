@@ -649,6 +649,123 @@ curl -fsSL https://kaswise.com/ | grep -o 'entry-[^" ]*\.js' | head -1
 
 ---
 
+## GitHub Branch Protection Required Checks: 100% Enforcement
+
+### Current blocker
+
+As of 2026-06-12, repo `dnu88/catat-in` is private and GitHub rejects branch protection access with:
+
+```text
+Upgrade to GitHub Pro or make this repository public to enable this feature. (HTTP 403)
+```
+
+This means required status checks cannot be enforced 100% using native GitHub branch protection on the current plan. The codebase guardrails are active, but GitHub itself still cannot block a direct push to `main` until branch protection is enabled.
+
+### Ways to enable 100% native enforcement
+
+Choose one:
+
+1. Upgrade the GitHub account/repo to GitHub Pro, Team, or Enterprise.
+2. Make the repository public.
+3. Move the repository to an organization/team that already has a paid GitHub plan with branch protection for private repos.
+
+Recommended path for Kaswise: keep the repo private and upgrade to GitHub Pro/Team, then enable protection on `main`.
+
+### Required checks to protect `main`
+
+Once branch protection is available, require these GitHub Actions job names:
+
+- `Backend quality gate (pytest)`
+- `Web quality gate (typecheck + unit + build)`
+- `Mobile PWA quality gate (typecheck + tests + build)`
+
+Optional later, after Firebase/E2E secrets are fully configured and the job no longer only skips:
+
+- `E2E smoke (Playwright)`
+
+### Recommended branch protection rules
+
+Enable for branch `main`:
+
+- Require a pull request before merging.
+- Require status checks to pass before merging.
+- Require branches to be up to date before merging (`strict: true`).
+- Block force pushes.
+- Block branch deletion.
+- Require conversation resolution before merge.
+- Restrict who can push directly to `main` where practical.
+- Require at least 1 approval when another reviewer is available.
+- Decide whether admins are included. For maximum release discipline, use `enforce_admins: true`.
+
+### CLI command after plan upgrade/public repo
+
+Run from `/home/Danu88/catat-in` after GitHub branch protection becomes available:
+
+```bash
+gh api \
+  --method PUT \
+  repos/dnu88/catat-in/branches/main/protection \
+  -H "Accept: application/vnd.github+json" \
+  --input - <<'JSON'
+{
+  "required_status_checks": {
+    "strict": true,
+    "contexts": [
+      "Backend quality gate (pytest)",
+      "Web quality gate (typecheck + unit + build)",
+      "Mobile PWA quality gate (typecheck + tests + build)"
+    ]
+  },
+  "enforce_admins": true,
+  "required_pull_request_reviews": {
+    "required_approving_review_count": 1,
+    "require_code_owner_reviews": false,
+    "dismiss_stale_reviews": true
+  },
+  "restrictions": null,
+  "required_linear_history": false,
+  "allow_force_pushes": false,
+  "allow_deletions": false,
+  "required_conversation_resolution": true
+}
+JSON
+```
+
+Verify after applying:
+
+```bash
+gh api repos/dnu88/catat-in/branches/main/protection \
+  --jq '{required_status_checks, enforce_admins, required_pull_request_reviews, allow_force_pushes, allow_deletions}'
+```
+
+### End-to-end proof that protection works
+
+After protection is enabled:
+
+1. Create a test branch.
+2. Intentionally break one mobile marker/test.
+3. Push the branch and open a PR.
+4. Confirm the PR cannot be merged while `Mobile PWA quality gate (typecheck + tests + build)` is failing.
+5. Revert the break.
+6. Confirm all required checks pass and the PR becomes mergeable.
+7. Confirm direct push to `main` is blocked or restricted according to the selected rule.
+
+### Current compensating controls until GitHub plan supports it
+
+Until native branch protection is available, the active compensating controls are:
+
+- local pre-push quality gate,
+- GitHub CI on `main`,
+- production deploy guard refusing non-production branches unless explicit override is set,
+- deploy-time `quality:live`,
+- bundle marker verification from `live-feature-registry.json`,
+- live URL verification after deploy,
+- cron/live monitor for production marker regressions.
+
+These reduce risk substantially, but they are not a full substitute for native GitHub branch protection because they cannot prevent every direct push to `main` at the GitHub permission layer.
+
+---
+
 ## Risks and Mitigations
 
 ### Risk: deploy becomes slow
