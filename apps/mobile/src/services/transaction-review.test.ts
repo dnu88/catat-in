@@ -73,12 +73,12 @@ describe("Transaction Review Service", () => {
     expect(result.transactions[0].id).toBe("tx-2");
   });
 
-  test("flags low confidence transactions (below 0.75)", async () => {
+  test("flags low confidence transactions (below 0.5)", async () => {
     mockQueryChain({
       rows: [
         tx(),
-        tx({ id: "tx-2", confidence: 0.5 }),
-        tx({ id: "tx-3", confidence: 0.74 }),
+        tx({ id: "tx-2", confidence: 0.3 }),
+        tx({ id: "tx-3", confidence: 0.49 }),
         tx({ id: "tx-4", confidence: 0.9 }),
       ],
     });
@@ -138,7 +138,7 @@ describe("Transaction Review Service", () => {
         tx({
           id: "tx-bad",
           review_required: true,
-          confidence: 0.5,
+          confidence: 0.3,
           kategori: "Lainnya",
           nominal: 0,
         }),
