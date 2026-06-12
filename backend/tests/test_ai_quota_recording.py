@@ -36,7 +36,7 @@ class TestAiQuotaRecording:
         app.dependency_overrides.pop(get_current_user, None)
         app.dependency_overrides.pop(rate_limit_ai, None)
 
-    def test_chat_records_usage_even_when_ai_returns_no_transactions(self, client):
+    def test_chat_does_not_record_usage_when_ai_returns_no_transactions(self, client):
         with patch("app.api.v1.ai.load_state", return_value=_state()), patch(
             "app.api.v1.ai.extract_transaction_from_text",
             new=AsyncMock(return_value={"transactions": []}),
@@ -47,7 +47,7 @@ class TestAiQuotaRecording:
             )
 
         assert response.status_code == 200
-        record_use.assert_called_once_with("quota-user-123", "2026-06", "chat")
+        record_use.assert_not_called()
 
     def test_chat_does_not_record_usage_when_quota_blocked(self, client):
         with patch("app.api.v1.ai.load_state", return_value=_state(chat_count=25)), patch(

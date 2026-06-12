@@ -72,7 +72,8 @@ async def chat_input(body: ChatInputRequest, current_user=Depends(get_current_us
     except RuntimeError as exc:
         raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(exc)) from exc
 
-    record_use(current_user["user_id"], state["period_ym"], "chat")
+    if result.get("transactions"):
+        record_use(current_user["user_id"], state["period_ym"], "chat")
     return result
 
 
