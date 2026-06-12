@@ -5,8 +5,9 @@ from pydantic import BaseModel, field_validator
 from app.core.auth import get_current_user, _get_supabase_service_client
 from app.services.payment_service import (
     price_for, tier_for_count, count_paid_users, make_order_id,
-    create_snap_transaction, fetch_and_sync_status,
+    create_snap_transaction, fetch_and_sync_status, get_payment_for_user,
 )
+from app.core.rate_limit import rate_limit_payment_status
 
 router = APIRouter()
 
@@ -67,8 +68,16 @@ async def pricing(current_user=Depends(get_current_user)):
     }
 
 
-@router.get("/{order_id}/status")
+@router.get("/{order_id}/status", dependencies=[Depends(rate_limit_payment_status)])
 async def payment_status(order_id: str, current_user=Depends(get_current_user)):
+    try:
+        payment = get_payment_for_user(order_id, current_user["user_id"])
+    except RuntimeError as exc:
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                            detail="Layanan pembayaran sedang tidak tersedia.") from exc
+    if payment is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                            detail="Pembayaran tidak ditemukan.")
     try:
         return fetch_and_sync_status(order_id)
     except Exception as exc:

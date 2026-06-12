@@ -392,7 +392,7 @@ export default function BillsScreen() {
 
 	const keyExtractor = (item: BillWithStatus) => item.id;
 
-	const listHeader = (
+	const listHeader = useMemo(() => (
 		<StaggeredStack testIDPrefix="bills-entrance">
 		  <ScreenHeader
 		    key="bills-header"
@@ -564,7 +564,26 @@ export default function BillsScreen() {
 				))}
 			</ScrollView>
 		</StaggeredStack>
-	);
+	), [
+		activeContext.type,
+		amountInput,
+		canCreate,
+		dueDayInput,
+		filter,
+		isEn,
+		loadError,
+		nameInput,
+		notifyBeforeDays,
+		overdueCount,
+		recurrenceInput,
+		resetCreateForm,
+		saveBill,
+		savingBill,
+		showCreate,
+		styles,
+		theme.colors,
+		totalUpcoming,
+	]);
 
 	const ListEmpty = () => (
 	  <EmptyState

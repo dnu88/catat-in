@@ -4,6 +4,8 @@
 **Status**: ✅ Completed  
 **Goal**: Implement async AI processing (text, OCR, voice) + confidence-based saving
 
+> **Note:** This document is historical/archival. For the current human-readable changelog, use `docs/changelog/CHANGELOG.md`.
+
 ---
 
 ## Summary

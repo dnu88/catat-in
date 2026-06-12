@@ -47,3 +47,9 @@ async def rate_limit_import(current_user: dict = Depends(get_current_user)):
     """Rate limiter untuk endpoint import file/confirm: N request per menit per user."""
     await _rate_limit_user("import", settings.RATE_LIMIT_IMPORT_ENDPOINT, current_user)
     return current_user
+
+
+async def rate_limit_payment_status(current_user: dict = Depends(get_current_user)):
+    """Rate limiter untuk polling status pembayaran per user."""
+    await _rate_limit_user("payment_status", settings.RATE_LIMIT_PAYMENT_STATUS_ENDPOINT, current_user)
+    return current_user

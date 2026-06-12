@@ -318,6 +318,10 @@ Fitur tagihan sederhana: buat, lihat, tandai lunas, bulanan auto-rollover.
 - Tandai lunas → **bulanan**: mundur ke bulan depan + catat pembayaran di `payment_history`; **sekali**: tandai `is_paid: true`
 - Filter: Semua / Akan Datang / Terlambat / Lunas
 
+**Catatan perbaikan 2026-06-12:**
+- Ikon/kartu bill sekarang pakai warna stabil berbasis nama bill, bukan lookup kategori.
+- Tombol "Mark Paid" untuk bill bulanan sekarang benar-benar menandai `is_paid: true` saat pembayaran dicatat, lalu status akan mengikuti siklus berikutnya.
+
 **File kunci:**
 - `apps/mobile/app/(tabs)/bills.tsx` — screen + form UI (i18n bilingual)
 - `apps/mobile/src/services/bills.ts` — Supabase CRUD (finance context support)
@@ -361,6 +365,8 @@ pnpm --filter mobile deploy:pwa  # deploy + auto marker guard
 ```
 
 ## Catatan UI/UX
+
+- **Changelog canonical**: gunakan `docs/changelog/CHANGELOG.md` untuk ringkasan perubahan yang dibaca manusia; detail teknis tetap di `docs/releases/*` dan `docs/plans/*`.
 
 - **Toggle tema**: hanya di dashboard header (`home-theme-toggle`), TIDAK di Settings
 - **Hide/view nominal**: di dashboard header (`home-amount-visibility-toggle`)

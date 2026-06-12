@@ -4,6 +4,8 @@
 **Status**: ✅ Completed  
 **Goal**: Setup Supabase + Expo Router + RLS baseline
 
+> **Note:** This document is historical/archival. For the current human-readable changelog, use `docs/changelog/CHANGELOG.md`.
+
 ---
 
 ## Summary
