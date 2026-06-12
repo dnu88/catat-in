@@ -366,6 +366,8 @@ pnpm --filter mobile deploy:pwa  # deploy + auto marker guard
 
 ## Catatan UI/UX
 
+- **Changelog canonical**: gunakan `docs/changelog/CHANGELOG.md` untuk ringkasan perubahan yang dibaca manusia; detail teknis tetap di `docs/releases/*` dan `docs/plans/*`.
+
 - **Toggle tema**: hanya di dashboard header (`home-theme-toggle`), TIDAK di Settings
 - **Hide/view nominal**: di dashboard header (`home-amount-visibility-toggle`)
 - **Notifikasi**: bell icon + badge unread di dashboard header, klik buka `/notifications`
