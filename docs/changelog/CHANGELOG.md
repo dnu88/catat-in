@@ -9,6 +9,7 @@ Format: Keep a Changelog.
 ### Security
 - Remediated repo-side findings from the 2026-06-12 security audit: payment status ownership checks, payment amount validation, bounded upload/import parsing, spreadsheet formula escaping, dependency CVE upgrades, non-root backend container runtime, stricter Vercel security headers, and legacy RLS cleanup migration.
 - Replaced tracked hardcoded TestSprite key values with `${TESTSPRITE_API_KEY}` placeholders; the exposed TestSprite API key was revoked by the account owner on 2026-06-13.
+- Applied Supabase migration `202606120001_drop_legacy_permissive_rls_policies.sql` to the linked production project and verified `legacy_policy_count = 0`.
 
 ## 2026-06-12
 

@@ -1,6 +1,6 @@
 # Security Audit — Catat.in / Kaswise (Full Review)
 
-> **Status:** 🟡 PARTIALLY REMEDIATED — repo-side fixes implemented; production Supabase policy verification remains.
+> **Status:** ✅ REMEDIATED — repo-side fixes applied, TestSprite key revoked, and production Supabase policies verified.
 > **Tanggal audit:** 2026-06-12
 > **Remediation branch:** `fix/security-audit-2026-06-12`
 > **Commit saat audit:** `490cf77` (branch `fix/bills-color-and-mark-paid`)
@@ -22,13 +22,11 @@ Repo-side fixes have been implemented for C1, H1, H2, H3, M1, M2, M3, M4, M5, L1
 - Vercel response headers now include HSTS and remove script `unsafe-inline` from CSP;
 - a Supabase migration drops known legacy permissive RLS policies if they exist.
 
-Still pending outside the repo:
-
-1. Run the new Supabase migration and verify production `pg_policies` has no legacy permissive policies.
-
-Completed external action:
+Completed external actions:
 
 - TestSprite API key was revoked by the account owner on 2026-06-13.
+- Supabase migration `202606120001_drop_legacy_permissive_rls_policies.sql` was applied to the linked production project on 2026-06-13.
+- Production verification query returned `legacy_policy_count = 0` for `transactions_own`, `wallets_own_and_group`, `groups_member_access`, `group_members_access`, and `profiles_own`.
 
 Verification evidence from remediation:
 
@@ -38,6 +36,7 @@ Verification evidence from remediation:
 - Web type-check/build: successful.
 - Mobile type-check: successful.
 - Mobile targeted tests: notifications and motion coverage pass; full mobile Jest still has a pre-existing settings test harness issue unrelated to these security fixes.
+- Supabase production verification: `legacy_policy_count = 0`.
 
 ---
 
@@ -93,7 +92,7 @@ Verification evidence from remediation:
 
 ### 🟠 HIGH
 
-- [ ] **H1 — IDOR di `GET /payments/{order_id}/status`**
+- [x] **H1 — IDOR di `GET /payments/{order_id}/status`**
 
   - **File:** `backend/app/api/v1/payments.py:70-76` → `backend/app/services/payment_service.py:65` (`fetch_and_sync_status`)
   - **Masalah:** Endpoint menerima `order_id` sembarang tanpa cek bahwa order itu milik `current_user["user_id"]`. Order ID polanya tertebak: `kw-{user_id[:8]}-{epoch_ms}-{6 hex}` (`payment_service.py:81-83`).
@@ -103,9 +102,9 @@ Verification evidence from remediation:
     3. Panggilan keluar Midtrans tak terbatas → cost/abuse.
   - **Fix:** Sebelum panggil Midtrans, lookup row `payments` by `order_id`, pastikan `row["user_id"] == current_user["user_id"]` (return 404 kalau bukan). Tambah rate-limit pada endpoint ini.
   - **Verifikasi:** Tulis test: user A request `order_id` milik user B → 404; user A request order_id sendiri → 200.
-  - **Status:** _belum dikerjakan_
+  - **Status:** Fixed in `ef90d89`; regression test covers cross-user `order_id` access returning 404.
 
-- [ ] **H2 — Dua set migrasi RLS konflik (kebersihan migrasi)** ⚠️ verifikasi butuh akses production DB
+- [x] **H2 — Dua set migrasi RLS konflik (kebersihan migrasi)**
 
   - **File:** `supabase/migrations/001_initial_schema.sql`, `002_*.sql`, `003_*.sql`, `008_fix_group_members_rls_recursion.sql` (set legacy era Firebase) vs set Kaswise `202605…`
   - **Masalah:** Policy legacy permisif — `transactions_own` (008:33, `FOR ALL`), `wallets_own_and_group` (008:43), `groups_member_access` (008:53), `group_members_access` (008:59), `profiles_own` (003:253) — **tidak pernah di-`DROP`** oleh migrasi Kaswise. Postgres menggabung multiple permissive policy dengan **OR**, jadi kalau set legacy ikut ter-`push` ke DB, akses bisa **melebar lintas user/grup**.
@@ -119,15 +118,15 @@ Verification evidence from remediation:
        order by tablename, policyname;
        ```
        Pastikan **hanya** policy dari set `202605…` yang hidup; tidak ada `transactions_own`, `groups_member_access`, dll.
-  - **Status:** _belum dikerjakan_
+  - **Status:** Fixed in `ef90d89` with migration `202606120001_drop_legacy_permissive_rls_policies.sql`; applied to linked production project on 2026-06-13 and verified `legacy_policy_count = 0`.
 
-- [ ] **H3 — Dependency backend dengan CVE diketahui**
+- [x] **H3 — Dependency backend dengan CVE diketahui**
 
   - **File:** `backend/requirements.txt`
   - `python-jose[cryptography]==3.3.0` (baris 34) — CVE-2024-33663 (algorithm confusion via OpenSSH ECDSA key) & CVE-2024-33664 (JWE decompression DoS / "JWT bomb"). **Relevan** karena dipakai verifikasi JWT Supabase. → upgrade ≥ **3.4.0**, atau migrasi ke `PyJWT`.
   - `Pillow==10.3.0` (baris 31) — CVE-2024-28219 (buffer overflow di `_imagingcms.c`). Backend memproses gambar struk upload → vektor langsung. → upgrade ≥ **10.4.0** (idealnya ≥11.x).
   - **Verifikasi:** `pip install -U` lalu jalankan test suite backend; konfirmasi verifikasi JWT masih lulus.
-  - **Status:** _belum dikerjakan_
+  - **Status:** Fixed in `ef90d89`; backend dependency audit returned `No known vulnerabilities found`.
 
 ### 🟡 MEDIUM
 
