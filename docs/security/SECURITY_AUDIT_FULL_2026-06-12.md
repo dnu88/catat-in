@@ -1,6 +1,6 @@
 # Security Audit — Catat.in / Kaswise (Full Review)
 
-> **Status:** 🟡 PARTIALLY REMEDIATED — repo-side fixes implemented; two external checks remain.
+> **Status:** 🟡 PARTIALLY REMEDIATED — repo-side fixes implemented; production Supabase policy verification remains.
 > **Tanggal audit:** 2026-06-12
 > **Remediation branch:** `fix/security-audit-2026-06-12`
 > **Commit saat audit:** `490cf77` (branch `fix/bills-color-and-mark-paid`)
@@ -24,8 +24,11 @@ Repo-side fixes have been implemented for C1, H1, H2, H3, M1, M2, M3, M4, M5, L1
 
 Still pending outside the repo:
 
-1. Revoke/rotate the exposed TestSprite API key in TestSprite dashboard.
-2. Run the new Supabase migration and verify production `pg_policies` has no legacy permissive policies.
+1. Run the new Supabase migration and verify production `pg_policies` has no legacy permissive policies.
+
+Completed external action:
+
+- TestSprite API key was revoked by the account owner on 2026-06-13.
 
 Verification evidence from remediation:
 
@@ -76,7 +79,7 @@ Verification evidence from remediation:
 
 ### 🔴 CRITICAL
 
-- [ ] **C1 — Rotate API key TestSprite + keluarkan dari `.mcp.json`** ⚠️ butuh aksi di luar repo
+- [x] **C1 — Rotate API key TestSprite + keluarkan dari `.mcp.json`**
 
   - **File:** `.mcp.json:7` — hardcoded TestSprite API key (REDACTED)
   - **Bukti:** `git ls-files .mcp.json` → **tracked**. Key asli ter-commit ke histori git → siapa pun dengan akses repo / clone lama bisa mengambil. Histori git tetap menyimpan walau dihapus sekarang.
@@ -86,7 +89,7 @@ Verification evidence from remediation:
     2. Ganti nilai di `.mcp.json` jadi `"API_KEY": "${TESTSPRITE_API_KEY}"` (env var).
     3. Bila repo pernah dibagikan/publik: bersihkan histori dengan `git filter-repo` / BFG, lalu force-push (koordinasi dengan tim).
   - **Verifikasi:** secret scan tidak menemukan API key literal; `.mcp.json` hanya berisi placeholder env var.
-  - **Status:** _belum dikerjakan_
+  - **Status:** Repo-side placeholders implemented in `ef90d89`; exposed TestSprite API key revoked by account owner on 2026-06-13.
 
 ### 🟠 HIGH
 

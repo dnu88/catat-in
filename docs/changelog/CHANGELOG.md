@@ -8,7 +8,7 @@ Format: Keep a Changelog.
 
 ### Security
 - Remediated repo-side findings from the 2026-06-12 security audit: payment status ownership checks, payment amount validation, bounded upload/import parsing, spreadsheet formula escaping, dependency CVE upgrades, non-root backend container runtime, stricter Vercel security headers, and legacy RLS cleanup migration.
-- Replaced tracked hardcoded TestSprite key values with `${TESTSPRITE_API_KEY}` placeholders; key rotation remains an external follow-up in the TestSprite dashboard.
+- Replaced tracked hardcoded TestSprite key values with `${TESTSPRITE_API_KEY}` placeholders; the exposed TestSprite API key was revoked by the account owner on 2026-06-13.
 
 ## 2026-06-12
 
