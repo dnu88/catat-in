@@ -42,6 +42,7 @@ import {
 } from "../../src/services/budget-envelopes";
 import { useI18n } from "../../src/i18n/i18n-context";
 import { useFinanceContext } from "../../src/state/finance-context";
+import { useReportPeriod } from "../../src/state/report-period";
 import {
 	listCategories,
 	updateCategoryVisual,
@@ -240,10 +241,18 @@ function EnvelopeRow({
 			</View>
 
 			<View style={styles.budgetFooterRow}>
-				<Text style={styles.budgetFooter}>
+				<Text style={styles.budgetFooter} testID={`budget-status-${envelope.id}`}>
 					{progress.is_over_budget
-						? `${overLabel} ${formatRupiah(progress.over_budget_amount)}`
-						: `${remainingLabel} ${formatRupiah(Math.max(progress.remaining_amount, 0))}`}
+						? isEn
+							? `Over by ${formatRupiah(progress.over_budget_amount)}`
+							: `Lewat ${formatRupiah(progress.over_budget_amount)}`
+						: progress.is_near_limit
+							? isEn
+								? `Careful — ${progress.used_percentage}% used`
+								: `Hati-hati, sudah ${progress.used_percentage}% terpakai`
+							: isEn
+								? `${remainingLabel} ${formatRupiah(Math.max(progress.remaining_amount, 0))}`
+								: `Tersisa ${formatRupiah(Math.max(progress.remaining_amount, 0))}`}
 				</Text>
 				<View style={styles.budgetActionRow}>
 					<Pressable
@@ -272,6 +281,7 @@ export default function BudgetsScreen() {
 	const { supabase } = useSupabase();
 	const { theme } = useTheme();
 	const { activeContext, canCreate } = useFinanceContext();
+	const { activePeriod } = useReportPeriod();
 	const { language } = useI18n();
 	const isEn = language === "en";
 	const tx = useMemo(
@@ -279,12 +289,12 @@ export default function BudgetsScreen() {
 			isEn
 				? {
 						title: "Budgets",
-						subtitle: "Manage personal budget wallets under report categories.",
+						subtitle: "Manage simple category budgets for personal spending.",
 						add: "+ New",
-						createTitle: "Create budget wallet",
-						editTitle: "Edit budget wallet",
-						nameLabel: "Wallet name",
-						namePlaceholder: "Wallet name",
+						createTitle: "Create budget",
+						editTitle: "Edit budget",
+						nameLabel: "Budget name",
+						namePlaceholder: "Budget name",
 						limitLabel: "Limit",
 						limitPlaceholder: "Limit",
 						categoryLabel: "Expense category",
@@ -298,8 +308,8 @@ export default function BudgetsScreen() {
 						colorLabel: "Color",
 						notesLabel: "Notes",
 						notesPlaceholder: "Notes",
-						iconDropdownLabel: "Select wallet icon",
-						colorDropdownLabel: "Select wallet color",
+						iconDropdownLabel: "Select budget icon",
+						colorDropdownLabel: "Select budget color",
 						iconOptionLabel: "Choose icon",
 						colorOptionLabel: "Choose color",
 						over: "Over",
@@ -307,46 +317,45 @@ export default function BudgetsScreen() {
 						contextHousehold: "Family",
 						contextPersonal: "Personal",
 						saving: "Saving...",
-						save: "Save budget wallet",
-						update: "Update budget wallet",
+						save: "Save budget",
+						update: "Update budget",
 						edit: "Edit",
 						dateDropdownLabel: "Choose date",
 						dateOptionHint: "Pick day of month; Kaswise detects this month automatically.",
 						delete: "Delete",
-						deleteConfirmTitle: "Delete budget wallet?",
+						deleteConfirmTitle: "Delete budget?",
 						deleteConfirmMessage: (name: string) =>
 							`${name} will be removed from active budgets and moved to archive.`,
 						cancel: "Cancel",
-						activeLabel: "Active wallets",
+						activeLabel: "Active budgets",
 						reviewMeta: "needs review",
 						reviewScope: "Review only in Reports/Wallets",
 						overviewHelper:
 							"Budgets never block transactions. Wallets help monitor remaining and over-budget spending.",
-						activeSection: "Active Wallets",
-						emptyTitle: "No active budget wallets yet",
+						activeSection: "Active Budgets",
+						emptyTitle: "No active budgets yet",
 						emptyDescription:
-							"Create wallets like Coffee, Ride-hailing, or Hangout to monitor personal budgets.",
+							"Create budgets like Coffee, Ride-hailing, or Hangout to track personal spending.",
 						reviewSection: "Needs review",
 						transactionFallback: "Transaction",
-						lowConfidence: "Low confidence · check this transaction wallet",
+						lowConfidence: "Low confidence · check this transaction budget",
 						noReview: "No transactions need review.",
 						archiveSection: "Archive",
-						noArchive: "No completed budget wallets yet.",
+						noArchive: "No completed budgets yet.",
 						noCategory: "No category",
 						loadLogin: "Login session not found. Please sign in again.",
-						loadError: "Failed to load budget wallets. Try again shortly.",
+						loadError: "Failed to load budgets. Try again shortly.",
 						validationError: "Fill name, category, limit, start day, and end day.",
-						saveError: "Failed to save budget wallet. Try again shortly.",
+						saveError: "Failed to save budget. Try again shortly.",
 					}
 				: {
 						title: "Anggaran",
-						subtitle:
-							"Kelola dompet budget personal di bawah kategori laporan.",
+						subtitle: "Kelola budget sederhana per kategori pengeluaran.",
 						add: "+ Baru",
-						createTitle: "Buat dompet budget",
-						editTitle: "Edit dompet budget",
-						nameLabel: "Nama dompet",
-						namePlaceholder: "Nama dompet",
+						createTitle: "Buat budget",
+						editTitle: "Edit budget",
+						nameLabel: "Nama budget",
+						namePlaceholder: "Nama budget",
 						limitLabel: "Limit",
 						limitPlaceholder: "Limit",
 						categoryLabel: "Kategori pengeluaran",
@@ -360,8 +369,8 @@ export default function BudgetsScreen() {
 						colorLabel: "Warna",
 						notesLabel: "Catatan",
 						notesPlaceholder: "Catatan",
-						iconDropdownLabel: "Pilih ikon dompet",
-						colorDropdownLabel: "Pilih warna dompet",
+						iconDropdownLabel: "Pilih ikon budget",
+						colorDropdownLabel: "Pilih warna budget",
 						iconOptionLabel: "Pilih ikon",
 						colorOptionLabel: "Pilih warna",
 						over: "Lewat",
@@ -369,37 +378,36 @@ export default function BudgetsScreen() {
 						contextHousehold: "Keluarga",
 						contextPersonal: "Pribadi",
 						saving: "Menyimpan...",
-						save: "Simpan dompet",
-						update: "Perbarui dompet",
+						save: "Simpan budget",
+						update: "Perbarui budget",
 						edit: "Edit",
 						dateDropdownLabel: "Pilih tanggal",
 						dateOptionHint: "Pilih tanggal saja; bulan dan tahun berjalan otomatis terdeteksi.",
 						delete: "Hapus",
-						deleteConfirmTitle: "Hapus dompet budget?",
+						deleteConfirmTitle: "Hapus budget?",
 						deleteConfirmMessage: (name: string) =>
 							`${name} akan dihapus dari budget aktif dan dipindahkan ke arsip.`,
 						cancel: "Batal",
-						activeLabel: "Dompet aktif",
+						activeLabel: "Budget aktif",
 						reviewMeta: "perlu cek",
 						reviewScope: "Review hanya di Reports/Dompet",
 						overviewHelper:
 							"Budget tidak memblokir transaksi. Dompet membantu melihat sisa dan over budget.",
-						activeSection: "Dompet Aktif",
-						emptyTitle: "Belum ada dompet aktif",
+						activeSection: "Budget Aktif",
+						emptyTitle: "Belum ada budget aktif",
 						emptyDescription:
-							"Buat dompet seperti Kopi, Ojol, atau Nongkrong untuk memantau budget personal.",
+							"Buat budget seperti Kopi, Ojol, atau Nongkrong untuk memantau pengeluaran personal.",
 						reviewSection: "Perlu cek",
 						transactionFallback: "Transaksi",
-						lowConfidence: "Confidence rendah · cek dompet transaksi ini",
+						lowConfidence: "Confidence rendah · cek budget transaksi ini",
 						noReview: "Tidak ada transaksi yang perlu dicek.",
 						archiveSection: "Arsip",
-						noArchive: "Belum ada dompet yang selesai.",
+						noArchive: "Belum ada budget yang selesai.",
 						noCategory: "Tanpa kategori",
 						loadLogin: "Sesi login tidak ditemukan. Silakan login ulang.",
-						loadError: "Gagal memuat data dompet. Coba lagi sebentar.",
-						validationError:
-							"Isi nama, kategori, limit, tanggal mulai, dan tanggal akhir.",
-						saveError: "Gagal menyimpan dompet. Coba lagi sebentar.",
+						loadError: "Gagal memuat data budget. Coba lagi sebentar.",
+						validationError: "Isi nama, kategori, limit, tanggal mulai, dan tanggal akhir.",
+						saveError: "Gagal menyimpan budget. Coba lagi sebentar.",
 					},
 		[isEn],
 	);
@@ -438,6 +446,14 @@ export default function BudgetsScreen() {
 	}, [activeContext]);
 
 	const getDefaultDayRange = () => {
+		// Prefer active report period dates for consistency with reports/AI Insight
+		if (activePeriod?.startDate && activePeriod?.endDate) {
+			return {
+				start: dayFromDate(activePeriod.startDate, 1),
+				end: dayFromDate(activePeriod.endDate,
+					new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).getDate()),
+			};
+		}
 		const now = new Date();
 		return {
 			start: 1,
