@@ -5,7 +5,7 @@ Endpoints untuk fitur AI: chat input, OCR struk, insights.
 
 import base64
 
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile, status
 from pydantic import BaseModel
 
 from app.core.auth import get_current_user, require_premium
@@ -43,6 +43,23 @@ class LegacyProcessRequest(BaseModel):
     data: str
 
 
+async def _read_upload_with_limit(request: Request, file: UploadFile) -> bytes:
+    content_length = request.headers.get("content-length")
+    if content_length and content_length.isdigit() and int(content_length) > MAX_FILE_SIZE:
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail=f"Ukuran file terlalu besar. Maksimal {settings.MAX_UPLOAD_SIZE_MB}MB.",
+        )
+
+    data = await file.read(MAX_FILE_SIZE + 1)
+    if len(data) > MAX_FILE_SIZE:
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail=f"Ukuran file terlalu besar. Maksimal {settings.MAX_UPLOAD_SIZE_MB}MB.",
+        )
+    return data
+
+
 @router.post("/chat", dependencies=[Depends(rate_limit_ai)])
 async def chat_input(body: ChatInputRequest, current_user=Depends(get_current_user)):
     if not body.text or len(body.text.strip()) < 2:
@@ -70,7 +87,7 @@ async def chat_input(body: ChatInputRequest, current_user=Depends(get_current_us
     try:
         result = await extract_transaction_from_text(body.text)
     except RuntimeError as exc:
-        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(exc)) from exc
+        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail="Layanan AI sedang tidak tersedia. Coba lagi.") from exc
 
     if result.get("transactions"):
         record_use(current_user["user_id"], state["period_ym"], "chat")
@@ -79,6 +96,7 @@ async def chat_input(body: ChatInputRequest, current_user=Depends(get_current_us
 
 @router.post("/receipt", dependencies=[Depends(rate_limit_ai)])
 async def analyze_receipt(
+    request: Request,
     file: UploadFile = File(...), current_user=Depends(get_current_user)
 ):
     if file.content_type not in ALLOWED_IMAGE_TYPES:
@@ -87,12 +105,7 @@ async def analyze_receipt(
             detail="Format file tidak didukung. Gunakan JPG, PNG, atau PDF.",
         )
 
-    image_data = await file.read()
-    if len(image_data) > MAX_FILE_SIZE:
-        raise HTTPException(
-            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
-            detail=f"Ukuran file terlalu besar. Maksimal {settings.MAX_UPLOAD_SIZE_MB}MB.",
-        )
+    image_data = await _read_upload_with_limit(request, file)
 
     state = load_state(current_user["user_id"])
     decision = evaluate(is_premium=state["is_premium"], kind="photo",
@@ -107,7 +120,7 @@ async def analyze_receipt(
     try:
         result = await analyze_receipt_image(image_data, file.content_type)
     except RuntimeError as exc:
-        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(exc)) from exc
+        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail="Layanan OCR sedang tidak tersedia. Coba lagi.") from exc
 
     record_use(current_user["user_id"], state["period_ym"], "photo")
     return result
@@ -126,7 +139,7 @@ async def get_financial_insight(
         insight = await generate_financial_insight(context, body.period)
     except RuntimeError as exc:
         raise HTTPException(
-            status_code=status.HTTP_502_BAD_GATEWAY, detail=str(exc)
+            status_code=status.HTTP_502_BAD_GATEWAY, detail="Insight AI sedang tidak tersedia. Coba lagi."
         ) from exc
 
     # Fire-and-forget: create AI Insight ready notification.
@@ -170,7 +183,7 @@ async def legacy_process(
             extracted = await extract_transaction_from_text(body.data or "")
         except RuntimeError as exc:
             raise HTTPException(
-                status_code=status.HTTP_502_BAD_GATEWAY, detail=str(exc)
+                status_code=status.HTTP_502_BAD_GATEWAY, detail="Layanan AI sedang tidak tersedia. Coba lagi."
             ) from exc
         tx_list = extracted.get("transactions") or []
         top_tx = tx_list[0] if tx_list else {}
@@ -225,7 +238,7 @@ async def legacy_process(
             analyzed = await analyze_receipt_image(image_bytes, "image/png")
         except RuntimeError as exc:
             raise HTTPException(
-                status_code=status.HTTP_502_BAD_GATEWAY, detail=str(exc)
+                status_code=status.HTTP_502_BAD_GATEWAY, detail="Layanan OCR sedang tidak tersedia. Coba lagi."
             ) from exc
         confidence = float(analyzed.get("confidence") or 0.0)
 

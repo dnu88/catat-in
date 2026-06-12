@@ -14,7 +14,7 @@ from pydantic import BaseModel, ConfigDict, Field, conlist, field_validator, mod
 from app.core.auth import get_current_user
 from app.core.config import settings
 from app.core.rate_limit import rate_limit_import
-from app.services.import_service import generate_tx_hash, parse_bank_csv
+from app.services.import_service import escape_formula_text, generate_tx_hash, parse_bank_csv
 
 router = APIRouter()
 
@@ -69,7 +69,7 @@ class ImportTransactionIn(StrictBaseModel):
     def reject_blank_strings(cls, value: str):
         if not value or not value.strip():
             raise ValueError("must not be blank")
-        return value.strip()
+        return escape_formula_text(value)
 
 
 class ConfirmImportRequest(StrictBaseModel):

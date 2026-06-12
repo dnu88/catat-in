@@ -4,9 +4,9 @@
 # ============================================================
 
 # ── FRAMEWORK ────────────────────────────────────────────────
-fastapi==0.111.0
+fastapi==0.136.3
 uvicorn[standard]==0.30.1
-python-multipart==0.0.9      # Untuk upload file
+python-multipart==0.0.27      # Untuk upload file
 
 # ── PYDANTIC & SETTINGS ──────────────────────────────────────
 pydantic==2.13.4
@@ -28,10 +28,10 @@ openpyxl==3.1.4              # Baca file .xlsx
 chardet==5.2.0               # Deteksi encoding CSV
 
 # ── IMAGE PROCESSING (Struk) ─────────────────────────────────
-Pillow==10.3.0               # Validasi dan resize gambar sebelum kirim ke AI
+Pillow==12.2.0                # Validasi dan resize gambar sebelum kirim ke AI
 
 # ── AUTH ─────────────────────────────────────────────────────
-python-jose[cryptography]==3.3.0
+python-jose[cryptography]==3.5.0
 passlib[bcrypt]==1.7.4
 
 # ── RATE LIMITING ────────────────────────────────────────────
@@ -42,9 +42,9 @@ python-dateutil==2.9.0
 pytz==2024.1
 
 # ── MONITORING ───────────────────────────────────────────────
-sentry-sdk[fastapi]==2.5.1   # Error tracking
+sentry-sdk[fastapi]==2.8.0   # Error tracking
 
 # ── DEV ONLY ─────────────────────────────────────────────────
-pytest==8.2.2
-pytest-asyncio==0.23.7
+pytest==9.0.3
+pytest-asyncio==1.4.0
 httpx==0.28.1                # Test client FastAPI

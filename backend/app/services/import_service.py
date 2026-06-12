@@ -13,6 +13,9 @@ import pandas as pd
 
 from app.core.config import settings
 
+MAX_IMPORT_ROWS = 10_000
+FORMULA_PREFIXES = ("=", "+", "-", "@", "\t", "\r")
+
 
 # ── KONFIGURASI PARSER PER BANK ──────────────────────────────
 
@@ -122,6 +125,14 @@ def generate_tx_hash(date: str, description: str, amount: float) -> str:
     return hashlib.md5(raw.encode()).hexdigest()
 
 
+def escape_formula_text(value: str) -> str:
+    """Prevent spreadsheet formula injection in imported text fields."""
+    text = str(value).strip()
+    if text and text[0] in FORMULA_PREFIXES:
+        return f"'{text}"
+    return text
+
+
 # ── MAIN PARSER ──────────────────────────────────────────────
 
 def parse_bank_csv(
@@ -171,6 +182,7 @@ def parse_bank_csv(
                 io.BytesIO(file_bytes),
                 skiprows=config["skip_rows"],
                 dtype=str,
+                nrows=MAX_IMPORT_ROWS + 1,
             )
         else:
             # File CSV
@@ -180,9 +192,10 @@ def parse_bank_csv(
                 skiprows=config["skip_rows"],
                 dtype=str,
                 on_bad_lines="skip",
+                nrows=MAX_IMPORT_ROWS + 1,
             )
     except Exception as e:
-        raise ValueError(f"Gagal membaca file: {str(e)}")
+        raise ValueError("Gagal membaca file. Pastikan format dan ukuran file sesuai.") from e
 
     # Bersihkan nama kolom
     df.columns = df.columns.str.strip()
@@ -241,7 +254,7 @@ def parse_bank_csv(
             if debit == 0 and credit == 0:
                 continue
 
-            description = str(row[config["desc_col"]]).strip()
+            description = escape_formula_text(row[config["desc_col"]])
             if not description or description == "nan":
                 errors.append({"row": idx + 1, "reason": "Keterangan transaksi kosong"})
                 continue

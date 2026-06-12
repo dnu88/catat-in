@@ -70,6 +70,23 @@ def fetch_and_sync_status(order_id: str) -> dict:
             "midtrans_status": note.get("transaction_status")}
 
 
+def get_payment_for_user(order_id: str, user_id: str) -> dict | None:
+    """Return payment row only when it belongs to the requesting user."""
+    client = _get_supabase_service_client()
+    if client is None:
+        raise RuntimeError("Supabase service client tidak tersedia.")
+    res = (
+        client.table("payments")
+        .select("id,user_id,order_id,status,amount")
+        .eq("order_id", order_id)
+        .eq("user_id", user_id)
+        .limit(1)
+        .execute()
+    )
+    rows = getattr(res, "data", None) or []
+    return rows[0] if rows else None
+
+
 def _snap_client():
     return midtransclient.Snap(
         is_production=bool(settings.MIDTRANS_IS_PRODUCTION),
@@ -117,13 +134,23 @@ def activate_premium_from_notification(payload: dict) -> str:
     if client is None:
         return new_status
 
-    pay = (client.table("payments").select("id,user_id,plan,status")
+    pay = (client.table("payments").select("id,user_id,plan,status,amount")
            .eq("order_id", order_id).limit(1).execute())
     row = pay.data[0] if getattr(pay, "data", None) else None
     if row is None:
         return new_status
-    if row["status"] == "paid":   # idempotensi
-        return "paid"
+    if row["status"] in ("paid", "failed", "expired"):
+        return row["status"]
+
+    gross_amount = payload.get("gross_amount")
+    if gross_amount is not None:
+        try:
+            expected_amount = int(row.get("amount") or 0)
+            received_amount = int(float(str(gross_amount)))
+        except (TypeError, ValueError):
+            return row["status"]
+        if expected_amount != received_amount:
+            return row["status"]
 
     payment_update = {"midtrans_status": payload.get("transaction_status"),
                       "status": new_status, "method": payload.get("payment_type"),

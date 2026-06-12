@@ -127,6 +127,7 @@ class Settings(BaseSettings):
     RATE_LIMIT_DEFAULT: int = 100
     RATE_LIMIT_AI_ENDPOINT: int = 20
     RATE_LIMIT_IMPORT_ENDPOINT: int = 10
+    RATE_LIMIT_PAYMENT_STATUS_ENDPOINT: int = 30
 
     # Business rules
     FREE_TIER_RECEIPT_UPLOAD_LIMIT: int = 10

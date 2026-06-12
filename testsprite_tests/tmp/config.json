@@ -13,7 +13,7 @@
     "additionalInstruction": "Please use the following credentials for auth: Email='danubudiarto88@gmail.com', Password='Rahasia88'. The backend is running on port 8000. API prefix is /api/v1.",
     "serverMode": "development",
     "envs": {
-      "API_KEY": "sk-user-x9T3rhArTzx9qrZNaijmK7HxEGhyFGzLF10R8r5n1Ay9D4Ckri3Y1fvy1KINaH7Cmiizta9bFk-mPjVrA_FFcam1DBPPr_6MSyYL5YIzLRE0D-cvkFx93XqpW4pp6LItx6I"
+      "API_KEY": "${TESTSPRITE_API_KEY}"
     }
   },
   "serverPort": 51488,

@@ -28,6 +28,23 @@ jest.mock("../src/services/notifications", () => ({
   markAllNotificationsRead: (...args: any[]) => mockMarkAllRead(...args),
 }));
 
+const safeAreaMetrics = {
+  frame: { x: 0, y: 0, width: 390, height: 844 },
+  insets: { top: 0, left: 0, right: 0, bottom: 0 },
+};
+
+function renderScreen() {
+  return render(
+    React.createElement(SafeAreaProvider, { initialMetrics: safeAreaMetrics },
+      React.createElement(ThemeProvider, null,
+        React.createElement(I18nProvider, null,
+          React.createElement(NotificationsScreen)
+        )
+      )
+    )
+  );
+}
+
 describe("NotificationsScreen", () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -36,15 +53,7 @@ describe("NotificationsScreen", () => {
   });
 
   it("shows loading state initially then empty state when no items", async () => {
-    const screen = render(
-      React.createElement(SafeAreaProvider, null,
-        React.createElement(ThemeProvider, null,
-          React.createElement(I18nProvider, null,
-            React.createElement(NotificationsScreen)
-          )
-        )
-      )
-    );
+    const screen = renderScreen();
 
     // Wait for loading to finish and empty state to appear
     await waitFor(() => {
@@ -62,15 +71,7 @@ describe("NotificationsScreen", () => {
       unread_count: 1,
     });
 
-    const screen = render(
-      React.createElement(SafeAreaProvider, null,
-        React.createElement(ThemeProvider, null,
-          React.createElement(I18nProvider, null,
-            React.createElement(NotificationsScreen)
-          )
-        )
-      )
-    );
+    const screen = renderScreen();
 
     await waitFor(() => {
       expect(screen.getByTestId("notifications-mark-all-read")).toBeTruthy();

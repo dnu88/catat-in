@@ -6,8 +6,9 @@ Format: Keep a Changelog.
 
 ## Unreleased
 
-### Added
-- _No unreleased entries yet._
+### Security
+- Remediated repo-side findings from the 2026-06-12 security audit: payment status ownership checks, payment amount validation, bounded upload/import parsing, spreadsheet formula escaping, dependency CVE upgrades, non-root backend container runtime, stricter Vercel security headers, and legacy RLS cleanup migration.
+- Replaced tracked hardcoded TestSprite key values with `${TESTSPRITE_API_KEY}` placeholders; key rotation remains an external follow-up in the TestSprite dashboard.
 
 ## 2026-06-12
 
