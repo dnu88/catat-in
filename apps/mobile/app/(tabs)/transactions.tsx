@@ -15,6 +15,8 @@ import {
 import { PageEntrance, StaggeredStack } from "../../src/components/motion";
 import * as ExpoRouter from "expo-router";
 
+const { useLocalSearchParams } = ExpoRouter as { useLocalSearchParams?: any };
+
 import { KaswiseIcon } from "../../src/components/icons/kaswise-icons";
 import {
 	EmptyState,
@@ -42,9 +44,19 @@ import {
 import { listCategories, type Category } from "../../src/services/categories";
 import { getLocalizedCategoryName } from "../../src/services/category-taxonomy";
 
-type Filter = "all" | "income" | "expense";
+type Filter = "all" | "income" | "expense" | "review";
 type Period = "week" | "month" | "year";
 type TransactionPeriod = "report" | Period;
+
+const OTHER_CATEGORY_NAMES = ["Lainnya", "Other", "Other expenses"];
+
+function isReviewable(tx: Transaction): boolean {
+	if (tx.review_required === true) return true;
+	if (typeof tx.confidence === "number" && tx.confidence < 0.75) return true;
+	if (OTHER_CATEGORY_NAMES.includes(tx.category ?? "")) return true;
+	if (!tx.amount || !tx.category || !tx.date) return true;
+	return false;
+}
 
 const DATE_ONLY_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/;
 
@@ -345,7 +357,11 @@ export default function TransactionsScreen() {
 			: "personal";
 
 	const isEn = language === "en";
-	const [activeFilter, setActiveFilter] = useState<Filter>("all");
+	const searchParams = useLocalSearchParams?.() ?? {};
+	const initialReview = searchParams.review === "1";
+	const [activeFilter, setActiveFilter] = useState<Filter>(
+		initialReview ? "review" : "all",
+	);
 	const [activePeriod, setActivePeriod] = useState<TransactionPeriod>("report");
 	const [transactions, setTransactions] = useState<Transaction[]>([]);
 	const [categoryOptions, setCategoryOptions] = useState<Category[]>([]);
@@ -414,12 +430,17 @@ export default function TransactionsScreen() {
 	);
 
 	const list = useMemo(
-		() =>
-			activeFilter === "all"
-				? periodTransactions
-				: periodTransactions.filter(
-						(item) => item.transaction_type === activeFilter,
-					),
+		() => {
+			if (activeFilter === "review") {
+				return periodTransactions.filter(isReviewable);
+			}
+			if (activeFilter === "all") {
+				return periodTransactions;
+			}
+			return periodTransactions.filter(
+				(item) => item.transaction_type === activeFilter,
+			);
+		},
 		[activeFilter, periodTransactions],
 	);
 
@@ -664,6 +685,14 @@ export default function TransactionsScreen() {
 				    onPress={() => setActiveFilter(filter)}
 				  />
 				))}
+				<View testID="transactions-review-chip">
+				  <FilterChip
+				    key="review"
+				    label={isEn ? "Needs review" : "Perlu dicek"}
+				    selected={activeFilter === "review"}
+				    onPress={() => setActiveFilter("review")}
+				  />
+				</View>
 				{/* Navigation chip ke Bills */}
 				<View testID="transactions-bills-chip">
 				  <FilterChip
@@ -696,11 +725,23 @@ export default function TransactionsScreen() {
 		<EmptyState
 			icon="transactions"
 			tone="accent"
-			title={isEn ? "No transactions yet" : "Belum ada transaksi"}
+			title={
+				activeFilter === "review"
+					? isEn
+						? "No transactions need review"
+						: "Tidak ada transaksi yang perlu dicek"
+					: isEn
+						? "No transactions yet"
+						: "Belum ada transaksi"
+			}
 			description={
-				isEn
-					? "Try changing the filter or period, or add a new transaction from the Capture tab."
-					: "Coba ubah filter atau periode, atau tambahkan transaksi baru dari tab Capture."
+				activeFilter === "review"
+					? isEn
+						? "All transactions are clean. Great job!"
+						: "Semua transaksi sudah rapi. Kerja bagus!"
+					: isEn
+						? "Try changing the filter or period, or add a new transaction from the Capture tab."
+						: "Coba ubah filter atau periode, atau tambahkan transaksi baru dari tab Capture."
 			}
 		/>
 	);
