@@ -610,6 +610,8 @@ git commit -m "feat: show concise budget alerts on dashboard"
 
 > **✅ COMPLETED 2026-06-12** — Branch `feat/milestone3-transaction-review`, PR #14.
 > All three tasks implemented, 32 bundle markers verified, deployed to live PWA.
+>
+> **Follow-up 2026-06-12:** after PR #16, bill reminder visuals now use stable name-based colors and monthly "Mark Paid" correctly sets `is_paid: true` before rolling the due date forward.
 
 ### Task 11: Create transaction review service helper
 
