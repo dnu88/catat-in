@@ -651,6 +651,43 @@ curl -fsSL https://kaswise.com/ | grep -o 'entry-[^" ]*\.js' | head -1
 
 ## GitHub Branch Protection Required Checks: 100% Enforcement
 
+### Discussion summary: remaining work for true 100% guard enforcement
+
+Follow-up discussion on 2026-06-12 clarified that the 5-layer guard is mostly active, but not yet 100% enforced at the platform level.
+
+Current status by layer:
+
+1. **Live Feature Registry** — active.
+   - `live-feature-registry.json` is the source of truth.
+   - Registry validation passes.
+   - Bundle marker checks derive from the registry.
+
+2. **Quality Gates Before Push / PR / Deploy** — active for local push, CI, and deploy.
+   - Local pre-push gate runs registry validation, type-check, live regression tests, and bundle marker checks.
+   - GitHub CI runs web, backend, and mobile quality gates.
+   - Deploy runs `quality:live` before replacing production.
+
+3. **Branch and Release Discipline** — partially active, not 100% until GitHub branch protection is enabled.
+   - Production deploy is restricted to approved branch flow (`main`) unless explicit emergency override is set.
+   - GitHub still cannot block every direct push/merge to `main` until native branch protection required checks are enabled.
+
+4. **Deploy-Time Candidate vs Live Verification** — active.
+   - Deploy verifies candidate bundle markers.
+   - Deploy verifies target bundle markers after copy.
+   - Deploy verifies live URL bundle and markers after production update.
+
+5. **Post-Deploy Live Monitor** — configured but must be proven.
+   - `kaswise-pwa-marker-guard` exists and is enabled.
+   - It still needs a successful observed run (`last_status=ok`) to count as fully proven.
+   - Prefer converting it to a script-only watchdog that stays silent on success and alerts only when markers are missing.
+
+Remaining actions for 100% enforcement:
+
+1. Upgrade GitHub to a plan that supports branch protection on private repos, or make the repo public, then enable required checks on `main`.
+2. Replace or remove the stale Firebase-gated E2E job in CI. Kaswise no longer uses Firebase, so missing Firebase secrets must not be treated as a valid skip reason.
+3. Prove the live marker cron guard by running it and confirming successful status/delivery behavior.
+4. Only after E2E is rewritten for the current no-Firebase/Supabase stack should `E2E smoke (Playwright)` be considered for required branch protection.
+
 ### Current blocker
 
 As of 2026-06-12, repo `dnu88/catat-in` is private and GitHub rejects branch protection access with:
