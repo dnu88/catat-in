@@ -683,34 +683,40 @@ Current status by layer:
 
 Remaining actions for 100% enforcement:
 
-1. Upgrade GitHub to a plan that supports branch protection on private repos, or make the repo public, then enable required checks on `main`.
+1. ~~Upgrade GitHub to a plan that supports branch protection on private repos, or make the repo public, then enable required checks on `main`.~~ Done on 2026-06-12 by making the repository public and enabling branch protection required checks on `main`.
 2. Replace or remove the stale Firebase-gated E2E job in CI. Kaswise no longer uses Firebase, so missing Firebase secrets must not be treated as a valid skip reason.
 3. Prove the live marker cron guard by running it and confirming successful status/delivery behavior.
 4. Only after E2E is rewritten for the current no-Firebase/Supabase stack should `E2E smoke (Playwright)` be considered for required branch protection.
 
-### Current blocker
+### Current branch protection status
 
-As of 2026-06-12, repo `dnu88/catat-in` is private and GitHub rejects branch protection access with:
+As of 2026-06-12, repo `dnu88/catat-in` is public and branch protection is enabled on `main`.
 
-```text
-Upgrade to GitHub Pro or make this repository public to enable this feature. (HTTP 403)
+Verified GitHub protection settings:
+
+```json
+{
+  "required_status_checks": {
+    "strict": true,
+    "contexts": [
+      "Backend quality gate (pytest)",
+      "Web quality gate (typecheck + unit + build)",
+      "Mobile PWA quality gate (typecheck + tests + build)"
+    ]
+  },
+  "enforce_admins": true,
+  "allow_force_pushes": false,
+  "allow_deletions": false,
+  "required_conversation_resolution": true,
+  "required_pull_request_reviews": null
+}
 ```
 
-This means required status checks cannot be enforced 100% using native GitHub branch protection on the current plan. The codebase guardrails are active, but GitHub itself still cannot block a direct push to `main` until branch protection is enabled.
+`required_pull_request_reviews` is intentionally `null` for now to avoid blocking solo maintenance on a public repo. If another reviewer is available, strengthen this later by requiring pull request reviews and at least one approval.
 
-### Ways to enable 100% native enforcement
+### Required checks protecting `main`
 
-Choose one:
-
-1. Upgrade the GitHub account/repo to GitHub Pro, Team, or Enterprise.
-2. Make the repository public.
-3. Move the repository to an organization/team that already has a paid GitHub plan with branch protection for private repos.
-
-Recommended path for Kaswise: keep the repo private and upgrade to GitHub Pro/Team, then enable protection on `main`.
-
-### Required checks to protect `main`
-
-Once branch protection is available, require these GitHub Actions job names:
+These GitHub Actions job names are currently required:
 
 - `Backend quality gate (pytest)`
 - `Web quality gate (typecheck + unit + build)`
@@ -736,9 +742,9 @@ Enable for branch `main`:
 - Require at least 1 approval when another reviewer is available.
 - Decide whether admins are included. For maximum release discipline, use `enforce_admins: true`.
 
-### CLI command after plan upgrade/public repo
+### CLI command used to enable current protection
 
-Run from `/home/Danu88/catat-in` after GitHub branch protection becomes available:
+This is the protection command applied on 2026-06-12:
 
 ```bash
 gh api \
@@ -756,11 +762,7 @@ gh api \
     ]
   },
   "enforce_admins": true,
-  "required_pull_request_reviews": {
-    "required_approving_review_count": 1,
-    "require_code_owner_reviews": false,
-    "dismiss_stale_reviews": true
-  },
+  "required_pull_request_reviews": null,
   "restrictions": null,
   "required_linear_history": false,
   "allow_force_pushes": false,
@@ -789,9 +791,9 @@ After protection is enabled:
 6. Confirm all required checks pass and the PR becomes mergeable.
 7. Confirm direct push to `main` is blocked or restricted according to the selected rule.
 
-### Current compensating controls until GitHub plan supports it
+### Remaining compensating controls outside branch protection
 
-Until native branch protection is available, the active compensating controls are:
+Even with branch protection active, keep these independent controls enabled:
 
 - local pre-push quality gate,
 - GitHub CI on `main`,
@@ -801,7 +803,7 @@ Until native branch protection is available, the active compensating controls ar
 - live URL verification after deploy,
 - cron/live monitor for production marker regressions.
 
-These reduce risk substantially, but they are not a full substitute for native GitHub branch protection because they cannot prevent every direct push to `main` at the GitHub permission layer.
+These remain intentionally redundant. A production regression should have to bypass GitHub branch protection, CI, local hooks, deploy-time checks, live URL verification, and cron monitoring before reaching users.
 
 ---
 
