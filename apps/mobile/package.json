@@ -12,6 +12,7 @@
     "test": "jest",
     "export:pwa": "expo export --platform web --clear",
     "check:bundle": "node scripts/check-bundle-markers.mjs",
+    "sync:required-markers": "node scripts/generate-required-markers.mjs",
     "verify:live-registry": "node scripts/verify-live-feature-registry.mjs",
     "test:live-regression": "jest transaction-classifier receipt-intake receipt-item-categorizer transaction-new-edit-mode capture-envelope-suggestion capture-gating reports-screen tabs-index reports-ai-insight transactions-swipe-actions --runInBand",
     "quality:live": "pnpm verify:live-registry && pnpm type-check && pnpm test:live-regression && pnpm export:pwa && pnpm check:bundle",

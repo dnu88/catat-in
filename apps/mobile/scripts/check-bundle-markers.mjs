@@ -4,13 +4,19 @@ import { fileURLToPath } from 'node:url'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const appDir = resolve(__dirname, '..')
-const markersFile = join(__dirname, 'required-markers.json')
+const registryFile = join(__dirname, 'live-feature-registry.json')
 const defaultBundleDir = join(appDir, 'dist', '_expo', 'static', 'js', 'web')
 const distDir = process.env.KASWISE_BUNDLE_DIR ? resolve(process.env.KASWISE_BUNDLE_DIR) : defaultBundleDir
 
-const required = JSON.parse(readFileSync(markersFile, 'utf8'))
-if (!Array.isArray(required) || required.length === 0) {
-  throw new Error('required-markers.json is empty or invalid')
+const registry = JSON.parse(readFileSync(registryFile, 'utf8'))
+const required = []
+for (const feature of registry) {
+  for (const marker of feature.markers ?? []) {
+    if (typeof marker === 'string' && marker.trim() && !required.includes(marker)) required.push(marker)
+  }
+}
+if (!Array.isArray(registry) || required.length === 0) {
+  throw new Error('live-feature-registry.json has no required markers')
 }
 
 if (!existsSync(distDir)) {
@@ -49,8 +55,8 @@ const missing = required.filter((marker) => !bundle.includes(marker))
 if (missing.length > 0) {
   console.error(`\n❌  BUNDLE MARKER CHECK FAILED — ${missing.length} missing from ${selectedFile}:\n`)
   for (const marker of missing) console.error(`  ✗ ${marker}`)
-  console.error(`\n  These testIDs are required in every PWA bundle.`)
-  console.error(`  If you intentionally removed one, update: ${markersFile}\n`)
+  console.error(`\n  These testIDs are required by live-feature-registry.json.`)
+  console.error(`  If you intentionally removed one, update: ${registryFile}\n`)
   process.exit(1)
 }
 

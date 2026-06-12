@@ -50,6 +50,7 @@ if (!Array.isArray(requiredMarkers)) {
 }
 
 const requiredMarkerSet = new Set(Array.isArray(requiredMarkers) ? requiredMarkers : [])
+const registryMarkerOrder = []
 const seenFeatureIds = new Set()
 
 if (Array.isArray(registry)) {
@@ -85,6 +86,7 @@ if (Array.isArray(registry)) {
     }
 
     markers.forEach((marker) => {
+      if (!registryMarkerOrder.includes(marker)) registryMarkerOrder.push(marker)
       if (!requiredMarkerSet.has(marker)) {
         errors.push(`${prefix} (${id || 'missing-id'}) marker '${marker}' is not listed in required-markers.json`)
       }
@@ -97,6 +99,14 @@ if (Array.isArray(registry)) {
       }
     })
   })
+}
+
+if (Array.isArray(requiredMarkers)) {
+  const expected = JSON.stringify(registryMarkerOrder)
+  const actual = JSON.stringify(requiredMarkers)
+  if (expected !== actual) {
+    errors.push('required-markers.json is out of sync with live-feature-registry.json; run `pnpm sync:required-markers`')
+  }
 }
 
 if (errors.length > 0) {
