@@ -64,6 +64,8 @@ export interface Transaction {
 	visibility: string | null;
 	ai_confidence: number | null;
 	ai_extracted: Record<string, unknown> | null;
+	review_required?: boolean | null;
+	confidence?: number | null;
 	household_id: string | null;
 	created_by: string | null;
 	updated_by?: string | null;
@@ -74,7 +76,7 @@ export interface Transaction {
 	updated_at: string;
 }
 
-function normalizeTransaction(row: any): Transaction {
+export function normalizeTransaction(row: any): Transaction {
 	return {
 		...row,
 		transaction_type: row.transaction_type ?? row.type,
@@ -83,6 +85,8 @@ function normalizeTransaction(row: any): Transaction {
 		description: row.description ?? row.catatan ?? "",
 		date: row.date ?? row.tanggal ?? row.created_at ?? "",
 		note: row.note ?? row.catatan ?? null,
+		review_required: row.review_required ?? null,
+		confidence: row.confidence ?? row.ai_confidence ?? null,
 	};
 }
 
