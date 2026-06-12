@@ -59,6 +59,19 @@ type FilterStatus = "all" | BillStatus;
 
 type BillWithStatus = Bill & { status: BillStatus };
 
+function hashBillNameToColor(name: string): string {
+  const palette = [
+    "#4A80F0", "#E85D75", "#50B86C", "#F5A623", "#8B5CF6",
+    "#06B6D4", "#EC4899", "#F59E0B", "#10B981", "#6366F1",
+  ];
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) {
+    hash = ((hash << 5) - hash) + name.charCodeAt(i);
+    hash |= 0;
+  }
+  return palette[Math.abs(hash) % palette.length];
+}
+
 type BillRowProps = {
   item: BillWithStatus;
   theme: ReturnType<typeof useTheme>["theme"];
@@ -80,15 +93,9 @@ function BillRow({
   isEn,
   categories,
 }: BillRowProps) {
-  // Resolve category visual — use user-defined color if available
-  const categoryVisual = resolveCategoryVisual({
-    categoryName: bill.name,
-    categories,
-    mode: theme.mode,
-    fallbackIcon: "bills" as KaswiseIconName,
-  });
-  const iconColor = categoryVisual.color;
-  const billIcon = categoryVisual.icon as KaswiseIconName;
+  // Use stable name-based color for bill icon
+  const iconColor = hashBillNameToColor(bill.name);
+  const billIcon: KaswiseIconName = "bills";
 
   const statusColor =
     bill.status === "paid"
@@ -276,7 +283,7 @@ export default function BillsScreen() {
 	    setLoadError(null);
 
 	    if (bill.recurrence === "monthly") {
-	      // Roll forward to next month — keep is_paid false
+	      // Roll forward to next month and mark current period paid
 	      const currentDue = new Date(bill.next_due_date);
 	      const nextMonth = currentDue.getMonth() + 1;
 	      const nextYear = currentDue.getFullYear() + (nextMonth > 11 ? 1 : 0);
@@ -291,6 +298,7 @@ export default function BillsScreen() {
 	        due_date: bill.next_due_date,
 	      };
 	      await updateBill(id, {
+	        is_paid: true,
 	        next_due_date: nextDueDate,
 	        payment_history: [
 	          ...(bill.payment_history ?? []),
@@ -318,6 +326,25 @@ export default function BillsScreen() {
 				let status: BillStatus = "upcoming";
 
 				if (bill.is_paid) {
+					// For monthly recurring bills, auto-reset is_paid when
+					// the next_due_date has been rolled past the original payment.
+					// This prevents perpetual "paid" status across cycles.
+					if (bill.recurrence === "monthly") {
+						const lastPayment =
+							bill.payment_history?.[bill.payment_history.length - 1];
+						if (
+							lastPayment?.due_date &&
+							new Date(lastPayment.due_date as string) < today
+						) {
+							// Past the original due date — bill is now in its next cycle
+							if (dueDate >= today) {
+								status = "upcoming";
+							} else {
+								status = "overdue";
+							}
+							return { ...bill, status, is_paid: false };
+						}
+					}
 					status = "paid";
 				} else if (dueDate < today) {
 					status = "overdue";
