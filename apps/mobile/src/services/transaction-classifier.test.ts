@@ -287,6 +287,42 @@ describe("transaction text classifier", () => {
 		});
 	});
 
+	it("uses explicit transaction dates from text and removes date text from description", () => {
+		expect(
+			classifyTransactionText("Beli kopi 1rb tanggal 01 Juni 2026", categories, fixedDate),
+		).toMatchObject({
+			amount: 1000,
+			date: "2026-06-01",
+			note: "Beli kopi",
+		});
+
+		expect(
+			classifyTransactionText("beli susu 15rb tgl 2/6/2026", categories, fixedDate),
+		).toMatchObject({
+			amount: 15000,
+			date: "2026-06-02",
+			note: "beli susu",
+		});
+
+		expect(
+			classifyTransactionText("beli kopi 30rb tanggal 01 Juni", categories, fixedDate),
+		).toMatchObject({
+			date: "2026-06-01",
+		});
+	});
+
+	it("keeps dates when splitting multi-transaction text", () => {
+		const result = classifyTransactionTextBatch(
+			"tanggal 1 Juni 2026 kopi 25rb, tanggal 2 Juni 2026 parkir 5rb",
+			categories,
+			fixedDate,
+		);
+
+		expect(result).toHaveLength(2);
+		expect(result.map((draft) => draft.amount)).toEqual([25000, 5000]);
+		expect(result.map((draft) => draft.date)).toEqual(["2026-06-01", "2026-06-02"]);
+	});
+
 	it("falls back to Other expenses with low confidence when unclear", () => {
 		const result = classifyTransactionText("bayar sesuatu 50000", categories, fixedDate);
 

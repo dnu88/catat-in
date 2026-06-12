@@ -47,6 +47,10 @@ ATURAN:
 - "jt" atau "juta" = jutaan
 - Jika amount tidak disebutkan, set confidence = 0 dan amount = 0
 - Jika tipe tidak jelas, anggap "expense"
+- Jika pengguna menyebut tanggal, isi date sesuai tanggal tersebut dalam format YYYY-MM-DD.
+- Pahami tanggal natural Indonesia seperti "1 Juni 2026", "01/06/2026", "tgl 2/6", "kemarin", dan "hari ini".
+- Jika tahun tidak disebut, gunakan tahun berjalan.
+- Jangan masukkan teks tanggal atau nominal ke note; note berisi deskripsi bersih transaksi.
 - merchant: nama toko/tempat jika ada, null jika tidak ada
 - wallet_hint: nama wallet/bank/e-wallet jika disebut pengguna, null jika tidak disebut
 """
@@ -446,14 +450,15 @@ def _extract_transaction_locally(user_text: str) -> dict:
 
     transactions = []
     for segment in segments:
-        amount = _extract_amount(segment)
+        segment_without_date = _remove_date_mentions(segment)
+        amount = _extract_amount(segment_without_date)
         if amount <= 0:
             continue
         tx_type = _infer_type(segment)
         category = _infer_category(segment, tx_type)
         wallet_hint = _extract_wallet_hint(segment) or _extract_wallet_hint(text)
         merchant = _extract_merchant(segment)
-        date_hint = _extract_relative_date(segment) or _extract_relative_date(text)
+        date_hint = _extract_relative_date(segment, fallback_text=text)
 
         confidence = 0.62
         if wallet_hint:
@@ -464,7 +469,7 @@ def _extract_transaction_locally(user_text: str) -> dict:
             confidence += 0.1
         confidence = min(confidence, 0.94)
 
-        note = _strip_amounts(segment) or None
+        note = re.sub(r"\s+", " ", _strip_amounts(segment_without_date)).strip() or None
         transactions.append(
             {
                 "type": tx_type,
@@ -492,7 +497,13 @@ def _extract_transaction_locally(user_text: str) -> dict:
 
 
 def _amount_matches(text: str) -> list[re.Match[str]]:
-    return list(re.finditer(r"(?:rp\s*)?\d+(?:[.,]\d+)?\s*(?:rb|ribu|jt|juta|k|m)\b|rp\s*[\d.,]+|\b\d[\d.]{3,}\b|\b\d{4,}\b", text))
+    spans = _date_spans(text)
+    matches = list(re.finditer(r"(?:rp\s*)?\d+(?:[.,]\d+)?\s*(?:rb|ribu|jt|juta|k|m)\b|rp\s*[\d.,]+|\b\d[\d.]{3,}\b|\b\d{4,}\b", text))
+    return [
+        match
+        for match in matches
+        if not any(match.start() < end and match.end() > start for start, end in spans)
+    ]
 
 
 def _split_text_around_amounts(text: str) -> list[str]:
@@ -522,6 +533,114 @@ def _strip_amounts(text: str) -> str:
         text,
         flags=re.IGNORECASE,
     ).strip(" ,.;:-")
+
+
+MONTH_ALIASES: dict[str, int] = {
+    "januari": 1,
+    "jan": 1,
+    "februari": 2,
+    "feb": 2,
+    "maret": 3,
+    "mar": 3,
+    "april": 4,
+    "apr": 4,
+    "mei": 5,
+    "may": 5,
+    "juni": 6,
+    "jun": 6,
+    "juli": 7,
+    "jul": 7,
+    "agustus": 8,
+    "agu": 8,
+    "aug": 8,
+    "september": 9,
+    "sep": 9,
+    "oktober": 10,
+    "okt": 10,
+    "oct": 10,
+    "november": 11,
+    "nov": 11,
+    "desember": 12,
+    "des": 12,
+    "dec": 12,
+}
+
+
+def _safe_iso_date(year: int, month: int, day: int) -> str | None:
+    try:
+        return datetime(year, month, day).date().isoformat()
+    except ValueError:
+        return None
+
+
+def _parse_year(value: str | None, fallback_year: int) -> int:
+    if not value:
+        return fallback_year
+    return 2000 + int(value) if len(value) == 2 else int(value)
+
+
+def _find_date_span(text: str, fallback_year: int | None = None) -> tuple[str, int, int] | None:
+    year = fallback_year or datetime.utcnow().date().year
+    month_names = "|".join(MONTH_ALIASES)
+    named_match = re.search(
+        rf"\b(?:tanggal|tgl|pada)?\s*(\d{{1,2}})\s+({month_names})\s*(\d{{2,4}})?\b",
+        text,
+        flags=re.IGNORECASE,
+    )
+    if named_match:
+        parsed = _safe_iso_date(
+            _parse_year(named_match.group(3), year),
+            MONTH_ALIASES[named_match.group(2).lower()],
+            int(named_match.group(1)),
+        )
+        if parsed:
+            return parsed, named_match.start(), named_match.end()
+
+    numeric_full_match = re.search(r"\b(?:tanggal|tgl|pada)?\s*(\d{1,2})[/-](\d{1,2})[/-](\d{2,4})\b", text, flags=re.IGNORECASE)
+    numeric_short_match = re.search(r"\b(?:tanggal|tgl|pada)\s*(\d{1,2})[/-](\d{1,2})\b", text, flags=re.IGNORECASE)
+    numeric_match = numeric_full_match or numeric_short_match
+    if numeric_match:
+        parsed = _safe_iso_date(
+            _parse_year(numeric_match.group(3) if len(numeric_match.groups()) >= 3 else None, year),
+            int(numeric_match.group(2)),
+            int(numeric_match.group(1)),
+        )
+        if parsed:
+            return parsed, numeric_match.start(), numeric_match.end()
+
+    iso_match = re.search(r"\b(20\d{2})-(\d{2})-(\d{2})\b", text)
+    if iso_match:
+        parsed = _safe_iso_date(int(iso_match.group(1)), int(iso_match.group(2)), int(iso_match.group(3)))
+        if parsed:
+            return parsed, iso_match.start(), iso_match.end()
+
+    return None
+
+
+def _date_spans(text: str) -> list[tuple[int, int]]:
+    spans: list[tuple[int, int]] = []
+    offset = 0
+    remaining = text
+    while remaining:
+        found = _find_date_span(remaining)
+        if not found:
+            break
+        _, start, end = found
+        spans.append((offset + start, offset + end))
+        offset += end
+        remaining = remaining[end:]
+    return spans
+
+
+def _remove_date_mentions(text: str) -> str:
+    current = text
+    while True:
+        found = _find_date_span(current)
+        if not found:
+            break
+        _, start, end = found
+        current = f"{current[:start]} {current[end:]}"
+    return re.sub(r"\s+", " ", current).strip(" ,.;:-")
 
 
 def _extract_amount(text: str) -> float:
@@ -593,14 +712,21 @@ def _extract_merchant(text: str) -> str | None:
     return merchant or None
 
 
-def _extract_relative_date(text: str) -> str:
+def _extract_relative_date(text: str, fallback_text: str | None = None) -> str:
+    today = datetime.utcnow().date()
+    found = _find_date_span(text, today.year)
+    if found:
+        return found[0]
+
     if "kemarin" in text:
-        return "yesterday"
-    if "hari ini" in text:
-        return "today"
-    date_match = re.search(r"\b(20\d{2}-\d{2}-\d{2})\b", text)
-    if date_match:
-        return date_match.group(1)
+        return (today - timedelta(days=1)).isoformat()
     if "besok" in text:
-        return (datetime.utcnow().date() + timedelta(days=1)).isoformat()
-    return "today"
+        return (today + timedelta(days=1)).isoformat()
+    if "hari ini" in text:
+        return today.isoformat()
+
+    if fallback_text and fallback_text != text:
+        fallback_date = _extract_relative_date(fallback_text)
+        if fallback_date != today.isoformat():
+            return fallback_date
+    return today.isoformat()

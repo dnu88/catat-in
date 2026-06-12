@@ -446,6 +446,126 @@ function todayKey(date = new Date()) {
 	return date.toISOString().slice(0, 10);
 }
 
+const MONTH_ALIASES: Record<string, number> = {
+	januari: 1,
+	jan: 1,
+	februari: 2,
+	feb: 2,
+	maret: 3,
+	mar: 3,
+	april: 4,
+	apr: 4,
+	mei: 5,
+	may: 5,
+	juni: 6,
+	jun: 6,
+	juli: 7,
+	jul: 7,
+	agustus: 8,
+	agu: 8,
+	aug: 8,
+	september: 9,
+	sep: 9,
+	oktober: 10,
+	okt: 10,
+	oct: 10,
+	november: 11,
+	nov: 11,
+	desember: 12,
+	des: 12,
+	dec: 12,
+};
+
+function toIsoDate(year: number, month: number, day: number) {
+	const date = new Date(year, month - 1, day);
+	if (
+		date.getFullYear() !== year ||
+		date.getMonth() !== month - 1 ||
+		date.getDate() !== day
+	) {
+		return null;
+	}
+	return `${year.toString().padStart(4, "0")}-${month
+		.toString()
+		.padStart(2, "0")}-${day.toString().padStart(2, "0")}`;
+}
+
+function parseTwoDigitYear(value: string, fallbackYear: number) {
+	if (value.length === 2) return 2000 + Number(value);
+	if (value.length === 4) return Number(value);
+	return fallbackYear;
+}
+
+function findDateMention(value: string, fallbackDate = new Date()) {
+	const fallbackYear = fallbackDate.getFullYear();
+	const monthNames = Object.keys(MONTH_ALIASES).join("|");
+	const namedPattern = new RegExp(
+		`\\b(?:tanggal|tgl|pada)?\\s*(\\d{1,2})\\s+(${monthNames})\\s*(\\d{2,4})?\\b`,
+		"i",
+	);
+	const namedMatch = namedPattern.exec(value);
+	if (namedMatch?.index != null) {
+		const day = Number(namedMatch[1]);
+		const month = MONTH_ALIASES[namedMatch[2].toLowerCase()];
+		const year = namedMatch[3]
+			? parseTwoDigitYear(namedMatch[3], fallbackYear)
+			: fallbackYear;
+		const iso = toIsoDate(year, month, day);
+		if (iso) {
+			return {
+				iso,
+				index: namedMatch.index,
+				end: namedMatch.index + namedMatch[0].length,
+			};
+		}
+	}
+
+	const numericFullMatch = /\b(?:tanggal|tgl|pada)?\s*(\d{1,2})[/-](\d{1,2})[/-](\d{2,4})\b/i.exec(value);
+	const numericShortMatch = /\b(?:tanggal|tgl|pada)\s*(\d{1,2})[/-](\d{1,2})\b/i.exec(value);
+	const numericMatch = numericFullMatch ?? numericShortMatch;
+	if (numericMatch?.index != null) {
+		const day = Number(numericMatch[1]);
+		const month = Number(numericMatch[2]);
+		const year = numericMatch[3]
+			? parseTwoDigitYear(numericMatch[3], fallbackYear)
+			: fallbackYear;
+		const iso = toIsoDate(year, month, day);
+		if (iso) {
+			return {
+				iso,
+				index: numericMatch.index,
+				end: numericMatch.index + numericMatch[0].length,
+			};
+		}
+	}
+
+	return null;
+}
+
+function dateMentionSpans(value: string, fallbackDate = new Date()) {
+	const spans: Array<{ index: number; end: number }> = [];
+	let offset = 0;
+	let remaining = value;
+	while (remaining) {
+		const mention = findDateMention(remaining, fallbackDate);
+		if (!mention) break;
+		spans.push({ index: offset + mention.index, end: offset + mention.end });
+		offset += mention.end;
+		remaining = remaining.slice(mention.end);
+	}
+	return spans;
+}
+
+function stripDateMention(value: string, fallbackDate = new Date()) {
+	const mention = findDateMention(value, fallbackDate);
+	if (!mention) return value;
+	return `${value.slice(0, mention.index)} ${value.slice(mention.end)}`
+		.replace(/\s+/g, " ")
+		.replace(/\s+([.,;:])/g, "$1")
+		.replace(/[\s,;:-]+$/g, "")
+		.trim();
+}
+
 function normalize(value: string | null | undefined) {
 	return (value ?? "")
 		.toLowerCase()
@@ -486,11 +606,14 @@ export function parseAmountFromTransactionText(value: string) {
 function findAmountMentions(value: string) {
 	const pattern =
 		/(?:rp\s*)?\d+(?:[.,]\d+)?\s*(?:juta|jt|ribu|rb|k)\b|rp\s*[\d.,]+|\b\d[\d.]{3,}\b|\b\d{4,}\b/gi;
-	return Array.from(value.matchAll(pattern)).map((match) => ({
-		text: match[0],
-		index: match.index ?? 0,
-		end: (match.index ?? 0) + match[0].length,
-	}));
+	const dateSpans = dateMentionSpans(value);
+	return Array.from(value.matchAll(pattern))
+		.map((match) => ({
+			text: match[0],
+			index: match.index ?? 0,
+			end: (match.index ?? 0) + match[0].length,
+		}))
+		.filter((mention) => !dateSpans.some((span) => mention.index < span.end && mention.end > span.index));
 }
 
 
@@ -653,7 +776,7 @@ export function classifyTransactionText(
 ): ClassifiedTransaction | null {
 	const rawNote = input.trim();
 	if (!rawNote) return null;
-	const note = stripAmountMentions(rawNote) || rawNote;
+	const note = stripAmountMentions(stripDateMention(rawNote, date)) || rawNote;
 
 	const amount = parseAmountFromTransactionText(rawNote);
 	if (!Number.isFinite(amount) || amount <= 0) return null;
@@ -680,7 +803,7 @@ export function classifyTransactionText(
 		categoryName: category.name,
 		merchant: inferMerchant(rawNote, matchedMerchants),
 		note,
-		date: todayKey(date),
+		date: findDateMention(rawNote, date)?.iso ?? todayKey(date),
 		confidence,
 		matchedKeywords,
 		matchedConcept: matchedConcept?.id ?? "unknown",

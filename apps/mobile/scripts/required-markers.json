@@ -23,5 +23,9 @@
   "home-entrance-budget",
   "bills-create-card",
   "bills-add-button",
-  "transactions-bills-chip"
+  "transactions-bills-chip",
+  "capture-receipt-preview",
+  "capture-receipt-confirm",
+  "transaction-date-wheel-picker",
+  "transaction-date-confirm"
 ]

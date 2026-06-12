@@ -110,6 +110,7 @@ jest.mock("../src/services/receipt-intake", () => ({
 	analyzeReceiptImage: (...args: unknown[]) => mockAnalyzeReceiptImage(...args),
 	analyzeTransactionText: (...args: unknown[]) => mockAnalyzeTransactionText(...args),
 	receiptExtractionToDraft: (...args: unknown[]) => mockReceiptExtractionToDraft(...args),
+	receiptExtractionToDrafts: (...args: unknown[]) => [mockReceiptExtractionToDraft(...args)].filter(Boolean),
 }));
 
 jest.mock("../src/services/categories", () => ({

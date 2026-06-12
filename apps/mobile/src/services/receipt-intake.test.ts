@@ -3,6 +3,7 @@ import {
 	getApiBaseUrl,
 	getReceiptAuthSession,
 	receiptExtractionToDraft,
+	receiptExtractionToDrafts,
 	uploadReceiptImage,
 } from "./receipt-intake";
 
@@ -29,6 +30,35 @@ describe("receipt intake helpers", () => {
 			date: "2026-06-01",
 			confidence: 0.91,
 			reviewRequired: false,
+		});
+	});
+
+	it("creates one draft per receipt item and adjusts total to match receipt", () => {
+		const drafts = receiptExtractionToDrafts({
+			total_amount: 53000,
+			merchant: "Indomaret",
+			date: "2026-06-01",
+			category: "Belanja Bulanan",
+			confidence: 0.9,
+			items: [
+				{ name: "AQUA 600ML", qty: 2, price: 5000 },
+				{ name: "SABUN LIFEBUOY", price: 18000 },
+				{ name: "OBH COMBI", price: 25000 },
+			],
+		});
+
+		expect(drafts).toHaveLength(3);
+		expect(drafts.map((draft) => draft.amount)).toEqual([10000, 18000, 25000]);
+		expect(drafts.map((draft) => draft.category)).toEqual([
+			"Makan & Minum",
+			"Belanja Bulanan",
+			"Kesehatan",
+		]);
+		expect(drafts[0]).toMatchObject({
+			description: "AQUA 600ML",
+			quantity: 2,
+			merchant: "Indomaret",
+			date: "2026-06-01",
 		});
 	});
 

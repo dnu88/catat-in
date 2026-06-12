@@ -29,7 +29,7 @@ import {
 	analyzeReceiptImage,
 	analyzeTransactionText,
 	getReceiptAuthSession,
-	receiptExtractionToDraft,
+	receiptExtractionToDrafts,
 	uploadReceiptImage,
 	type ReceiptExtraction,
 	type ReceiptImageAsset,
@@ -305,7 +305,8 @@ export default function CaptureScreen() {
 	const [error, setError] = useState<string | null>(null);
 	const [optimisticTransaction, setOptimisticTransaction] = useState<any | null>(null);
 	const [receiptAsset, setReceiptAsset] = useState<ReceiptImageAsset | null>(null);
-	const [receiptDraft, setReceiptDraft] = useState<ReceiptTransactionDraft | null>(null);
+	const [receiptDrafts, setReceiptDrafts] = useState<ReceiptTransactionDraft[]>([]);
+	const receiptDraft = receiptDrafts[0] ?? null;
 	const [receiptPath, setReceiptPath] = useState<string | null>(null);
 	const [receiptExtraction, setReceiptExtraction] = useState<ReceiptExtraction | null>(null);
 	const persistedSuggestionKeyRef = useRef<string | null>(null);
@@ -452,7 +453,7 @@ export default function CaptureScreen() {
 	const pickReceiptImage = async () => {
 		setError(null);
 		setQueuedMessage(null);
-		setReceiptDraft(null);
+		setReceiptDrafts([]);
 		setReceiptPath(null);
 		setReceiptExtraction(null);
 
@@ -516,15 +517,15 @@ export default function CaptureScreen() {
 			const extraction = await analyzeReceiptImage(supabase, receiptAsset);
 			void refreshEntitlements();
 			const uploadedPath = await uploadReceiptImageBestEffort(userId, receiptAsset);
-			const draft = receiptExtractionToDraft(extraction);
-			if (!draft) {
+			const drafts = receiptExtractionToDrafts(extraction);
+			if (drafts.length === 0) {
 				throw new Error(
 					tx.receiptAmountMissing,
 				);
 			}
 			setReceiptPath(uploadedPath);
 			setReceiptExtraction(extraction);
-			setReceiptDraft(draft);
+			setReceiptDrafts(drafts);
 			setQueuedMessage(
 				tx.receiptReadSuccess,
 			);
@@ -540,62 +541,73 @@ export default function CaptureScreen() {
 	};
 
 	const confirmReceiptDraft = async () => {
-		if (!receiptDraft || submitting) return;
+		if (receiptDrafts.length === 0 || submitting) return;
 		setSubmitting(true);
 		setError(null);
 
 		try {
-			const receiptPayload = {
-				wallet_id: walletId,
-				transaction_type: receiptDraft.transactionType,
-				amount: receiptDraft.amount,
-				category: receiptDraft.category,
-				description: receiptDraft.description,
-				date: receiptDraft.date,
-				note: receiptDraft.description,
-				merchant: receiptDraft.merchant,
-				input_type: "image",
-				status: "done",
-				receipt_url: receiptPath,
-				raw_input: receiptAsset?.fileName ?? "receipt_photo",
-				ai_confidence: receiptDraft.confidence,
-				review_required: receiptDraft.reviewRequired,
-				confidence: receiptDraft.confidence,
-			} as const;
+			const createReceiptItemTransaction = async (draft: ReceiptTransactionDraft) => {
+				const receiptPayload = {
+					wallet_id: walletId,
+					transaction_type: draft.transactionType,
+					amount: draft.amount,
+					category: draft.category,
+					description: draft.description,
+					date: draft.date,
+					note: draft.quantity && draft.quantity > 1
+						? `${draft.description} x${draft.quantity}`
+						: draft.description,
+					merchant: draft.merchant,
+					input_type: "image",
+					status: "done",
+					receipt_url: receiptPath,
+					raw_input: receiptAsset?.fileName ?? "receipt_photo",
+					ai_confidence: draft.confidence,
+					review_required: draft.reviewRequired,
+					confidence: draft.confidence,
+				} as const;
 
-			let createdTransaction;
-			try {
-				createdTransaction = await createTransaction(receiptPayload, activeContext);
-			} catch (createError) {
-				if (!walletId || !isRowLevelSecurityError(createError)) {
-					throw createError;
+				try {
+					return await createTransaction(receiptPayload, activeContext);
+				} catch (createError) {
+					if (!walletId || !isRowLevelSecurityError(createError)) {
+						throw createError;
+					}
+					console.error("Receipt transaction wallet scope failed; retrying without wallet:", createError);
+					return createTransaction(
+						{ ...receiptPayload, wallet_id: null },
+						activeContext,
+					);
 				}
-				console.error("Receipt transaction wallet scope failed; retrying without wallet:", createError);
-				createdTransaction = await createTransaction(
-					{ ...receiptPayload, wallet_id: null },
-					activeContext,
-				);
-			}
+			};
+
+			const createdTransactions = await Promise.all(
+				receiptDrafts.map((draft) => createReceiptItemTransaction(draft)),
+			);
+			const createdTransaction = createdTransactions[0];
+			const firstDraft = receiptDrafts[0];
 
 			setOptimisticTransaction({
 				id: createdTransaction.id,
 				status: "done",
-				confidence: receiptDraft.confidence,
-				transaction_type: receiptDraft.transactionType,
-				type: receiptDraft.transactionType,
-				amount: receiptDraft.amount,
-				nominal: receiptDraft.amount,
-				category: receiptDraft.category,
-				kategori: receiptDraft.category,
-				description: receiptDraft.description,
-				catatan: receiptDraft.description,
-				merchant: receiptDraft.merchant,
-				date: receiptDraft.date,
-				tanggal: receiptDraft.date,
+				confidence: firstDraft.confidence,
+				transaction_type: firstDraft.transactionType,
+				type: firstDraft.transactionType,
+				amount: firstDraft.amount,
+				nominal: firstDraft.amount,
+				category: firstDraft.category,
+				kategori: firstDraft.category,
+				description: firstDraft.description,
+				catatan: firstDraft.description,
+				merchant: firstDraft.merchant,
+				date: firstDraft.date,
+				tanggal: firstDraft.date,
 			});
 			setTransactionId(createdTransaction.id);
 			setQueuedMessage(
-				tx.receiptSaved,
+				receiptDrafts.length > 1
+					? `${receiptDrafts.length} transaksi item struk tersimpan.`
+					: tx.receiptSaved,
 			);
 		} catch (error) {
 			setError(
@@ -658,7 +670,7 @@ export default function CaptureScreen() {
 		if (clearText) {
 			setTextInput("");
 			setReceiptAsset(null);
-			setReceiptDraft(null);
+			setReceiptDrafts([]);
 			setReceiptPath(null);
 			setReceiptExtraction(null);
 		}
@@ -792,9 +804,16 @@ export default function CaptureScreen() {
 							{receiptDraft ? (
 								<View testID="capture-receipt-preview" style={styles.receiptDraftCard}>
 									<Text style={styles.suggestionLabel}>{tx.receiptPreviewTitle}</Text>
-									<Text style={styles.suggestionTitle}>{receiptDraft.description}</Text>
-									<Text style={styles.suggestionMeta}>Rp {receiptDraft.amount.toLocaleString("id-ID")} · {receiptDraft.category} · {receiptDraft.date}</Text>
-									{receiptDraft.reviewRequired ? <Text style={styles.suggestionWarning}>{tx.needsReview}</Text> : null}
+									{receiptDrafts.map((draft, index) => (
+										<View key={`${draft.description}-${index}`} style={styles.receiptItemRow}>
+											<Text style={styles.suggestionTitle}>{draft.description}</Text>
+											<Text style={styles.suggestionMeta}>
+												Rp {draft.amount.toLocaleString("id-ID")} · {draft.category} · {draft.date}
+												{draft.quantity && draft.quantity > 1 ? ` · Qty ${draft.quantity}` : ""}
+											</Text>
+											{draft.reviewRequired ? <Text style={styles.suggestionWarning}>{tx.needsReview}</Text> : null}
+										</View>
+									))}
 									<Pressable testID="capture-receipt-confirm" accessibilityRole="button" style={styles.submitButton} onPress={confirmReceiptDraft} disabled={submitting}>
 										<Text style={styles.submitButtonText}>{tx.saveReceiptTransaction}</Text>
 									</Pressable>
@@ -1012,6 +1031,7 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			padding: 12,
 			gap: 8,
 		},
+		receiptItemRow: { gap: 2 },
 		textArea: {
 			minHeight: 120,
 			borderWidth: 1,
