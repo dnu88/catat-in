@@ -367,6 +367,7 @@ pnpm --filter mobile deploy:pwa  # deploy + auto marker guard
 ## Catatan UI/UX
 
 - **Changelog canonical**: gunakan `docs/changelog/CHANGELOG.md` untuk ringkasan perubahan yang dibaca manusia; detail teknis tetap di `docs/releases/*` dan `docs/plans/*`.
+- **Security audit 2026-06-12**: remediation selesai via PR #17; detail audit ada di `docs/security/SECURITY_AUDIT_FULL_2026-06-12.md`, changelog di `docs/changelog/CHANGELOG.md`, TestSprite key sudah direvoke, dan Supabase legacy RLS policy production sudah diverifikasi `legacy_policy_count = 0`.
 
 - **Toggle tema**: hanya di dashboard header (`home-theme-toggle`), TIDAK di Settings
 - **Hide/view nominal**: di dashboard header (`home-amount-visibility-toggle`)
