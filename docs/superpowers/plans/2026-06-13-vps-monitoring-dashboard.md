@@ -12,6 +12,28 @@
 
 ---
 
+## ⏸️ STATUS: TERTUNDA — menunggu upgrade RAM VPS (per 2026-06-13)
+
+**Keputusan owner:** tahan deploy sampai RAM VPS di-upgrade. Owner akan menghubungi lagi setelah upgrade.
+
+**Yang SUDAH selesai:**
+- Task 2 ✅ — file `ops/monitoring/` (compose + .env.example + README) dibuat, sintaks tervalidasi, di-commit di branch `feat/vps-monitoring-dashboard` (commit `7e36b6a`).
+- Spec & plan di-commit (`fe2fe04`).
+
+**Alasan ditahan (temuan saat pra-cek deploy 2026-06-13):**
+- VPS RAM `available` hanya **~1.060 MB** dari 3.915 MB; **swap hampir penuh** (2.034/2.047 MB) → server **sudah** tertekan memori.
+- Penyebab bukan aplikasi: container produksi total hanya **~213 MB** (`kaswise-backend` 142MB, `nginx-proxy-manager` 44MB, `placeholder` 27MB) dan sehat.
+- Beban RAM berasal dari **tool development yang jalan di VPS yang sama** (`node` ~600MB, `claude` ~325MB, `hermes-agent` ~285MB, `pi` ~280MB, `tmux`). **VPS merangkap server produksi + mesin dev.**
+- Menambah ~300MB monitoring ke server yang swap-nya penuh berisiko menambah tekanan → owner memilih upgrade RAM dulu.
+
+**Untuk MELANJUTKAN nanti (setelah RAM di-upgrade):**
+1. Ulangi pra-cek RAM: `ssh Danu88@103.93.163.51 "free -m"` → pastikan `available` nyaman (idealnya > 1.5 GB setelah upgrade).
+2. Pertimbangkan juga apakah tool dev sebaiknya tidak jalan di server produksi (akar tekanan memori).
+3. Lanjut dari **Task 0** (Telegram bot) → Task 1 (DNS) → Task 3 (deploy) → dst sesuai urutan di bawah.
+4. SSH dari mesin ini ke VPS **sudah terverifikasi bekerja**; `proxy-network` ada; folder `/home/Danu88/monitoring` belum ada (aman dibuat baru).
+
+---
+
 ## Catatan eksekusi (baca dulu)
 
 - **Target:** semua langkah Docker/SSH dijalankan **di VPS** `103.93.163.51` (user `Danu88`, sudo NOPASSWD). Langkah Cloudflare/NPM/Telegram dilakukan lewat **dashboard web**.
