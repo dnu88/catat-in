@@ -4,6 +4,8 @@
 .env.*.local
 .env.golive
 apps/mobile/.env.golive
+# Monitoring stack secrets (redundant dengan .env di atas, eksplisit untuk kejelasan)
+ops/monitoring/.env
 .tmp/
 tmp/
 .claude/

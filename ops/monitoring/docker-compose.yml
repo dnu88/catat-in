@@ -1,0 +1,64 @@
+# Stack monitoring VPS Kaswise — TERPISAH dari stack aplikasi.
+# Deploy: salin folder ini ke /home/Danu88/monitoring/ di VPS, isi .env, lalu:
+#   docker compose up -d uptime-kuma beszel portainer   # agent menyusul setelah KEY diisi
+services:
+  uptime-kuma:
+    image: louislam/uptime-kuma:1
+    container_name: kaswise-uptime-kuma
+    restart: unless-stopped
+    volumes:
+      - uptime-kuma-data:/app/data
+    expose:
+      - "3001"
+    mem_limit: 256m
+    networks:
+      - proxy-network
+
+  beszel:
+    image: henrygd/beszel:latest
+    container_name: kaswise-beszel
+    restart: unless-stopped
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - beszel-data:/beszel_data
+    expose:
+      - "8090"
+    mem_limit: 128m
+    networks:
+      - proxy-network
+
+  beszel-agent:
+    image: henrygd/beszel-agent:latest
+    container_name: kaswise-beszel-agent
+    restart: unless-stopped
+    network_mode: host
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    environment:
+      LISTEN: "45876"
+      KEY: "${BESZEL_KEY}"
+    mem_limit: 128m
+
+  portainer:
+    image: portainer/portainer-ce:2
+    container_name: kaswise-portainer
+    restart: unless-stopped
+    command: -H unix:///var/run/docker.sock
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - portainer-data:/data
+    expose:
+      - "9000"
+    mem_limit: 256m
+    networks:
+      - proxy-network
+
+volumes:
+  uptime-kuma-data:
+  beszel-data:
+  portainer-data:
+
+networks:
+  proxy-network:
+    external: true
