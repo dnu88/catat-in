@@ -440,6 +440,7 @@ export default function TransactionNewScreen() {
 			merchant: merchant.trim() || null,
 			date: effectiveDate,
 			note: note.trim() || null,
+			is_verified: true,
 		};
 		try {
 			if (isEditMode) {

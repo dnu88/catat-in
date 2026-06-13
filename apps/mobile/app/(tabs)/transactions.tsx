@@ -51,6 +51,7 @@ type TransactionPeriod = "report" | Period;
 const OTHER_CATEGORY_NAMES = ["Lainnya", "Other", "Other expenses"];
 
 function isReviewable(tx: Transaction): boolean {
+	if (tx.is_verified === true) return false;
 	if (tx.review_required === true) return true;
 	if (typeof tx.confidence === "number" && tx.confidence < 0.5) return true;
 	if (OTHER_CATEGORY_NAMES.includes(tx.category ?? "")) return true;

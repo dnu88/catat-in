@@ -134,6 +134,11 @@ Store transaksi di dashboard hanya mengambil 5 transaksi terakhir (untuk list "t
 
 ## Bug Fixes yang Sudah Dilakukan
 
+### [2026-06] Mobile review queue tetap menampilkan transaksi yang sudah direview
+- **File:** `apps/mobile/src/services/transactions.ts`, `apps/mobile/src/services/transaction-review.ts`, `apps/mobile/app/(tabs)/transactions.tsx`, `apps/mobile/app/(tabs)/capture.tsx`, `apps/mobile/app/(tabs)/transaction-new.tsx`
+- **Root cause:** filter review hanya bergantung pada `review_required`/confidence dan belum menghormati state verifikasi final, sehingga transaksi yang sudah direview masih dianggap reviewable.
+- **Fix:** propagasikan `is_verified` dari flow capture/manual edit, lalu abaikan transaksi verified saat menghitung review summary dan daftar transaksi yang perlu dicek.
+
 ### [2025-05] Budget spent_amount tidak pernah berkurang
 
 - **File:** `apps/web/src/lib/firestore.ts` — `listBudgets()`

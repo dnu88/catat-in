@@ -555,6 +555,7 @@ describe("transaction swipe actions", () => {
 			created_at: "2026-06-01T00:00:00Z",
 			updated_at: "2026-06-01T00:00:00Z",
 			review_required: false,
+			is_verified: false,
 			confidence: 0.9,
 			...overrides,
 		});
@@ -564,6 +565,7 @@ describe("transaction swipe actions", () => {
 			{ ...baseTx({ id: "tx-lainnya" }), category: "Lainnya", kategori: "Lainnya", merchant: "Toko" },
 			{ ...baseTx({ id: "tx-lowconf", confidence: 0.3 }), category: "Makan", kategori: "Makan", merchant: "Kafe" },
 			{ ...baseTx({ id: "tx-review", review_required: true }), category: "Transport", kategori: "Transport", merchant: "Parkir" },
+			{ ...baseTx({ id: "tx-verified", review_required: true, is_verified: true }), category: "Makanan", kategori: "Makanan", merchant: "Sudah Dicek" },
 		]);
 		const screen = renderScreen();
 
@@ -582,6 +584,7 @@ describe("transaction swipe actions", () => {
 		expect(screen.getByText("Toko")).toBeTruthy();
 		expect(screen.getByText("Kafe")).toBeTruthy();
 		expect(screen.getByText("Parkir")).toBeTruthy();
+		expect(screen.queryByText("Sudah Dicek")).toBeNull();
 	});
 
 	it("shows empty state when no transactions need review", async () => {

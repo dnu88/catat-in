@@ -121,7 +121,7 @@ describe("transaction-new edit mode", () => {
 		await waitFor(() =>
 			expect(mockUpdateTransaction).toHaveBeenCalledWith(
 				"tx-1",
-				expect.objectContaining({ description: "Kopi pagi", amount: 35000 }),
+				expect.objectContaining({ description: "Kopi pagi", amount: 35000, is_verified: true }),
 				{ type: "personal" },
 			),
 		);
@@ -207,6 +207,7 @@ describe("transaction-new edit mode", () => {
 					category: "Makan & Minum",
 					description: "Makan siang",
 					wallet_id: "wallet-1",
+					is_verified: true,
 				}),
 				mockActiveContext,
 			),
