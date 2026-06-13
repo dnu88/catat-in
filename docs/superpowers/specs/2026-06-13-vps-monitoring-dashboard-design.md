@@ -111,7 +111,11 @@ Ketiga fungsi yang harus terpenuhi (kebutuhan "gabungan semuanya / D"):
 | Portainer | ~80–100 MB |
 | **Total** | **~300 MB** |
 
-VPS 3.8 GB, pemakaian saat ini (backend+NPM) ~1 GB → sisa lega. ✅ (Tambahkan resource limit di compose untuk keamanan.)
+> ⚠️ **KOREKSI (pra-cek 2026-06-13):** asumsi "baseline ~1 GB" SALAH. Realita di VPS:
+> - RAM `available` hanya **~1.060 MB** dari 3.915 MB; **swap hampir penuh** (2.034/2.047 MB).
+> - Container aplikasi sebenarnya ringan (**~213 MB** total). Beban RAM berasal dari **tool development** yang jalan di VPS yang sama (`node`, `claude`, `hermes-agent`, `pi`, `tmux`) — VPS merangkap produksi + dev.
+> - **Keputusan owner: deploy DITAHAN sampai RAM di-upgrade.** Lihat blok STATUS di file plan.
+> - Resource limit per container (`mem_limit`) tetap diterapkan di compose.
 
 ## 9. Catatan untuk pelaksana (penting)
 
@@ -127,7 +131,7 @@ VPS 3.8 GB, pemakaian saat ini (backend+NPM) ~1 GB → sisa lega. ✅ (Tambahkan
 4. Beszel menampilkan grafik CPU/RAM/disk VPS + container, dan alert ambang terkonfigurasi.
 5. Portainer menampilkan ketiga container aplikasi dan owner dapat melihat log + restart.
 6. `kaswise-backend`, `kaswise-placeholder`, dan NPM tetap berjalan normal (tidak terganggu).
-7. Total pemakaian RAM VPS tetap di bawah batas aman (mis. < 2.5 GB) setelah ketiga alat aktif.
+7. Setelah ketiga alat aktif, RAM `available` VPS tetap nyaman (target: tersisa > 500 MB & swap tidak makin penuh). *(Catatan: kriteria "< 2.5 GB" versi awal dibatalkan — baseline asli sudah ~2.8 GB karena tool dev; lihat Bagian 8.)*
 8. Tersedia **panduan operasional bahasa awam** (cara baca tiap dashboard, cara restart container, apa yang harus dilakukan saat dapat alert).
 
 ## 11. Risiko & mitigasi
