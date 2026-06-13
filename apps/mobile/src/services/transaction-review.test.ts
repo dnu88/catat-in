@@ -44,6 +44,7 @@ function tx(overrides: any = {}): any {
     tanggal: "2026-06-10",
     confidence: 0.9,
     review_required: false,
+    is_verified: false,
     household_id: null,
     ...overrides,
   };
@@ -71,6 +72,27 @@ describe("Transaction Review Service", () => {
     expect(result.summary.count).toBe(1);
     expect(result.summary.reasons.review_required).toBe(1);
     expect(result.transactions[0].id).toBe("tx-2");
+  });
+
+  test("ignores verified transactions even if they were previously low confidence", async () => {
+    mockQueryChain({
+      rows: [
+        tx({
+          id: "tx-verified",
+          review_required: true,
+          confidence: 0.2,
+          kategori: "Lainnya",
+          nominal: 0,
+          is_verified: true,
+        }),
+      ],
+    });
+
+    const result = await getTransactionReviewSummary({ type: "personal" });
+    expect(result.summary.count).toBe(0);
+    expect(result.summary.reasons.review_required).toBe(0);
+    expect(result.summary.reasons.low_confidence).toBe(0);
+    expect(result.transactions).toHaveLength(0);
   });
 
   test("flags low confidence transactions (below 0.5)", async () => {

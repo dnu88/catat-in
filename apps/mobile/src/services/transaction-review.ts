@@ -29,6 +29,15 @@ function needsReview(tx: Transaction): {
   other_category: boolean;
   missing_fields: boolean;
 } {
+  if (tx.is_verified === true) {
+    return {
+      review_required: false,
+      low_confidence: false,
+      other_category: false,
+      missing_fields: false,
+    };
+  }
+
   const flags = {
     review_required: tx.review_required === true,
     low_confidence:

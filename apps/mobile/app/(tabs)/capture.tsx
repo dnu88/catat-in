@@ -410,6 +410,8 @@ export default function CaptureScreen() {
 							raw_input: value,
 							review_required:
 								draft.confidence < CLASSIFIER_HIGH_CONFIDENCE_THRESHOLD,
+							is_verified:
+								draft.confidence >= CLASSIFIER_HIGH_CONFIDENCE_THRESHOLD,
 							confidence: draft.confidence,
 						},
 						activeContext,
@@ -564,8 +566,9 @@ export default function CaptureScreen() {
 					raw_input: receiptAsset?.fileName ?? "receipt_photo",
 					ai_confidence: draft.confidence,
 					review_required: draft.reviewRequired,
+					is_verified: !draft.reviewRequired,
 					confidence: draft.confidence,
-				} as const;
+				};
 
 				try {
 					return await createTransaction(receiptPayload, activeContext);

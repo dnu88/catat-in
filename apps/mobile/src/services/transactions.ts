@@ -38,6 +38,7 @@ export interface TransactionCreate {
 	status?: string | null;
 	raw_input?: string | null;
 	review_required?: boolean | null;
+	is_verified?: boolean | null;
 	confidence?: number | null;
 }
 
@@ -65,6 +66,7 @@ export interface Transaction {
 	ai_confidence: number | null;
 	ai_extracted: Record<string, unknown> | null;
 	review_required?: boolean | null;
+	is_verified?: boolean | null;
 	confidence?: number | null;
 	household_id: string | null;
 	created_by: string | null;
@@ -86,6 +88,7 @@ export function normalizeTransaction(row: any): Transaction {
 		date: row.date ?? row.tanggal ?? row.created_at ?? "",
 		note: row.note ?? row.catatan ?? null,
 		review_required: row.review_required ?? null,
+		is_verified: row.is_verified ?? null,
 		confidence: row.confidence ?? row.ai_confidence ?? null,
 	};
 }
@@ -114,6 +117,7 @@ function buildInsertPayload(tx: TransactionCreate, userId: string) {
 	if (tx.status != null) payload.status = tx.status;
 	if (tx.raw_input != null) payload.raw_input = tx.raw_input;
 	if (tx.review_required != null) payload.review_required = tx.review_required;
+	if (tx.is_verified != null) payload.is_verified = tx.is_verified;
 	if (tx.confidence != null) payload.confidence = tx.confidence;
 
 	return payload;
@@ -146,6 +150,7 @@ function buildUpdatePayload(updates: Partial<TransactionCreate>) {
 	if ("raw_input" in updates) payload.raw_input = updates.raw_input ?? null;
 	if ("review_required" in updates)
 		payload.review_required = updates.review_required ?? null;
+	if ("is_verified" in updates) payload.is_verified = updates.is_verified ?? null;
 	if ("confidence" in updates) payload.confidence = updates.confidence ?? null;
 
 	return payload;
