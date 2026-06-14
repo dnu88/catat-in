@@ -16,6 +16,7 @@ import { PageEntrance, StaggeredStack } from "../../src/components/motion";
 
 import {
 	KaswiseIcon,
+	kaswiseIconNames,
 	type KaswiseIconName,
 } from "../../src/components/icons/kaswise-icons";
 import {
@@ -121,7 +122,7 @@ function formatDayLabel(day: number, isEn: boolean) {
 }
 
 function resolveBudgetIconName(value: string | null | undefined): KaswiseIconName {
-	return iconOptions.some((option) => option.value === value)
+	return kaswiseIconNames.includes(value as KaswiseIconName)
 		? (value as KaswiseIconName)
 		: "budgets";
 }
@@ -174,6 +175,9 @@ function EnvelopeRow({
 	const categoryDisplayName = envelope.parent_category_name
 		? getLocalizedCategoryName(envelope.parent_category_name, isEn ? "en" : "id")
 		: noCategoryLabel;
+	const categoryHelper = envelope.parent_category_name
+		? getLocalizedCategoryHelper(envelope.parent_category_name, isEn ? "en" : "id")
+		: null;
 
 	return (
 		<View testID={`envelope-card-${envelope.id}`} style={styles.budgetCard}>
@@ -202,6 +206,9 @@ function EnvelopeRow({
 						<Text style={styles.budgetMeta}>
 							{categoryDisplayName}
 						</Text>
+						{categoryHelper ? (
+							<Text style={styles.budgetHelper}>{categoryHelper}</Text>
+						) : null}
 						<Text style={styles.budgetPeriod}>
 							{envelope.start_date}–{envelope.end_date}
 						</Text>
@@ -1458,6 +1465,12 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			color: theme.colors.textSecondary,
 			fontSize: 12,
 			fontWeight: "700",
+			marginTop: 2,
+		},
+		budgetHelper: {
+			color: theme.colors.textMuted,
+			fontSize: 11,
+			lineHeight: 15,
 			marginTop: 2,
 		},
 		budgetPeriod: {

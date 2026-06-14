@@ -78,6 +78,28 @@ jest.mock("../src/services/categories", () => ({
 			type: "expense",
 			created_at: "",
 		},
+		{
+			id: "cat-household",
+			user_id: "user-1",
+			name: "Household",
+			icon: null,
+			color: null,
+			visual_locked_by_user: false,
+			is_default: true,
+			type: "expense",
+			created_at: "",
+		},
+		{
+			id: "cat-personal-care",
+			user_id: "user-1",
+			name: "Personal Care",
+			icon: null,
+			color: null,
+			visual_locked_by_user: false,
+			is_default: true,
+			type: "expense",
+			created_at: "",
+		},
 	]),
 	updateCategoryVisual: (...args: any[]) =>
 		mockUpdateCategoryVisual.apply(null, args),
@@ -92,8 +114,8 @@ jest.mock("../src/services/budget-envelopes", () => ({
 			parent_category_id: "cat-food",
 			parent_category_name: "Makan & Minum",
 			limit_amount: 250000,
-			start_date: "2026-05-10",
-			end_date: "2026-05-31",
+			start_date: "2026-06-10",
+			end_date: "2026-06-30",
 			icon: "food",
 			color: "#4A80F0",
 			notes: "Kopi Kenangan, Fore",
@@ -114,6 +136,38 @@ jest.mock("../src/services/budget-envelopes", () => ({
 			color: "#A3FF12",
 			notes: null,
 			status: "archived",
+			created_at: "",
+			updated_at: "",
+		},
+		{
+			id: "env-household",
+			user_id: "user-1",
+			name: "Household",
+			parent_category_id: "cat-household",
+			parent_category_name: "Household",
+			limit_amount: 400000,
+			start_date: "2026-06-01",
+			end_date: "2026-06-30",
+			icon: null,
+			color: null,
+			notes: null,
+			status: "active",
+			created_at: "",
+			updated_at: "",
+		},
+		{
+			id: "env-personal-care",
+			user_id: "user-1",
+			name: "Personal Care",
+			parent_category_id: "cat-personal-care",
+			parent_category_name: "Personal Care",
+			limit_amount: 300000,
+			start_date: "2026-06-01",
+			end_date: "2026-06-30",
+			icon: null,
+			color: null,
+			notes: null,
+			status: "active",
 			created_at: "",
 			updated_at: "",
 		},
@@ -303,6 +357,15 @@ describe("Budget envelopes screen", () => {
 		expect(screen.queryByText(/Amplop/i)).toBeNull();
 	});
 
+	it("merges household and personal care into one budget category label with a shared icon", async () => {
+		renderScreen("en");
+
+		await waitFor(() =>
+			expect(screen.getAllByText("Household & Personal Care").length).toBeGreaterThanOrEqual(2),
+		);
+		expect(screen.getAllByText("Household stock, toiletries, skincare, and daily essentials.").length).toBeGreaterThanOrEqual(2);
+		expect(screen.getAllByText("basket-primary-44").length).toBeGreaterThanOrEqual(2);
+	});
 
 	it("keeps the create form mounted while typing so the keyboard stays open", async () => {
 		const rendered = renderScreen();
