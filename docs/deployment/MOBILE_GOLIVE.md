@@ -1,163 +1,245 @@
-# Kaswise Mobile — Panduan Go Live
+# Kaswise Mobile Go-Live Guide
 
-**Last updated:** 2026-05-25
-**Stack:** Expo SDK 54, React Native 0.74, Expo Router, Supabase Auth + DB
-**Build system:** EAS Build (Expo Application Services)
+Status: Track A public native submission guide
+Last updated: 2026-06-14
+Owner: Kaswise engineering
 
----
+Purpose
+- Define the real minimum process for releasing Kaswise mobile to public stores.
+- Prevent future sessions from assuming that a green Expo/EAS build alone means Play Store or App Store readiness.
+- Keep native release operations aligned with the current Track A product strategy.
 
-## Ringkasan
+Scope
+- Native iOS and Android public submission flow
+- Internal release-candidate verification before submission
+- Store metadata and reviewer-preparation requirements
 
-Mobile app Kaswise adalah Expo managed workflow (tidak ada folder `android/` atau `ios/`). Build dilakukan via **EAS Build** di cloud Expo, bukan di mesin lokal. Tidak butuh Mac untuk build iOS.
+Out of scope
+- Track B native billing implementation
+- Full self-service in-app account deletion flow
+- Web/PWA deployment steps that do not affect native store submission
 
-**Backend tidak dibutuhkan** untuk fitur yang ada — semua CRUD langsung ke Supabase.
-
----
-
-## Prasyarat
-
-### 1. Akun & tools
-- [ ] Akun **Expo** (`expo.dev`) — gratis, untuk EAS Build
-- [ ] **Node.js ≥ 18** dan **pnpm** terinstall di mesin dev
-- [ ] EAS CLI: `npm install -g eas-cli`
-- [ ] Login: `eas login`
-
-### 2. Google Play Console (Android)
-- [ ] Akun Google Play Console (biaya pendaftaran $25 sekali)
-- [ ] Buat app baru dengan package `com.kaswise.app`
-
-### 3. Apple Developer Program (iOS — opsional)
-- [ ] Akun Apple Developer ($99/tahun)
-- [ ] Buat App ID `com.kaswise.app`
-
-> Jika hanya mau Android dulu, iOS bisa dikerjakan belakangan.
+Related artifacts
+- Audit: `docs/audit/2026-06-14-kaswise-store-readiness-audit.md`
+- Execution plan: `docs/plans/2026-06-14-kaswise-store-readiness-minimum-change-plan.md`
+- Submission checklist: `docs/deployment/MOBILE_STORE_SUBMISSION_CHECKLIST.md`
+- Support SOP: `docs/operations/ACCOUNT_DELETION_SUPPORT_SOP.md`
+- Privacy source: `docs/legal/privacy-policy.md`
+- Account deletion source: `docs/legal/account-deletion.md`
+- Terms source: `docs/legal/terms.md`
 
 ---
 
-## Langkah Go Live Android
+## 1. Current release posture
 
-### Step 1 — Setup EAS project
+Kaswise currently follows Track A for public native store readiness.
+
+Track A means:
+- native public build is free-only
+- native app must not initiate external Midtrans purchase for premium digital features
+- web/PWA may still use Midtrans
+- existing premium entitlements may still be recognized after login, but native app must not act as an external checkout funnel
+
+This means a successful EAS build is only one requirement. Public submission is not ready unless billing posture, legal URLs, deletion path, reviewer-visible surfaces, and store metadata are all aligned.
+
+---
+
+## 2. Track A vs Track B
+
+### Track A — current approved path
+Use this when:
+- native store billing is not implemented yet
+- the team needs the safest minimum-change path to public submission
+
+Requirements:
+- premium purchase CTA inside native app stays disabled
+- native free quota behavior is honest and coherent
+- legal/account-deletion resources are public and easy to access
+- unfinished reviewer-visible surfaces stay hidden or clearly corrected
+
+### Track B — future path
+Use this only after product and engineering explicitly choose it.
+
+Additional requirements:
+- Apple IAP / Google Play Billing implementation
+- product IDs and entitlement sync
+- restore-purchase flow
+- billing QA across iOS and Android store sandboxes
+- updated reviewer notes and policy answers reflecting native paid unlocks
+
+Do not mix Track A and Track B assumptions in the same submission cycle.
+
+---
+
+## 3. Billing and entitlement rules for public submission
+
+Public native submission requires a store-compliant billing strategy.
+
+Current rule for Track A:
+- free features and free AI quota are allowed in native store builds
+- premium digital unlock must not be sold through external Midtrans flow from inside the native app
+- if free AI quota is exhausted, the app may stop access or explain reset timing, but must not route the reviewer into external native purchase flow
+
+Operational rule:
+- if a change re-enables native premium purchase, stop the submission process until Track B billing work is completed
+
+Verification pointers:
+- `apps/mobile/src/config/store-release.ts`
+- `apps/mobile/app/upgrade.tsx`
+- `apps/mobile/app/(tabs)/capture.tsx`
+
+---
+
+## 4. Required public URLs for store metadata
+
+Use production URLs only.
+
+- Privacy policy: `https://kaswise.com/privacy`
+- Terms of service: `https://kaswise.com/terms`
+- Support/contact: `https://kaswise.com/contact`
+- Account deletion: `https://kaswise.com/account-deletion`
+
+These URLs must be:
+- publicly reachable without login
+- consistent with mobile Settings links
+- consistent with store metadata in App Store Connect and Play Console
+- verified to render the intended legal/account content, not just return a generic SPA shell with HTTP 200
+
+Current verification note (2026-06-14):
+- `curl -I` confirms `https://kaswise.com/privacy`, `/terms`, `/contact`, and `/account-deletion` return HTTP 200.
+- Store-readiness follow-up now adds explicit Expo/mobile public routes plus SPA fallback generation for `privacy`, `terms`, `contact`, `account-deletion`, and `help` during `pnpm --filter mobile export:pwa`.
+- Local export verification confirms `apps/mobile/dist/privacy/index.html`, `terms/index.html`, `contact/index.html`, `account-deletion/index.html`, and `help/index.html` are generated.
+- Final store submission still requires production deploy plus live verification that those URLs render the intended legal/account content after deployment.
+
+---
+
+## 5. Account deletion requirement
+
+Before public submission:
+- signed-in users should be able to submit an authenticated deletion request from mobile Settings
+- account deletion guidance must be publicly reachable
+- the page must explain request path, retention/deletion summary, and expected handling timeline
+- support/ops must have a real internal process to fulfill those requests
+- the current support owner must be able to follow `docs/operations/ACCOUNT_DELETION_SUPPORT_SOP.md`
+
+Minimum Track A interpretation:
+- an authenticated in-app request flow plus a public deletion-request fallback is acceptable
+- full self-service native deletion is not yet required for this track
+
+If the deletion flow, public page, or support process is not ready, treat that as a submission blocker.
+
+---
+
+## 6. Reviewer-visible feature honesty
+
+Before submission, inspect reviewer-visible surfaces and assets.
+
+Must be true:
+- no external premium checkout is visible in native app
+- no dormant voice-capture mode is visible if it is not truly implemented for Track A
+- no misleading import or beta surface is presented as production-ready if reviewers can reach it
+- screenshots and preview assets reflect the real native Track A surface
+
+Current Track A note:
+- Capture AI surface should expose only the real reviewer-safe modes that are intentionally shipped now
+
+---
+
+## 7. Reviewer notes and test-account preparation
+
+Prepare reviewer notes for every submission.
+
+Suggested notes:
+- Kaswise public native build is currently submitted as a free-only Track A experience.
+- Premium purchase is not available from inside the native app.
+- Public legal resources:
+  - Privacy: https://kaswise.com/privacy
+  - Terms: https://kaswise.com/terms
+  - Account deletion: https://kaswise.com/account-deletion
+  - Support: https://kaswise.com/contact
+
+If the app needs a test account or seeded scenario for review, prepare it before submission and store the instructions in the release handoff for that build.
+
+Reviewer prep checklist:
+- reviewer note text drafted
+- support contact verified
+- any demo/test credentials verified
+- reviewer path does not hit dead links or hidden broken states
+
+---
+
+## 8. Release candidate verification flow
+
+Use this flow before every public native submission.
+
+### A. Code and config verification
+Run from repo root:
+
 ```bash
-cd /path/to/catat-in/apps/mobile
-
-# Login ke Expo
-eas login
-
-# Inisialisasi EAS project (sekali saja)
-eas init
-
-# Pastikan app.json sudah benar:
-# - "slug": "kaswise"
-# - "android.package": "com.kaswise.app"
-# - "version": "1.0.0"
+cd /home/Danu88/catat-in
+pnpm --filter mobile type-check
+pnpm --filter mobile test --runInBand
+pnpm --filter mobile quality:live
 ```
 
-### Step 2 — Set environment variables di EAS
-```bash
-# Set Supabase secrets di EAS (agar tidak hardcode di kode)
-eas secret:create --scope project --name EXPO_PUBLIC_SUPABASE_URL \
-  --value "https://xqvtsgfakuehjwdmenuw.supabase.co"
+### B. Legal/deployment verification
+Confirm:
+- `docs/deployment/MOBILE_STORE_SUBMISSION_CHECKLIST.md` is up to date
+- public URLs in the checklist still match mobile config and web routes
+- `docs/legal/` sources still match public hosted content
 
-eas secret:create --scope project --name EXPO_PUBLIC_SUPABASE_ANON_KEY \
-  --value "sb_publishable_xxx"
-```
+### C. Reviewer-surface verification
+Confirm:
+- upgrade flow in native app stays non-purchasable for Track A
+- capture surface does not expose misleading dormant modes
+- settings links open the correct legal pages
 
-> ⚠️ Gunakan Supabase publishable key (`sb_publishable_...`) untuk build/runtime publik. Jangan commit nilai key asli ke repo.
-
-### Step 3 — Build APK preview (test dulu)
-```bash
-cd apps/mobile
-
-# Build APK untuk test internal (tidak perlu Play Console)
-eas build --platform android --profile preview
-```
-- Proses ~10-20 menit di cloud EAS
-- Setelah selesai, download APK dari `expo.dev/builds` dan install di HP untuk test
-
-### Step 4 — Test APK
-Verifikasi di HP:
-- [ ] Login / Register berhasil (Supabase Auth)
-- [ ] Tambah transaksi berhasil
-- [ ] Data muncul di dashboard
-- [ ] Logout berhasil
-
-### Step 5 — Build production (AAB untuk Play Store)
-```bash
-# Build AAB (Android App Bundle) untuk Play Store
-eas build --platform android --profile production
-```
-- Output: file `.aab` — download dari `expo.dev/builds`
-
-### Step 6 — Submit ke Play Store
-```bash
-# Submit otomatis via EAS (butuh Google Play service account key)
-eas submit --platform android
-
-# Atau manual: upload .aab di Google Play Console
-# → Production → Create new release → Upload AAB
-```
+### D. Build/release verification
+Confirm:
+- version/build numbers are correct
+- bundle/package identifiers are correct
+- release-candidate build installs cleanly
+- smoke test covers login, dashboard, capture text/photo, settings legal links, and reports basics
 
 ---
 
-## Langkah Go Live iOS (opsional, butuh Mac/Apple Developer)
+## 9. Relationship to the submission checklist
 
-```bash
-# Build IPA untuk App Store
-eas build --platform ios --profile production
+`docs/deployment/MOBILE_STORE_SUBMISSION_CHECKLIST.md` is the canonical checkbox artifact.
 
-# Submit ke App Store Connect
-eas submit --platform ios
-```
+Use this guide for:
+- release posture
+- policy interpretation
+- operational sequencing
+- reviewer prep guidance
 
----
+Use the checklist for:
+- final go/no-go decision
+- metadata completeness
+- legal URL completeness
+- verification sign-off
 
-## Konfigurasi Supabase untuk Production
-
-### Auth redirect URL
-Di Supabase Dashboard → Authentication → URL Configuration:
-- **Site URL:** `https://kaswise.com`
-- **Redirect URLs:** tambahkan `kaswise://` (deep link scheme dari `app.json`)
-
-### Aktifkan Google OAuth (opsional)
-Di Supabase Dashboard → Authentication → Providers → Google:
-- Masukkan `Client ID` dan `Client Secret` dari Google Cloud Console
-- Tambahkan authorized redirect: `https://xqvtsgfakuehjwdmenuw.supabase.co/auth/v1/callback`
+A submission is not ready until both this guide and the checklist are satisfied.
 
 ---
 
-## Checklist Sebelum Submit ke Store
+## 10. Stop conditions
 
-- [ ] Icon app sudah ada (`assets/icon.png` — 1024x1024)
-- [ ] Splash screen sudah ada (`assets/splash.png`)
-- [ ] `app.json` version dan buildNumber sudah diisi
-- [ ] Privacy policy URL tersedia (Play Store wajib)
-- [ ] Screenshot app sudah disiapkan (minimal 2 screenshot per ukuran layar)
-- [ ] Deskripsi app sudah ditulis
-- [ ] Rating konten sudah diisi di Play Console
-
----
-
-## File Konfigurasi Penting
-
-| File | Fungsi |
-|---|---|
-| `apps/mobile/app.json` | Konfigurasi Expo (nama, package, version) |
-| `apps/mobile/eas.json` | Profil build EAS (dev/preview/production) |
-| `apps/mobile/.env` | Env lokal (Supabase keys) — jangan commit |
-| `apps/mobile/src/lib/supabase.ts` | Inisialisasi Supabase client |
+Do not submit if any of these are true:
+- native app can still trigger external premium purchase
+- privacy policy URL is missing or broken
+- account deletion page is missing or broken
+- screenshots/assets still show misleading or unfinished flows
+- reviewer notes are not prepared
+- release-candidate verification has not been run on the actual candidate build
 
 ---
 
-## Troubleshooting
+## 11. Future update trigger
 
-### Build gagal "missing SUPABASE_URL"
-→ Pastikan `eas secret:create` sudah dijalankan, atau `.env` sudah ada di folder mobile.
-
-### Login Supabase gagal di app
-→ Cek redirect URL di Supabase Dashboard sudah include `kaswise://`
-
-### APK install gagal di HP
-→ Aktifkan "Install dari sumber tidak dikenal" di pengaturan HP untuk test APK preview.
-
-### EAS Build lambat / antri
-→ Akun Expo gratis punya antrian lebih panjang. Upgrade ke EAS Pro ($29/bulan) untuk priority build, atau tunggu.
+Update this file immediately when any of these change:
+- Track A switches to Track B
+- native billing is implemented
+- legal URLs change
+- deletion process changes materially
+- reviewer-visible premium/AI surface changes

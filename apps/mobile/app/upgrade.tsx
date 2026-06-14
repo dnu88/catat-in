@@ -21,6 +21,7 @@ import {
 } from "../src/services/billing";
 import { useTheme } from "../src/theme/theme-context";
 import { useI18n } from "../src/i18n/i18n-context";
+import { getStoreReleaseConfig } from "../src/config/store-release";
 
 const rp = (n: number) => `Rp${n.toLocaleString("id-ID")}`;
 
@@ -32,6 +33,8 @@ export default function UpgradeScreen() {
   const { language } = useI18n();
   const isEn = language === "en";
   const styles = useMemo(() => createStyles(theme), [theme]);
+  const storeReleaseConfig = useMemo(() => getStoreReleaseConfig(), []);
+  const allowNativePremiumPurchase = storeReleaseConfig.allowNativePremiumPurchase;
 
   const [pricing, setPricing] = useState<Pricing | null>(null);
   const [pricingError, setPricingError] = useState(false);
@@ -123,6 +126,10 @@ export default function UpgradeScreen() {
   }, [fetchPricing, stopPolling]);
 
   async function buy(plan: "monthly" | "yearly") {
+    if (!allowNativePremiumPurchase) {
+      return;
+    }
+
     setBusy(plan);
     try {
       const res = await createPayment(supabase, plan);
@@ -193,8 +200,22 @@ export default function UpgradeScreen() {
           </View>
         ) : null}
 
+        {/* Store-release notice for native Track A */}
+        {!allowNativePremiumPurchase ? (
+          <View testID="upgrade-native-store-notice" style={styles.phaseCard}>
+            <Text style={styles.phaseTitle}>
+              {isEn ? "Premium is not available in this app yet." : "Premium belum tersedia di aplikasi ini."}
+            </Text>
+            <Text style={styles.phaseText}>
+              {isEn
+                ? "Use Kaswise web/PWA to upgrade for now."
+                : "Gunakan Kaswise web/PWA untuk upgrade sementara."}
+            </Text>
+          </View>
+        ) : null}
+
         {/* Plan cards — idle phase */}
-        {phase === "idle" ? (
+        {phase === "idle" && allowNativePremiumPurchase ? (
           <>
             <Pressable
               testID="upgrade-monthly"

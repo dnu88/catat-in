@@ -83,6 +83,11 @@ function ThemedRootStack() {
 				<Stack.Screen name="index" />
 				<Stack.Screen name="(auth)" />
 				<Stack.Screen name="(tabs)" />
+				<Stack.Screen name="privacy" options={{ title: "Kebijakan Privasi" }} />
+				<Stack.Screen name="terms" options={{ title: "Syarat Layanan" }} />
+				<Stack.Screen name="contact" options={{ title: "Kontak Support" }} />
+				<Stack.Screen name="account-deletion" options={{ title: "Penghapusan Akun" }} />
+				<Stack.Screen name="help" options={{ title: "Bantuan" }} />
 				<Stack.Screen name="reset-password" />
 			</Stack>
 		</>

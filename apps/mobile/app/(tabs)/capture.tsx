@@ -56,7 +56,7 @@ export function quotaLabel(ent: { chat_used: number; chat_limit: number } | null
 	return ent ? `Chat AI: ${ent.chat_used}/${ent.chat_limit}` : "";
 }
 
-const modes = [
+const enabledModes = [
 	{
 		id: "Teks",
 		label: "Teks",
@@ -69,24 +69,9 @@ const modes = [
 		icon: "upload" as KaswiseIconName,
 		helper: "Scan struk belanja dengan OCR",
 	},
-	{
-		id: "Rekam",
-		label: "Suara",
-		icon: "notification" as KaswiseIconName,
-		helper: "Rekam suara transaksi (Whisper)",
-	},
-	{
-		id: "Import",
-		label: "Import",
-		icon: "imports" as KaswiseIconName,
-		helper: "Import mutasi bank & e-wallet",
-	},
 ] as const;
 
-type ModeId = (typeof modes)[number]["id"];
-const enabledModes = modes.filter(
-	(mode) => mode.id === "Teks" || mode.id === "Foto",
-);
+type ModeId = (typeof enabledModes)[number]["id"];
 
 type AiTextTransaction = {
 	type?: unknown;
@@ -184,14 +169,10 @@ export default function CaptureScreen() {
 						modeLabels: {
 							Teks: "Text",
 							Foto: "Photo",
-							Rekam: "Voice",
-							Import: "Import",
 						},
 						modeHelpers: {
 							Teks: "Type a transaction in natural language",
 							Foto: "Scan shopping receipts with OCR",
-							Rekam: "Record transaction voice notes",
-							Import: "Import bank and e-wallet statements",
 						},
 						textPlaceholder: "Example: Bought coffee 35k at Kopi Kenangan with QRIS",
 						textInputLabel: "Transaction text input",
@@ -240,14 +221,10 @@ export default function CaptureScreen() {
 						modeLabels: {
 							Teks: "Teks",
 							Foto: "Foto",
-							Rekam: "Suara",
-							Import: "Impor",
 						},
 						modeHelpers: {
 							Teks: "Ketik transaksi dengan bahasa natural",
 							Foto: "Scan struk belanja dengan OCR",
-							Rekam: "Rekam suara transaksi",
-							Import: "Impor mutasi bank dan e-wallet",
 						},
 						textPlaceholder: "Contoh: Beli kopi 35rb di Kopi Kenangan pakai QRIS",
 						textInputLabel: "Input teks transaksi",

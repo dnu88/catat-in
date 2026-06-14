@@ -1,8 +1,22 @@
 import { render, screen } from '@testing-library/react'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, beforeAll } from 'vitest'
 import ThemeToggle from '@components/theme/ThemeToggle'
 import LandingPage from '@pages/LandingPage'
 import LegalInfoPage from '@pages/LegalInfoPage'
+
+beforeAll(() => {
+  class MockIntersectionObserver {
+    observe() {}
+    disconnect() {}
+    unobserve() {}
+  }
+
+  Object.defineProperty(window, 'IntersectionObserver', {
+    writable: true,
+    configurable: true,
+    value: MockIntersectionObserver,
+  })
+})
 
 describe('Web UI foundation', () => {
   it('renders theme toggle button', () => {
@@ -35,6 +49,17 @@ describe('Web UI foundation', () => {
     expect(screen.getByRole('link', { name: /Tanya privasi/i })).toHaveAttribute(
       'href',
       'mailto:kaswise.id@gmail.com?subject=Kebijakan%20Privasi%20Kaswise',
+    )
+  })
+
+  it('renders a public account deletion page with the approved support email path', () => {
+    render(<LegalInfoPage page="accountDeletion" />)
+    expect(screen.getByTestId('legal-page-accountDeletion')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /Penghapusan Akun Kaswise/i })).toBeInTheDocument()
+    expect(screen.getByText(/Settings aplikasi/i)).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /Email penghapusan akun/i })).toHaveAttribute(
+      'href',
+      'mailto:kaswise.id@gmail.com?subject=Permintaan%20Penghapusan%20Akun%20Kaswise',
     )
   })
 })

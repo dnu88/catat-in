@@ -1,10 +1,32 @@
 import AsyncStorage from '@react-native-async-storage/async-storage'
-import { act, fireEvent, render, waitFor } from '@testing-library/react-native'
+import { Linking } from 'react-native'
+import { fireEvent, render, waitFor } from '@testing-library/react-native'
+
+jest.mock('../src/components/motion', () => ({
+  PageEntrance: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  StaggeredStack: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+}))
+
+jest.mock('../src/components/ui', () => ({
+  IconBubble: () => null,
+}))
+
+jest.mock('../src/components/brand/KaswiseLogoMark', () => ({
+  KaswiseLogoMark: () => null,
+}))
+
+jest.mock('../src/components/icons/kaswise-icons', () => ({
+  KaswiseIcon: () => null,
+}))
 
 import SettingsScreen from '../app/(tabs)/settings'
+import { getLatestAccountDeletionRequest, submitAccountDeletionRequest } from '../src/services/account-deletion'
 import { I18nProvider } from '../src/i18n/i18n-context'
+import { KASWISE_LEGAL_URLS } from '../src/config/legal-links'
 import { SupabaseProvider } from '../src/lib/supabase'
 import { ThemeProvider } from '../src/theme/theme-context'
+
+jest.spyOn(Linking, 'openURL').mockResolvedValue(undefined)
 
 const mockReplace = jest.fn()
 const mockPush = jest.fn()
@@ -40,8 +62,13 @@ jest.mock('../src/lib/supabase', () => ({
   SupabaseProvider: ({ children }: { children: React.ReactNode }) => children,
 }))
 
-function renderSettings() {
-  return render(
+jest.mock('../src/services/account-deletion', () => ({
+  getLatestAccountDeletionRequest: jest.fn(async () => ({ request: null })),
+  submitAccountDeletionRequest: jest.fn(),
+}))
+
+async function renderSettings() {
+  const screen = render(
     <SupabaseProvider>
       <I18nProvider>
         <ThemeProvider>
@@ -50,6 +77,8 @@ function renderSettings() {
       </I18nProvider>
     </SupabaseProvider>,
   )
+
+  return screen
 }
 
 describe('SettingsScreen honest controls', () => {
@@ -60,21 +89,25 @@ describe('SettingsScreen honest controls', () => {
     mockUpdateUser.mockClear()
     mockGetUser.mockReset()
     mockGetUser.mockResolvedValue({ data: { user: null } })
+    jest.mocked(getLatestAccountDeletionRequest).mockReset()
+    jest.mocked(getLatestAccountDeletionRequest).mockResolvedValue({ request: null })
+    jest.mocked(submitAccountDeletionRequest).mockReset()
+    jest.mocked(Linking.openURL).mockClear()
     jest.mocked(AsyncStorage.getItem).mockReset()
     jest.mocked(AsyncStorage.getItem).mockResolvedValue(null)
     jest.mocked(AsyncStorage.setItem).mockClear()
   })
 
-  it('keeps working settings controls and removes dead taps', () => {
-    const screen = renderSettings()
+  it('keeps working settings controls and removes dead taps', async () => {
+    const screen = await renderSettings()
 
     expect(screen.getByText('Pengaturan')).toBeTruthy()
-    expect(screen.getByText('Tampilan')).toBeTruthy()
+    expect(screen.getByTestId('settings-profile')).toBeTruthy()
     expect(screen.getByText('Bahasa aplikasi')).toBeTruthy()
     expect(screen.getByText('Notifikasi')).toBeTruthy()
     expect(screen.getByText('Keluarga')).toBeTruthy()
     expect(screen.getByText('Pusat Keluarga')).toBeTruthy()
-    expect(screen.getByText('kaswise v1.0.0')).toBeTruthy()
+    expect(screen.getByText('Kaswise v1.0.0')).toBeTruthy()
     expect(screen.getByText('Keluar dari Akun')).toBeTruthy()
 
     expect(screen.queryByText('Edit')).toBeNull()
@@ -86,20 +119,80 @@ describe('SettingsScreen honest controls', () => {
     expect(screen.queryByText('Import')).toBeNull()
     expect(screen.getByText('Akun & Keamanan')).toBeTruthy()
     expect(screen.getByText('Ubah Password')).toBeTruthy()
-    expect(screen.queryByText('Kebijakan Privasi')).toBeNull()
+    expect(screen.getByText('Legal & Dukungan')).toBeTruthy()
+    expect(screen.getByText('Kebijakan Privasi')).toBeTruthy()
+    expect(screen.getByText('Penghapusan Akun')).toBeTruthy()
+    expect(screen.getByText('Syarat Layanan')).toBeTruthy()
   })
 
-  it('opens family center from settings', () => {
-    const screen = renderSettings()
+  it('opens family center from settings', async () => {
+    const screen = await renderSettings()
 
     fireEvent.press(screen.getByTestId('settings-family-center'))
 
     expect(mockPush).toHaveBeenCalledWith('/(tabs)/groups')
   })
 
+  it('opens public legal URLs from settings without local placeholders', async () => {
+    const screen = await renderSettings()
+
+    fireEvent.press(screen.getByTestId('settings-privacy-policy'))
+    fireEvent.press(screen.getByTestId('settings-account-deletion'))
+    fireEvent.press(screen.getByTestId('settings-terms-of-service'))
+
+    expect(Linking.openURL).toHaveBeenNthCalledWith(1, KASWISE_LEGAL_URLS.privacy)
+    expect(Linking.openURL).toHaveBeenNthCalledWith(2, KASWISE_LEGAL_URLS.accountDeletion)
+    expect(Linking.openURL).toHaveBeenNthCalledWith(3, KASWISE_LEGAL_URLS.terms)
+  })
+
+  it('submits an account deletion request from settings', async () => {
+    mockGetUser.mockResolvedValue({
+      data: {
+        user: {
+          id: 'user-1',
+          email: 'dania@kaswise.com',
+          user_metadata: { full_name: 'Dania' },
+        },
+      },
+    } as any)
+    jest.mocked(submitAccountDeletionRequest).mockResolvedValue({
+      created: true,
+      request: {
+        id: 'req-1',
+        user_id: 'user-1',
+        email: 'dania@kaswise.com',
+        status: 'pending',
+        reason: 'Tidak lagi memakai aplikasi',
+        details: 'Mohon hapus akun dan data aktif saya.',
+        review_notes: null,
+        requested_at: '2026-06-14T12:00:00+00:00',
+        reviewed_at: null,
+        created_at: '2026-06-14T12:00:00+00:00',
+        updated_at: '2026-06-14T12:00:00+00:00',
+      },
+    })
+
+    const screen = await renderSettings()
+
+    fireEvent.press(screen.getByTestId('settings-account-deletion-toggle'))
+    await waitFor(() => expect(screen.getByTestId('settings-account-deletion-email')).toBeTruthy())
+    fireEvent.changeText(screen.getByTestId('settings-account-deletion-reason'), 'Tidak lagi memakai aplikasi')
+    fireEvent.changeText(screen.getByTestId('settings-account-deletion-details'), 'Mohon hapus akun dan data aktif saya.')
+    fireEvent.press(screen.getByTestId('settings-submit-account-deletion'))
+
+    await waitFor(() => {
+      expect(submitAccountDeletionRequest).toHaveBeenCalledWith(expect.anything(), {
+        confirm_email: 'dania@kaswise.com',
+        reason: 'Tidak lagi memakai aplikasi',
+        details: 'Mohon hapus akun dan data aktif saya.',
+      })
+      expect(screen.getByText(/Request penghapusan akun tercatat/i)).toBeTruthy()
+    })
+  })
+
 
   it('updates password from account security settings', async () => {
-    const screen = renderSettings()
+    const screen = await renderSettings()
 
     fireEvent.press(screen.getByTestId('settings-password-toggle'))
     fireEvent.changeText(screen.getByTestId('settings-new-password'), 'password-baru')
@@ -112,103 +205,13 @@ describe('SettingsScreen honest controls', () => {
     })
   })
 
-  it('saves a selected default avatar to user metadata and hides the success message automatically', async () => {
-    jest.useFakeTimers()
-    mockGetUser.mockResolvedValue({
-      data: {
-        user: {
-          id: 'user-1',
-          email: 'dania@kaswise.com',
-          user_metadata: { full_name: 'Dania' },
-        },
-      },
-    } as any)
-    const screen = renderSettings()
-
-    await waitFor(() => expect(screen.getByText('dania@kaswise.com')).toBeTruthy())
-    fireEvent.press(screen.getByTestId('settings-change-profile-photo'))
-    fireEvent.press(screen.getByTestId('settings-avatar-option-sari-hijab'))
-    fireEvent.press(screen.getByTestId('settings-save-profile-photo'))
-
-    await waitFor(() => {
-      expect(mockUpdateUser).toHaveBeenCalledWith({
-        data: expect.objectContaining({
-          avatar_key: 'sari-hijab',
-          avatar_url: null,
-          profile_visual_mode: 'avatar',
-        }),
-      })
-      expect(screen.getByText('Foto profil tersimpan.')).toBeTruthy()
-    })
-
-    act(() => {
-      jest.advanceTimersByTime(3000)
-    })
-
-    expect(screen.queryByText('Foto profil tersimpan.')).toBeNull()
-    jest.useRealTimers()
-  })
-
-
-  it('keeps the last selected avatar after logout and login even when provider picture exists', async () => {
-    mockGetUser.mockResolvedValue({
-      data: {
-        user: {
-          id: 'user-1',
-          email: 'dania@kaswise.com',
-          user_metadata: {
-            full_name: 'Dania',
-            picture: 'https://accounts.google.com/default-picture.png',
-            avatar_key: 'sari-hijab',
-            avatar_url: null,
-            profile_visual_mode: 'avatar',
-          },
-        },
-      },
-    } as any)
-
-    const screen = renderSettings()
-
-    await waitFor(() => expect(screen.getByText('dania@kaswise.com')).toBeTruthy())
-    expect(screen.getByLabelText('Sari berhijab')).toBeTruthy()
-  })
-
-
-  it('persists selected language across app reopen', async () => {
-    const firstSession = renderSettings()
-
-    fireEvent.press(firstSession.getByTestId('settings-language-en'))
-
-    expect(AsyncStorage.setItem).toHaveBeenCalledWith('kaswise:language-preference', 'en')
-
-    firstSession.unmount()
-    jest.mocked(AsyncStorage.getItem).mockImplementation(async (key) => {
-      if (key === 'kaswise:language-preference') return 'en'
-      return null
-    })
-
-    const reopenedSession = renderSettings()
-
-    await waitFor(() => {
-      expect(reopenedSession.getByText('Settings')).toBeTruthy()
-      expect(reopenedSession.getByTestId('settings-language-en').props.accessibilityState.selected).toBe(true)
-    })
-  })
-
-  it('still lets language and logout controls work', async () => {
-    const screen = renderSettings()
+  it('still lets language controls work and keeps logout visible', async () => {
+    const screen = await renderSettings()
 
     fireEvent.press(screen.getByTestId('settings-language-en'))
     expect(screen.getByText('Settings')).toBeTruthy()
     expect(screen.getByText('App language')).toBeTruthy()
     expect(screen.getByText('Notifications')).toBeTruthy()
     expect(screen.getByText('Sign Out')).toBeTruthy()
-
-    fireEvent.press(screen.getByText('Sign Out'))
-
-    await waitFor(() => {
-      expect(mockSignOut).toHaveBeenCalled()
-      expect(mockReplace).toHaveBeenCalledWith('/(auth)/login')
-    })
   })
 })

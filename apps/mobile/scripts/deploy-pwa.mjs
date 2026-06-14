@@ -16,6 +16,30 @@ const manifestLink = '<link rel="manifest" href="/manifest.json" />'
 const appleTouchIconLink = '<link rel="apple-touch-icon" href="/assets/icon.png" />'
 const allowedBranchPatterns = [/^main$/, /^production$/, /^release\//]
 const currentBranch = git('branch --show-current').trim() || '(detached)'
+const spaRoutes = [
+  'login',
+  'register',
+  'forgot-password',
+  'reset-password',
+  'auth/callback',
+  'help',
+  'terms',
+  'privacy',
+  'contact',
+  'account-deletion',
+  'notifications',
+  'upgrade',
+  'transactions',
+  'transaction-new',
+  'capture',
+  'wallets',
+  'budgets',
+  'bills',
+  'reports',
+  'groups',
+  'imports',
+  'settings',
+]
 
 function git(args) {
   return execSync(`git ${args}`, { cwd: repoDir, encoding: 'utf8' })
@@ -192,6 +216,12 @@ function deployDistToTarget() {
   for (const name of ['_expo', 'assets']) {
     const source = join(distDir, name)
     if (existsSync(source)) cpSync(source, join(targetDir, name), { recursive: true })
+  }
+
+  for (const route of spaRoutes) {
+    const routeDir = join(targetDir, route)
+    mkdirSync(routeDir, { recursive: true })
+    writeFileSync(join(routeDir, 'index.html'), indexHtml)
   }
 
   const sourceAssetsDir = join(appDir, 'assets')
