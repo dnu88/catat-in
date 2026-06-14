@@ -128,6 +128,10 @@ Konsekuensi: setiap kali `fetchBudgets()` dipanggil, terjadi satu query tambahan
 
 Saldo wallet tetap diupdate via `increment(delta)` setiap kali transaksi dibuat/edit/hapus (`applyWalletDelta`) agar cepat. Jika ada data lama yang mismatch, sekarang tersedia utilitas `recalculateWalletBalances()` untuk menghitung ulang saldo semua wallet user dari histori transaksi di `users/{uid}/transactions`.
 
+### Budget category simplification: Household + Personal Care digabung di mobile
+
+Sejak 2026-06, mobile menyatukan kategori `Household` dan `Personal Care` ke satu kategori canonical `Household & Personal Care` / `Kebutuhan Rumah & Pribadi`. Tujuannya menyederhanakan Budget Wallets dan Reports tanpa menambah permukaan UI baru. Alias kategori lama tetap diterima oleh taxonomy, tetapi visual dan label user-facing harus memakai kategori gabungan ini dengan icon bersama `Basket`.
+
 ### Dashboard income/expense: dari buildMonthlyReport, bukan dari store transaksi
 
 Store transaksi di dashboard hanya mengambil 5 transaksi terakhir (untuk list "transaksi terbaru"). Total pemasukan/pengeluaran bulan ini diambil dari `buildMonthlyReport()` secara terpisah agar mencakup semua transaksi bulan berjalan.
