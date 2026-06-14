@@ -10,6 +10,14 @@ describe("category visuals", () => {
 			icon: "groceries",
 			tone: "warning",
 		});
+		expect(getCategoryVisualMeta("Household", "light")).toMatchObject({
+			icon: "basket",
+			tone: "warning",
+		});
+		expect(getCategoryVisualMeta("Personal Care", "light")).toMatchObject({
+			icon: "basket",
+			tone: "warning",
+		});
 		expect(getCategoryVisualMeta("Transportasi", "dark")).toMatchObject({
 			icon: "transport",
 			tone: "navy",

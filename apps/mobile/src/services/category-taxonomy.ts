@@ -3,6 +3,7 @@ import type { CategoryCreate } from './categories';
 export type AppLanguage = 'id' | 'en';
 export type CategoryCanonicalId =
   | 'food_beverage'
+  | 'household_personal_care'
   | 'groceries'
   | 'personal_shopping'
   | 'transport'
@@ -37,6 +38,17 @@ export const categoryDefinitions: CategoryDefinition[] = [
     icon: 'food',
     type: 'expense',
     aliases: ['food', 'food beverage', 'food and beverage', 'fnb', 'f&b', 'makanan', 'makanan minuman', 'makanan & minuman', 'makan', 'makan minum', 'makan & minum', 'makan dan minum', 'kuliner'],
+  },
+  {
+    id: 'household_personal_care',
+    labels: { id: 'Kebutuhan Rumah & Pribadi', en: 'Household & Personal Care' },
+    helper: {
+      id: 'Stok rumah, toiletries, skincare, dan kebutuhan harian.',
+      en: 'Household stock, toiletries, skincare, and daily essentials.',
+    },
+    icon: 'basket',
+    type: 'expense',
+    aliases: ['household', 'rumah tangga', 'personal care', 'personal_care', 'self care'],
   },
   {
     id: 'groceries',

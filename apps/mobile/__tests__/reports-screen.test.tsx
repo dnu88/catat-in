@@ -18,7 +18,7 @@ let mockActiveContext:
 	type: "personal",
 };
 
-const mockTransactions = [
+const defaultMockTransactions = [
 	{
 		amount: 125000,
 		transaction_type: "income",
@@ -60,6 +60,8 @@ const mockTransactions = [
 		merchant: "Apotek",
 	},
 ];
+
+let mockTransactions = defaultMockTransactions;
 
 jest.mock("../src/lib/supabase", () => {
 	const gteMock = jest.fn(() => chain);
@@ -226,6 +228,7 @@ function renderReports() {
 describe("ReportsScreen visual parity", () => {
 	beforeEach(() => {
 		mockActiveContext = { type: "personal" };
+		mockTransactions = defaultMockTransactions;
 		jest.clearAllMocks();
 	});
 	it("exposes budget wallet management entry point in Reports without letting copy collide with the action", async () => {
@@ -402,6 +405,39 @@ describe("ReportsScreen visual parity", () => {
 		await waitFor(() =>
 			expect(screen.queryByTestId("reports-category-detail-modal")).toBeNull(),
 		);
+	});
+
+	it("merges household and personal care transactions into one reports category", async () => {
+		mockTransactions = [
+			...defaultMockTransactions,
+			{
+				nominal: 120000,
+				type: "expense",
+				kategori: "Household",
+				tanggal: "2026-06-06",
+				catatan: "Tisu & sabun",
+				merchant: "Minimarket",
+			},
+			{
+				nominal: 80000,
+				type: "expense",
+				kategori: "Personal Care",
+				tanggal: "2026-06-07",
+				catatan: "Skincare",
+				merchant: "Guardian",
+			},
+		];
+
+		const screen = renderReports();
+		fireEvent.press(screen.getByText("Kategori"));
+
+		await screen.findByTestId("reports-category-row-household_personal_care");
+		expect(screen.getAllByText("Kebutuhan Rumah & Pribadi").length).toBeGreaterThan(0);
+
+		fireEvent.press(screen.getByTestId("reports-category-row-household_personal_care"));
+		expect(await screen.findByTestId("reports-category-detail-modal")).toBeTruthy();
+		expect(screen.getByText("Tisu & sabun")).toBeTruthy();
+		expect(screen.getByText("Skincare")).toBeTruthy();
 	});
 
 	it("renders refined editorial donut segments without changing category colors", async () => {

@@ -1,6 +1,7 @@
 import type { ComponentProps } from 'react'
 import {
   ArrowLeft,
+  Basket,
   Bell,
   Camera,
   CheckCircle,
@@ -81,6 +82,7 @@ const iconMap = {
   recreation: GameController,
   movie: FilmSlate,
   groceries: ShoppingCart,
+  basket: Basket,
   investment: TrendUp,
   gift: Gift,
   more: DotsThree,
