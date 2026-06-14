@@ -1,7 +1,9 @@
 import { router } from "expo-router";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ActivityIndicator, Animated, Image, Modal, Pressable, RefreshControl, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { ActivityIndicator, Animated, Image, Linking, Modal, Pressable, RefreshControl, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { PageEntrance, StaggeredStack } from "../../src/components/motion";
+import { AccountDeletionSection } from "../../src/components/settings/AccountDeletionSection";
+import { LegalSupportSection } from "../../src/components/settings/LegalSupportSection";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as ImagePicker from "expo-image-picker";
 import Svg, { Circle, Path, Rect } from "react-native-svg";
@@ -15,6 +17,8 @@ import { useTheme } from "../../src/theme/theme-context";
 import { useI18n } from "../../src/i18n/i18n-context";
 import { useEntitlements } from "../../src/hooks/useEntitlements";
 import { planStatusLabel } from "../../src/utils/plan-labels";
+import { getStoreReleaseConfig } from "../../src/config/store-release";
+import { getLatestAccountDeletionRequest, submitAccountDeletionRequest, type AccountDeletionRequestItem } from "../../src/services/account-deletion";
 import { getNotificationPreferences, updateNotificationPreferences, type NotificationPreferences } from "../../src/services/notifications";
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
@@ -385,6 +389,8 @@ export default function SettingsScreen() {
 	const { theme } = useTheme();
 	const { language, setLanguage, t } = useI18n();
 	const styles = useMemo(() => createStyles(theme), [theme]);
+	const storeReleaseConfig = useMemo(() => getStoreReleaseConfig(), []);
+	const allowNativePremiumPurchase = storeReleaseConfig.allowNativePremiumPurchase;
 	const { data: entitlements, loading: entitlementsLoading } = useEntitlements();
 	const [dailyReminder, setDailyReminder] = useState(true);
 	const [billReminder, setBillReminder] = useState(true);
@@ -409,6 +415,13 @@ export default function SettingsScreen() {
 	const [confirmPassword, setConfirmPassword] = useState("");
 	const [passwordSaving, setPasswordSaving] = useState(false);
 	const [passwordMessage, setPasswordMessage] = useState<SeedResultState | null>(null);
+	const [accountDeletionExpanded, setAccountDeletionExpanded] = useState(false);
+	const [accountDeletionReason, setAccountDeletionReason] = useState("");
+	const [accountDeletionDetails, setAccountDeletionDetails] = useState("");
+	const [accountDeletionLoading, setAccountDeletionLoading] = useState(false);
+	const [accountDeletionStatusLoading, setAccountDeletionStatusLoading] = useState(false);
+	const [accountDeletionRequest, setAccountDeletionRequest] = useState<AccountDeletionRequestItem | null>(null);
+	const [accountDeletionMessage, setAccountDeletionMessage] = useState<SeedResultState | null>(null);
 	const [seedLoading, setSeedLoading] = useState(false);
 	const [seedResult, setSeedResult] = useState<SeedResultState | null>(null);
 	const [refreshing, setRefreshing] = useState(false);
@@ -494,6 +507,32 @@ export default function SettingsScreen() {
 			}
 		};
 		loadNotifications();
+		return () => {
+			active = false;
+		};
+	}, [supabase]);
+
+	useEffect(() => {
+		let active = true;
+		const loadAccountDeletionStatus = async () => {
+			try {
+				setAccountDeletionStatusLoading(true);
+				const response = await getLatestAccountDeletionRequest(supabase);
+				if (active) {
+					setAccountDeletionRequest(response.request);
+				}
+			} catch {
+				if (active) {
+					setAccountDeletionRequest(null);
+				}
+			} finally {
+				if (active) {
+					setAccountDeletionStatusLoading(false);
+				}
+			}
+		};
+
+		loadAccountDeletionStatus();
 		return () => {
 			active = false;
 		};
@@ -731,6 +770,64 @@ export default function SettingsScreen() {
 		}
 	};
 
+	const onSubmitAccountDeletionRequest = async () => {
+		if (accountDeletionLoading) return;
+		setAccountDeletionMessage(null);
+
+		if (!profileEmail) {
+			setAccountDeletionMessage({
+				type: "error",
+				message:
+					language === "id"
+						? "Email akun belum tersedia. Tarik layar ke bawah atau login ulang lalu coba lagi."
+						: "Account email is not available yet. Pull to refresh or sign in again and try later.",
+			});
+			return;
+		}
+
+		setAccountDeletionLoading(true);
+		try {
+			const response = await submitAccountDeletionRequest(supabase, {
+				confirm_email: profileEmail,
+				reason: accountDeletionReason,
+				details: accountDeletionDetails,
+			});
+			setAccountDeletionRequest(response.request);
+			setAccountDeletionExpanded(true);
+			if (response.created) {
+				setAccountDeletionReason("");
+				setAccountDeletionDetails("");
+				setAccountDeletionMessage({
+					type: "success",
+					message:
+						language === "id"
+							? "Request penghapusan akun tercatat. Tim support akan meninjau maksimal 30 hari."
+							: "Your account deletion request has been logged. Support will review it within 30 days.",
+				});
+			} else {
+				setAccountDeletionMessage({
+					type: "success",
+					message:
+						language === "id"
+							? "Request penghapusan akun Anda sudah aktif dan sedang diproses."
+							: "Your account deletion request is already active and being processed.",
+				});
+			}
+		} catch (error) {
+			setAccountDeletionMessage({
+				type: "error",
+				message:
+					error instanceof Error && error.message
+						? error.message
+						: language === "id"
+							? "Gagal mengirim request penghapusan akun."
+							: "Failed to submit the account deletion request.",
+			});
+		} finally {
+			setAccountDeletionLoading(false);
+		}
+	};
+
 	const onSeedSampleData = async () => {
 		setSeedLoading(true);
 		setSeedResult(null);
@@ -904,6 +1001,8 @@ export default function SettingsScreen() {
 			setProfilePhotoUrl(visual.photoUrl);
 			setProfileAvatarKey(visual.avatarKey);
 			setProfileAvatarPath(visual.avatarPath);
+			const deletionResponse = await getLatestAccountDeletionRequest(supabase);
+			setAccountDeletionRequest(deletionResponse.request);
 		} finally {
 			setRefreshing(false);
 		}
@@ -928,16 +1027,17 @@ export default function SettingsScreen() {
 		router.replace("/(auth)/login");
 
 		try {
-			await Promise.race([
-				supabase.auth.signOut(),
-				new Promise((_, reject) => setTimeout(() => reject(new Error("timeout")), 5000)),
-			]);
+			await supabase.auth.signOut();
 		} catch {
-			// signOut gagal atau timeout — session akan expire sendiri
+			// signOut gagal — session akan expire sendiri
 		} finally {
 			setLogoutLoading(false);
 			animateLogoutButton(1);
 		}
+	};
+
+	const openLegalUrl = async (url: string) => {
+		await Linking.openURL(url);
 	};
 
 	return (
@@ -1079,9 +1179,13 @@ export default function SettingsScreen() {
 						{language === "id" ? "Paket" : "Plan"}
 					</Text>
 					<Text style={styles.sectionSub}>
-						{language === "id"
-							? "Status langganan dan upgrade ke Premium."
-							: "Subscription status and premium upgrade."}
+						{!allowNativePremiumPurchase
+							? (language === "id"
+								? "Status paket aktif. Upgrade Premium sementara tersedia lewat Kaswise web/PWA."
+								: "Current plan status. Premium upgrade is temporarily available on Kaswise web/PWA.")
+							: (language === "id"
+								? "Status langganan dan upgrade ke Premium."
+								: "Subscription status and premium upgrade.")}
 					</Text>
 					{entitlementsLoading ? (
 						<ActivityIndicator style={{ marginTop: 6 }} />
@@ -1111,17 +1215,25 @@ export default function SettingsScreen() {
 								</View>
 							</View>
 							{entitlements?.plan !== "premium" ? (
-								<Pressable
-									testID="settings-upgrade-button"
-									accessibilityRole="button"
-									style={styles.primaryButton}
-									onPress={() => router.push("/upgrade")}
-								>
-									<Text style={styles.primaryButtonText}>
-										{language === "id" ? "Upgrade ke Premium" : "Upgrade to Premium"}
+								allowNativePremiumPurchase ? (
+									<Pressable
+										testID="settings-upgrade-button"
+										accessibilityRole="button"
+										style={styles.primaryButton}
+										onPress={() => router.push("/upgrade")}
+									>
+										<Text style={styles.primaryButtonText}>
+											{language === "id" ? "Upgrade ke Premium" : "Upgrade to Premium"}
+										</Text>
+									</Pressable>
+								) : (
+									<Text testID="settings-upgrade-unavailable" style={styles.navigationHelper}>
+										{language === "id"
+											? "Upgrade Premium sementara hanya tersedia lewat Kaswise web/PWA."
+											: "Premium upgrade is temporarily available only on Kaswise web/PWA."}
 									</Text>
-								</Pressable>
-							) : (
+								)
+							) : allowNativePremiumPurchase ? (
 								<Pressable
 									testID="settings-extend-button"
 									accessibilityRole="button"
@@ -1132,6 +1244,12 @@ export default function SettingsScreen() {
 										{language === "id" ? "Perpanjang" : "Extend"}
 									</Text>
 								</Pressable>
+							) : (
+								<Text testID="settings-extend-unavailable" style={styles.navigationHelper}>
+									{language === "id"
+										? "Perpanjangan paket sementara dikelola lewat Kaswise web/PWA."
+										: "Plan renewal is temporarily handled on Kaswise web/PWA."}
+								</Text>
 							)}
 						</>
 					)}
@@ -1283,6 +1401,28 @@ export default function SettingsScreen() {
 						theme={theme}
 					/>
 				</View>
+
+				{/* Legal Section */}
+				<LegalSupportSection key="settings-legal-support" language={language} styles={styles} onOpenUrl={openLegalUrl} />
+				<AccountDeletionSection key="settings-account-deletion" 
+					language={language}
+					styles={styles}
+					profileEmail={profileEmail}
+					expanded={accountDeletionExpanded}
+					onToggleExpanded={() => {
+						setAccountDeletionExpanded((current) => !current);
+						setAccountDeletionMessage(null);
+					}}
+					request={accountDeletionRequest}
+					reason={accountDeletionReason}
+					details={accountDeletionDetails}
+					onChangeReason={setAccountDeletionReason}
+					onChangeDetails={setAccountDeletionDetails}
+					onSubmit={onSubmitAccountDeletionRequest}
+					loading={accountDeletionLoading}
+					loadingStatus={accountDeletionStatusLoading}
+					message={accountDeletionMessage}
+				/>
 
 				{/* App Info */}
 				<View key="settings-app-info" testID="settings-app-info" style={styles.appInfo}>
@@ -1794,6 +1934,13 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			paddingHorizontal: 14,
 			fontSize: 14,
 			fontWeight: "600",
+		},
+		readOnlyInput: {
+			opacity: 0.78,
+		},
+		multilineInput: {
+			minHeight: 110,
+			paddingTop: 14,
 		},
 		primaryButton: {
 			minHeight: 48,

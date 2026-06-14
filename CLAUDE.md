@@ -242,6 +242,13 @@ Auth: Supabase JWT diverifikasi di `backend/app/core/auth.py`.
 ## Hal yang Belum Selesai / Diketahui
 
 - Midtrans payment integration sudah ada scaffolding tapi belum fully implemented
+- Public native store readiness audited on 2026-06-14: external Midtrans purchase flow is not submission-safe for premium digital unlocks in App Store / Play Store. See `docs/audit/2026-06-14-kaswise-store-readiness-audit.md` and `docs/plans/2026-06-14-kaswise-store-readiness-minimum-change-plan.md`.
+- Recommended minimum path after the audit: native free-only first (hide native premium purchase flow), keep Midtrans for web/PWA, then add privacy/account deletion surfaces before public native submission.
+- Phase 1 store gating is implemented in mobile: `apps/mobile/src/config/store-release.ts` disables native premium purchase CTA/flow for iOS/Android Track A builds, while web/PWA keeps the existing Midtrans purchase path.
+- Phase 2 store-readiness follow-up is implemented: canonical legal source docs now live under `docs/legal/`, mobile Settings exposes public privacy/account-deletion/terms links, and Expo/mobile now owns the public `/privacy`, `/terms`, `/contact`, `/account-deletion`, and `/help` routes for the current `kaswise.com` PWA host.
+- Phase 3 minimum reviewer-surface cleanup is implemented: Capture AI now exposes only the real Track A modes (`Teks` and `Foto`) and no longer carries dormant voice/import mode copy on the store-targeted surface. Submission ops guidance now lives in `docs/deployment/MOBILE_STORE_SUBMISSION_CHECKLIST.md`.
+- Phase 4 submission-ops documentation is implemented: `docs/deployment/MOBILE_GOLIVE.md` now defines the real Track A native go-live posture, billing/legal/deletion/reviewer requirements, and links back to the canonical store-submission checklist.
+- Mobile PWA export/deploy now generates SPA fallback route files for reviewer/public URLs (`privacy`, `terms`, `contact`, `account-deletion`, `help`) via `apps/mobile/scripts/generate-spa-fallbacks.mjs` and mirrored deploy-time route copying in `apps/mobile/scripts/deploy-pwa.mjs`.
 - Mobile app terkoneksi langsung ke Supabase; backend FastAPI hanya untuk AI/Import/Webhook
 - Backend test `test_ai_insight.py` gagal karena `TrustedHostMiddleware` + TestClient (pre-existing, bukan regresi)
 

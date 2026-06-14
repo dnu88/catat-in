@@ -2,7 +2,7 @@ import LanguageToggle from '@components/i18n/LanguageToggle'
 
 import ThemeToggle from '@components/theme/ThemeToggle'
 
-type LegalPageKind = 'help' | 'terms' | 'privacy' | 'contact'
+type LegalPageKind = 'help' | 'terms' | 'privacy' | 'contact' | 'accountDeletion'
 
 type LegalSection = {
   title: string
@@ -145,6 +145,35 @@ const content: Record<LegalPageKind, {
       {
         title: 'Pertanyaan privasi atau ketentuan',
         body: 'Gunakan email yang sama untuk pertanyaan terkait kebijakan privasi, syarat penggunaan, atau permintaan klarifikasi produk.',
+      },
+    ],
+  },
+  accountDeletion: {
+    eyebrow: 'Penghapusan akun',
+    title: 'Penghapusan Akun Kaswise',
+    intro: 'Halaman ini menjelaskan cara meminta penghapusan akun dan data Kaswise pada Track A. Pengguna yang sudah login dapat mengajukan request langsung dari Settings aplikasi, sementara reviewer atau pengguna yang belum login tetap dapat memakai jalur publik ini.',
+    ctaLabel: 'Email penghapusan akun',
+    ctaHref: `${supportMailto}?subject=Permintaan%20Penghapusan%20Akun%20Kaswise`,
+    sections: [
+      {
+        title: 'Cara meminta penghapusan',
+        body: 'Jika Anda masih bisa masuk ke aplikasi, buka Settings dan kirim request penghapusan akun dari akun aktif Anda. Jika tidak bisa login, kirim permintaan melalui email support Kaswise dengan alamat akun yang digunakan di aplikasi agar tim dapat memverifikasi kepemilikan akun secara aman.',
+      },
+      {
+        title: 'Informasi yang perlu disertakan',
+        body: 'Sertakan email akun Kaswise dan konteks singkat bila Anda tidak lagi dapat mengakses akun. Kaswise berupaya menghindari permintaan identitas yang tidak perlu.',
+      },
+      {
+        title: 'Apa yang akan dihapus',
+        body: 'Kaswise akan menonaktifkan akses akun dan menghapus atau menganonimkan data akun, data transaksi, preferensi, dan metadata terkait dari sistem aktif sesuai kebutuhan operasional dan hukum yang berlaku.',
+      },
+      {
+        title: 'Data yang mungkin disimpan terbatas',
+        body: 'Sebagian data terbatas dapat dipertahankan sementara untuk pencegahan fraud, investigasi keamanan, jendela backup, atau kewajiban hukum/akuntansi yang berlaku.',
+      },
+      {
+        title: 'Estimasi waktu proses',
+        body: 'Kaswise menargetkan pemrosesan permintaan penghapusan akun dalam waktu hingga 30 hari, bergantung pada verifikasi dan kebutuhan retensi yang sah.',
       },
     ],
   },

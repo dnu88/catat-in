@@ -1,6 +1,15 @@
 import { render, fireEvent, waitFor, act } from "@testing-library/react-native";
 import UpgradeScreen from "../app/upgrade";
 
+const mockGetStoreReleaseConfig = jest.fn((_platformOS?: string) => ({
+  isNativeStoreBuildCandidate: false,
+  allowNativePremiumPurchase: true,
+}));
+
+jest.mock("../src/config/store-release", () => ({
+  getStoreReleaseConfig: (platformOS?: string) => mockGetStoreReleaseConfig(platformOS),
+}));
+
 jest.mock("../src/lib/supabase", () => ({ supabase: {} }));
 
 const mockOpen = jest.fn(async (_url: string) => ({ type: "dismiss" as const }));
@@ -104,14 +113,39 @@ jest.mock("../src/theme/theme-context", () => ({
   }),
 }));
 
+jest.mock("../src/i18n/i18n-context", () => ({
+  useI18n: () => ({ language: "id" }),
+}));
+
 beforeEach(() => {
   jest.clearAllMocks();
   jest.useFakeTimers();
+  mockGetStoreReleaseConfig.mockReturnValue({
+    isNativeStoreBuildCandidate: false,
+    allowNativePremiumPurchase: true,
+  });
   mockGetStatus.mockResolvedValue({ order_id: "kw-test-123", status: "pending" });
 });
 
 afterEach(() => {
   jest.useRealTimers();
+});
+
+test("shows unavailable native message when premium purchase is disabled for store builds", async () => {
+  mockGetStoreReleaseConfig.mockReturnValue({
+    isNativeStoreBuildCandidate: true,
+    allowNativePremiumPurchase: false,
+  });
+
+  const { getByText, queryByTestId } = render(<UpgradeScreen />);
+  await waitFor(() => getByText("Premium belum tersedia di aplikasi ini."));
+
+  expect(getByText("Premium belum tersedia di aplikasi ini.")).toBeTruthy();
+  expect(getByText("Gunakan Kaswise web/PWA untuk upgrade sementara.")).toBeTruthy();
+  expect(queryByTestId("upgrade-monthly")).toBeNull();
+  expect(queryByTestId("upgrade-yearly")).toBeNull();
+  expect(mockCreate).not.toHaveBeenCalled();
+  expect(mockOpen).not.toHaveBeenCalled();
 });
 
 test("shows promo prices and opens Snap on upgrade", async () => {

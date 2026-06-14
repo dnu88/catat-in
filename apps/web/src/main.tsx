@@ -44,6 +44,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
 					<Route path="/terms" element={<LegalInfoPage page="terms" />} />
 					<Route path="/privacy" element={<LegalInfoPage page="privacy" />} />
 					<Route path="/contact" element={<LegalInfoPage page="contact" />} />
+					<Route path="/account-deletion" element={<LegalInfoPage page="accountDeletion" />} />
 					<Route path="/*" element={<LegacyApp />} />
 				</Routes>
 			</Suspense>

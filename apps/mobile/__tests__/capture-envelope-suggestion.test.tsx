@@ -194,6 +194,16 @@ describe("Capture envelope suggestion", () => {
 		expect(screen.getByText(/Langsung simpan/i)).toBeTruthy();
 	});
 
+	it("only exposes text and photo capture modes for reviewer-safe Track A surfaces", () => {
+		renderCapture();
+
+		expect(screen.getByTestId("capture-mode-Teks")).toBeTruthy();
+		expect(screen.getByTestId("capture-mode-Foto")).toBeTruthy();
+		expect(screen.queryByTestId("capture-mode-Rekam")).toBeNull();
+		expect(screen.queryByTestId("capture-mode-Import")).toBeNull();
+		expect(screen.queryByText(/Rekam suara transaksi|Record transaction voice notes|Whisper/i)).toBeNull();
+	});
+
 	it("shows review copy inside the suggestion card for low-confidence matches", () => {
 		mockEnvelopeSuggestion = {
 			envelope_id: "env-kopi",

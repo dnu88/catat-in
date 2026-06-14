@@ -28,13 +28,13 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Typecheck (web)
-        run: pnpm --filter @catat-in/web type-check
+        run: pnpm --filter @kaswise/web type-check
 
       - name: Unit tests (web)
-        run: pnpm --filter @catat-in/web test
+        run: pnpm --filter @kaswise/web test
 
       - name: Build (web)
-        run: pnpm --filter @catat-in/web build
+        run: pnpm --filter @kaswise/web build
 
   backend-quality-gate:
     name: Backend quality gate (pytest)
