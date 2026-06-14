@@ -14,6 +14,7 @@ Format: Keep a Changelog.
 - Completed the minimum Phase 3 reviewer-surface cleanup: Capture AI now exposes only the real Track A modes (`Teks` and `Foto`) and removes dormant voice/import copy from the store-targeted surface.
 - Added `docs/deployment/MOBILE_GOLIVE.md` as the canonical Track A native go-live guide, covering billing posture, legal/account-deletion requirements, reviewer preparation, stop conditions, and checklist linkage.
 - Verified that `https://kaswise.com/privacy`, `/terms`, `/contact`, and `/account-deletion` currently return HTTP 200, but documented that final store-readiness still requires proving those URLs render the intended legal content rather than only the generic Expo/PWA shell.
+- Simplified mobile budgeting/reporting taxonomy by merging `Household` and `Personal Care` into one canonical category, `Household & Personal Care` / `Kebutuhan Rumah & Pribadi`, with a shared `Basket` icon and consistent helper copy across Budget Wallets and Reports.
 
 ### Fixed
 - Mobile transaction review and notification flow now respect `is_verified`, so transactions that have already been reviewed no longer keep reappearing in the review queue or related transaction review CTA.
