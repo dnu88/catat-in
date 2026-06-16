@@ -12,25 +12,41 @@
 
 ---
 
-## ⏸️ STATUS: TERTUNDA — menunggu upgrade RAM VPS (per 2026-06-13)
+## ✅ STATUS: SELESAI — deploy 16 Juni 2026
 
-**Keputusan owner:** tahan deploy sampai RAM VPS di-upgrade. Owner akan menghubungi lagi setelah upgrade.
+**VPS RAM:** di-upgrade ke 8 GB (7.939 MB). Pra-cek: available **4.989 MB** — sangat longgar.
 
-**Yang SUDAH selesai:**
-- Task 2 ✅ — file `ops/monitoring/` (compose + .env.example + README) dibuat, sintaks tervalidasi, di-commit di branch `feat/vps-monitoring-dashboard` (commit `7e36b6a`).
-- Spec & plan di-commit (`fe2fe04`).
+**Keputusan:** deploy dilanjutkan setelah upgrade RAM dikonfirmasi owner.
 
-**Alasan ditahan (temuan saat pra-cek deploy 2026-06-13):**
-- VPS RAM `available` hanya **~1.060 MB** dari 3.915 MB; **swap hampir penuh** (2.034/2.047 MB) → server **sudah** tertekan memori.
-- Penyebab bukan aplikasi: container produksi total hanya **~213 MB** (`kaswise-backend` 142MB, `nginx-proxy-manager` 44MB, `placeholder` 27MB) dan sehat.
-- Beban RAM berasal dari **tool development yang jalan di VPS yang sama** (`node` ~600MB, `claude` ~325MB, `hermes-agent` ~285MB, `pi` ~280MB, `tmux`). **VPS merangkap server produksi + mesin dev.**
-- Menambah ~300MB monitoring ke server yang swap-nya penuh berisiko menambah tekanan → owner memilih upgrade RAM dulu.
+### Ringkasan Deploy (16 Juni 2026)
 
-**Untuk MELANJUTKAN nanti (setelah RAM di-upgrade):**
-1. Ulangi pra-cek RAM: `ssh Danu88@103.93.163.51 "free -m"` → pastikan `available` nyaman (idealnya > 1.5 GB setelah upgrade).
-2. Pertimbangkan juga apakah tool dev sebaiknya tidak jalan di server produksi (akar tekanan memori).
-3. Lanjut dari **Task 0** (Telegram bot) → Task 1 (DNS) → Task 3 (deploy) → dst sesuai urutan di bawah.
-4. SSH dari mesin ini ke VPS **sudah terverifikasi bekerja**; `proxy-network` ada; folder `/home/Danu88/monitoring` belum ada (aman dibuat baru).
+| Alat | Subdomain | Container | Status |
+|---|---|---|---|
+| Uptime Kuma | `status.kaswise.com` | `kaswise-uptime-kuma` | Up |
+| Beszel | `health.kaswise.com` | `kaswise-beszel` + `kaswise-beszel-agent` | Up |
+| Portainer | `panel.kaswise.com` | `kaswise-portainer` | Up |
+
+**Notifikasi Telegram:**
+- Bot: `@Kaswisemonitorbot` (token: `8195551249:***`)
+- Chat ID tujuan: `877430903` (DM owner)
+- Uptime Kuma: Telegram notification OK (test received)
+- Beszel: Webhook gagal → alert threshold tetap diset, notifikasi mengandalkan Uptime Kuma
+
+**Resource aktual:**
+- Total monitoring: **~145 MB** (jauh di bawah anggaran 350 MB)
+- RAM VPS available setelah deploy: **4.278 MB**
+- Container produksi tidak terganggu
+
+**Deviasi dari plan:**
+- Portainer image: `portainer/portainer-ce:2` → `portainer/portainer-ce:lts` (tag `:2` tidak ada di Docker Hub)
+- Beszel notifikasi: Telegram native tidak tersedia, Webhook gagal → skip, alert threshold tetap diset
+- Bot: pakai bot terpisah (`@Kaswisemonitorbot`) bukan DANU Prime, untuk isolasi
+
+**File terdampak (commit `b51f122`):**
+- `ops/monitoring/docker-compose.yml` (update Portainer tag)
+- `docs/ops/PANDUAN_DASHBOARD_VPS.md` (panduan owner, baru)
+
+**All 12 tasks complete.**
 
 ---
 
