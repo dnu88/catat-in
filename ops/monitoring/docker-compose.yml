@@ -41,7 +41,7 @@ services:
     mem_limit: 128m
 
   portainer:
-    image: portainer/portainer-ce:2
+    image: portainer/portainer-ce:lts
     container_name: kaswise-portainer
     restart: unless-stopped
     command: -H unix:///var/run/docker.sock
