@@ -94,9 +94,13 @@ def activate_premium_from_notification(
         if expected_amount != received_amount:
             return row["status"]
 
-    payment_update = provider.build_payment_update(payload, new_status=new_status)
+    internal_status = new_status
+    if new_status == "paid" and not activate_paid_profile:
+        internal_status = row["status"]
 
-    if new_status == "paid":
+    payment_update = provider.build_payment_update(payload, new_status=internal_status)
+
+    if new_status == "paid" and internal_status == "paid":
         payment_update["paid_at"] = now_func().isoformat()
         if activate_paid_profile:
             prow = repository_module.get_profile(row["user_id"], client=client)
@@ -116,4 +120,4 @@ def activate_premium_from_notification(
             payment_update["granted_until"] = until.isoformat()
 
     repository_module.update_payment(order_id, payment_update, client=client)
-    return new_status
+    return internal_status

@@ -80,11 +80,12 @@ def test_fetch_and_sync_status_with_mayar_does_not_activate_profile_when_disable
     provider.extract_order_id.return_value = "kw-x"
     provider.map_internal_status.return_value = "paid"
     provider.extract_gross_amount.return_value = 29000
-    provider.build_payment_update.return_value = {
+    provider.build_payment_update.side_effect = lambda payload, *, new_status: {
         "provider": "mayar",
         "provider_order_id": "inv-1",
         "provider_status": "PAID",
-        "status": "paid",
+        "status": new_status,
+        "raw_payload": payload,
     }
     provider.build_status_response.return_value = {"provider": "mayar", "provider_status": "PAID"}
 
@@ -98,9 +99,12 @@ def test_fetch_and_sync_status_with_mayar_does_not_activate_profile_when_disable
          patch.object(ps.repository, "update_profile") as update_profile:
         result = ps.fetch_and_sync_status("kw-x", provider_name="mayar", provider_order_id="inv-1")
 
-    assert result == {"order_id": "kw-x", "status": "paid", "provider": "mayar", "provider_status": "PAID"}
+    assert result == {"order_id": "kw-x", "status": "pending", "provider": "mayar", "provider_status": "PAID"}
     update_profile.assert_not_called()
+    provider.build_payment_update.assert_called_once_with(provider.fetch_status.return_value, new_status="pending")
     update_payment.assert_called_once()
     assert update_payment.call_args.args[0] == "kw-x"
-    assert update_payment.call_args.args[1]["status"] == "paid"
-    assert "paid_at" in update_payment.call_args.args[1]
+    assert update_payment.call_args.args[1]["status"] == "pending"
+    assert update_payment.call_args.args[1]["provider_status"] == "PAID"
+    assert update_payment.call_args.args[1]["raw_payload"] == provider.fetch_status.return_value
+    assert "paid_at" not in update_payment.call_args.args[1]
