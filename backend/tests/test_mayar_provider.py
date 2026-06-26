@@ -1,0 +1,112 @@
+from unittest.mock import MagicMock
+
+from app.services.payments.providers.mayar import MayarProvider
+
+
+class _Response:
+    def __init__(self, payload):
+        self._payload = payload
+
+    def raise_for_status(self):
+        return None
+
+    def json(self):
+        return self._payload
+
+
+def test_mayar_create_checkout_uses_invoice_create_contract():
+    request = MagicMock(
+        return_value=_Response(
+            {
+                "statusCode": 200,
+                "messages": "success",
+                "data": {
+                    "id": "inv-123",
+                    "transactionId": "trx-123",
+                    "link": "https://merchant.myr.id/invoices/abc",
+                    "extraData": {"orderId": "kw-x", "plan": "monthly"},
+                },
+            }
+        )
+    )
+    provider = MayarProvider(
+        api_key_getter=lambda: "mayar-key",
+        base_url_getter=lambda: "https://api.mayar.id/hl/v1",
+        redirect_url_getter=lambda: "https://kaswise.com/upgrade",
+        request_func=request,
+    )
+
+    result = provider.create_checkout(order_id="kw-x", amount=29000, plan="monthly", email="user@example.com")
+
+    assert result["redirect_url"] == "https://merchant.myr.id/invoices/abc"
+    assert result["provider_order_id"] == "inv-123"
+    assert result["provider_transaction_id"] == "trx-123"
+    kwargs = request.call_args.kwargs
+    assert request.call_args.args == ("POST", "https://api.mayar.id/hl/v1/invoice/create")
+    assert kwargs["headers"]["Authorization"] == "Bearer mayar-key"
+    assert kwargs["json"]["redirectUrl"] == "https://kaswise.com/upgrade"
+    assert kwargs["json"]["extraData"]["orderId"] == "kw-x"
+    assert kwargs["json"]["items"][0]["rate"] == 29000
+
+
+def test_mayar_create_checkout_falls_back_to_legacy_callback_getter():
+    request = MagicMock(
+        return_value=_Response(
+            {
+                "statusCode": 200,
+                "messages": "success",
+                "data": {"id": "inv-legacy", "link": "https://merchant.myr.id/invoices/legacy"},
+            }
+        )
+    )
+    provider = MayarProvider(
+        api_key_getter=lambda: "mayar-key",
+        base_url_getter=lambda: "https://api.mayar.id/hl/v1",
+        callback_url_getter=lambda: "https://kaswise.com/upgrade",
+        request_func=request,
+    )
+
+    result = provider.create_checkout(order_id="kw-legacy", amount=29000, plan="monthly", email="user@example.com")
+
+    assert result["redirect_url"] == "https://merchant.myr.id/invoices/legacy"
+    assert request.call_args.kwargs["json"]["redirectUrl"] == "https://kaswise.com/upgrade"
+
+
+def test_mayar_fetch_status_uses_invoice_detail_contract():
+    request = MagicMock(
+        return_value=_Response(
+            {
+                "statusCode": 200,
+                "data": {
+                    "id": "inv-123",
+                    "amount": 29000,
+                    "status": "PAID",
+                    "extraData": {"orderId": "kw-x"},
+                },
+            }
+        )
+    )
+    provider = MayarProvider(
+        api_key_getter=lambda: "mayar-key",
+        base_url_getter=lambda: "https://api.mayar.id/hl/v1",
+        callback_url_getter=lambda: "https://kaswise.com/callback",
+        request_func=request,
+    )
+
+    payload = provider.fetch_status("inv-123")
+
+    assert request.call_args.args == ("GET", "https://api.mayar.id/hl/v1/invoice/inv-123")
+    assert provider.extract_order_id(payload) == "kw-x"
+    assert provider.extract_gross_amount(payload) == 29000
+    assert provider.map_internal_status(payload) == "paid"
+    assert provider.build_status_response(payload) == {"provider": "mayar", "provider_status": "PAID"}
+
+
+def test_mayar_signature_verification_is_disabled():
+    provider = MayarProvider(
+        api_key_getter=lambda: "mayar-key",
+        base_url_getter=lambda: "https://api.mayar.id/hl/v1",
+        callback_url_getter=lambda: "https://kaswise.com/callback",
+    )
+
+    assert provider.verify_notification_signature({"anything": True}) is False

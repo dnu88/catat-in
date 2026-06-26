@@ -15,7 +15,17 @@ export type Entitlements = {
 export type Pricing = { tier: "promo" | "normal"; monthly: number; yearly: number };
 export type CreatedPayment = {
   order_id: string; amount: number; price_tier: string; plan: string;
-  snap_token: string; redirect_url: string;
+  redirect_url: string;
+  snap_token?: string | null;
+  provider?: string;
+  provider_status?: string | null;
+};
+export type PaymentStatus = {
+  order_id: string;
+  status: string;
+  provider?: string;
+  provider_status?: string | null;
+  midtrans_status?: string | null;
 };
 
 export async function getEntitlements(supabase: SupabaseClient): Promise<Entitlements> {
@@ -48,7 +58,7 @@ export async function createPayment(
 
 export async function getPaymentStatus(
   supabase: SupabaseClient, orderId: string,
-): Promise<{ order_id: string; status: string }> {
+): Promise<PaymentStatus> {
   const res = await fetch(`${getApiBaseUrl()}/api/v1/payments/${orderId}/status`, {
     headers: { ...(await authHeader(supabase)) },
   });

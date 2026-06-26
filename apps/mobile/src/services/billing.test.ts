@@ -18,11 +18,19 @@ test("getEntitlements calls backend with bearer token", async () => {
   expect(opts.headers.Authorization).toBe("Bearer tok");
 });
 
-test("createPayment posts plan and returns snap data", async () => {
-  const json = { snap_token: "tok-1", redirect_url: "https://snap/x", amount: 29000 };
+test("createPayment posts plan and accepts provider-neutral fields", async () => {
+  const json = {
+    provider: "mayar",
+    redirect_url: "https://checkout.mayar.test/x",
+    amount: 29000,
+    order_id: "kw-x",
+    price_tier: "promo",
+    plan: "monthly",
+  };
   global.fetch = jest.fn(async () => ({ ok: true, status: 200, json: async () => json })) as any;
   const out = await createPayment(fakeSupabase, "monthly");
-  expect(out.redirect_url).toBe("https://snap/x");
+  expect(out.redirect_url).toBe("https://checkout.mayar.test/x");
+  expect(out.provider).toBe("mayar");
   const [url, opts] = (global.fetch as jest.Mock).mock.calls[0];
   expect(url).toBe("https://api.test/api/v1/payments/create");
   expect(JSON.parse(opts.body)).toEqual({ plan: "monthly" });
@@ -37,9 +45,10 @@ test("getPricing returns tier + prices", async () => {
 
 test("getPaymentStatus hits status endpoint", async () => {
   global.fetch = jest.fn(async () => ({ ok: true, status: 200,
-    json: async () => ({ order_id: "kw-x", status: "paid" }) })) as any;
+    json: async () => ({ order_id: "kw-x", status: "paid", provider: "midtrans" }) })) as any;
   const out = await getPaymentStatus(fakeSupabase, "kw-x");
   expect(out.status).toBe("paid");
+  expect(out.provider).toBe("midtrans");
   expect((global.fetch as jest.Mock).mock.calls[0][0])
     .toBe("https://api.test/api/v1/payments/kw-x/status");
 });

@@ -13,14 +13,19 @@ from urllib.parse import urlparse
 from pydantic import field_validator, model_validator
 from pydantic.fields import FieldInfo
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from pydantic_settings.sources import EnvSettingsSource, PydanticBaseSettingsSource
+from pydantic_settings.sources import DotEnvSettingsSource, EnvSettingsSource, PydanticBaseSettingsSource
 
 
 # Fields below are List[str] but we want to accept plain comma-separated strings
 # from environment variables. Pydantic-settings normally tries to JSON-decode
 # complex types from env; we bypass that for these specific fields and let the
 # field_validator below parse raw string values instead.
-_LIST_FIELDS_NO_JSON_DECODE = {"ALLOWED_ORIGINS", "ALLOWED_HOSTS", "SUPABASE_JWT_ALLOWED_ALGORITHMS"}
+_LIST_FIELDS_NO_JSON_DECODE = {
+    "ALLOWED_ORIGINS",
+    "ALLOWED_HOSTS",
+    "SUPABASE_JWT_ALLOWED_ALGORITHMS",
+    "MAYAR_ALLOWED_EMAILS",
+}
 
 _REQUIRED_ALLOWED_ORIGINS: list[str] = [
     "https://catat-in-nine.vercel.app",
@@ -37,6 +42,19 @@ _REQUIRED_ALLOWED_HOSTS = [
 
 
 class _ListFriendlyEnvSource(EnvSettingsSource):
+    def prepare_field_value(
+        self,
+        field_name: str,
+        field: FieldInfo,
+        value: Any,
+        value_is_complex: bool,
+    ) -> Any:
+        if field_name in _LIST_FIELDS_NO_JSON_DECODE and isinstance(value, str):
+            return value
+        return super().prepare_field_value(field_name, field, value, value_is_complex)
+
+
+class _ListFriendlyDotEnvSource(DotEnvSettingsSource):
     def prepare_field_value(
         self,
         field_name: str,
@@ -80,6 +98,16 @@ class Settings(BaseSettings):
     MIDTRANS_SERVER_KEY: str | None = None
     MIDTRANS_CLIENT_KEY: str | None = None
     MIDTRANS_IS_PRODUCTION: bool = False
+
+    # Payment providers
+    PAYMENT_PRIMARY_PROVIDER: str = "midtrans"
+    MAYAR_API_KEY: str | None = None
+    MAYAR_BASE_URL: str = "https://api.mayar.id/hl/v1"
+    MAYAR_REDIRECT_URL: str | None = None
+    MAYAR_CALLBACK_URL: str | None = None
+    MAYAR_ALLOWED_EMAILS: List[str] = []
+    MAYAR_WEBHOOKS_ENABLED: bool = False
+    MAYAR_ACTIVATION_ENABLED: bool = False
 
     # Supabase
     SUPABASE_URL: str | None = None
@@ -139,7 +167,15 @@ class Settings(BaseSettings):
     GROUP_MAX_MEMBERS: int = 10
     INVITE_LINK_EXPIRE_DAYS: int = 7
 
-    @field_validator("DEBUG", "MIDTRANS_IS_PRODUCTION", "CORS_ALLOW_CREDENTIALS", "SUPABASE_LEGACY_HS256_ENABLED", mode="before")
+    @field_validator(
+        "DEBUG",
+        "MIDTRANS_IS_PRODUCTION",
+        "CORS_ALLOW_CREDENTIALS",
+        "SUPABASE_LEGACY_HS256_ENABLED",
+        "MAYAR_WEBHOOKS_ENABLED",
+        "MAYAR_ACTIVATION_ENABLED",
+        mode="before",
+    )
     @classmethod
     def parse_bool_like_values(cls, value):
         if isinstance(value, bool):
@@ -152,7 +188,23 @@ class Settings(BaseSettings):
                 return False
         return value
 
-    @field_validator("ALLOWED_ORIGINS", "ALLOWED_HOSTS", "SUPABASE_JWT_ALLOWED_ALGORITHMS", mode="before")
+    @field_validator("PAYMENT_PRIMARY_PROVIDER", mode="before")
+    @classmethod
+    def normalize_payment_primary_provider(cls, value):
+        if value is None:
+            return "midtrans"
+        normalized = str(value).strip().lower()
+        if normalized not in {"midtrans", "mayar"}:
+            raise ValueError("PAYMENT_PRIMARY_PROVIDER must be 'midtrans' or 'mayar'")
+        return normalized
+
+    @field_validator(
+        "ALLOWED_ORIGINS",
+        "ALLOWED_HOSTS",
+        "SUPABASE_JWT_ALLOWED_ALGORITHMS",
+        "MAYAR_ALLOWED_EMAILS",
+        mode="before",
+    )
     @classmethod
     def parse_list_like_values(cls, value):
         if isinstance(value, list):
@@ -177,6 +229,9 @@ class Settings(BaseSettings):
         self.ALLOWED_HOSTS = _dedupe_preserve_order([*self.ALLOWED_HOSTS, *_REQUIRED_ALLOWED_HOSTS])
         self.SUPABASE_JWT_ALLOWED_ALGORITHMS = _dedupe_preserve_order([
             alg.upper() for alg in self.SUPABASE_JWT_ALLOWED_ALGORITHMS
+        ])
+        self.MAYAR_ALLOWED_EMAILS = _dedupe_preserve_order([
+            str(email).strip().lower() for email in self.MAYAR_ALLOWED_EMAILS if str(email).strip()
         ])
 
         is_production = self.ENVIRONMENT.strip().lower() == "production" or not self.DEBUG
@@ -207,7 +262,17 @@ class Settings(BaseSettings):
         return (
             init_settings,
             _ListFriendlyEnvSource(settings_cls),
-            dotenv_settings,
+            _ListFriendlyDotEnvSource(
+                settings_cls,
+                env_file=getattr(dotenv_settings, "env_file", None),
+                env_file_encoding=getattr(dotenv_settings, "env_file_encoding", None),
+                case_sensitive=getattr(dotenv_settings, "case_sensitive", None),
+                env_prefix=getattr(dotenv_settings, "env_prefix", None),
+                env_nested_delimiter=getattr(dotenv_settings, "env_nested_delimiter", None),
+                env_ignore_empty=getattr(dotenv_settings, "env_ignore_empty", None),
+                env_parse_none_str=getattr(dotenv_settings, "env_parse_none_str", None),
+                env_parse_enums=getattr(dotenv_settings, "env_parse_enums", None),
+            ),
             file_secret_settings,
         )
 
