@@ -57,10 +57,26 @@ class MayarProvider(PaymentProvider):
             timeout=20.0,
         )
         if hasattr(response, "raise_for_status"):
-            response.raise_for_status()
+            try:
+                response.raise_for_status()
+            except Exception as exc:
+                # Extract Mayar error detail from response body when available.
+                detail = None
+                try:
+                    body = response.json()
+                    detail = body.get("messages") or body.get("error") or body.get("errors")
+                except Exception:
+                    pass
+                if detail:
+                    raise RuntimeError(f"Mayar API error: {detail}") from exc
+                raise
         data = response.json()
         if not isinstance(data, dict):
             raise ValueError("Unexpected Mayar response payload.")
+        # Surface Mayar-level errors even on HTTP 200.
+        if data.get("statusCode") and data.get("statusCode") not in (200, 201):
+            detail = data.get("messages") or data.get("error") or data.get("errors")
+            raise RuntimeError(f"Mayar API error: {detail or 'unknown'}")
         return data
 
     def create_checkout(self, *, order_id: str, amount: int, plan: str, email: str) -> CheckoutResult:
@@ -68,6 +84,7 @@ class MayarProvider(PaymentProvider):
         payload = {
             "name": (email.split("@", 1)[0] or "Kaswise User").replace(".", " ").strip() or "Kaswise User",
             "email": email,
+            "mobile": "000000000000",
             "redirectUrl": self._redirect_url(),
             "description": description,
             "items": [{"quantity": 1, "rate": amount, "description": description}],
