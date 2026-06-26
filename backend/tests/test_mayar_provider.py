@@ -47,6 +47,7 @@ def test_mayar_create_checkout_uses_invoice_create_contract():
     assert kwargs["json"]["redirectUrl"] == "https://kaswise.com/upgrade"
     assert kwargs["json"]["extraData"]["orderId"] == "kw-x"
     assert kwargs["json"]["items"][0]["rate"] == 29000
+    assert kwargs["json"]["mobile"] == "000000000000"
 
 
 def test_mayar_create_checkout_falls_back_to_legacy_callback_getter():
@@ -110,3 +111,56 @@ def test_mayar_signature_verification_is_disabled():
     )
 
     assert provider.verify_notification_signature({"anything": True}) is False
+
+
+def test_mayar_request_surfaces_error_from_response_body():
+    """Mayar-level errors (non-200 statusCode) should raise RuntimeError with detail."""
+    request = MagicMock(
+        return_value=_Response(
+            {
+                "statusCode": 422,
+                "messages": "mobile is required",
+                "data": {},
+            }
+        )
+    )
+    provider = MayarProvider(
+        api_key_getter=lambda: "mayar-key",
+        base_url_getter=lambda: "https://api.mayar.id/hl/v1",
+        redirect_url_getter=lambda: "https://kaswise.com/upgrade",
+        request_func=request,
+    )
+
+    try:
+        provider.create_checkout(order_id="kw-x", amount=29000, plan="monthly", email="user@example.com")
+        assert False, "Expected RuntimeError"
+    except RuntimeError as exc:
+        assert "mobile is required" in str(exc)
+
+
+def test_mayar_request_surfaces_http_error_with_body():
+    """HTTP errors with a parseable body should include the Mayar error detail."""
+    from httpx import HTTPStatusError
+
+    class HttpErrorResponse:
+        def raise_for_status(self):
+            raise HTTPStatusError(
+                "422 Unprocessable Entity", request=MagicMock(), response=MagicMock()
+            )
+
+        def json(self):
+            return {"statusCode": 422, "messages": "mobile is required"}
+
+    request = MagicMock(return_value=HttpErrorResponse())
+    provider = MayarProvider(
+        api_key_getter=lambda: "mayar-key",
+        base_url_getter=lambda: "https://api.mayar.id/hl/v1",
+        redirect_url_getter=lambda: "https://kaswise.com/upgrade",
+        request_func=request,
+    )
+
+    try:
+        provider.create_checkout(order_id="kw-x", amount=29000, plan="monthly", email="user@example.com")
+        assert False, "Expected RuntimeError"
+    except RuntimeError as exc:
+        assert "mobile is required" in str(exc)

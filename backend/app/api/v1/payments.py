@@ -102,6 +102,13 @@ async def create_payment(body: CreatePaymentRequest, current_user=Depends(get_cu
             detail="Metode pembayaran ini belum tersedia untuk akun Anda.",
         ) from exc
     except Exception as exc:
+        # Surface upstream error detail without leaking secrets.
+        inner = str(exc)
+        if inner and "api key" not in inner.lower() and "api_key" not in inner.lower() and "key=" not in inner.lower():
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail=f"Gagal membuat transaksi pembayaran. {inner}",
+            ) from exc
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail="Gagal membuat transaksi pembayaran.",
