@@ -1,116 +1,139 @@
-"""Midtrans Snap: harga/promo, pembuatan transaksi, verifikasi notifikasi."""
-import hashlib
-import hmac
-import secrets
-import time
-import midtransclient
-from datetime import datetime, timedelta, timezone
-from app.core.config import settings
+"""Compatibility facade for the provider-neutral payment internals."""
+from datetime import datetime, timezone
+
 from app.core.auth import _get_supabase_service_client
+from app.core.config import settings
+from app.services.payments import orchestrator, repository
+from app.services.payments.providers import (
+    MayarProvider,
+    MidtransProvider,
+    build_core_client,
+    build_snap_client,
+    map_status,
+)
 
-_PRICES = {
-    "monthly": {"promo": "PRICE_MONTHLY_PROMO", "normal": "PRICE_MONTHLY_NORMAL"},
-    "yearly": {"promo": "PRICE_YEARLY_PROMO", "normal": "PRICE_YEARLY_NORMAL"},
-}
-_DURATION_DAYS = {"monthly": 30, "yearly": 365}
-
-
-def price_for(plan: str, tier: str) -> int:
-    if plan not in _PRICES or tier not in ("promo", "normal"):
-        raise ValueError(f"plan/tier tak valid: {plan}/{tier}")
-    return int(getattr(settings, _PRICES[plan][tier]))
-
-
-def tier_for_count(paid_user_count: int) -> str:
-    return "promo" if paid_user_count < settings.PROMO_MAX_SUBSCRIBERS else "normal"
+_DEFAULT_PROVIDER = "midtrans"
+_SUPPORTED_PROVIDERS = {"midtrans", "mayar"}
 
 
-def duration_days(plan: str) -> int:
-    if plan not in _DURATION_DAYS:
-        raise ValueError(f"plan tak valid: {plan}")
-    return _DURATION_DAYS[plan]
-
-
-def verify_notification_signature(payload: dict) -> bool:
-    raw = (f"{payload.get('order_id','')}{payload.get('status_code','')}"
-           f"{payload.get('gross_amount','')}{settings.MIDTRANS_SERVER_KEY or ''}")
-    expected = hashlib.sha512(raw.encode()).hexdigest()
-    return hmac.compare_digest(expected, payload.get("signature_key", ""))
-
-
-def map_status(transaction_status: str, fraud_status: str | None) -> str:
-    if transaction_status in ("settlement",) or (
-        transaction_status == "capture" and fraud_status == "accept"
-    ):
-        return "paid"
-    if transaction_status == "capture":  # fraud challenge
-        return "pending"
-    if transaction_status == "pending":
-        return "pending"
-    if transaction_status in ("deny", "cancel"):
-        return "failed"
-    if transaction_status in ("expire", "failure"):
-        return "expired"
-    return "pending"
+class MayarAccessDeniedError(PermissionError):
+    """Raised when a user is not allowed to use the limited Mayar checkout flow."""
 
 
 def _core_client():
-    return midtransclient.CoreApi(
-        is_production=bool(settings.MIDTRANS_IS_PRODUCTION),
-        server_key=settings.MIDTRANS_SERVER_KEY or "",
-        client_key=settings.MIDTRANS_CLIENT_KEY or "",
-    )
-
-
-def fetch_and_sync_status(order_id: str) -> dict:
-    core = _core_client()
-    note = core.transactions.status(order_id)  # dict mirip notifikasi
-    internal = activate_premium_from_notification(note)
-    return {"order_id": order_id, "status": internal,
-            "midtrans_status": note.get("transaction_status")}
-
-
-def get_payment_for_user(order_id: str, user_id: str) -> dict | None:
-    """Return payment row only when it belongs to the requesting user."""
-    client = _get_supabase_service_client()
-    if client is None:
-        raise RuntimeError("Supabase service client tidak tersedia.")
-    res = (
-        client.table("payments")
-        .select("id,user_id,order_id,status,amount")
-        .eq("order_id", order_id)
-        .eq("user_id", user_id)
-        .limit(1)
-        .execute()
-    )
-    rows = getattr(res, "data", None) or []
-    return rows[0] if rows else None
+    return build_core_client()
 
 
 def _snap_client():
-    return midtransclient.Snap(
-        is_production=bool(settings.MIDTRANS_IS_PRODUCTION),
-        server_key=settings.MIDTRANS_SERVER_KEY or "",
-        client_key=settings.MIDTRANS_CLIENT_KEY or "",
+    return build_snap_client()
+
+
+def _midtrans_provider() -> MidtransProvider:
+    return MidtransProvider(
+        core_client_factory=_core_client,
+        snap_client_factory=_snap_client,
+        server_key_getter=lambda: settings.MIDTRANS_SERVER_KEY or "",
     )
 
 
+def _mayar_provider() -> MayarProvider:
+    return MayarProvider(
+        api_key_getter=lambda: settings.MAYAR_API_KEY or "",
+        base_url_getter=lambda: settings.MAYAR_BASE_URL or "",
+        redirect_url_getter=lambda: settings.MAYAR_REDIRECT_URL or settings.MAYAR_CALLBACK_URL or "",
+    )
+
+
+def get_primary_payment_provider_name() -> str:
+    configured = (settings.PAYMENT_PRIMARY_PROVIDER or _DEFAULT_PROVIDER).strip().lower()
+    return configured if configured in _SUPPORTED_PROVIDERS else _DEFAULT_PROVIDER
+
+
+def mayar_allowed_emails() -> set[str]:
+    return {str(email).strip().lower() for email in settings.MAYAR_ALLOWED_EMAILS if str(email).strip()}
+
+
+def is_mayar_checkout_allowed(email: str | None) -> bool:
+    normalized_email = (email or "").strip().lower()
+    return bool(normalized_email) and normalized_email in mayar_allowed_emails()
+
+
+def resolve_checkout_provider_name(*, email: str | None, provider_name: str | None = None) -> str:
+    resolved_provider_name = provider_name or get_primary_payment_provider_name()
+    if resolved_provider_name == "mayar" and not is_mayar_checkout_allowed(email):
+        raise MayarAccessDeniedError("Mayar checkout is not enabled for this account.")
+    return resolved_provider_name
+
+
+def _provider_for_name(provider_name: str):
+    normalized = (provider_name or _DEFAULT_PROVIDER).strip().lower()
+    if normalized == "mayar":
+        return _mayar_provider()
+    return _midtrans_provider()
+
+
+def _should_activate_provider(provider_name: str) -> bool:
+    normalized = (provider_name or "").strip().lower()
+    if normalized == "mayar":
+        return bool(settings.MAYAR_ACTIVATION_ENABLED)
+    return True
+
+
+def price_for(plan: str, tier: str) -> int:
+    return orchestrator.price_for(plan, tier)
+
+
+def tier_for_count(paid_user_count: int) -> str:
+    return orchestrator.tier_for_count(paid_user_count)
+
+
+def duration_days(plan: str) -> int:
+    return orchestrator.duration_days(plan)
+
+
+def verify_notification_signature(payload: dict) -> bool:
+    return _midtrans_provider().verify_notification_signature(payload)
+
+
+def fetch_and_sync_status(
+    order_id: str,
+    *,
+    provider_name: str | None = None,
+    provider_order_id: str | None = None,
+) -> dict:
+    resolved_provider_name = provider_name or _DEFAULT_PROVIDER
+    provider = _provider_for_name(resolved_provider_name)
+    return orchestrator.fetch_and_sync_status(
+        order_id,
+        provider=provider,
+        provider_order_id=provider_order_id,
+        repository_module=repository,
+        client=_get_supabase_service_client(),
+        now_func=_now,
+        activate_paid_profile=_should_activate_provider(provider.name),
+    )
+
+
+def get_payment_for_user(order_id: str, user_id: str) -> dict | None:
+    client = _get_supabase_service_client()
+    if client is None:
+        raise RuntimeError("Supabase service client tidak tersedia.")
+    return repository.get_payment_for_user(order_id, user_id, client=client)
+
+
 def make_order_id(user_id: str) -> str:
-    # ms + suffix acak agar tak bentrok untuk request di detik yang sama.
-    return f"kw-{user_id[:8]}-{int(time.time() * 1000)}-{secrets.token_hex(3)}"
+    return orchestrator.make_order_id(user_id)
+
+
+def create_checkout(*, order_id: str, amount: int, plan: str, email: str, provider_name: str | None = None) -> dict:
+    resolved_provider_name = resolve_checkout_provider_name(email=email, provider_name=provider_name)
+    provider = _provider_for_name(resolved_provider_name)
+    result = provider.create_checkout(order_id=order_id, amount=amount, plan=plan, email=email)
+    return {"provider": provider.name, **result}
 
 
 def create_snap_transaction(*, order_id: str, amount: int, plan: str, email: str) -> dict:
-    snap = _snap_client()
-    param = {
-        "transaction_details": {"order_id": order_id, "gross_amount": amount},
-        "enabled_payments": ["qris", "gopay", "shopeepay"],
-        "item_details": [{"id": f"premium-{plan}", "price": amount, "quantity": 1,
-                          "name": f"Kaswise Premium ({plan})"}],
-        "customer_details": {"email": email},
-    }
-    res = snap.create_transaction(param)
-    return {"token": res["token"], "redirect_url": res["redirect_url"]}
+    return _midtrans_provider().create_checkout(order_id=order_id, amount=amount, plan=plan, email=email)
 
 
 def _now():
@@ -121,58 +144,38 @@ def count_paid_users() -> int:
     client = _get_supabase_service_client()
     if client is None:
         return 0
-    res = client.table("payments").select("user_id").eq("status", "paid").execute()
-    rows = getattr(res, "data", None) or []
-    return len({r["user_id"] for r in rows})
+    return repository.count_paid_users(client=client)
 
 
 def activate_premium_from_notification(payload: dict) -> str:
-    """Idempoten: verifikasi signature dilakukan caller. Return status internal."""
-    client = _get_supabase_service_client()
-    order_id = payload.get("order_id", "")
-    new_status = map_status(payload.get("transaction_status", ""), payload.get("fraud_status"))
-    if client is None:
-        return new_status
+    return orchestrator.activate_premium_from_notification(
+        payload,
+        provider=_midtrans_provider(),
+        repository_module=repository,
+        client=_get_supabase_service_client(),
+        now_func=_now,
+        activate_paid_profile=True,
+    )
 
-    pay = (client.table("payments").select("id,user_id,plan,status,amount")
-           .eq("order_id", order_id).limit(1).execute())
-    row = pay.data[0] if getattr(pay, "data", None) else None
-    if row is None:
-        return new_status
-    if row["status"] in ("paid", "failed", "expired"):
-        return row["status"]
 
-    gross_amount = payload.get("gross_amount")
-    if gross_amount is not None:
-        try:
-            expected_amount = int(row.get("amount") or 0)
-            received_amount = int(float(str(gross_amount)))
-        except (TypeError, ValueError):
-            return row["status"]
-        if expected_amount != received_amount:
-            return row["status"]
-
-    payment_update = {"midtrans_status": payload.get("transaction_status"),
-                      "status": new_status, "method": payload.get("payment_type"),
-                      "raw_payload": payload}
-
-    if new_status == "paid":
-        prof = (client.table("profiles").select("plan_expires_at")
-                .eq("id", row["user_id"]).limit(1).execute())
-        prow = prof.data[0] if getattr(prof, "data", None) else None
-        base = _now()
-        if prow and prow.get("plan_expires_at"):
-            try:
-                cur = datetime.fromisoformat(str(prow["plan_expires_at"]).replace("Z", "+00:00"))
-                base = max(base, cur)
-            except ValueError:
-                pass
-        until = base + timedelta(days=duration_days(row["plan"]))
-        client.table("profiles").update(
-            {"plan_type": "premium", "plan_expires_at": until.isoformat()}
-        ).eq("id", row["user_id"]).execute()
-        payment_update["paid_at"] = _now().isoformat()
-        payment_update["granted_until"] = until.isoformat()
-
-    client.table("payments").update(payment_update).eq("order_id", order_id).execute()
-    return new_status
+__all__ = [
+    "_core_client",
+    "_snap_client",
+    "_now",
+    "activate_premium_from_notification",
+    "count_paid_users",
+    "create_checkout",
+    "create_snap_transaction",
+    "duration_days",
+    "fetch_and_sync_status",
+    "get_payment_for_user",
+    "get_primary_payment_provider_name",
+    "is_mayar_checkout_allowed",
+    "MayarAccessDeniedError",
+    "make_order_id",
+    "map_status",
+    "price_for",
+    "resolve_checkout_provider_name",
+    "tier_for_count",
+    "verify_notification_signature",
+]

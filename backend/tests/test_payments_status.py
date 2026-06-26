@@ -14,13 +14,50 @@ def teardown_module():
 
 
 def test_status_syncs_from_midtrans_for_owned_order(client):
-    with patch("app.api.v1.payments.get_payment_for_user",
-               return_value={"order_id": "kw-x", "user_id": "u1", "status": "pending", "amount": 29000}), \
-         patch("app.api.v1.payments.fetch_and_sync_status",
-               return_value={"order_id": "kw-x", "status": "paid"}):
+    with patch(
+        "app.api.v1.payments.get_payment_for_user",
+        return_value={
+            "order_id": "kw-x",
+            "user_id": "u1",
+            "status": "pending",
+            "amount": 29000,
+            "provider": "midtrans",
+            "provider_order_id": "kw-x",
+        },
+    ), patch(
+        "app.api.v1.payments.fetch_and_sync_status",
+        return_value={"order_id": "kw-x", "status": "paid", "provider": "midtrans"},
+    ) as fetch_status:
         r = client.get("/api/v1/payments/kw-x/status", headers={"Authorization": "Bearer x"})
     assert r.status_code == 200
     assert r.json()["status"] == "paid"
+    fetch_status.assert_called_once_with("kw-x", provider_name="midtrans", provider_order_id="kw-x")
+
+
+def test_status_syncs_from_mayar_for_owned_order(client):
+    with patch(
+        "app.api.v1.payments.get_payment_for_user",
+        return_value={
+            "order_id": "kw-mayar",
+            "user_id": "u1",
+            "status": "pending",
+            "amount": 29000,
+            "provider": "mayar",
+            "provider_order_id": "inv-1",
+        },
+    ), patch(
+        "app.api.v1.payments.fetch_and_sync_status",
+        return_value={
+            "order_id": "kw-mayar",
+            "status": "pending",
+            "provider": "mayar",
+            "provider_status": "PENDING",
+        },
+    ) as fetch_status:
+        r = client.get("/api/v1/payments/kw-mayar/status", headers={"Authorization": "Bearer x"})
+    assert r.status_code == 200
+    assert r.json()["provider"] == "mayar"
+    fetch_status.assert_called_once_with("kw-mayar", provider_name="mayar", provider_order_id="inv-1")
 
 
 def test_status_hides_other_users_order(client):
