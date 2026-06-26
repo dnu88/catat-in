@@ -66,6 +66,56 @@ def test_resolve_checkout_provider_name_allows_mayar_for_allowlisted_email_case_
         assert ps.resolve_checkout_provider_name(email="Tester@Example.com") == "mayar"
 
 
+def test_fetch_and_sync_status_with_mayar_uses_known_order_id_when_extradata_missing():
+    """Mayar detail endpoint may not return extraData; known_order_id must be fallback."""
+    from app.services.payments import orchestrator
+
+    provider = MagicMock()
+    provider.name = "mayar"
+    provider.fetch_status.return_value = {
+        "data": {
+            "id": "inv-1",
+            "amount": 29000,
+            "status": "PAID",
+            # No extraData here — simulates Mayar detail endpoint omission
+        }
+    }
+    # extract_order_id returns empty because no extraData
+    provider.extract_order_id.return_value = ""
+    provider.map_internal_status.return_value = "paid"
+    provider.extract_gross_amount.return_value = 29000
+    provider.build_payment_update.side_effect = lambda payload, *, new_status: {
+        "provider": "mayar",
+        "provider_order_id": "inv-1",
+        "provider_status": "PAID",
+        "status": new_status,
+        "raw_payload": payload,
+    }
+    provider.build_status_response.return_value = {"provider": "mayar", "provider_status": "PAID"}
+
+    repo = MagicMock()
+    repo.get_payment_by_order_id.return_value = {
+        "id": "p1", "user_id": "u1", "plan": "monthly", "status": "pending", "amount": 29000,
+    }
+
+    result = orchestrator.fetch_and_sync_status(
+        "kw-x",
+        provider=provider,
+        provider_order_id="inv-1",
+        repository_module=repo,
+        client=object(),
+        activate_paid_profile=True,
+    )
+
+    # Should resolve order_id from known_order_id fallback, not fail silently
+    assert result["status"] == "paid"
+    repo.get_payment_by_order_id.assert_called_once()
+    assert repo.get_payment_by_order_id.call_args.args[0] == "kw-x"
+    repo.update_payment.assert_called_once()
+    assert repo.update_payment.call_args.args[0] == "kw-x"
+    assert repo.update_payment.call_args.args[1]["status"] == "paid"
+
+
 def test_fetch_and_sync_status_with_mayar_does_not_activate_profile_when_disabled():
     provider = MagicMock()
     provider.name = "mayar"
