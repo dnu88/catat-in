@@ -1,9 +1,12 @@
 """Provider-neutral payment orchestration."""
+import logging
 import secrets
 import time
 from datetime import datetime, timedelta, timezone
 
 from app.core.config import settings
+
+logger = logging.getLogger(__name__)
 
 from . import repository
 from .models import TERMINAL_PAYMENT_STATUSES
@@ -58,6 +61,7 @@ def fetch_and_sync_status(
         client=client,
         now_func=now_func,
         activate_paid_profile=activate_paid_profile,
+        known_order_id=order_id,
     )
     result = {"order_id": order_id, "status": internal, "provider": provider.name}
     result.update(provider.build_status_response(note))
@@ -72,10 +76,19 @@ def activate_premium_from_notification(
     client=None,
     now_func=_now,
     activate_paid_profile: bool = True,
+    known_order_id: str | None = None,
 ) -> str:
-    order_id = provider.extract_order_id(payload)
+    order_id = provider.extract_order_id(payload) or known_order_id or ""
     new_status = provider.map_internal_status(payload)
     if client is None or not order_id:
+        if not order_id:
+            logger.warning(
+                "activate_premium_from_notification: cannot resolve order_id "
+                "(provider=%s, known_order_id=%s, payload_keys=%s)",
+                provider.name,
+                known_order_id,
+                list(payload.keys())[:10] if isinstance(payload, dict) else type(payload).__name__,
+            )
         return new_status
 
     row = repository_module.get_payment_by_order_id(order_id, client=client)
