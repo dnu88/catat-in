@@ -85,6 +85,7 @@ const iconMap = {
   basket: Basket,
   investment: TrendUp,
   gift: Gift,
+  creditCard: CreditCard,
   more: DotsThree,
   otherExpenses: DotsThreeCircle,
 } as const
