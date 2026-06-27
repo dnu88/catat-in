@@ -26,6 +26,7 @@ let mockCanCreate = true;
 jest.mock("expo-router", () => ({
 	useRouter: () => ({ back: mockBack, replace: mockReplace }),
 	useLocalSearchParams: () => mockSearchParams,
+	useFocusEffect: jest.fn(),
 }));
 
 jest.mock("../src/services/wallets", () => ({
