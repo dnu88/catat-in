@@ -54,9 +54,9 @@ profiles (extends auth.users)
   id, email, full_name, plan_type, plan_expires_at, created_at
 
 transactions
-  id, user_id, wallet_id, input_type (text|image|voice|import|manual)
+  id, user_id, wallet_id, target_wallet_id, input_type (text|image|voice|import|manual)
   status (processing|done|error), confidence, review_required
-  nominal, type (income|expense), kategori, merchant, tanggal, catatan
+  nominal, type (income|expense|transfer), kategori, merchant, tanggal, catatan
   receipt_url, is_verified, created_at, updated_at
 
 wallets
@@ -124,9 +124,23 @@ Semua operasi Firestore ada di satu file: `apps/web/src/lib/firestore.ts`.
 
 Konsekuensi: setiap kali `fetchBudgets()` dipanggil, terjadi satu query tambahan ke koleksi `transactions`. Untuk skala personal finance ini acceptable.
 
-### Wallet balance: disimpan sebagai running total + ada utilitas recalculate
+### Wallet balance: managed by database trigger (JANGAN update langsung dari client)
 
-Saldo wallet tetap diupdate via `increment(delta)` setiap kali transaksi dibuat/edit/hapus (`applyWalletDelta`) agar cepat. Jika ada data lama yang mismatch, sekarang tersedia utilitas `recalculateWalletBalances()` untuk menghitung ulang saldo semua wallet user dari histori transaksi di `users/{uid}/transactions`.
+Saldo wallet TIDAK BOLEH diupdate langsung dari client code. Semua perubahan balance terjadi via database trigger `sync_wallet_balance_from_transaction` yang fire AFTER INSERT/UPDATE/DELETE pada tabel `transactions`. Trigger ini:
+
+- Menambah balance untuk transaksi `income`
+- Mengurangi balance untuk transaksi `expense`
+- Memindahkan balance antar wallet untuk transaksi `transfer` (debit source, credit target)
+- Membalikkan delta saat transaksi dihapus
+- Menset session variable `kaswise.wallet_balance_trigger = 'on'` agar trigger `prevent_wallet_balance_direct_change` mengizinkan update
+- Hanya update wallet jika `wallet_id IS NOT NULL` dan `wallet_matches_transaction_scope()` return true
+
+File: `supabase/migrations/202606010001_security_hardening_phase2.sql` (versi hardening),
+`supabase/migrations/202606270001_transfer_transaction_type.sql` (support transfer).
+
+### Transfer antar wallet
+
+Transfer dibuat sebagai satu baris transaksi dengan `type = 'transfer'`, `wallet_id = sumber`, `target_wallet_id = tujuan`. Trigger otomatis mendebit sumber dan mengkredit tujuan. UI di `transaction-new.tsx` menyediakan pemilih dompet sumber dan tujuan, auto-generate deskripsi `Sumber → Tujuan`, dan menyembunyikan field kategori/deskripsi.
 
 ### Budget category simplification: Household + Personal Care digabung di mobile
 
@@ -137,6 +151,12 @@ Sejak 2026-06, mobile menyatukan kategori `Household` dan `Personal Care` ke sat
 Store transaksi di dashboard hanya mengambil 5 transaksi terakhir (untuk list "transaksi terbaru"). Total pemasukan/pengeluaran bulan ini diambil dari `buildMonthlyReport()` secara terpisah agar mencakup semua transaksi bulan berjalan.
 
 ## Bug Fixes yang Sudah Dilakukan
+
+### [2026-06] Transaction logic audit: wallet balance sync, UI refresh, transfer support
+- **File:** `apps/mobile/app/(tabs)/capture.tsx`, `apps/mobile/app/(tabs)/transaction-new.tsx`, `apps/mobile/app/(tabs)/wallets.tsx`, `apps/mobile/src/services/transactions.ts`
+- **Root cause:** Beberapa bug ditemukan saat pre-release audit: (1) capture screen tidak refresh wallet list setelah transaksi, (2) form manual entry selalu reset ke expense, (3) edit wallet menampilkan input balance yang tidak pernah terkirim, (4) receipt RLS fallback silent null-kan wallet_id.
+- **Fix:** (1) `capture.tsx` panggil `loadWalletOptions()` setelah transaksi text dan receipt, (2) `transaction-new.tsx` pertahankan `txType` terakhir, (3) `wallets.tsx` ganti input balance jadi read-only display, (4) receipt flow tampilkan warning saat fallback. Juga tambah fitur transfer antar wallet (migration `202606270001`).
+- **Audit doc:** `docs/audit/2026-06-27-transaction-logic-audit.md`
 
 ### [2026-06] Mobile review queue tetap menampilkan transaksi yang sudah direview
 - **File:** `apps/mobile/src/services/transactions.ts`, `apps/mobile/src/services/transaction-review.ts`, `apps/mobile/app/(tabs)/transactions.tsx`, `apps/mobile/app/(tabs)/capture.tsx`, `apps/mobile/app/(tabs)/transaction-new.tsx`

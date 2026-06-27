@@ -180,6 +180,12 @@ export default function TransactionNewScreen() {
 						saveCreate: "Save Transaction",
 						cancel: "Cancel",
 						cancelLabel: "Cancel editing transaction",
+						transfer: "Transfer",
+						pickTransfer: "Choose transfer",
+						targetWallet: "To Wallet",
+						pickTargetWallet: (name: string) => `Choose destination wallet ${name}`,
+						targetWalletHint: "Money will be moved to this wallet.",
+						transferIncomplete: "Select source wallet, destination wallet, and amount for transfer.",
 					}
 				: {
 						notFound: "Transaksi tidak ditemukan",
@@ -234,6 +240,12 @@ export default function TransactionNewScreen() {
 						saveCreate: "Simpan Transaksi",
 						cancel: "Batal",
 						cancelLabel: "Batal edit transaksi",
+						transfer: "Transfer",
+						pickTransfer: "Pilih transfer",
+						targetWallet: "Ke Dompet",
+						pickTargetWallet: (name: string) => `Pilih dompet tujuan ${name}`,
+						targetWalletHint: "Uang akan dipindahkan ke dompet ini.",
+						transferIncomplete: "Pilih dompet sumber, dompet tujuan, dan nominal untuk transfer.",
 					},
 		[isEn],
 	);
@@ -262,6 +274,7 @@ export default function TransactionNewScreen() {
 	const [txType, setTxType] = useState<TransactionType>("expense");
 	const [amountInput, setAmountInput] = useState("");
 	const [walletId, setWalletId] = useState<string | null>(null);
+	const [targetWalletId, setTargetWalletId] = useState<string | null>(null);
 	const [category, setCategory] = useState<string>("");
 	const [customCategory, setCustomCategory] = useState<string>("");
 	const [description, setDescription] = useState("");
@@ -386,18 +399,22 @@ export default function TransactionNewScreen() {
 	const resolvedDescription = description.trim();
 	const selectedWalletIsValid =
 		walletId == null || wallets.some((wallet) => wallet.id === walletId);
+	const selectedTargetWalletIsValid =
+		targetWalletId == null || wallets.some((wallet) => wallet.id === targetWalletId);
 	const canSubmit =
 		canCreate &&
 		amountValue > 0 &&
-		resolvedCategory.length > 0 &&
-		resolvedDescription.length > 0 &&
+		(txType === "transfer"
+			? walletId != null && targetWalletId != null && walletId !== targetWalletId
+			: resolvedCategory.length > 0 && resolvedDescription.length > 0) &&
 		!submitting;
 
 
 	const resetForm = useCallback(() => {
-		setTxType("expense");
+		// Keep the last selected type so the user doesn't accidentally switch back to expense.
 		setAmountInput("");
 		setWalletId(wallets[0]?.id ?? null);
+		setTargetWalletId(null);
 		setCategory("");
 		setCustomCategory("");
 		setDescription("");
@@ -414,7 +431,7 @@ export default function TransactionNewScreen() {
 			return;
 		}
 		if (!canSubmit) {
-			setError(tx.incompleteError);
+			setError(txType === "transfer" ? tx.transferIncomplete : tx.incompleteError);
 			return;
 		}
 		const effectiveDate = draftDate || date;
@@ -433,10 +450,13 @@ export default function TransactionNewScreen() {
 		setSuccessMessage(null);
 		const payload = {
 			wallet_id: walletId,
+			target_wallet_id: txType === "transfer" ? targetWalletId : undefined,
 			transaction_type: txType,
 			amount: amountValue,
-			category: resolvedCategory,
-			description: resolvedDescription,
+			category: txType === "transfer" ? "Transfer" : resolvedCategory,
+			description: txType === "transfer"
+				? `${wallets.find((w) => w.id === walletId)?.name ?? "Sumber"} → ${wallets.find((w) => w.id === targetWalletId)?.name ?? "Tujuan"}`
+				: resolvedDescription,
 			merchant: merchant.trim() || null,
 			date: effectiveDate,
 			note: note.trim() || null,
@@ -446,14 +466,18 @@ export default function TransactionNewScreen() {
 			if (isEditMode) {
 				await updateTransaction(transactionId, payload, activeContext);
 				resetForm();
-				setSuccessMessage(tx.updateSuccess);
+				setSuccessMessage(
+					tx.updateSuccess + (walletId ? "" : " (" + tx.noWallet + ")"),
+				);
 				setSubmitting(false);
 				return;
 			}
 
 			await createTransaction(payload, activeContext);
 			resetForm();
-			setSuccessMessage(tx.createSuccess);
+			setSuccessMessage(
+				tx.createSuccess + (walletId ? "" : " (" + tx.noWallet + ")"),
+			);
 			setSubmitting(false);
 		} catch (e) {
 			const message =
@@ -517,12 +541,12 @@ export default function TransactionNewScreen() {
 
 				{/* Type Toggle */}
 				<View key="transaction-form-type" testID="transaction-form-type" style={styles.typeRow}>
-					{(["expense", "income"] as TransactionType[]).map((t) => (
+					{(["expense", "income", "transfer"] as TransactionType[]).map((t) => (
 						<Pressable
 							key={t}
 							accessibilityRole="button"
 							accessibilityLabel={
-								t === "expense" ? tx.pickExpense : tx.pickIncome
+								t === "expense" ? tx.pickExpense : t === "income" ? tx.pickIncome : tx.pickTransfer
 							}
 							accessibilityState={{ selected: txType === t }}
 							onPress={() => setTxType(t)}
@@ -530,9 +554,13 @@ export default function TransactionNewScreen() {
 								styles.typeChip,
 								txType === t && {
 									backgroundColor:
-										t === "income" ? theme.colors.success : theme.colors.danger,
+										t === "income" ? theme.colors.success
+										: t === "transfer" ? theme.colors.info
+										: theme.colors.danger,
 									borderColor:
-										t === "income" ? theme.colors.success : theme.colors.danger,
+										t === "income" ? theme.colors.success
+										: t === "transfer" ? theme.colors.info
+										: theme.colors.danger,
 								},
 							]}
 						>
@@ -542,7 +570,7 @@ export default function TransactionNewScreen() {
 									txType === t && { color: theme.colors.textInverse },
 								]}
 							>
-								{t === "expense" ? tx.expense : tx.income}
+								{t === "expense" ? tx.expense : t === "income" ? tx.income : tx.transfer}
 							</Text>
 						</Pressable>
 					))}
@@ -565,7 +593,8 @@ export default function TransactionNewScreen() {
 					</View>
 				</View>
 
-				{/* Description */}
+				{/* Description (auto-generated for transfer) */}
+				{txType !== "transfer" && (
 				<View key="transaction-form-description" testID="transaction-form-description" style={styles.field}>
 					<Text style={styles.label}>{tx.description}</Text>
 					<TextInput
@@ -577,10 +606,11 @@ export default function TransactionNewScreen() {
 						placeholderTextColor={theme.colors.textMuted}
 					/>
 				</View>
+				)}
 
 				{/* Wallet */}
 				<View key="transaction-form-wallet" testID="transaction-form-wallet" style={styles.field}>
-					<Text style={styles.label}>{tx.wallet}</Text>
+					<Text style={styles.label}>{txType === "transfer" ? (isEn ? "From Wallet" : "Dari Dompet") : tx.wallet}</Text>
 					{wallets.length === 0 ? (
 						<View style={styles.warningCard}>
 							<Text style={styles.warningText}>
@@ -618,7 +648,53 @@ export default function TransactionNewScreen() {
 					)}
 				</View>
 
-				{/* Category */}
+				{/* Target Wallet (transfer only) */}
+				{txType === "transfer" && (
+					<View key="transaction-form-target-wallet" testID="transaction-form-target-wallet" style={styles.field}>
+						<Text style={styles.label}>{tx.targetWallet}</Text>
+						{wallets.length === 0 ? (
+							<View style={styles.warningCard}>
+								<Text style={styles.warningText}>{tx.noWallet}</Text>
+							</View>
+						) : (
+							<View style={styles.chipRow}>
+								{wallets
+									.filter((w) => w.id !== walletId)
+									.map((w) => (
+										<Pressable
+											key={w.id}
+											accessibilityRole="button"
+											accessibilityLabel={tx.pickTargetWallet(w.name)}
+											accessibilityState={{ selected: targetWalletId === w.id }}
+											onPress={() => setTargetWalletId(w.id)}
+											style={[
+												styles.chip,
+												targetWalletId === w.id && {
+													backgroundColor: theme.colors.info,
+													borderColor: theme.colors.info,
+												},
+											]}
+										>
+											<Text
+												style={[
+													styles.chipText,
+													targetWalletId === w.id && { color: theme.colors.textInverse },
+												]}
+											>
+												{w.name}
+											</Text>
+										</Pressable>
+									))}
+							</View>
+						)}
+						<Text style={{ color: theme.colors.textMuted, fontSize: 11, marginTop: 4 }}>
+							{tx.targetWalletHint}
+						</Text>
+					</View>
+				)}
+
+				{/* Category (hidden for transfer) */}
+				{txType !== "transfer" && (
 				<View key="transaction-form-category" testID="transaction-form-category" style={styles.field}>
 					<Text style={styles.label}>{tx.category}</Text>
 					<View style={styles.chipRow}>
@@ -691,9 +767,10 @@ export default function TransactionNewScreen() {
 							onChangeText={setCustomCategory}
 							placeholder={tx.customCategoryPlaceholder}
 							placeholderTextColor={theme.colors.textMuted}
-						/>
+					/>
 					)}
 				</View>
+			)}
 
 				{/* Date */}
 				<View key="transaction-form-date" testID="transaction-form-date" style={styles.field}>
