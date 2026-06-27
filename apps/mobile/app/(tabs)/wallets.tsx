@@ -10,6 +10,7 @@ import {
 	View,
 } from "react-native";
 import { PageEntrance, StaggeredStack } from "../../src/components/motion";
+import { useFocusEffect } from "expo-router";
 
 import { useI18n } from "../../src/i18n/i18n-context";
 import {
@@ -203,9 +204,15 @@ export default function WalletsScreen() {
 		}
 	}, [householdScopes, tx.error, tx.personal]);
 
-	useEffect(() => {
-		loadWallets();
-	}, [loadWallets]);
+	useFocusEffect(
+		useCallback(() => {
+			let mounted = true;
+			void loadWallets();
+			return () => {
+				mounted = false;
+			};
+		}, [loadWallets]),
+	);
 
 	const contextForWallet = (wallet: ScopedWallet) =>
 		wallet.scopeType === "household"
