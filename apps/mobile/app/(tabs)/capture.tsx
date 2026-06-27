@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
 	ActivityIndicator,
 	Image,
@@ -12,7 +12,7 @@ import {
 } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import { PageEntrance, StaggeredStack } from "../../src/components/motion";
-import { useRouter } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router";
 
 import { useTransactionRealtime } from "../../src/hooks/useTransactionRealtime";
 import { useI18n } from "../../src/i18n/i18n-context";
@@ -316,9 +316,15 @@ export default function CaptureScreen() {
 		}
 	};
 
-	useEffect(() => {
-		void loadWalletOptions();
-	}, [activeContext]);
+	useFocusEffect(
+		useCallback(() => {
+			let mounted = true;
+			void loadWalletOptions();
+			return () => {
+				mounted = false;
+			};
+		}, [activeContext]),
+	);
 
 	const submitText = async () => {
 		const value = textInput.trim();
