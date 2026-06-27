@@ -70,7 +70,7 @@ def _list_mayar_payments(client, *, order_id: str | None, statuses: list[str]):
         query = query.eq("order_id", order_id)
     else:
         query = query.in_("status", statuses)
-    res = query.order("created_at", ascending=False).execute()
+    res = query.order("created_at", desc=True).execute()
     return getattr(res, "data", None) or []
 
 

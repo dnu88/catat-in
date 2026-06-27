@@ -91,3 +91,6 @@ docker-compose.override.yml
 .pi/
 .impeccable/
 .crew/
+
+# Backup env files (contain secrets)
+.env*.bak*
