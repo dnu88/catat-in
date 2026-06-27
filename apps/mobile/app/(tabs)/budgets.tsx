@@ -87,6 +87,7 @@ const iconOptions: {
 	{ value: "groceries", labelId: "Belanja Bulanan", labelEn: "Groceries" },
 	{ value: "investment", labelId: "Investasi", labelEn: "Investment" },
 	{ value: "gift", labelId: "Hadiah", labelEn: "Gift" },
+	{ value: "creditCard", labelId: "Kartu Kredit", labelEn: "Credit Card" },
 	{
 		value: "otherExpenses",
 		labelId: "Lainnya",
