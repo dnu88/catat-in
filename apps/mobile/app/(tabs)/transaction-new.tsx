@@ -55,6 +55,8 @@ const categoryIcons: Record<string, KaswiseIconName> = {
 	Salary: "card",
 	Bonus: "gift",
 	Freelance: "investment",
+	"Kartu Kredit": "creditCard",
+	"Credit Card": "creditCard",
 	Lainnya: "otherExpenses",
 	"Other expenses": "otherExpenses",
 };
@@ -66,6 +68,7 @@ function fallbackCategories(isEn: boolean): CategoryOption[] {
 		{ name: isEn ? "Personal Shopping" : "Belanja Pribadi", icon: "groceries" },
 		{ name: isEn ? "Transport" : "Transportasi", icon: "transport" },
 		{ name: isEn ? "Bills" : "Tagihan", icon: "bills" },
+		{ name: isEn ? "Credit Card" : "Kartu Kredit", icon: "creditCard" },
 		{ name: isEn ? "Entertainment" : "Hiburan", icon: "recreation" },
 		{ name: isEn ? "Health" : "Kesehatan", icon: "sport" },
 		{ name: isEn ? "Education" : "Pendidikan", icon: "file" },
@@ -99,6 +102,7 @@ function normalizeCategoryIcon(icon: string | null | undefined, name: string): K
 		"insight",
 		"budgets",
 		"transactions",
+		"creditCard",
 	].includes(iconName)) {
 		return iconName;
 	}

@@ -8,6 +8,7 @@ export type CategoryCanonicalId =
   | 'personal_shopping'
   | 'transport'
   | 'bills'
+  | 'credit_card'
   | 'health'
   | 'entertainment'
   | 'education'
@@ -87,6 +88,14 @@ export const categoryDefinitions: CategoryDefinition[] = [
     icon: 'bills',
     type: 'expense',
     aliases: ['tagihan', 'bills', 'bill', 'utilities'],
+  },
+  {
+    id: 'credit_card',
+    labels: { id: 'Kartu Kredit', en: 'Credit Card' },
+    helper: { id: 'Tagihan kartu kredit, cicilan, dan biaya kartu.', en: 'Credit card bills, installments, and card fees.' },
+    icon: 'creditCard',
+    type: 'expense',
+    aliases: ['kartu kredit', 'credit card', 'kartu kredit', 'cc', 'tagihan kartu kredit', 'cicilan kartu kredit', 'billing kartu kredit', 'BI checking'],
   },
   {
     id: 'health',

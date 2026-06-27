@@ -130,6 +130,8 @@ export function getCategoryVisualMeta(
 		sport: { color: roleColors.info, icon: "sport", tone: "info" },
 		"hadiah & donasi": { color: roleColors.danger, icon: "gift", tone: "danger" },
 		"gifts & donations": { color: roleColors.danger, icon: "gift", tone: "danger" },
+		"kartu kredit": { color: roleColors.navy, icon: "creditCard", tone: "navy" },
+		"credit card": { color: roleColors.navy, icon: "creditCard", tone: "navy" },
 		other: {
 			color: neutralCategoryColor,
 			icon: "otherExpenses",
