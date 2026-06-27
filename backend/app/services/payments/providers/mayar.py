@@ -1,4 +1,15 @@
-"""Mayar invoice provider skeleton."""
+"""Mayar invoice provider.
+
+Mayar.id does NOT sign webhook payloads. There is no signature header or
+token documented (verified against the ``webhook/history`` API response, which
+contains no signature field). Authenticity therefore cannot be proven from the
+webhook body alone. See ADR-0003 and ``webhooks.py`` for the security model:
+the webhook is treated only as a *trigger*; the authoritative payment state is
+re-fetched from Mayar's authenticated Invoice API before any premium
+activation. ``verify_notification_signature`` below implements an optional
+soft ``merchantId`` check (fail-closed when ``MAYAR_MERCHANT_ID`` is unset) so a
+cross-merchant forged payload is rejected before it triggers an API call.
+"""
 from typing import Any, Callable
 
 import httpx
@@ -11,6 +22,17 @@ from .base import PaymentProvider
 RequestFunc = Callable[..., Any]
 
 
+class MayarApiError(RuntimeError):
+    """Raised when the Mayar API returns an upstream error.
+
+    Subclasses ``RuntimeError`` so existing ``except RuntimeError`` call sites
+    still catch it, but lets the webhook handler route upstream Mayar failures
+    to 502 Bad Gateway while keeping our-own-infra (Supabase) RuntimeErrors at
+    503 Service Unavailable. Misconfiguration (missing API key / base URL) stays
+    a plain ``RuntimeError`` (503) since it is our side, not Mayar's.
+    """
+
+
 class MayarProvider(PaymentProvider):
     name = "mayar"
 
@@ -21,6 +43,7 @@ class MayarProvider(PaymentProvider):
         base_url_getter=None,
         redirect_url_getter=None,
         callback_url_getter=None,
+        merchant_id_getter=None,
         request_func: RequestFunc | None = None,
     ):
         self._api_key_getter = api_key_getter or (lambda: settings.MAYAR_API_KEY or "")
@@ -28,6 +51,7 @@ class MayarProvider(PaymentProvider):
         self._redirect_url_getter = redirect_url_getter or callback_url_getter or (
             lambda: settings.MAYAR_REDIRECT_URL or settings.MAYAR_CALLBACK_URL or ""
         )
+        self._merchant_id_getter = merchant_id_getter or (lambda: settings.MAYAR_MERCHANT_ID or "")
         self._request_func = request_func or httpx.request
 
     def _api_key(self) -> str:
@@ -68,7 +92,7 @@ class MayarProvider(PaymentProvider):
                 except Exception:
                     pass
                 if detail:
-                    raise RuntimeError(f"Mayar API error: {detail}") from exc
+                    raise MayarApiError(f"Mayar API error: {detail}") from exc
                 raise
         data = response.json()
         if not isinstance(data, dict):
@@ -76,7 +100,7 @@ class MayarProvider(PaymentProvider):
         # Surface Mayar-level errors even on HTTP 200.
         if data.get("statusCode") and data.get("statusCode") not in (200, 201):
             detail = data.get("messages") or data.get("error") or data.get("errors")
-            raise RuntimeError(f"Mayar API error: {detail or 'unknown'}")
+            raise MayarApiError(f"Mayar API error: {detail or 'unknown'}")
         return data
 
     def create_checkout(self, *, order_id: str, amount: int, plan: str, email: str) -> CheckoutResult:
@@ -107,10 +131,49 @@ class MayarProvider(PaymentProvider):
         return self._request("GET", f"/invoice/{order_id}")
 
     def verify_notification_signature(self, payload: dict) -> bool:
-        return False
+        """Soft authenticity check (Mayar has no cryptographic webhook signature).
+
+        Returns ``True`` only when ``MAYAR_MERCHANT_ID`` is configured AND the
+        payload's ``data.merchantId`` matches it. Returns ``False`` (fail-closed)
+        when the merchant id is unconfigured or the payload does not match — so a
+        forged request never triggers a downstream Mayar API re-fetch. This is a
+        soft check, not signature verification; the authoritative state is still
+        re-fetched from Mayar's authenticated API in the webhook handler.
+        """
+        configured = (self._merchant_id_getter() or "").strip()
+        if not configured:
+            return False
+        data = payload.get("data") or {}
+        candidate = str(data.get("merchantId") or "").strip()
+        if not candidate:
+            return False
+        return hmac_safe_eq(candidate, configured)
+
+    def extract_provider_order_ids(self, payload: dict) -> list[str]:
+        """Candidate Mayar invoice/link ids carried by a webhook payload.
+
+        The webhook body does not echo our ``extraData.orderId`` back, so we map
+        the notification to our ``payments`` row by matching ``provider_order_id``
+        (the Mayar invoice/payment-link id we persist at checkout) against these
+        candidates. ``data.productId``/``data.paymentLinkId`` are the payment-link
+        ids; ``data.id``/``data.transactionId`` are transaction ids — all are
+        tried so the lookup is resilient to which field Mayar populates.
+        """
+        data = payload.get("data") or {}
+        raw = [
+            data.get("productId"),
+            data.get("paymentLinkId"),
+            data.get("id"),
+            data.get("transactionId"),
+        ]
+        return [str(v).strip() for v in raw if str(v or "").strip()]
 
     def map_internal_status(self, payload: dict) -> str:
-        provider_status = (self._provider_status(payload) or "").strip().lower()
+        data = payload.get("data") or {}
+        # Prefer transactionStatus ("paid"/"created"/...) which is the canonical
+        # Mayar lifecycle field; fall back to data.status ("SUCCESS"/"PENDING").
+        status = (data.get("transactionStatus") or self._provider_status(payload) or "")
+        provider_status = str(status).strip().lower()
         if provider_status in {"paid", "success", "completed", "settlement"}:
             return "paid"
         if provider_status in {"expired", "expire"}:
@@ -129,8 +192,33 @@ class MayarProvider(PaymentProvider):
         )
 
     def extract_gross_amount(self, payload: dict):
+        """Best-effort gross amount for the orchestrator's nominal check.
+
+        The ``payload`` here is the re-fetched Mayar Invoice detail (the trusted
+        source), not the unsigned webhook body. Mayar may report ``amount`` as 0
+        even on paid transactions when fees are borne by the customer, with the
+        real value in ``nettAmount``. We return the first truthy candidate; if
+        none is truthy we return ``None`` so the orchestrator skips the nominal
+        comparison (rather than rejecting a real payment because amount == 0).
+
+        Threat model: returning ``None`` makes the nominal guard fail-open
+        (skipped). This is acceptable because we control invoice creation —
+        ``create_checkout`` always sets ``items[].rate`` to our server-side price
+        (29_000+), so a Mayar invoice with a genuinely zero amount cannot exist
+        in our flow unless WE created it with rate 0, which we never do. The
+        skip only ever triggers for the re-fetched invoice detail, not the
+        webhook body, so a forged webhook cannot craft a zero-amount bypass.
+        """
         data = payload.get("data") or {}
-        return data.get("amount") or payload.get("amount")
+        for key in ("amount", "nettAmount", "grossAmount"):
+            value = data.get(key)
+            if value is not None and str(value).strip() not in ("", "0", "0.0", "0.00"):
+                try:
+                    if float(value) > 0:
+                        return value
+                except (TypeError, ValueError):
+                    return value
+        return None
 
     def build_payment_update(self, payload: dict, *, new_status: str) -> dict:
         data = payload.get("data") or {}
@@ -157,3 +245,8 @@ class MayarProvider(PaymentProvider):
         data = payload.get("data") or {}
         status = data.get("status") or payload.get("status") or payload.get("messages")
         return str(status) if status is not None else None
+
+
+def hmac_safe_eq(a: str, b: str) -> bool:
+    import hmac
+    return hmac.compare_digest(a.encode(), b.encode())

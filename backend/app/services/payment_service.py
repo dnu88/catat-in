@@ -5,6 +5,7 @@ from app.core.auth import _get_supabase_service_client
 from app.core.config import settings
 from app.services.payments import orchestrator, repository
 from app.services.payments.providers import (
+    MayarApiError,
     MayarProvider,
     MidtransProvider,
     build_core_client,
@@ -41,6 +42,7 @@ def _mayar_provider() -> MayarProvider:
         api_key_getter=lambda: settings.MAYAR_API_KEY or "",
         base_url_getter=lambda: settings.MAYAR_BASE_URL or "",
         redirect_url_getter=lambda: settings.MAYAR_REDIRECT_URL or settings.MAYAR_CALLBACK_URL or "",
+        merchant_id_getter=lambda: settings.MAYAR_MERCHANT_ID or "",
     )
 
 
@@ -158,6 +160,42 @@ def activate_premium_from_notification(payload: dict) -> str:
     )
 
 
+def verify_mayar_notification_signature(payload: dict) -> bool:
+    """Soft ``merchantId`` check for the Mayar webhook (see ADR-0003).
+
+    Mayar does not sign webhooks. This only authenticates the merchant, not
+    the payload integrity. Fails closed when ``MAYAR_MERCHANT_ID`` is unset.
+    """
+    return _mayar_provider().verify_notification_signature(payload)
+
+
+def reconcile_mayar_notification(payload: dict) -> dict:
+    """Handle a Mayar webhook by re-fetching authoritative status from Mayar's API.
+
+    Because Mayar webhooks are unsigned, the payload is treated only as a
+    trigger, never as a source of truth. The notification is mapped to our
+    ``payments`` row via ``provider_order_id`` (the Mayar invoice id we persisted
+    at checkout) and ``fetch_and_sync_status`` re-fetches the real status from
+    Mayar's authenticated Invoice API before any premium activation. The
+    existing activation gate (``MAYAR_ACTIVATION_ENABLED``) still applies.
+    """
+    provider = _mayar_provider()
+    candidates = provider.extract_provider_order_ids(payload)
+    client = _get_supabase_service_client()
+    if client is None:
+        raise RuntimeError("Supabase service client tidak tersedia.")
+    row = repository.find_payment_by_provider_order_id(candidates, client=client)
+    if row is None:
+        return {"status": "ignored", "reason": "unmatched", "provider": "mayar"}
+    order_id = row["order_id"]
+    provider_order_id = row.get("provider_order_id") or order_id
+    return fetch_and_sync_status(
+        order_id,
+        provider_name="mayar",
+        provider_order_id=provider_order_id,
+    )
+
+
 __all__ = [
     "_core_client",
     "_snap_client",
@@ -178,4 +216,7 @@ __all__ = [
     "resolve_checkout_provider_name",
     "tier_for_count",
     "verify_notification_signature",
+    "MayarApiError",
+    "verify_mayar_notification_signature",
+    "reconcile_mayar_notification",
 ]

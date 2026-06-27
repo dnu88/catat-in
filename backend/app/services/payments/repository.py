@@ -66,6 +66,33 @@ def get_payment_by_order_id(order_id: str, client=None) -> dict | None:
     return rows[0] if rows else None
 
 
+def find_payment_by_provider_order_id(candidates: list[str], client=None) -> dict | None:
+    """Find a payment row by any stored provider_order_id (Mayar webhook mapping).
+
+    Mayar webhooks do not echo our ``order_id`` back, so the notification is
+    matched to our row by the Mayar invoice/payment-link id we persisted at
+    checkout (``provider_order_id``). ``candidates`` are the ids carried by the
+    webhook payload (data.productId / paymentLinkId / id / transactionId); the
+    first row whose ``provider_order_id`` matches any candidate wins.
+    """
+    unique = [c for c in dict.fromkeys([str(c).strip() for c in (candidates or [])]) if c]
+    if not unique:
+        return None
+    client = _resolve_client(client)
+    if client is None:
+        raise RuntimeError("Supabase service client tidak tersedia.")
+    res = (
+        client.table("payments")
+        .select(PAYMENT_SELECT_FOR_ACTIVATION)
+        .in_("provider_order_id", unique)
+        .eq("provider", "mayar")
+        .limit(1)
+        .execute()
+    )
+    rows = getattr(res, "data", None) or []
+    return rows[0] if rows else None
+
+
 def count_paid_users(client=None) -> int:
     client = _resolve_client(client)
     if client is None:

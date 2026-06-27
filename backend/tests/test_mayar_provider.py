@@ -99,18 +99,106 @@ def test_mayar_fetch_status_uses_invoice_detail_contract():
     assert request.call_args.args == ("GET", "https://api.mayar.id/hl/v1/invoice/inv-123")
     assert provider.extract_order_id(payload) == "kw-x"
     assert provider.extract_gross_amount(payload) == 29000
+    # transactionStatus absent -> falls back to data.status "PAID" -> paid
     assert provider.map_internal_status(payload) == "paid"
     assert provider.build_status_response(payload) == {"provider": "mayar", "provider_status": "PAID"}
 
 
-def test_mayar_signature_verification_is_disabled():
+def test_mayar_signature_verification_fails_closed_without_merchant_id():
+    provider = MayarProvider(
+        api_key_getter=lambda: "mayar-key",
+        base_url_getter=lambda: "https://api.mayar.id/hl/v1",
+        callback_url_getter=lambda: "https://kaswise.com/callback",
+        merchant_id_getter=lambda: "",
+    )
+
+    assert provider.verify_notification_signature({"data": {"merchantId": "m-1"}}) is False
+
+
+def test_mayar_signature_verification_matches_configured_merchant_id():
+    provider = MayarProvider(
+        api_key_getter=lambda: "mayar-key",
+        base_url_getter=lambda: "https://api.mayar.id/hl/v1",
+        callback_url_getter=lambda: "https://kaswise.com/callback",
+        merchant_id_getter=lambda: "merchant-abc",
+    )
+
+    payload = {"data": {"merchantId": "merchant-abc", "status": "SUCCESS"}}
+    assert provider.verify_notification_signature(payload) is True
+
+
+def test_mayar_signature_verification_rejects_foreign_merchant_id():
+    provider = MayarProvider(
+        api_key_getter=lambda: "mayar-key",
+        base_url_getter=lambda: "https://api.mayar.id/hl/v1",
+        callback_url_getter=lambda: "https://kaswise.com/callback",
+        merchant_id_getter=lambda: "merchant-abc",
+    )
+
+    payload = {"data": {"merchantId": "someone-else"}}
+    assert provider.verify_notification_signature(payload) is False
+
+
+def test_mayar_extract_provider_order_ids_from_webhook_payload():
+    """Real Mayar webhook payload shape (from docs webhook/history sample)."""
     provider = MayarProvider(
         api_key_getter=lambda: "mayar-key",
         base_url_getter=lambda: "https://api.mayar.id/hl/v1",
         callback_url_getter=lambda: "https://kaswise.com/callback",
     )
+    payload = {
+        "event": "payment.received",
+        "data": {
+            "id": "43b2f0ce-03f2-4f59-a341-299ea3ef19b6",
+            "transactionId": "43b2f0ce-03f2-4f59-a341-299ea3ef19b6",
+            "productId": "688b6a9f-2893-4b8a-a637-a008d91d0cfc",
+            "paymentLinkId": "688b6a9f-2893-4b8a-a637-a008d91d0cfc",
+            "status": "SUCCESS",
+            "transactionStatus": "paid",
+            "amount": 0,
+        },
+    }
 
-    assert provider.verify_notification_signature({"anything": True}) is False
+    ids = provider.extract_provider_order_ids(payload)
+    assert ids == [
+        "688b6a9f-2893-4b8a-a637-a008d91d0cfc",
+        "688b6a9f-2893-4b8a-a637-a008d91d0cfc",
+        "43b2f0ce-03f2-4f59-a341-299ea3ef19b6",
+        "43b2f0ce-03f2-4f59-a341-299ea3ef19b6",
+    ]
+
+
+def test_mayar_map_internal_status_prefers_transaction_status():
+    provider = MayarProvider(
+        api_key_getter=lambda: "mayar-key",
+        base_url_getter=lambda: "https://api.mayar.id/hl/v1",
+        callback_url_getter=lambda: "https://kaswise.com/callback",
+    )
+    # "payment.received" real payload: status SUCCESS, transactionStatus paid
+    paid = {"data": {"status": "SUCCESS", "transactionStatus": "paid"}}
+    assert provider.map_internal_status(paid) == "paid"
+    # reminder payload: status SUCCESS but transactionStatus created -> pending
+    created = {"data": {"status": "SUCCESS", "transactionStatus": "created"}}
+    assert provider.map_internal_status(created) == "pending"
+
+
+def test_mayar_extract_gross_amount_uses_nett_amount_when_amount_zero():
+    provider = MayarProvider(
+        api_key_getter=lambda: "mayar-key",
+        base_url_getter=lambda: "https://api.mayar.id/hl/v1",
+        callback_url_getter=lambda: "https://kaswise.com/callback",
+    )
+    payload = {"data": {"amount": 0, "nettAmount": 1000}}
+    assert provider.extract_gross_amount(payload) == 1000
+
+
+def test_mayar_extract_gross_amount_none_when_all_zero():
+    provider = MayarProvider(
+        api_key_getter=lambda: "mayar-key",
+        base_url_getter=lambda: "https://api.mayar.id/hl/v1",
+        callback_url_getter=lambda: "https://kaswise.com/callback",
+    )
+    assert provider.extract_gross_amount({"data": {"amount": 0}}) is None
 
 
 def test_mayar_request_surfaces_error_from_response_body():

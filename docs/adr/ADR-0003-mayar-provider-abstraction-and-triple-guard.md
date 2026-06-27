@@ -31,14 +31,14 @@ Adopt a **Provider Abstraction + Triple-Guard Architecture**:
 3. **Triple-guard safety model** (three independent config gates):
    - **Checkout allowlist** (`MAYAR_ALLOWED_EMAILS`): Only explicitly listed email addresses can initiate Mayar checkout.
    - **Activation gate** (`MAYAR_ACTIVATION_ENABLED`, default `false`): When false, Mayar `"paid"` statuses never grant premium entitlements or update the profile.
-   - **Webhook disabled** (`MAYAR_WEBHOOKS_ENABLED`, default `false`): Mayar notification callback is not wired.
+   - **Webhook endpoint wired** (`MAYAR_WEBHOOKS_ENABLED`, default `false`): `POST /api/v1/webhooks/mayar` exists and is disabled by default. Because Mayar does NOT sign webhooks, the handler is a trigger-only path: it re-fetches authoritative status from Mayar's authenticated Invoice API before any premium activation (see `reconcile_mayar_notification`). Optional soft-auth via `MAYAR_MERCHANT_ID`.
 
 ## Why Mayar Is Not Immediately Primary
 
 | Factor | Reason |
 |--------|--------|
 | **Production track record** | Midtrans has been processing Kaswise payments since launch. No existing Midtrans integration has been replaced or removed. |
-| **Webhook maturity** | Midtrans notification signature verification and status mapping are battle-tested. Mayar `verify_notification_signature` returns `False` (stub); webhooks are not wired. |
+| **Webhook maturity** | Midtrans notification signature verification and status mapping are battle-tested. Mayar provides no cryptographic webhook signature, so the Mayar handler relies on a re-fetch-from-API trust model plus an optional `MAYAR_MERCHANT_ID` soft check instead of signature verification. |
 | **Cost negotiation** | Mayar integration is motivated by lower fees. The switch should happen only after sandbox testing confirms parity and the business is ready to migrate. |
 | **Single-Primary constraint** | `PAYMENT_PRIMARY_PROVIDER` accepts one value (`midtrans` or `mayar`). Multi-provider per-user selection is not implemented. |
 
@@ -51,7 +51,7 @@ Adopt a **Provider Abstraction + Triple-Guard Architecture**:
 - Provider-neutral response fields (`provider`, `provider_status`) allow the mobile client to display provider-specific status without tight coupling.
 
 ### Negative
-- Mayar webhooks and notification signature verification are not implemented yet.
+- Mayar webhooks are implemented behind `MAYAR_WEBHOOKS_ENABLED`; Mayar provides no signature, so the webhook handler re-fetches authoritative status from Mayar's authenticated Invoice API and never trusts the inbound payload for activation.
 - Payment provider selection is not exposed to the user — only `PAYMENT_PRIMARY_PROVIDER` controls which gateway is called.
 - The Mayar `build_payment_update` and `build_status_response` implementations are optimistic — they may need tuning once real webhook payloads arrive.
 
