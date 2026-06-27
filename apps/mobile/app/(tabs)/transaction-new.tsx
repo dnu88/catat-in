@@ -9,7 +9,7 @@ import {
 	View,
 } from "react-native";
 import { PageEntrance, StaggeredStack } from "../../src/components/motion";
-import * as ExpoRouter from "expo-router";
+import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 
 import { IOSWheelDatePicker } from "../../src/components/date/IOSWheelDatePicker";
 import { KaswiseIcon } from "../../src/components/icons/kaswise-icons";
@@ -250,8 +250,8 @@ export default function TransactionNewScreen() {
 		[isEn],
 	);
 	const { activeContext, canCreate } = useFinanceContext();
-	const router = ExpoRouter.useRouter();
-	const rawParams = (ExpoRouter as any).useLocalSearchParams?.() ?? {};
+	const router = useRouter();
+	const rawParams = useLocalSearchParams() ?? {};
 	const transactionId = Array.isArray(rawParams.transactionId)
 		? rawParams.transactionId[0]
 		: rawParams.transactionId;
@@ -385,12 +385,14 @@ export default function TransactionNewScreen() {
 		}
 	}, [activeContext, activeContextKey, isEditMode, transactionId, isEn, tx]);
 
-	useEffect(() => {
-		void loadInitialData();
-		return () => {
-			loadRequestRef.current += 1;
-		};
-	}, [loadInitialData]);
+	useFocusEffect(
+		useCallback(() => {
+			void loadInitialData();
+			return () => {
+				loadRequestRef.current += 1;
+			};
+		}, [loadInitialData]),
+	);
 
 	const amountValue = parseAmount(amountInput);
 	const resolvedCategory = (
