@@ -77,7 +77,7 @@ The second commit (`850fb31`) ensures that when `MAYAR_ACTIVATION_ENABLED=false`
 
 ## Future Work (Roadmap)
 
-- **Mayar webhook endpoint**: Wire a `/api/v1/webhooks/mayar` endpoint behind `MAYAR_WEBHOOKS_ENABLED` and implement `verify_notification_signature` properly.
+- ~~**Mayar webhook endpoint**: Wire a `/api/v1/webhooks/mayar` endpoint behind `MAYAR_WEBHOOKS_ENABLED` and implement `verify_notification_signature` properly.~~ — DONE (2026-06-26): endpoint wired behind `MAYAR_WEBHOOKS_ENABLED`; Mayar has no cryptographic signature, so the handler re-fetches authoritative status from Mayar's authenticated Invoice API (`reconcile_mayar_notification`) plus an optional `MAYAR_MERCHANT_ID` soft-auth.
 - **Payment method selector**: Expose provider choice to the upgrade UI when more than one provider is supported for the user.
 - **Fallback chain**: If primary provider checkout fails, try secondary provider automatically before failing.
 - **Promote Mayar to primary**: Flip `PAYMENT_PRIMARY_PROVIDER=mayar` once production-tested and Midtrans contract renegotiation is complete.

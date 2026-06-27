@@ -19,6 +19,12 @@ Format: Keep a Changelog.
   - Triple-guard safety model: `MAYAR_ALLOWED_EMAILS` (checkout allowlist), `MAYAR_ACTIVATION_ENABLED` (activation gate, default false), `MAYAR_WEBHOOKS_ENABLED` (webhook disabled, default false).
   - `MAYAR_ACTIVATION_ENABLED` applied to both `fetch_and_sync_status` and `activate_premium_from_notification`, so Mayar paid statuses never grant premium entitlements unless explicitly enabled.
   - Mobile billing service types (`CreatedPayment`, `PaymentStatus`) extended with optional `provider` and `provider_status` fields.
+- Implemented the Mayar webhook endpoint `POST /api/v1/webhooks/mayar` for server-to-server premium activation, gated behind `MAYAR_WEBHOOKS_ENABLED`.
+  - Mayar does NOT sign webhook payloads, so the handler treats each notification only as a trigger and re-fetches authoritative status from Mayar's authenticated Invoice API (`GET /invoice/{id}`) before activating premium (`reconcile_mayar_notification` in `payment_service.py`).
+  - Maps the unsigned notification to our `payments` row via `provider_order_id` (the Mayar invoice id persisted at checkout) using the new `repository.find_payment_by_provider_order_id` lookup, which uses the existing `payments_provider_order_idx` index.
+  - Optional soft-auth `MAYAR_MERCHANT_ID` header-less check rejects cross-merchant payloads before the re-fetch (fail-closed when unset by relying on the re-fetch-from-API trust model).
+  - `MayarProvider` hardened for the webhook payload shape: `map_internal_status` prefers `transactionStatus`, `extract_gross_amount` falls back to `nettAmount` and returns `None` when amount is 0 (so the orchestrator's nominal check skips instead of rejecting real Mayar payments), and `extract_provider_order_ids` reads candidate invoice ids from `data.productId`/`paymentLinkId`/`id`/`transactionId`.
+  - Operator reconciliation script `backend/scripts/reconcile_mayar_payment.py` for stuck Mayar orders paid while the activation gate was closed.
 
 ### Fixed
 

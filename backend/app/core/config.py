@@ -108,6 +108,11 @@ class Settings(BaseSettings):
     MAYAR_ALLOWED_EMAILS: List[str] = []
     MAYAR_WEBHOOKS_ENABLED: bool = False
     MAYAR_ACTIVATION_ENABLED: bool = False
+    # Optional soft-auth: Mayar does not sign webhooks (see ADR-0003). If set,
+    # the Mayar webhook handler rejects any payload whose data.merchantId does
+    # not match this before triggering a re-fetch. Leave empty to rely solely on
+    # the re-fetch-from-API trust model.
+    MAYAR_MERCHANT_ID: str | None = None
 
     # Supabase
     SUPABASE_URL: str | None = None

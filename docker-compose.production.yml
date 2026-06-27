@@ -56,11 +56,12 @@ services:
       - PAYMENT_PRIMARY_PROVIDER=${PAYMENT_PRIMARY_PROVIDER:-midtrans}
       # ── Mayar ─────────────────────────────────────────
       - MAYAR_API_KEY=${MAYAR_API_KEY:-}
-      - MAYAR_BASE_URL=${MAYAR_BASE_URL:-https://api.mayar.id}
+      - MAYAR_BASE_URL=${MAYAR_BASE_URL:-https://api.mayar.id/hl/v1}
       - MAYAR_REDIRECT_URL=${MAYAR_REDIRECT_URL:-}
       - MAYAR_WEBHOOKS_ENABLED=${MAYAR_WEBHOOKS_ENABLED:-false}
       - MAYAR_ACTIVATION_ENABLED=${MAYAR_ACTIVATION_ENABLED:-false}
       - MAYAR_ALLOWED_EMAILS=${MAYAR_ALLOWED_EMAILS:-}
+      - MAYAR_MERCHANT_ID=${MAYAR_MERCHANT_ID:-}
       # ── Storage ───────────────────────────────────────
       - STORAGE_BUCKET_RECEIPTS=${STORAGE_BUCKET_RECEIPTS:-receipts}
       - STORAGE_BUCKET_AVATARS=${STORAGE_BUCKET_AVATARS:-avatars}
