@@ -13,6 +13,7 @@ import {
 	canUpdateInContext,
 	type FinanceContext,
 } from "./finance-context-query";
+import { notifyWalletChanged } from "./wallet-events";
 
 export type TransactionType = "income" | "expense" | "transfer";
 
@@ -229,6 +230,7 @@ export async function createTransaction(
 
 	const created = normalizeTransaction(data);
 	await syncBudgetAllocationSafely(created, userId, context);
+	notifyWalletChanged();
 	return created;
 }
 
@@ -289,6 +291,7 @@ export async function updateTransaction(
 
 	const updated = normalizeTransaction(data);
 	await syncBudgetAllocationSafely(updated, userId, context);
+	notifyWalletChanged();
 	return updated;
 }
 
@@ -306,4 +309,5 @@ export async function deleteTransaction(
 
 	const { error } = await supabase.from("transactions").delete().eq("id", id);
 	if (error) throw error;
+	notifyWalletChanged();
 }
