@@ -142,6 +142,14 @@ File: `supabase/migrations/202606010001_security_hardening_phase2.sql` (versi ha
 
 Transfer dibuat sebagai satu baris transaksi dengan `type = 'transfer'`, `wallet_id = sumber`, `target_wallet_id = tujuan`. Trigger otomatis mendebit sumber dan mengkredit tujuan. UI di `transaction-new.tsx` menyediakan pemilih dompet sumber dan tujuan, auto-generate deskripsi `Sumber → Tujuan`, dan menyembunyikan field kategori/deskripsi.
 
+### Wallet list: auto-refresh dengan useFocusEffect
+
+Capture screen (`capture.tsx`) dan manual entry (`transaction-new.tsx`) menggunakan `useFocusEffect` (dari expo-router) bukan `useEffect` untuk memuat daftar dompet. Ini memastikan wallet list direfresh setiap kali screen mendapat fokus — dompet baru yang dibuat di halaman Dompet langsung terlihat dan terpilih tanpa perlu refresh manual.
+
+### Dashboard wallet chips
+
+Dashboard hero card (`index.tsx`) menampilkan chip horizontal untuk setiap dompet aktif (nama + saldo). Chip bisa di-tap untuk navigasi ke halaman Dompet. Ini membantu user melihat sekilas dompet mana saja yang aktif dan saldonya tanpa harus pindah halaman.
+
 ### Budget category simplification: Household + Personal Care digabung di mobile
 
 Sejak 2026-06, mobile menyatukan kategori `Household` dan `Personal Care` ke satu kategori canonical `Household & Personal Care` / `Kebutuhan Rumah & Pribadi`. Tujuannya menyederhanakan Budget Wallets dan Reports tanpa menambah permukaan UI baru. Alias kategori lama tetap diterima oleh taxonomy, tetapi visual dan label user-facing harus memakai kategori gabungan ini dengan icon bersama `Basket`.
@@ -157,6 +165,11 @@ Store transaksi di dashboard hanya mengambil 5 transaksi terakhir (untuk list "t
 - **Root cause:** Beberapa bug ditemukan saat pre-release audit: (1) capture screen tidak refresh wallet list setelah transaksi, (2) form manual entry selalu reset ke expense, (3) edit wallet menampilkan input balance yang tidak pernah terkirim, (4) receipt RLS fallback silent null-kan wallet_id.
 - **Fix:** (1) `capture.tsx` panggil `loadWalletOptions()` setelah transaksi text dan receipt, (2) `transaction-new.tsx` pertahankan `txType` terakhir, (3) `wallets.tsx` ganti input balance jadi read-only display, (4) receipt flow tampilkan warning saat fallback. Juga tambah fitur transfer antar wallet (migration `202606270001`).
 - **Audit doc:** `docs/audit/2026-06-27-transaction-logic-audit.md`
+
+### [2026-06] Wallet auto-select & dashboard chips
+- **File:** `apps/mobile/app/(tabs)/capture.tsx`, `apps/mobile/app/(tabs)/transaction-new.tsx`, `apps/mobile/app/(tabs)/index.tsx`
+- **Root cause:** Wallet list hanya dimuat saat `activeContext` berubah, bukan saat screen mendapat fokus. Dompet baru tidak langsung muncul di selector capture/manual entry.
+- **Fix:** Ganti `useEffect` jadi `useFocusEffect` agar wallet list refresh setiap tab focus. Dashboard hero card tambah chip horizontal dompet aktif.
 
 ### [2026-06] Mobile review queue tetap menampilkan transaksi yang sudah direview
 - **File:** `apps/mobile/src/services/transactions.ts`, `apps/mobile/src/services/transaction-review.ts`, `apps/mobile/app/(tabs)/transactions.tsx`, `apps/mobile/app/(tabs)/capture.tsx`, `apps/mobile/app/(tabs)/transaction-new.tsx`
