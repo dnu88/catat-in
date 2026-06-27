@@ -140,6 +140,10 @@ jest.mock("../src/lib/supabase", () => ({
 
 jest.mock("expo-router", () => ({
 	useRouter: () => ({ push: jest.fn() }),
+	useFocusEffect: (callback: () => void | (() => void)) => {
+		const React = require("react");
+		React.useEffect(() => callback(), [callback]);
+	},
 }));
 
 function renderCapture() {
