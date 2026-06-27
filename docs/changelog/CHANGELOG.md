@@ -25,6 +25,10 @@ Format: Keep a Changelog.
   - Trigger atomically debits source wallet and credits destination wallet.
   - Edit and delete of transfer transactions correctly reverse both wallet balances.
 
+- **Wallet auto-select & dashboard chips (27 Jun 2026):**
+  - `capture.tsx` and `transaction-new.tsx` now use `useFocusEffect` instead of `useEffect` — wallet list reloads every time the screen gains focus, so newly created wallets appear and auto-select immediately.
+  - Dashboard hero card now shows a horizontal row of wallet chips (name + balance) below the metrics, tappable to navigate to the wallets screen.
+
 ### Added
 
 - Implemented a config-gated Mayar payment provider skeleton with a provider-neutral abstraction layer (PR #24).
