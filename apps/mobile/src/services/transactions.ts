@@ -14,12 +14,13 @@ import {
 	type FinanceContext,
 } from "./finance-context-query";
 
-export type TransactionType = "income" | "expense";
+export type TransactionType = "income" | "expense" | "transfer";
 
 const defaultContext: FinanceContext = { type: "personal" };
 
 export interface TransactionCreate {
 	wallet_id?: string | null;
+	target_wallet_id?: string | null;
 	transaction_type: TransactionType;
 	amount: number;
 	category: string;
@@ -46,6 +47,7 @@ export interface Transaction {
 	id: string;
 	user_id: string;
 	wallet_id: string | null;
+	target_wallet_id?: string | null;
 	transaction_type: TransactionType;
 	type?: string | null;
 	nominal?: number | null;
@@ -104,6 +106,7 @@ function buildInsertPayload(tx: TransactionCreate, userId: string) {
 		created_by: userId,
 	};
 
+	if (tx.target_wallet_id != null) payload.target_wallet_id = tx.target_wallet_id;
 	if (tx.merchant != null) payload.merchant = tx.merchant;
 	if (tx.date != null) payload.tanggal = tx.date;
 	if (tx.payment_method != null) payload.payment_method = tx.payment_method;
@@ -127,6 +130,7 @@ function buildUpdatePayload(updates: Partial<TransactionCreate>) {
 	const payload: Record<string, unknown> = {};
 
 	if ("wallet_id" in updates) payload.wallet_id = updates.wallet_id ?? null;
+	if ("target_wallet_id" in updates) payload.target_wallet_id = updates.target_wallet_id ?? null;
 	if ("transaction_type" in updates) payload.type = updates.transaction_type;
 	if ("amount" in updates) payload.nominal = updates.amount;
 	if ("category" in updates) payload.kategori = updates.category;

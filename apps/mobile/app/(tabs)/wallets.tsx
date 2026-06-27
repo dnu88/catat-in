@@ -352,15 +352,15 @@ export default function WalletsScreen() {
 							onChangeText={setEditName}
 							style={styles.input}
 						/>
-						<TextInput
-							accessibilityLabel={tx.editBalance}
-							placeholder={tx.editBalance}
-							placeholderTextColor={theme.colors.textMuted}
-							value={editBalance}
-							onChangeText={setEditBalance}
-							keyboardType="numeric"
-							style={styles.input}
-						/>
+						{/* Balance is transaction-managed (database trigger) — display only */}
+						<View style={[styles.input, { justifyContent: "center" }]}>
+							<Text style={{ color: theme.colors.textSecondary, fontSize: 12, fontWeight: "700" }}>
+								{tx.editBalance}
+							</Text>
+							<Text style={{ color: theme.colors.textPrimary, fontSize: 16, marginTop: 4 }}>
+								{formatCurrency(Number(editingWallet.balance ?? 0))}
+							</Text>
+						</View>
 						<View style={styles.typeGrid}>
 							{walletTypes.map((walletType) => (
 								<Pressable

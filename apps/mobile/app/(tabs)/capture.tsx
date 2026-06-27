@@ -422,6 +422,9 @@ export default function CaptureScreen() {
 			);
 			setTextInput("");
 			setSubmitting(false);
+
+			// Refresh wallet list so balance stays current after transaction.
+			void loadWalletOptions();
 		} catch (e) {
 			setError(tx.systemError);
 			setSubmitting(false);
@@ -524,6 +527,8 @@ export default function CaptureScreen() {
 		setSubmitting(true);
 		setError(null);
 
+		let receiptFellBackToNoWallet = false;
+
 		try {
 			const createReceiptItemTransaction = async (draft: ReceiptTransactionDraft) => {
 				const receiptPayload = {
@@ -554,6 +559,7 @@ export default function CaptureScreen() {
 						throw createError;
 					}
 					console.error("Receipt transaction wallet scope failed; retrying without wallet:", createError);
+					receiptFellBackToNoWallet = true;
 					return createTransaction(
 						{ ...receiptPayload, wallet_id: null },
 						activeContext,
@@ -584,11 +590,21 @@ export default function CaptureScreen() {
 				tanggal: firstDraft.date,
 			});
 			setTransactionId(createdTransaction.id);
-			setQueuedMessage(
-				receiptDrafts.length > 1
-					? `${receiptDrafts.length} transaksi item struk tersimpan.`
-					: tx.receiptSaved,
-			);
+
+			let receiptMessage = receiptDrafts.length > 1
+				? `${receiptDrafts.length} transaksi item struk tersimpan.`
+				: tx.receiptSaved;
+
+			if (receiptFellBackToNoWallet) {
+				receiptMessage += isEn
+					? " (saved without wallet sync)"
+					: " (tersimpan tanpa sinkronisasi dompet)";
+			}
+
+			setQueuedMessage(receiptMessage);
+
+			// Refresh wallet list so balance stays current after receipt save.
+			void loadWalletOptions();
 		} catch (error) {
 			setError(
 				error instanceof Error

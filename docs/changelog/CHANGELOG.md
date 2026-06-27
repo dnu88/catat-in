@@ -6,6 +6,25 @@ Format: Keep a Changelog.
 
 ## Unreleased
 
+### Fixed
+
+- **Transaction logic audit & fixes (27 Jun 2026):**
+  - BUG #1: Verified `sync_wallet_balance_from_transaction` trigger is active in production. Added logging guard for scope mismatch silent failures.
+  - BUG #2: `capture.tsx` now refreshes wallet list after text/receipt transaction create so wallet balance stays current.
+  - BUG #3: `transaction-new.tsx` no longer resets transaction type to "expense" after submit — preserves user's last selection.
+  - BUG #5: `transaction-new.tsx` now includes wallet sync status in success message (e.g., "Transaksi tersimpan" or warns when no wallet selected).
+  - BUG #6: `capture.tsx` receipt flow now warns user when transaction falls back to no-wallet due to RLS scope mismatch.
+  - BUG #7: `wallets.tsx` edit form now shows balance as read-only display (balance is transaction-managed, direct edit was never applied).
+
+### Added
+
+- **Transfer between wallets (27 Jun 2026):**
+  - New `transfer` transaction type: move money between two wallets in a single step.
+  - Supabase migration `202606270001` adds `target_wallet_id` column, extends `transaction_type` enum, and updates `sync_wallet_balance_from_transaction` trigger.
+  - `transaction-new.tsx` supports transfer mode with source and destination wallet selectors.
+  - Trigger atomically debits source wallet and credits destination wallet.
+  - Edit and delete of transfer transactions correctly reverse both wallet balances.
+
 ### Added
 
 - Implemented a config-gated Mayar payment provider skeleton with a provider-neutral abstraction layer (PR #24).
