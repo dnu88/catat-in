@@ -140,6 +140,7 @@ jest.mock("../src/lib/supabase", () => ({
 
 jest.mock("expo-router", () => ({
 	useRouter: () => ({ push: jest.fn() }),
+	useFocusEffect: jest.fn(),
 }));
 
 function renderCapture() {
