@@ -22,6 +22,7 @@ import {
 } from "../../src/services/wallets";
 import { useFinanceContext } from "../../src/state/finance-context";
 import { useTheme } from "../../src/theme/theme-context";
+import { subscribeWalletChanges } from "../../src/services/wallet-events";
 
 type WalletType = "bank" | "ewallet" | "cash" | "investment";
 type FilterType = "all" | WalletType;
@@ -213,6 +214,15 @@ export default function WalletsScreen() {
 			};
 		}, [loadWallets]),
 	);
+
+	// Real-time refresh: when a transaction is created/updated/deleted in any tab,
+	// reload wallets immediately so balance stays current without tab switch.
+	useEffect(() => {
+		const unsub = subscribeWalletChanges(() => {
+			if (!loading) void loadWallets();
+		});
+		return unsub;
+	}, [loadWallets, loading]);
 
 	const contextForWallet = (wallet: ScopedWallet) =>
 		wallet.scopeType === "household"
