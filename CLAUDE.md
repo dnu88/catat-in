@@ -144,7 +144,7 @@ Transfer dibuat sebagai satu baris transaksi dengan `type = 'transfer'`, `wallet
 
 ### Wallet list: auto-refresh dengan useFocusEffect
 
-Capture screen (`capture.tsx`) dan manual entry (`transaction-new.tsx`) menggunakan `useFocusEffect` (dari expo-router) bukan `useEffect` untuk memuat daftar dompet. Ini memastikan wallet list direfresh setiap kali screen mendapat fokus — dompet baru yang dibuat di halaman Dompet langsung terlihat dan terpilih tanpa perlu refresh manual.
+Capture screen (`capture.tsx`) dan manual entry (`transaction-new.tsx`) menggunakan `useFocusEffect` (dari expo-router) bukan `useEffect` untuk memuat daftar dompet. Ini memastikan wallet list direfresh setiap kali screen mendapat fokus — dompet baru yang dibuat di halaman Dompet langsung terlihat dan terpilih tanpa perlu refresh manual. Hal yang sama berlaku untuk halaman Wallet itu sendiri (`wallets.tsx`) agar balance selalu sinkron saat tab Wallet difokuskan.
 
 ### Dashboard wallet chips
 
@@ -170,6 +170,11 @@ Store transaksi di dashboard hanya mengambil 5 transaksi terakhir (untuk list "t
 - **File:** `apps/mobile/app/(tabs)/capture.tsx`, `apps/mobile/app/(tabs)/transaction-new.tsx`, `apps/mobile/app/(tabs)/index.tsx`
 - **Root cause:** Wallet list hanya dimuat saat `activeContext` berubah, bukan saat screen mendapat fokus. Dompet baru tidak langsung muncul di selector capture/manual entry.
 - **Fix:** Ganti `useEffect` jadi `useFocusEffect` agar wallet list refresh setiap tab focus. Dashboard hero card tambah chip horizontal dompet aktif.
+
+### [2026-06] Wallets screen refresh on focus
+- **File:** `apps/mobile/app/(tabs)/wallets.tsx`
+- **Root cause:** Sama seperti bug capture/manual-entry — `useEffect` hanya trigger sekali saat mount, jadi wallet balance tidak sinkron saat user balik ke tab Wallet setelah input transaksi.
+- **Fix:** Ganti `useEffect` jadi `useFocusEffect`. Wallet list dan balance refresh setiap tab Wallet difokuskan.
 
 ### [2026-06] Mobile review queue tetap menampilkan transaksi yang sudah direview
 - **File:** `apps/mobile/src/services/transactions.ts`, `apps/mobile/src/services/transaction-review.ts`, `apps/mobile/app/(tabs)/transactions.tsx`, `apps/mobile/app/(tabs)/capture.tsx`, `apps/mobile/app/(tabs)/transaction-new.tsx`

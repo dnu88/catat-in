@@ -29,6 +29,11 @@ Format: Keep a Changelog.
   - `capture.tsx` and `transaction-new.tsx` now use `useFocusEffect` instead of `useEffect` — wallet list reloads every time the screen gains focus, so newly created wallets appear and auto-select immediately.
   - Dashboard hero card now shows a horizontal row of wallet chips (name + balance) below the metrics, tappable to navigate to the wallets screen.
 
+### Fixed
+
+- **Wallets screen refresh on focus (27 Jun 2026):**
+  - `wallets.tsx` also used `useEffect` so wallet balances were stale after switching tabs. Changed to `useFocusEffect` — wallet list and balances now refresh every time the Wallets tab gains focus.
+
 ### Added
 
 - Implemented a config-gated Mayar payment provider skeleton with a provider-neutral abstraction layer (PR #24).
