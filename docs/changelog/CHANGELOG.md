@@ -31,6 +31,18 @@ Format: Keep a Changelog.
 
 ### Fixed
 
+- **AI capture: prefer local classifier over AI backend (28 Jun 2026):**
+  - `capture.tsx` swaps priority from AI backend to local keyword classifier when both return equal results. Fixes English inputs like "paid credit card" going to "Other expenses".
+
+- **Budget envelope matching: fallback by envelope name (28 Jun 2026):**
+  - `budget-envelopes.ts` — `envelopeMatchesTransactionCategory` now falls back to matching the envelope name (via `areCategoryNamesEquivalent`) even when `parent_category_id` is set. Previously a null `parent_category_name` caused silent sync failure.
+
+- **Kartu Kredit category deduplication (28 Jun 2026):**
+  - `transaction-new.tsx` deduplicates default categories by canonical ID. Prevents duplicate entries when both "Kartu Kredit" and "Credit Card" exist in the database.
+
+- **Budget sync error logging (28 Jun 2026):**
+  - `transactions.ts` — `syncBudgetAllocationSafely` logs errors to console instead of silently swallowing them.
+
 - **Wallets screen refresh on focus (27 Jun 2026):**
   - `wallets.tsx` also used `useEffect` so wallet balances were stale after switching tabs. Changed to `useFocusEffect` — wallet list and balances now refresh every time the Wallets tab gains focus.
 

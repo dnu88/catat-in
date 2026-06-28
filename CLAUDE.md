@@ -172,6 +172,17 @@ Store transaksi di dashboard hanya mengambil 5 transaksi terakhir (untuk list "t
 - **Root cause:** Sama seperti bug capture/manual-entry — `useEffect` hanya trigger sekali saat mount, jadi wallet balance tidak sinkron saat user balik ke tab Wallet setelah input transaksi.
 - **Fix:** Ganti `useEffect` jadi `useFocusEffect`. Wallet list dan balance refresh setiap tab Wallet difokuskan.
 
+### [2026-06] AI classifier priority & budget envelope matching
+- **File:** `apps/mobile/app/(tabs)/capture.tsx`, `apps/mobile/src/services/budget-envelopes.ts`, `apps/mobile/src/services/transactions.ts`, `apps/mobile/app/(tabs)/transaction-new.tsx`
+- **Bug 1:** AI capture input English seperti "paid credit card" masuk kategori "Other expenses".
+  - **Fix:** `capture.tsx` prioritas classifier lokal daripada AI backend saat jumlah hasil sama.
+- **Bug 2:** Budget envelope Kartu Kredit tidak sync dengan transaksi karena `parent_category_name` null.
+  - **Fix:** `budget-envelopes.ts` fallback matching nama envelope via `areCategoryNamesEquivalent`.
+- **Bug 3:** Kategori Kartu Kredit muncul duplikat di Catat Manual karena DB menyimpan "Kartu Kredit" dan "Credit Card".
+  - **Fix:** `transaction-new.tsx` dedup kategori via canonical ID.
+- **Bug 4:** Error budget sync yang silent.
+  - **Fix:** `transactions.ts` tambah `console.error`.
+
 ### [2026-06] Mobile review queue tetap menampilkan transaksi yang sudah direview
 - **File:** `apps/mobile/src/services/transactions.ts`, `apps/mobile/src/services/transaction-review.ts`, `apps/mobile/app/(tabs)/transactions.tsx`, `apps/mobile/app/(tabs)/capture.tsx`, `apps/mobile/app/(tabs)/transaction-new.tsx`
 - **Root cause:** filter review hanya bergantung pada `review_required`/confidence dan belum menghormati state verifikasi final, sehingga transaksi yang sudah direview masih dianggap reviewable.
