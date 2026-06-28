@@ -500,7 +500,7 @@ describe("DashboardScreen dark luxury Home parity", () => {
 				"Rp 1.200.000",
 			),
 		);
-		expect(screen.queryByText("Family Wallet")).toBeTruthy();
+		expect(screen.queryByText("Family Wallet")).toBeNull();
 		expect(screen.getByText("Family Mart")).toBeTruthy();
 		expect(screen.getByText("Payroll")).toBeTruthy();
 		const expenseAmountStyle = StyleSheet.flatten(

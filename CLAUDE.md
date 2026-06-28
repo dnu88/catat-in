@@ -146,10 +146,6 @@ Transfer dibuat sebagai satu baris transaksi dengan `type = 'transfer'`, `wallet
 
 Capture screen (`capture.tsx`) dan manual entry (`transaction-new.tsx`) menggunakan `useFocusEffect` (dari expo-router) bukan `useEffect` untuk memuat daftar dompet. Ini memastikan wallet list direfresh setiap kali screen mendapat fokus — dompet baru yang dibuat di halaman Dompet langsung terlihat dan terpilih tanpa perlu refresh manual. Hal yang sama berlaku untuk halaman Wallet itu sendiri (`wallets.tsx`) agar balance selalu sinkron saat tab Wallet difokuskan.
 
-### Dashboard wallet chips
-
-Dashboard hero card (`index.tsx`) menampilkan chip horizontal untuk setiap dompet aktif (nama + saldo). Chip bisa di-tap untuk navigasi ke halaman Dompet. Ini membantu user melihat sekilas dompet mana saja yang aktif dan saldonya tanpa harus pindah halaman.
-
 ### Budget category simplification: Household + Personal Care digabung di mobile
 
 Sejak 2026-06, mobile menyatukan kategori `Household` dan `Personal Care` ke satu kategori canonical `Household & Personal Care` / `Kebutuhan Rumah & Pribadi`. Tujuannya menyederhanakan Budget Wallets dan Reports tanpa menambah permukaan UI baru. Alias kategori lama tetap diterima oleh taxonomy, tetapi visual dan label user-facing harus memakai kategori gabungan ini dengan icon bersama `Basket`.
