@@ -27,7 +27,7 @@ import {
 } from "../../src/services/transactions";
 import { listWallets, type Wallet } from "../../src/services/wallets";
 import { listCategories, type Category } from "../../src/services/categories";
-import { areCategoryNamesEquivalent, getLocalizedCategoryName } from "../../src/services/category-taxonomy";
+import { areCategoryNamesEquivalent, getCategoryCanonicalId, getLocalizedCategoryName } from "../../src/services/category-taxonomy";
 
 type CategoryOption = { name: string; icon: KaswiseIconName };
 
@@ -309,13 +309,18 @@ export default function TransactionNewScreen() {
 				(c) => c.is_default !== false,
 			);
 			if (defaultCategoryData.length > 0) {
-				categoryOptions = defaultCategoryData.map((c) => {
+				const seen = new Set<string>();
+				categoryOptions = [];
+				for (const c of defaultCategoryData) {
 					const localizedName = getLocalizedCategoryName(c.name, isEn ? "en" : "id");
-					return {
+					const canonicalId = getCategoryCanonicalId(c.name);
+					if (canonicalId && seen.has(canonicalId)) continue;
+					if (canonicalId) seen.add(canonicalId);
+					categoryOptions.push({
 						name: localizedName,
 						icon: normalizeCategoryIcon(c.icon, localizedName),
-					};
-				});
+					});
+				}
 			}
 
 			let transaction: Awaited<ReturnType<typeof getTransaction>> = null;
