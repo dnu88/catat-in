@@ -10,6 +10,7 @@ from fastapi.middleware.trustedhost import TrustedHostMiddleware
 
 from app.api.v1 import ai, imports, webhooks, me, payments, notifications
 from app.core.config import settings
+from app.core.rate_limit import RateLimitMiddleware
 
 
 app = FastAPI(
@@ -59,6 +60,10 @@ app.add_middleware(
     allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allow_headers=["Authorization", "authorization", "Content-Type", "content-type", "X-Client-Info", "x-client-info", "Apikey", "apikey"],
 )
+
+# ── Rate limiting (IP-based) for webhooks and payment endpoints ──
+# Authenticated endpoints (AI, import, etc.) use dependency-based limiters.
+app.add_middleware(RateLimitMiddleware)
 
 
 API_PREFIX = "/api/v1"

@@ -5,6 +5,7 @@ import { Text, View } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { I18nProvider, useI18n } from "../src/i18n/i18n-context";
 import { SupabaseProvider } from "../src/lib/supabase";
+import { Sentry } from "../src/lib/sentry";
 import { FinanceContextProvider } from "../src/state/finance-context";
 import { ReportPeriodProvider } from "../src/state/report-period";
 import { ThemeProvider, useTheme } from "../src/theme/theme-context";
@@ -94,7 +95,7 @@ function ThemedRootStack() {
 	);
 }
 
-export default function RootLayout() {
+function RootLayout() {
 	return (
 		<SafeAreaProvider>
 			<SupabaseProvider>
@@ -113,3 +114,5 @@ export default function RootLayout() {
 		</SafeAreaProvider>
 	);
 }
+
+export default Sentry.wrap(RootLayout);

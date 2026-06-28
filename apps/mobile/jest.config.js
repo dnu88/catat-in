@@ -8,4 +8,13 @@ module.exports = {
   moduleNameMapper: {
     '^@react-native/assets-registry/registry$': '<rootDir>/node_modules/@react-native/assets-registry/registry.js',
   },
+  collectCoverageFrom: ['src/services/**/*.ts', 'src/state/**/*.tsx'],
+  coverageThreshold: {
+    global: {
+      branches: 60,
+      functions: 60,
+      lines: 70,
+      statements: 70,
+    },
+  },
 };

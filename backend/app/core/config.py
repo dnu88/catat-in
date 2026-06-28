@@ -156,11 +156,17 @@ class Settings(BaseSettings):
     PRICE_YEARLY_NORMAL: int = 349_000
     PROMO_MAX_SUBSCRIBERS: int = 100
 
-    # Rate limiting
+    # Rate limiting — user-scoped (dependency-based)
     RATE_LIMIT_DEFAULT: int = 100
-    RATE_LIMIT_AI_ENDPOINT: int = 20
+    RATE_LIMIT_AI_ENDPOINT: int = 20          # free users — /api/v1/ai/chat, etc.
+    RATE_LIMIT_AI_PREMIUM: int = 100           # premium users — /api/v1/ai/chat, etc.
     RATE_LIMIT_IMPORT_ENDPOINT: int = 10
     RATE_LIMIT_PAYMENT_STATUS_ENDPOINT: int = 30
+
+    # Rate limiting — IP-based (middleware)
+    RATE_LIMIT_PAYMENTS_IP: int = 10           # /api/v1/payments/*
+    MAYAR_WEBHOOK_RATE_LIMIT: int = 5          # /api/v1/webhooks/mayar
+    MAYAR_WEBHOOK_MAX_INVALID_PAYLOADS: int = 10  # block IP after N invalid payloads
 
     # Business rules
     FREE_TIER_RECEIPT_UPLOAD_LIMIT: int = 10
