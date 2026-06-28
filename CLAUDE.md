@@ -223,6 +223,27 @@ Store transaksi di dashboard hanya mengambil 5 transaksi terakhir (untuk list "t
 - **File:** `apps/web/src/lib/firestore.ts`, `apps/web/src/store/wallet.store.ts`, `apps/web/src/pages/WalletPage.tsx`
 - **Fix:** Tambah `recalculateWalletBalances()` + aksi store `recalculateBalances()` + tombol `Recalculate Saldo` di halaman Wallet.
 
+### [2026-06] Sentry error tracking
+- **File:** `apps/mobile/src/lib/sentry.ts`, `apps/mobile/app/_layout.tsx`, `apps/mobile/app/(tabs)/capture.tsx`, `apps/mobile/src/services/transactions.ts`
+- **Feature:** `@sentry/react-native` installed. Initialized with Expo Go guard. Wired to 6 error handlers.
+- **Env:** `EXPO_PUBLIC_SENTRY_DSN` required in production.
+
+### [2026-06] Rate limiting
+- **File:** `backend/app/core/rate_limit.py`, `backend/app/core/config.py`, `backend/main.py`, `backend/app/api/v1/webhooks.py`
+- **Feature:** Dynamic AI limits (free 20/min, premium 100/min). IP-based throttling on `/payments/*` (10/min) and `/webhooks/mayar` (5/min). Mayar IP abuse detection: blocks after 10 invalid payloads.
+- **Test mode:** Skips rate limiting via `TESTING=1` env var.
+
+### [2026-06] Monetization: Trial + Upsell + Subscription
+- **File:** `apps/mobile/src/components/premium/TrialBanner.tsx`, `apps/mobile/src/components/premium/UpsellCard.tsx`, `apps/mobile/app/(tabs)/index.tsx`, `apps/mobile/src/i18n/i18n-context.tsx`
+- **TrialBanner:** 7-day countdown for free users. Dismiss persists to AsyncStorage.
+- **UpsellCard:** AI usage gauges (chat_used/chat_limit, photo_used/photo_limit). Only visible for free users.
+- **Settings Plan Section:** Plan badge, upgrade CTA, expiry date, manage link.
+- **17 new i18n keys** for both id and en.
+
+### [2026-06] Go-Live Audit
+- **File:** `docs/audit/2026-06-28-go-live-readiness.md`
+- **Result:** Conditionally ready. 5 blocking issues resolved. Bundle size 8.6 MB accepted for soft launch with optimization planned week 2.
+
 ## File-file Kunci
 
 ### Mobile (Active)

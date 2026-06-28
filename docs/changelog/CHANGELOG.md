@@ -48,6 +48,16 @@ Format: Keep a Changelog.
 
 ### Added
 
+- **Go-live readiness — monitoring, security & monetization (28 Jun 2026):**
+  - Sentry error tracking: `@sentry/react-native` installed + wired to 6 key error handlers (`capture.tsx`, `transactions.ts`, `_layout.tsx`).
+  - Rate limiting: AI endpoint now dynamic (free 20/min, premium 100/min). Payments and Mayar webhook IP-throttled via `RateLimitMiddleware`.
+  - Mayar webhook IP abuse detection: tracks invalid payloads per IP, permanently blocks after 10.
+  - Monetization: TrialBanner 7-hari dengan countdown + UpsellCard AI usage gauges di dashboard.
+  - Subscription management: plan badge + upgrade/cancel di Settings.
+  - 17 new i18n keys: trial, upsell, plan management (id + en).
+  - Test coverage: Jest threshold 70% statements/lines pada service layer.
+  - Full audit report: `docs/audit/2026-06-28-go-live-readiness.md`.
+
 - Implemented a config-gated Mayar payment provider skeleton with a provider-neutral abstraction layer (PR #24).
   - `PaymentProvider` abstract base class in `backend/app/services/payments/providers/base.py`.
   - `MayarProvider` targeting Mayar Invoice API (`/invoice/create`, `GET /invoice/{id}`).
