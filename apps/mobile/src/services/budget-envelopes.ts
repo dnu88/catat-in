@@ -220,6 +220,7 @@ function envelopeMatchesTransactionCategory(
 	const normalizedCategory = normalize(categoryName);
 	if (!normalizedCategory) return false;
 
+	// Match by linked category name (set when envelope was created with a category picker)
 	if (
 		envelope.parent_category_name &&
 		areCategoryNamesEquivalent(envelope.parent_category_name, categoryName)
@@ -227,12 +228,17 @@ function envelopeMatchesTransactionCategory(
 		return true;
 	}
 
-	// Backward compatibility for older budget wallets that were created before
-	// category selection existed. They can still sync when the wallet name is the
-	// exact transaction category.
-	return (
-		!envelope.parent_category_id && normalize(envelope.name) === normalizedCategory
-	);
+	// Fallback: match by envelope name using canonical ID comparison
+	// This covers cases where parent_category_name is null but parent_category_id is set,
+	// or where the envelope was created before category linking existed.
+	if (
+		normalize(envelope.name) === normalizedCategory ||
+		areCategoryNamesEquivalent(envelope.name, categoryName)
+	) {
+		return true;
+	}
+
+	return false;
 }
 
 function scoreEnvelopeForTransaction(

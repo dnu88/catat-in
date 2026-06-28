@@ -367,7 +367,7 @@ export default function CaptureScreen() {
 				isEn ? "en" : "id",
 				value,
 			);
-			const quickDrafts = aiDrafts.length > localDrafts.length ? aiDrafts : localDrafts;
+			const quickDrafts = localDrafts.length >= aiDrafts.length ? localDrafts : aiDrafts;
 			const quickDraft = quickDrafts[0] ?? null;
 
 			if (!quickDraft) {
