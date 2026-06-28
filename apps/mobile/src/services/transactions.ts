@@ -184,8 +184,8 @@ async function syncBudgetAllocationSafely(
 			userId,
 			context,
 		);
-	} catch {
-		// Budget allocation must never block the transaction write.
+	} catch (err) {
+		console.error("[budget-sync] Warning: budget allocation sync failed, transaction saved:", err);
 	}
 }
 
