@@ -8,6 +8,8 @@ import { PageEntrance, StaggeredEntrance } from "../../src/components/motion";
 import { KaswiseIcon } from "../../src/components/icons/kaswise-icons";
 import { NotificationBell } from "../../src/components/notifications/NotificationBell";
 import { PROFILE_AVATARS, ProfileAvatarIllustration, readProfileVisualMetadata } from "../../src/components/profile/ProfileAvatar";
+import { TrialBanner } from "../../src/components/premium/TrialBanner";
+import { UpsellCard } from "../../src/components/premium/UpsellCard";
 import { EmptyState } from "../../src/components/ui";
 import { useI18n } from "../../src/i18n/i18n-context";
 import { useSupabase } from "../../src/lib/supabase";
@@ -32,6 +34,7 @@ import { listCategories, type Category } from "../../src/services/categories";
 import { getLocalizedCategoryName } from "../../src/services/category-taxonomy";
 import { resolveCategoryVisual } from "../../src/theme/category-visuals";
 import { useFinanceContext } from "../../src/state/finance-context";
+import { useEntitlements } from "../../src/hooks/useEntitlements";
 import {
 	formatReportPeriodLabel,
 	isCurrentMonthPeriod,
@@ -99,6 +102,7 @@ export default function DashboardScreen() {
 	const { language } = useI18n();
 	const { activeContext } = useFinanceContext();
 	const { activePeriod, resetToCurrentMonth } = useReportPeriod();
+	const { data: entitlements } = useEntitlements();
 	const router = useRouter();
 	const isEn = language === "en";
 	const tx = useMemo(
@@ -734,7 +738,19 @@ export default function DashboardScreen() {
 						</View>
 						</StaggeredEntrance>
 
-				<StaggeredEntrance index={1} testID="home-entrance-actions">
+				{/* NEW: Trial Banner + Upsell Card for free users */}
+		{entitlements?.plan === "free" ? (
+			<>
+				<StaggeredEntrance index={1} testID="home-entrance-trial">
+					<TrialBanner />
+				</StaggeredEntrance>
+				<StaggeredEntrance index={2} testID="home-entrance-upsell">
+					<UpsellCard />
+				</StaggeredEntrance>
+			</>
+		) : null}
+
+		<StaggeredEntrance index={entitlements?.plan === "free" ? 3 : 1} testID="home-entrance-actions">
 					<View style={styles.quickActionRow}>
 						{quickActions.map((action) => (
 						<Pressable
@@ -768,7 +784,7 @@ export default function DashboardScreen() {
 
 
 				{showFirstUseGuide ? (
-					<StaggeredEntrance index={2} testID="home-entrance-first-use">
+					<StaggeredEntrance index={entitlements?.plan === "free" ? 4 : 2} testID="home-entrance-first-use">
 						<View testID="home-first-use-card" style={styles.firstUseCard}>
 							<View style={styles.firstUseTopRow}>
 								<View style={styles.firstUseCopy}>
@@ -859,7 +875,7 @@ export default function DashboardScreen() {
 					</StaggeredEntrance>
 				) : null}
 
-				<StaggeredEntrance index={3} testID="home-entrance-budget">
+				<StaggeredEntrance index={entitlements?.plan === "free" ? 5 : 3} testID="home-entrance-budget">
 					<View testID="home-budget-section" style={styles.sectionCard}>
 					<View style={styles.sectionTopRow}>
 						<Text style={styles.sectionTitle}>{tx.budget}</Text>
@@ -905,7 +921,7 @@ export default function DashboardScreen() {
 				</StaggeredEntrance>
 
 				{reviewSummary && reviewSummary.count > 0 ? (
-					<StaggeredEntrance index={4} testID="home-entrance-review">
+					<StaggeredEntrance index={entitlements?.plan === "free" ? 6 : 4} testID="home-entrance-review">
 						<View testID="home-transaction-review-card" style={styles.sectionCard}>
 							<View style={styles.sectionTopRow}>
 								<View style={{ flexDirection: "row", alignItems: "center", gap: theme.spacing.sm }}>
@@ -938,7 +954,7 @@ export default function DashboardScreen() {
 					</StaggeredEntrance>
 				) : null}
 
-				<StaggeredEntrance index={reviewSummary && reviewSummary.count > 0 ? 5 : 4} testID="home-entrance-recent">
+				<StaggeredEntrance index={(reviewSummary && reviewSummary.count > 0 ? 5 : 4) + (entitlements?.plan === "free" ? 2 : 0)} testID="home-entrance-recent">
 					<View style={styles.sectionCard}>
 						<View style={styles.sectionTopRow}>
 							<Text style={styles.sectionTitle}>{tx.recentTitle}</Text>

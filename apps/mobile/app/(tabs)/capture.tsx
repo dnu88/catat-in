@@ -17,6 +17,7 @@ import { useFocusEffect, useRouter } from "expo-router";
 import { useTransactionRealtime } from "../../src/hooks/useTransactionRealtime";
 import { useI18n } from "../../src/i18n/i18n-context";
 import { useSupabase } from "../../src/lib/supabase";
+import { Sentry } from "../../src/lib/sentry";
 import { useTheme } from "../../src/theme/theme-context";
 import { IconBubble } from "../../src/components/ui";
 import {
@@ -308,6 +309,7 @@ export default function CaptureScreen() {
 			);
 		} catch (error) {
 			console.error("Failed to load capture options:", error);
+			Sentry.captureException(error);
 			setWallets([]);
 			setCategoryOptions([]);
 			setWalletId(null);
@@ -432,6 +434,7 @@ export default function CaptureScreen() {
 			// Refresh wallet list so balance stays current after transaction.
 			void loadWalletOptions();
 		} catch (e) {
+			Sentry.captureException(e);
 			setError(tx.systemError);
 			setSubmitting(false);
 		}
@@ -518,6 +521,7 @@ export default function CaptureScreen() {
 				tx.receiptReadSuccess,
 			);
 		} catch (error) {
+			Sentry.captureException(error);
 			setError(
 				error instanceof Error
 					? error.message
@@ -612,6 +616,7 @@ export default function CaptureScreen() {
 			// Refresh wallet list so balance stays current after receipt save.
 			void loadWalletOptions();
 		} catch (error) {
+			Sentry.captureException(error);
 			setError(
 				error instanceof Error
 					? error.message
@@ -660,6 +665,7 @@ export default function CaptureScreen() {
 			needs_review: Boolean(suggestion.needs_review),
 		}).catch((error) => {
 			console.error("Failed to persist envelope allocation:", error);
+			Sentry.captureException(error);
 		});
 	}, [displayedTransaction, envelopeSuggestion, isSuccess, supabase]);
 

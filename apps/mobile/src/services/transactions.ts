@@ -1,4 +1,5 @@
 import { supabase } from "../lib/supabase";
+import { Sentry } from "../lib/sentry";
 import { getCurrentUserId } from "./currentUser";
 import {
 	deleteEnvelopeAllocationsForTransaction,
@@ -186,6 +187,7 @@ async function syncBudgetAllocationSafely(
 		);
 	} catch (err) {
 		console.error("[budget-sync] Warning: budget allocation sync failed, transaction saved:", err);
+		Sentry.captureException(err);
 	}
 }
 
