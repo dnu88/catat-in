@@ -731,33 +731,8 @@ export default function DashboardScreen() {
 								<Text style={styles.heroMetricSub}>{tx.monthlyExpenseSub}</Text>
 							</View>
 						</View>
-					</View>
-
-					{/* Active wallet chips */}
-					{wallets.length > 0 && (
-						<ScrollView
-							horizontal
-							showsHorizontalScrollIndicator={false}
-							contentContainerStyle={styles.walletChipRow}
-							style={{ marginTop: -8, marginBottom: 4 }}
-						>
-							{wallets.map((w) => (
-								<Pressable
-									key={w.id}
-									accessibilityRole="button"
-									accessibilityLabel={`${isEn ? "Wallet" : "Dompet"}: ${w.name}`}
-									onPress={() => router.push("/(tabs)/wallets" as never)}
-									style={[styles.walletChip]}
-								>
-									<Text style={styles.walletChipName}>{w.name}</Text>
-									<Text style={styles.walletChipBalance}>
-										{displayAmount(formatCurrency(Number(w.balance ?? 0)))}
-									</Text>
-								</Pressable>
-							))}
-						</ScrollView>
-					)}
-				</StaggeredEntrance>
+						</View>
+						</StaggeredEntrance>
 
 				<StaggeredEntrance index={1} testID="home-entrance-actions">
 					<View style={styles.quickActionRow}>
@@ -1543,30 +1518,5 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 		txAmountExpense: {
 			color: theme.colors.danger,
 		},
-		walletChipRow: {
-			paddingHorizontal: 2,
-			gap: 8,
-		},
-		walletChip: {
-			backgroundColor: theme.colors.mutedSurface,
-			borderRadius: 12,
-			paddingHorizontal: 12,
-			paddingVertical: 8,
-			borderWidth: 1,
-			borderColor: theme.colors.borderSoft,
-			minWidth: 100,
-		},
-		walletChipName: {
-			color: theme.colors.textSecondary,
-			fontSize: 11,
-			fontWeight: theme.typography.fontWeight.bold,
-			textTransform: "uppercase" as const,
-		},
-		walletChipBalance: {
-			color: theme.colors.textPrimary,
-			fontSize: 13,
-			fontWeight: theme.typography.fontWeight.extrabold,
-			marginTop: 2,
-		},
-	});
+		});
 }
