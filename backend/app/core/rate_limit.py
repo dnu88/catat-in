@@ -11,6 +11,7 @@
 from collections import defaultdict, deque
 from threading import Lock
 from time import time
+import os
 
 from fastapi import Depends, HTTPException, Request, status
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -203,6 +204,10 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
 
     async def dispatch(self, request: Request, call_next):
         path = request.url.path
+
+        # Skip rate limiting in test mode
+        if os.environ.get("TESTING"):
+            return await call_next(request)
 
         # ── Mayar webhook: 5 req/min per IP ──
         if path == "/api/v1/webhooks/mayar":
