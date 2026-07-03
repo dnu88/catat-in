@@ -8,6 +8,13 @@ Format: Keep a Changelog.
 
 ### Fixed
 
+- **Mobile UX pass (transactions, capture, reports, subscription quota):**
+  - Transactions now support long-press selection on the icon area for bulk delete, with selected-state badges plus a dedicated WhatsApp-style selection toolbar; when selection mode is active the per-row edit/delete swipe actions are hidden, and the toolbar uses native-feeling close/trash icon buttons with a delete count badge so bulk actions stay unambiguous on narrow phones.
+  - Capture now auto-processes a picked receipt image, and receipt date normalization is shared between capture and receipt intake so handwritten/numeric dates are parsed consistently without timezone drift.
+  - Reports category detail modal now has its own scroll container, so long transaction lists remain usable on mobile.
+  - The web root HTML now uses Expo Router's viewport/reset wrapper so the installed PWA stays device-width and does not open zoomed out.
+  - Premium AI quota reset now follows the subscription start date cycle instead of the calendar month (`current_period_ym(subscription_started_at=...)`).
+
 - **Transaction logic audit & fixes (27 Jun 2026):**
   - BUG #1: Verified `sync_wallet_balance_from_transaction` trigger is active in production. Added logging guard for scope mismatch silent failures.
   - BUG #2: `capture.tsx` now refreshes wallet list after text/receipt transaction create so wallet balance stays current.

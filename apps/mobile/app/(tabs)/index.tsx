@@ -739,18 +739,18 @@ export default function DashboardScreen() {
 						</StaggeredEntrance>
 
 				{/* NEW: Trial Banner + Upsell Card for free users */}
-		{entitlements?.plan === "free" ? (
-			<>
-				<StaggeredEntrance index={1} testID="home-entrance-trial">
-					<TrialBanner />
-				</StaggeredEntrance>
-				<StaggeredEntrance index={2} testID="home-entrance-upsell">
-					<UpsellCard />
-				</StaggeredEntrance>
-			</>
-		) : null}
+				{entitlements?.plan === "free" ? (
+					<>
+						<StaggeredEntrance index={1} testID="home-entrance-trial">
+							<TrialBanner />
+						</StaggeredEntrance>
+						<StaggeredEntrance index={2} testID="home-entrance-upsell">
+							<UpsellCard />
+						</StaggeredEntrance>
+					</>
+				) : null}
 
-		<StaggeredEntrance index={entitlements?.plan === "free" ? 3 : 1} testID="home-entrance-actions">
+				<StaggeredEntrance index={entitlements?.plan === "free" ? 3 : 1} testID="home-entrance-actions">
 					<View style={styles.quickActionRow}>
 						{quickActions.map((action) => (
 						<Pressable

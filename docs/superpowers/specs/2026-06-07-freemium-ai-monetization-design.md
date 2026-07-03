@@ -31,7 +31,7 @@ Target: **`backend` (FastAPI)** + **`apps/mobile` (Expo PWA, live di kaswise.com
 | Model AI | Haiku 4.5 | Haiku 4.5 (Insight: Sonnet 4.6) |
 
 **Aturan kuota**
-- **Reset tanggal 1** tiap bulan, otomatis via kunci `period_ym` (mis. `"2026-06"`) — tanpa cron.
+- **Reset mengikuti tanggal langganan** (anniversary-based), otomatis via kunci `period_ym` yang dihitung dari tanggal pembayaran aktif; bukan reset kalender tanggal 1.
 - **Hitung per pesan sukses**: 1 panggilan AI = 1 unit, walau menghasilkan banyak transaksi sekaligus. Panggilan **gagal/tidak terbaca tidak memotong** jatah.
 - Saat limit tercapai: **gate tegas, manual selalu tersedia**.
   - Free, chat habis → **paywall**; foto → **paywall** (Premium-only).

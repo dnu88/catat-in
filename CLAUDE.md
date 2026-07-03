@@ -156,11 +156,10 @@ Store transaksi di dashboard hanya mengambil 5 transaksi terakhir (untuk list "t
 
 ## Bug Fixes yang Sudah Dilakukan
 
-### [2026-06] Transaction logic audit: wallet balance sync, UI refresh, transfer support
-- **File:** `apps/mobile/app/(tabs)/capture.tsx`, `apps/mobile/app/(tabs)/transaction-new.tsx`, `apps/mobile/app/(tabs)/wallets.tsx`, `apps/mobile/src/services/transactions.ts`
-- **Root cause:** Beberapa bug ditemukan saat pre-release audit: (1) capture screen tidak refresh wallet list setelah transaksi, (2) form manual entry selalu reset ke expense, (3) edit wallet menampilkan input balance yang tidak pernah terkirim, (4) receipt RLS fallback silent null-kan wallet_id.
-- **Fix:** (1) `capture.tsx` panggil `loadWalletOptions()` setelah transaksi text dan receipt, (2) `transaction-new.tsx` pertahankan `txType` terakhir, (3) `wallets.tsx` ganti input balance jadi read-only display, (4) receipt flow tampilkan warning saat fallback. Juga tambah fitur transfer antar wallet (migration `202606270001`).
-- **Audit doc:** `docs/audit/2026-06-27-transaction-logic-audit.md`
+### [2026-06] Transaction capture/report UX + subscription-cycle quota
+- **File:** `apps/mobile/app/(tabs)/transactions.tsx`, `apps/mobile/app/(tabs)/capture.tsx`, `apps/mobile/app/(tabs)/reports.tsx`, `apps/mobile/app/+html.tsx`, `apps/mobile/src/services/receipt-intake.ts`, `backend/app/core/entitlements.py`
+- **Fix:** transaksi sekarang mendukung long-press selection di icon row untuk bulk delete, lalu menampilkan toolbar selection terpisah ala WhatsApp supaya jumlah item terpilih + aksi batal/hapus tidak saling tumpang tindih di layar sempit; selama selection mode aktif, swipe action edit/hapus per-row ikut disembunyikan dan gesture swipe dimatikan sementara supaya konteks bulk action tetap jelas; toolbar action juga dipoles jadi tombol icon close/trash yang lebih native-mobile, dengan badge count di aksi hapus; capture auto-process setelah pilih foto dan normalisasi tanggal receipt/AI memakai helper lokal yang aman terhadap timezone; reports detail kategori kini bisa scroll; web root HTML sekarang memakai viewport/reset standar Expo Router untuk membantu PWA fit ke layar perangkat; kuota AI premium dihitung per siklus subscription via `current_period_ym(subscription_started_at=...)`.
+- **Tests:** `pnpm --filter mobile type-check`, `pnpm --filter mobile test -- receipt-intake transactions-swipe-actions --runInBand`, `uv run pytest tests/test_entitlements_data.py tests/test_ai_quota_recording.py -q`
 
 ### [2026-06] Wallet auto-select & dashboard chips
 - **File:** `apps/mobile/app/(tabs)/capture.tsx`, `apps/mobile/app/(tabs)/transaction-new.tsx`, `apps/mobile/app/(tabs)/index.tsx`

@@ -2317,42 +2317,48 @@ export default function ReportsScreen() {
 							{selectedCategory?.percent}%
 						</Text>
 
-						{selectedCategoryTransactions.length === 0 ? (
-							<View style={styles.infoCard}>
-								<Text style={styles.infoText}>{tx.noCategoryTransactions}</Text>
-							</View>
-						) : (
-							selectedCategoryTransactions.map((transaction, index) => {
-								const title =
-									transaction.description ||
-									transaction.merchant ||
-									transaction.note ||
-									selectedCategory?.label ||
-									"-";
-								return (
-									<View
-										key={`${transaction.date}-${transaction.amount}-${index}`}
-										style={styles.detailTxRow}
-									>
-										<View style={styles.detailTxInfo}>
-											<Text style={styles.detailTxTitle}>{title}</Text>
-											{transaction.merchant ? (
+						<ScrollView
+							style={styles.detailTxScroll}
+							contentContainerStyle={styles.detailTxScrollContent}
+							showsVerticalScrollIndicator
+						>
+							{selectedCategoryTransactions.length === 0 ? (
+								<View style={styles.infoCard}>
+									<Text style={styles.infoText}>{tx.noCategoryTransactions}</Text>
+								</View>
+							) : (
+								selectedCategoryTransactions.map((transaction, index) => {
+									const title =
+										transaction.description ||
+										transaction.merchant ||
+										transaction.note ||
+										selectedCategory?.label ||
+										"-";
+									return (
+										<View
+											key={`${transaction.date}-${transaction.amount}-${index}`}
+											style={styles.detailTxRow}
+										>
+											<View style={styles.detailTxInfo}>
+												<Text style={styles.detailTxTitle}>{title}</Text>
+												{transaction.merchant ? (
+													<Text style={styles.detailTxMeta}>
+														{transaction.merchant}
+													</Text>
+												) : null}
 												<Text style={styles.detailTxMeta}>
-													{transaction.merchant}
+													{transaction.date || "-"}
 												</Text>
-											) : null}
-											<Text style={styles.detailTxMeta}>
-												{transaction.date || "-"}
+											</View>
+											<Text style={styles.detailTxAmount}>
+												Rp{" "}
+												{Number(transaction.amount || 0).toLocaleString("id-ID")}
 											</Text>
 										</View>
-										<Text style={styles.detailTxAmount}>
-											Rp{" "}
-											{Number(transaction.amount || 0).toLocaleString("id-ID")}
-										</Text>
-									</View>
-								);
-							})
-						)}
+									);
+								})
+							)}
+						</ScrollView>
 					</View>
 				</View>
 			</Modal>
@@ -3502,6 +3508,12 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			textAlign: "center",
 			marginTop: -4,
 			marginBottom: 12,
+		},
+		detailTxScroll: {
+			maxHeight: 360,
+		},
+		detailTxScrollContent: {
+			paddingBottom: 8,
 		},
 		detailTxRow: {
 			flexDirection: "row",

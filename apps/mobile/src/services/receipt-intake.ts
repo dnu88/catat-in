@@ -95,6 +95,114 @@ function normalizeMimeType(mimeType?: string | null) {
 	return normalized || "image/jpeg";
 }
 
+const RECEIPT_MONTH_ALIASES: Record<string, number> = {
+	januari: 1,
+	jan: 1,
+	februari: 2,
+	feb: 2,
+	maret: 3,
+	mar: 3,
+	april: 4,
+	apr: 4,
+	mei: 5,
+	may: 5,
+	juni: 6,
+	jun: 6,
+	juli: 7,
+	jul: 7,
+	agustus: 8,
+	agu: 8,
+	aug: 8,
+	september: 9,
+	sep: 9,
+	oktober: 10,
+	oct: 10,
+	november: 11,
+	nov: 11,
+	desember: 12,
+	des: 12,
+	dec: 12,
+};
+
+function formatLocalIsoDate(date: Date) {
+	const year = date.getFullYear();
+	const month = `${date.getMonth() + 1}`.padStart(2, "0");
+	const day = `${date.getDate()}`.padStart(2, "0");
+	return `${year}-${month}-${day}`;
+}
+
+function safeIsoDate(year: number, month: number, day: number) {
+	const candidate = new Date(year, month - 1, day);
+	return candidate.getFullYear() === year && candidate.getMonth() === month - 1 && candidate.getDate() === day
+		? formatLocalIsoDate(candidate)
+		: null;
+}
+
+function parseReceiptYear(value: string | undefined, fallbackYear: number) {
+	if (!value) return fallbackYear;
+	const parsed = Number(value);
+	if (!Number.isFinite(parsed)) return fallbackYear;
+	return value.length === 2 ? 2000 + parsed : parsed;
+}
+
+export function normalizeReceiptDate(value: unknown, fallbackDate = new Date()) {
+	const fallback = formatLocalIsoDate(fallbackDate);
+	if (typeof value !== "string") return fallback;
+	const text = value.trim().toLowerCase();
+	if (!text) return fallback;
+	if (text === "today" || text === "hari ini") return fallback;
+	if (text === "yesterday" || text === "kemarin") {
+		const yesterday = new Date(fallbackDate);
+		yesterday.setDate(yesterday.getDate() - 1);
+		return formatLocalIsoDate(yesterday);
+	}
+
+	const normalized = text.replace(/^(?:tanggal|tgl|pada)\s+/, "");
+	const isoMatch = normalized.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+	if (isoMatch) {
+		return safeIsoDate(Number(isoMatch[1]), Number(isoMatch[2]), Number(isoMatch[3])) ?? fallback;
+	}
+
+	const slashIsoMatch = normalized.match(/^(\d{4})[/-](\d{1,2})[/-](\d{1,2})$/);
+	if (slashIsoMatch) {
+		return safeIsoDate(Number(slashIsoMatch[1]), Number(slashIsoMatch[2]), Number(slashIsoMatch[3])) ?? fallback;
+	}
+
+	const numericMatch = normalized.match(/^(\d{1,2})[/-](\d{1,2})(?:[/-](\d{2,4}))?$/);
+	if (numericMatch) {
+		return safeIsoDate(
+			parseReceiptYear(numericMatch[3], fallbackDate.getFullYear()),
+			Number(numericMatch[2]),
+			Number(numericMatch[1]),
+		) ?? fallback;
+	}
+
+	const monthNames = Object.keys(RECEIPT_MONTH_ALIASES).join("|");
+	const namedDayFirst = normalized.match(
+		new RegExp(`^(\d{1,2})\s+(${monthNames})(?:\s+(\d{2,4}))?$`, "i"),
+	);
+	if (namedDayFirst) {
+		return safeIsoDate(
+			parseReceiptYear(namedDayFirst[3], fallbackDate.getFullYear()),
+			RECEIPT_MONTH_ALIASES[namedDayFirst[2].toLowerCase()],
+			Number(namedDayFirst[1]),
+		) ?? fallback;
+	}
+
+	const namedMonthFirst = normalized.match(
+		new RegExp(`^(${monthNames})\s+(\d{1,2})(?:\s+(\d{2,4}))?$`, "i"),
+	);
+	if (namedMonthFirst) {
+		return safeIsoDate(
+			parseReceiptYear(namedMonthFirst[3], fallbackDate.getFullYear()),
+			RECEIPT_MONTH_ALIASES[namedMonthFirst[1].toLowerCase()],
+			Number(namedMonthFirst[2]),
+		) ?? fallback;
+	}
+
+	return fallback;
+}
+
 function validateReceiptBlob(blob: Blob, mimeType: string) {
 	if (!ALLOWED_RECEIPT_MIME_TYPES.has(mimeType)) {
 		throw new Error("Format struk belum didukung. Gunakan JPG, PNG, atau WEBP.");
@@ -318,7 +426,7 @@ export function receiptExtractionToDrafts(
 ): ReceiptTransactionDraft[] {
 	const targetTotal = numericValue(extraction.total_amount);
 	const merchant = extraction.merchant?.trim() || undefined;
-	const date = extraction.date?.trim() || new Date().toISOString().slice(0, 10);
+	const date = normalizeReceiptDate(extraction.date);
 	const confidence = Math.max(0, Math.min(1, Number(extraction.confidence ?? 0)));
 	const reviewRequired = confidence < 0.8;
 	const normalizedItems = normalizeReceiptItems(extraction);

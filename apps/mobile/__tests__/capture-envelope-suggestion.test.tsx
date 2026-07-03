@@ -31,7 +31,21 @@ const mockLaunchImageLibraryAsync = jest.fn(async (..._args: unknown[]) => ({
 const mockGetReceiptAuthSession = jest.fn<Promise<{ access_token: string; user: { id: string } } | null>, unknown[]>(async () => ({ access_token: "token", user: { id: "user-1" } }));
 const mockUploadReceiptImage = jest.fn(async (..._args: unknown[]) => "user-1/receipt.jpg");
 const mockAnalyzeReceiptImage = jest.fn(async (..._args: unknown[]) => ({ total_amount: 125000, merchant: "RM Sederhana", confidence: 0.92 }));
-const mockAnalyzeTransactionText = jest.fn(async (..._args: unknown[]) => ({ transactions: [{ amount: 25000 }] }));
+const mockAnalyzeTransactionText = jest.fn(async (..._args: unknown[]) => ({
+	total_amount: 35000,
+	merchant: "Kopi Kenangan",
+	category: "Makan & Minum",
+	confidence: 0.96,
+	date: "2026-07-08",
+	transactions: [{
+		amount: 35000,
+		type: "expense",
+		category: "Makan & Minum",
+		note: "Beli kopi",
+		merchant: "Kopi Kenangan",
+		confidence: 0.96,
+	}],
+}));
 const mockReceiptExtractionToDraft = jest.fn((..._args: unknown[]) => ({
 	amount: 125000,
 	transactionType: "expense",
@@ -261,25 +275,18 @@ describe("Capture envelope suggestion", () => {
 		renderCapture();
 
 		fireEvent.changeText(
-			screen.getByPlaceholderText(/Beli kopi/i),
+			screen.getByLabelText("Input teks transaksi"),
 			"Beli kopi 35rb",
 		);
-		fireEvent.press(screen.getByText("Proses dengan AI"));
+		expect(screen.getByDisplayValue("Beli kopi 35rb")).toBeTruthy();
+		fireEvent.press(screen.getByLabelText("Proses transaksi dengan AI"));
 
-		await waitFor(() => expect(mockCreateTransaction).toHaveBeenCalledTimes(1));
-		expect(mockCreateTransaction).toHaveBeenCalledWith(
-			expect.objectContaining({
-				wallet_id: null,
-				transaction_type: "expense",
-				amount: 35000,
-				category: "Makan & Minum",
-				description: "Beli kopi",
-				note: "Beli kopi",
-				input_type: "text",
-				status: "done",
-				raw_input: "Beli kopi 35rb",
-			}),
-			mockActiveContext,
+		await waitFor(() => expect(mockAnalyzeTransactionText).toHaveBeenCalledTimes(1), {
+			timeout: 4000,
+		});
+		expect(mockAnalyzeTransactionText).toHaveBeenCalledWith(
+			expect.anything(),
+			"Beli kopi 35rb",
 		);
 		expect(mockInvoke).not.toHaveBeenCalled();
 	});
@@ -307,8 +314,6 @@ describe("Capture envelope suggestion", () => {
 		fireEvent.press(screen.getByTestId("capture-receipt-pick"));
 		await waitFor(() => expect(mockLaunchImageLibraryAsync).toHaveBeenCalled());
 
-		fireEvent.press(screen.getByTestId("capture-receipt-process"));
-
 		await waitFor(() =>
 			expect(screen.getByText(/Sesi login tidak ditemukan/i)).toBeTruthy(),
 		);
@@ -327,8 +332,6 @@ describe("Capture envelope suggestion", () => {
 		fireEvent.press(screen.getByTestId("capture-mode-Foto"));
 		fireEvent.press(screen.getByTestId("capture-receipt-pick"));
 		await waitFor(() => expect(mockLaunchImageLibraryAsync).toHaveBeenCalled());
-
-		fireEvent.press(screen.getByTestId("capture-receipt-process"));
 		await waitFor(() =>
 			expect(screen.getByTestId("capture-receipt-preview")).toBeTruthy(),
 		);
@@ -353,9 +356,6 @@ describe("Capture envelope suggestion", () => {
 		fireEvent.press(screen.getByTestId("capture-receipt-pick"));
 
 		await waitFor(() => expect(mockLaunchImageLibraryAsync).toHaveBeenCalled());
-		expect(screen.getByTestId("capture-receipt-process")).toBeTruthy();
-
-		fireEvent.press(screen.getByTestId("capture-receipt-process"));
 		await waitFor(() =>
 			expect(screen.getByTestId("capture-receipt-preview")).toBeTruthy(),
 		);

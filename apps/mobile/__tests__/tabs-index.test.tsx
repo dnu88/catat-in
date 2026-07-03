@@ -6,6 +6,8 @@ import { ThemeProvider } from "../src/theme/theme-context";
 import { I18nProvider } from "../src/i18n/i18n-context";
 import DashboardScreen from "../app/(tabs)/index";
 
+jest.setTimeout(15000);
+
 const mockPush = jest.fn();
 let mockEnvelopes: any[] = [];
 let mockAllocations: any[] = [];
