@@ -30,6 +30,7 @@ import {
 	analyzeReceiptImage,
 	analyzeTransactionText,
 	getReceiptAuthSession,
+	normalizeReceiptDate,
 	receiptExtractionToDrafts,
 	uploadReceiptImage,
 	type ReceiptExtraction,
@@ -85,16 +86,7 @@ type AiTextTransaction = {
 };
 
 function normalizeAiDate(value: unknown) {
-	const today = new Date();
-	if (typeof value !== "string" || !value.trim() || value === "today") {
-		return today.toISOString().slice(0, 10);
-	}
-	if (value === "yesterday") {
-		const yesterday = new Date(today);
-		yesterday.setDate(today.getDate() - 1);
-		return yesterday.toISOString().slice(0, 10);
-	}
-	return /^\d{4}-\d{2}-\d{2}$/.test(value) ? value : today.toISOString().slice(0, 10);
+	return normalizeReceiptDate(value);
 }
 
 function resolveAiCategoryName(
@@ -285,6 +277,7 @@ export default function CaptureScreen() {
 	const [receiptAsset, setReceiptAsset] = useState<ReceiptImageAsset | null>(null);
 	const [receiptDrafts, setReceiptDrafts] = useState<ReceiptTransactionDraft[]>([]);
 	const receiptDraft = receiptDrafts[0] ?? null;
+	const autoProcessReceiptRef = useRef<string | null>(null);
 	const [receiptPath, setReceiptPath] = useState<string | null>(null);
 	const [receiptExtraction, setReceiptExtraction] = useState<ReceiptExtraction | null>(null);
 	const persistedSuggestionKeyRef = useRef<string | null>(null);
@@ -464,6 +457,7 @@ export default function CaptureScreen() {
 
 		if (result.canceled || !result.assets[0]) return;
 		const asset = result.assets[0];
+		autoProcessReceiptRef.current = null;
 		setReceiptAsset({
 			uri: asset.uri,
 			fileName: asset.fileName,
@@ -531,6 +525,13 @@ export default function CaptureScreen() {
 			setSubmitting(false);
 		}
 	};
+
+	useEffect(() => {
+		if (!receiptAsset || submitting || receiptDrafts.length > 0) return;
+		if (autoProcessReceiptRef.current === receiptAsset.uri) return;
+		autoProcessReceiptRef.current = receiptAsset.uri;
+		void submitReceiptPhoto();
+	}, [receiptAsset, receiptDrafts.length, submitting]);
 
 	const confirmReceiptDraft = async () => {
 		if (receiptDrafts.length === 0 || submitting) return;
@@ -675,6 +676,7 @@ export default function CaptureScreen() {
 		setSubmitting(false);
 		setQueuedMessage(null);
 		setError(null);
+		autoProcessReceiptRef.current = null;
 		if (clearText) {
 			setTextInput("");
 			setReceiptAsset(null);

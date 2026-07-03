@@ -181,6 +181,9 @@ type TransactionListItem = {
 	categories: Category[];
 	onEdit: (item: Transaction) => void;
 	onDelete: (item: Transaction) => void;
+	onToggleSelect: (id: string) => void;
+	selectionMode: boolean;
+	selected: boolean;
 };
 
 function TransactionRow({
@@ -193,6 +196,9 @@ function TransactionRow({
 	categories,
 	onEdit,
 	onDelete,
+	onToggleSelect,
+	selectionMode,
+	selected,
 }: TransactionListItem) {
 	const formattedDate = new Date(
 		item.date || item.created_at || Date.now(),
@@ -235,11 +241,47 @@ function TransactionRow({
 		},
 		[translateX],
 	);
+	const rowLongPressHandledRef = useRef(false);
+	const rowLongPressResetRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+	useEffect(
+		() => () => {
+			if (rowLongPressResetRef.current) {
+				clearTimeout(rowLongPressResetRef.current);
+			}
+		},
+		[],
+	);
+	const handleRowLongPress = useCallback(() => {
+		rowLongPressHandledRef.current = true;
+		if (rowLongPressResetRef.current) {
+			clearTimeout(rowLongPressResetRef.current);
+		}
+		rowLongPressResetRef.current = setTimeout(() => {
+			rowLongPressHandledRef.current = false;
+			rowLongPressResetRef.current = null;
+		}, 0);
+		onToggleSelect(item.id);
+	}, [item.id, onToggleSelect]);
+	const handleRowPress = useCallback(() => {
+		if (rowLongPressHandledRef.current) {
+			return;
+		}
+		if (!selectionMode) return;
+		onToggleSelect(item.id);
+	}, [item.id, onToggleSelect, selectionMode]);
 	const resetSwipe = useCallback(() => snapTo(0), [snapTo]);
+	useEffect(() => {
+		if (selectionMode) {
+			resetSwipe();
+		}
+	}, [resetSwipe, selectionMode]);
 	const panResponder = useMemo(
 		() =>
 			PanResponder.create({
 				onMoveShouldSetPanResponder: (_, gestureState) => {
+					if (selectionMode) {
+						return false;
+					}
 					const horizontalDistance = Math.abs(gestureState.dx);
 					const verticalDistance = Math.abs(gestureState.dy);
 					return (
@@ -256,7 +298,7 @@ function TransactionRow({
 				},
 				onPanResponderTerminate: () => snapTo(0),
 			}),
-		[snapTo, translateX],
+		[selectionMode, snapTo, translateX],
 	);
 
 	return (
@@ -264,40 +306,56 @@ function TransactionRow({
 			testID={`transaction-swipe-shell-${item.id}`}
 			style={styles.swipeShell}
 		>
-			<View
-				testID={`transaction-swipe-actions-${item.id}`}
-				style={styles.swipeActions}
-			>
-				<Pressable
-					accessibilityRole="button"
-					accessibilityLabel={`${isEn ? "Edit transaction" : "Edit transaksi"} ${title}`}
-					style={[styles.swipeActionButton, styles.swipeEditButton]}
-					onPress={() => {
-						resetSwipe();
-						onEdit(item);
-					}}
+			{selectionMode ? null : (
+				<View
+					testID={`transaction-swipe-actions-${item.id}`}
+					style={styles.swipeActions}
 				>
-					<Text style={styles.swipeActionText}>Edit</Text>
-				</Pressable>
-				<Pressable
-					accessibilityRole="button"
-					accessibilityLabel={`${isEn ? "Delete transaction" : "Hapus transaksi"} ${title}`}
-					style={[styles.swipeActionButton, styles.swipeDeleteButton]}
-					onPress={() => {
-						resetSwipe();
-						onDelete(item);
-					}}
-				>
-					<Text style={styles.swipeActionText}>
-						{isEn ? "Delete" : "Hapus"}
-					</Text>
-				</Pressable>
-			</View>
+					<Pressable
+						accessibilityRole="button"
+						accessibilityLabel={`${isEn ? "Edit transaction" : "Edit transaksi"} ${title}`}
+						style={[styles.swipeActionButton, styles.swipeEditButton]}
+						onPress={() => {
+							resetSwipe();
+							onEdit(item);
+						}}
+					>
+						<Text style={styles.swipeActionText}>Edit</Text>
+					</Pressable>
+					<Pressable
+						accessibilityRole="button"
+						accessibilityLabel={`${isEn ? "Delete transaction" : "Hapus transaksi"} ${title}`}
+						style={[styles.swipeActionButton, styles.swipeDeleteButton]}
+						onPress={() => {
+							resetSwipe();
+							onDelete(item);
+						}}
+					>
+						<Text style={styles.swipeActionText}>
+							{isEn ? "Delete" : "Hapus"}
+						</Text>
+					</Pressable>
+				</View>
+			)}
 			<Animated.View
 				{...panResponder.panHandlers}
-				style={[styles.rowCard, { transform: [{ translateX }] }]}
+				style={[
+					styles.rowCard,
+					selected && styles.rowCardSelected,
+					{ transform: [{ translateX }] },
+				]}
 			>
-				<View
+				<Pressable
+					accessibilityRole="button"
+					accessibilityLabel={
+						selected
+							? `${isEn ? "Deselect transaction" : "Batalkan pilihan transaksi"} ${title}`
+							: `${isEn ? "Select transaction" : "Pilih transaksi"} ${title}`
+					}
+					accessibilityHint={selectionMode ? (selected ? (isEn ? "Tap to deselect this transaction." : "Ketuk untuk membatalkan pilihan transaksi ini.") : (isEn ? "Tap to select this transaction." : "Ketuk untuk memilih transaksi ini.")) : (isEn ? "Long press to start selecting transactions." : "Tekan lama untuk mulai memilih transaksi.")}
+					onPress={handleRowPress}
+					onLongPress={handleRowLongPress}
+					delayLongPress={220}
 					style={[
 						styles.row,
 						index < total - 1 && {
@@ -306,13 +364,20 @@ function TransactionRow({
 						},
 					]}
 				>
-					<View style={styles.rowIcon}>
-						<IconBubble
-							name={rowIconName}
-							tone={rowIconTone}
-							color={rowIconColor}
-							size={40}
-						/>
+					<View style={styles.rowIconPressable}>
+						<View style={[styles.rowIcon, selected && styles.rowIconSelected]}>
+							<IconBubble
+								name={rowIconName}
+								tone={rowIconTone}
+								color={rowIconColor}
+								size={40}
+							/>
+						</View>
+						{selected ? (
+							<View style={styles.rowSelectionBadge}>
+								<Text style={styles.rowSelectionBadgeText}>✓</Text>
+							</View>
+						) : null}
 					</View>
 					<View style={styles.rowInfo}>
 						<Text
@@ -341,7 +406,7 @@ function TransactionRow({
 						{item.transaction_type === "income" ? "+" : "-"} Rp{" "}
 						{amount.toLocaleString("id-ID")}
 					</Text>
-				</View>
+				</Pressable>
 			</Animated.View>
 		</View>
 	);
@@ -370,6 +435,7 @@ export default function TransactionsScreen() {
 	const [categoryOptions, setCategoryOptions] = useState<Category[]>([]);
 	const [loading, setLoading] = useState(true);
 	const [loadError, setLoadError] = useState<string | null>(null);
+	const [selectedTransactionIds, setSelectedTransactionIds] = useState<string[]>([]);
 	const loadRequestRef = useRef(0);
 
 	const useOptionalFocusEffect = (ExpoRouter as {
@@ -389,6 +455,9 @@ export default function TransactionsScreen() {
 			if (loadRequestRef.current !== requestId) return;
 			setTransactions(data);
 			setCategoryOptions(categories);
+			setSelectedTransactionIds((current) =>
+				current.filter((id) => data.some((item) => item.id === id)),
+			);
 		} catch (error) {
 			if (loadRequestRef.current !== requestId) return;
 			console.error("Error loading transactions:", error);
@@ -420,6 +489,16 @@ export default function TransactionsScreen() {
 			return undefined;
 		}, [loadTransactions]),
 	);
+
+	const toggleTransactionSelection = useCallback((id: string) => {
+		setSelectedTransactionIds((current) =>
+			current.includes(id) ? current.filter((itemId) => itemId !== id) : [...current, id],
+		);
+	}, []);
+
+	const clearTransactionSelection = useCallback(() => {
+		setSelectedTransactionIds([]);
+	}, []);
 
 	const reportPeriodLabel = formatReportPeriodLabel(reportPeriod, isEn ? "en" : "id");
 	const periodTransactions = useMemo(
@@ -469,11 +548,19 @@ export default function TransactionsScreen() {
 		);
 	};
 
+	const deleteTransactionById = useCallback(
+		async (id: string) => {
+			await deleteTransaction(id, activeContext);
+		},
+		[activeContext],
+	);
+
 	const deleteSelectedTransaction = useCallback(
 		async (id: string) => {
 			try {
-				await deleteTransaction(id, activeContext);
+				await deleteTransactionById(id);
 				await loadTransactions();
+				clearTransactionSelection();
 			} catch (error) {
 				console.error("Error deleting transaction:", error);
 				setLoadError(
@@ -483,8 +570,53 @@ export default function TransactionsScreen() {
 				);
 			}
 		},
-		[activeContext, activeContextKey, isEn, loadTransactions],
+		[clearTransactionSelection, deleteTransactionById, isEn, loadTransactions],
 	);
+
+	const handleDeleteSelectedTransactions = useCallback(async () => {
+		if (selectedTransactionIds.length === 0) return;
+		const count = selectedTransactionIds.length;
+		const title = isEn ? "Delete selected transactions?" : "Hapus transaksi terpilih?";
+		const message = isEn
+			? `${count} transaction${count > 1 ? "s" : ""} will be permanently deleted.`
+			: `${count} transaksi akan dihapus permanen.`;
+
+		const performDelete = async () => {
+			try {
+				await Promise.all(selectedTransactionIds.map((id) => deleteTransactionById(id)));
+				clearTransactionSelection();
+				await loadTransactions();
+			} catch (error) {
+				console.error("Error deleting selected transactions:", error);
+				setLoadError(
+					isEn
+						? "Failed to delete selected transactions. Please try again."
+						: "Gagal menghapus transaksi terpilih. Coba lagi sebentar.",
+				);
+			}
+		};
+
+		if (Platform.OS === "web") {
+			const confirm = (globalThis as {
+				confirm?: (message?: string) => boolean;
+			}).confirm;
+			if (confirm?.(`${title}\n\n${message}`)) {
+				void performDelete();
+			}
+			return;
+		}
+
+		Alert.alert(title, message, [
+			{ text: isEn ? "Cancel" : "Batal", style: "cancel" },
+			{
+				text: isEn ? "Delete" : "Hapus",
+				style: "destructive",
+				onPress: () => {
+					void performDelete();
+				},
+			},
+		]);
+	}, [clearTransactionSelection, deleteTransactionById, isEn, loadTransactions, selectedTransactionIds]);
 
 	const handleDeleteTransaction = (item: Transaction) => {
 		const title =
@@ -537,6 +669,9 @@ export default function TransactionsScreen() {
 			categories={categoryOptions}
 			onEdit={handleEditTransaction}
 			onDelete={handleDeleteTransaction}
+			onToggleSelect={toggleTransactionSelection}
+			selectionMode={selectedTransactionIds.length > 0}
+			selected={selectedTransactionIds.includes(item.id)}
 		/>
 	);
 
@@ -553,11 +688,70 @@ export default function TransactionsScreen() {
 							: "Pantau arus kas harianmu dengan detail."
 					}
 					action={
-						<View style={styles.summaryBadge}>
-							<Text style={styles.summaryBadgeText}>{list.length} item</Text>
+						<View style={styles.headerActionRow}>
+							{selectedTransactionIds.length === 0 ? (
+								<View style={styles.summaryBadge}>
+									<Text style={styles.summaryBadgeText}>{list.length} item</Text>
+								</View>
+							) : null}
 						</View>
 					}
 				/>
+				{selectedTransactionIds.length > 0 ? (
+					<View testID="transactions-selection-toolbar" style={styles.selectionToolbar}>
+						<View style={styles.selectionCountBlock}>
+							<Text style={styles.selectionCountText}>
+								{selectedTransactionIds.length} {isEn ? "selected" : "dipilih"}
+							</Text>
+							<Text style={styles.selectionHintText}>
+								{isEn
+									? "Tap another row to keep selecting."
+									: "Ketuk transaksi lain untuk menambah pilihan."}
+							</Text>
+						</View>
+						<View style={styles.selectionToolbarActions}>
+							<Pressable
+								testID="transactions-selection-clear-action"
+								accessibilityRole="button"
+								accessibilityLabel={
+									isEn ? "Clear selected transactions" : "Batal pilih transaksi"
+								}
+								style={styles.selectionIconButton}
+								onPress={clearTransactionSelection}
+							>
+								<KaswiseIcon
+									name="close"
+									color={theme.colors.textPrimary}
+									size={18}
+									weight="bold"
+								/>
+							</Pressable>
+							<Pressable
+								testID="transactions-selection-delete-action"
+								accessibilityRole="button"
+								accessibilityLabel={
+									isEn
+										? `Delete ${selectedTransactionIds.length} selected transactions`
+										: `Hapus ${selectedTransactionIds.length} transaksi terpilih`
+								}
+								style={[styles.selectionIconButton, styles.selectionDeleteIconButton]}
+								onPress={() => {
+									void handleDeleteSelectedTransactions();
+								}}
+							>
+								<KaswiseIcon
+									name="trash"
+									color={theme.colors.danger}
+									size={18}
+									weight="bold"
+								/>
+								<View testID="transactions-selection-delete-count-badge" style={styles.selectionDeleteCountBadge}>
+									<Text testID="transactions-selection-delete-count-text" style={styles.selectionDeleteCountText}>{selectedTransactionIds.length}</Text>
+								</View>
+							</Pressable>
+						</View>
+					</View>
+				) : null}
 			</View>
 
 			{loadError ? <StateMessage key="transactions-error" message={loadError} tone="error" /> : null}
@@ -710,11 +904,14 @@ export default function TransactionsScreen() {
 	), [
 		activeFilter,
 		activePeriod,
+		clearTransactionSelection,
 		isEn,
+		handleDeleteSelectedTransactions,
 		reportPeriod.ruleName,
 		reportPeriodLabel,
 		list.length,
 		loadError,
+		selectedTransactionIds.length,
 		styles,
 		theme.colors.brandPrimary,
 		theme.colors.brandPrimaryDeep,
@@ -824,6 +1021,12 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			marginBottom: theme.spacing.lg,
 			paddingBottom: theme.spacing.xs,
 		},
+		headerActionRow: {
+			flexDirection: "row",
+			alignItems: "center",
+			gap: theme.spacing.xs,
+			justifyContent: "flex-end",
+		},
 		summaryBadge: {
 			backgroundColor: theme.colors.mutedSurface,
 			borderWidth: 1,
@@ -836,6 +1039,78 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			color: theme.colors.textSecondary,
 			fontSize: theme.typography.fontSize.sm,
 			fontWeight: theme.typography.fontWeight.bold,
+		},
+		selectionToolbar: {
+			marginTop: theme.spacing.md,
+			paddingHorizontal: theme.spacing.md,
+			paddingVertical: theme.spacing.md,
+			borderRadius: theme.radius.lg,
+			borderWidth: 1,
+			borderColor:
+				theme.mode === "light" ? "rgba(101, 163, 13, 0.18)" : "rgba(163, 255, 18, 0.16)",
+			backgroundColor:
+				theme.mode === "light" ? "rgba(101, 163, 13, 0.08)" : "rgba(163, 255, 18, 0.08)",
+			flexDirection: "row",
+			alignItems: "center",
+			justifyContent: "space-between",
+			gap: theme.spacing.md,
+			flexWrap: "wrap",
+		},
+		selectionCountBlock: {
+			flex: 1,
+			minWidth: 0,
+		},
+		selectionCountText: {
+			color: lightBrand,
+			fontSize: theme.typography.fontSize.md,
+			fontWeight: theme.typography.fontWeight.extrabold,
+		},
+		selectionHintText: {
+			color: theme.colors.textSecondary,
+			fontSize: theme.typography.fontSize.sm,
+			marginTop: 2,
+		},
+		selectionToolbarActions: {
+			flexDirection: "row",
+			alignItems: "center",
+			justifyContent: "flex-end",
+			gap: theme.spacing.xs,
+			flexShrink: 0,
+		},
+		selectionIconButton: {
+			width: 42,
+			height: 42,
+			borderRadius: 21,
+			backgroundColor: theme.colors.surface,
+			borderWidth: 1,
+			borderColor: theme.colors.borderSoft,
+			alignItems: "center",
+			justifyContent: "center",
+			position: "relative",
+		},
+		selectionDeleteIconButton: {
+			backgroundColor: theme.mode === "light" ? "rgba(220, 38, 38, 0.08)" : "rgba(248, 113, 113, 0.14)",
+			borderColor: theme.colors.danger,
+		},
+		selectionDeleteCountBadge: {
+			position: "absolute",
+			right: -4,
+			top: -4,
+			minWidth: 18,
+			height: 18,
+			paddingHorizontal: 4,
+			borderRadius: 9,
+			backgroundColor: theme.colors.danger,
+			alignItems: "center",
+			justifyContent: "center",
+			borderWidth: 2,
+			borderColor: theme.colors.surface,
+		},
+		selectionDeleteCountText: {
+			color: theme.colors.textInverse,
+			fontSize: 10,
+			fontWeight: theme.typography.fontWeight.extrabold,
+			lineHeight: 10,
 		},
 		reportPeriodCard: {
 			backgroundColor: theme.colors.surface,
@@ -950,6 +1225,36 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 		rowCard: {
 			backgroundColor: theme.colors.background,
 			borderRadius: theme.radius.lg,
+		},
+		rowCardSelected: {
+			backgroundColor:
+				theme.mode === "light" ? "rgba(101, 163, 13, 0.08)" : "rgba(163, 255, 18, 0.08)",
+		},
+		rowIconPressable: {
+			position: "relative",
+		},
+		rowIconSelected: {
+			borderWidth: 1,
+			borderColor: lightBrand,
+		},
+		rowSelectionBadge: {
+			position: "absolute",
+			right: -2,
+			top: -2,
+			width: 18,
+			height: 18,
+			borderRadius: 9,
+			backgroundColor: lightBrand,
+			alignItems: "center",
+			justifyContent: "center",
+			borderWidth: 2,
+			borderColor: theme.colors.background,
+		},
+		rowSelectionBadgeText: {
+			color: theme.colors.textInverse,
+			fontSize: 11,
+			fontWeight: theme.typography.fontWeight.extrabold,
+			lineHeight: 11,
 		},
 		row: {
 			flexDirection: "row",

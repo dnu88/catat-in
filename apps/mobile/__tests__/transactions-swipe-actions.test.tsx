@@ -187,6 +187,61 @@ describe("transaction swipe actions", () => {
 		expect(screen.getByLabelText("Hapus transaksi Kopi sore")).toBeTruthy();
 	});
 
+	it("enters WhatsApp-style selection mode with long press, then toggles rows with taps", async () => {
+		mockListTransactions.mockResolvedValueOnce([
+			mockTransactions[0],
+			{
+				...mockTransactions[0],
+				id: "tx-2",
+				description: "Kopi pagi",
+				catatan: "Kopi pagi",
+				amount: 18000,
+				nominal: 18000,
+				created_at: `${currentIsoDate()}T11:00:00Z`,
+				updated_at: `${currentIsoDate()}T11:00:00Z`,
+			},
+		]);
+
+		const screen = renderScreen();
+
+		await waitFor(() => expect(screen.getByText("Kopi pagi")).toBeTruthy());
+
+		fireEvent(screen.getByLabelText("Pilih transaksi Kopi sore"), "longPress");
+
+		await waitFor(() => expect(screen.getByTestId("transactions-selection-toolbar")).toBeTruthy());
+		expect(screen.queryByText("2 item")).toBeNull();
+		expect(screen.getByText("1 dipilih")).toBeTruthy();
+		expect(screen.getByText("Ketuk transaksi lain untuk menambah pilihan.")).toBeTruthy();
+		expect(screen.queryByLabelText("Edit transaksi Kopi sore")).toBeNull();
+		expect(screen.queryByLabelText("Hapus transaksi Kopi sore")).toBeNull();
+		expect(screen.queryByTestId("transaction-swipe-actions-tx-1")).toBeNull();
+		await waitFor(() => expect(screen.getByTestId("transactions-selection-delete-action")).toBeTruthy());
+		expect(screen.getByTestId("transactions-selection-delete-count-text").props.children).toBe(1);
+		await waitFor(() => expect(screen.getByLabelText("Batalkan pilihan transaksi Kopi sore")).toBeTruthy());
+
+		fireEvent.press(screen.getByLabelText("Pilih transaksi Kopi pagi"));
+
+		await waitFor(() =>
+			expect(screen.getByLabelText("Hapus 2 transaksi terpilih")).toBeTruthy(),
+		);
+		expect(screen.getByTestId("transactions-selection-delete-count-text").props.children).toBe(2);
+		expect(screen.getByLabelText("Batalkan pilihan transaksi Kopi pagi")).toBeTruthy();
+
+		fireEvent.press(screen.getByLabelText("Batalkan pilihan transaksi Kopi sore"));
+
+		await waitFor(() =>
+			expect(screen.getByLabelText("Hapus 1 transaksi terpilih")).toBeTruthy(),
+		);
+		expect(screen.getByTestId("transactions-selection-delete-count-text").props.children).toBe(1);
+		await waitFor(() => expect(screen.getByLabelText("Pilih transaksi Kopi sore")).toBeTruthy());
+		fireEvent.press(screen.getByLabelText("Batalkan pilihan transaksi Kopi pagi"));
+
+		await waitFor(() => expect(screen.queryByTestId("transactions-selection-toolbar")).toBeNull());
+		expect(screen.getByLabelText("Edit transaksi Kopi sore")).toBeTruthy();
+		expect(screen.getByLabelText("Hapus transaksi Kopi sore")).toBeTruthy();
+		expect(screen.getByTestId("transaction-swipe-actions-tx-1")).toBeTruthy();
+	});
+
 	it("refreshes the list when returning from an edited transaction", async () => {
 		const screen = renderScreen();
 

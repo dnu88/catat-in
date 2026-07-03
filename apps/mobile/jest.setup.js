@@ -35,6 +35,16 @@ jest.mock('expo-constants', () => ({
   },
 }));
 
+jest.mock('@sentry/react-native', () => ({
+  init: jest.fn(),
+  captureException: jest.fn(),
+  captureMessage: jest.fn(),
+  setTag: jest.fn(),
+  setUser: jest.fn(),
+  addBreadcrumb: jest.fn(),
+  withScope: jest.fn((callback) => callback?.({ setTag: jest.fn(), setUser: jest.fn(), setExtra: jest.fn(), setContext: jest.fn() })),
+}));
+
 // Keep entrance motion deterministic in tests and disable runtime animations by
 // default. Individual motion tests can still spy on these methods when they need
 // to exercise resolved preferences.

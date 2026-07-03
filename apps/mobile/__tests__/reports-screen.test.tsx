@@ -23,7 +23,7 @@ const defaultMockTransactions = [
 		amount: 125000,
 		transaction_type: "income",
 		category: "Pendapatan",
-		date: "2026-06-05",
+		date: "2026-07-05",
 		description: "Bonus modern schema",
 		merchant: "Klien",
 	},
@@ -31,7 +31,7 @@ const defaultMockTransactions = [
 		nominal: 500000,
 		type: "expense",
 		kategori: "Makan",
-		tanggal: "2026-06-01",
+		tanggal: "2026-07-01",
 		catatan: "Nasi padang",
 		merchant: "RM Sederhana",
 	},
@@ -39,7 +39,7 @@ const defaultMockTransactions = [
 		nominal: 350000,
 		type: "expense",
 		kategori: "Belanja",
-		tanggal: "2026-06-02",
+		tanggal: "2026-07-02",
 		catatan: "Groceries",
 		merchant: "Supermarket",
 	},
@@ -47,7 +47,7 @@ const defaultMockTransactions = [
 		nominal: 200000,
 		type: "expense",
 		kategori: "Transport",
-		tanggal: "2026-06-03",
+		tanggal: "2026-07-03",
 		catatan: "Taxi",
 		merchant: "Grab",
 	},
@@ -55,7 +55,7 @@ const defaultMockTransactions = [
 		nominal: 150000,
 		type: "expense",
 		kategori: "Kesehatan",
-		tanggal: "2026-06-04",
+		tanggal: "2026-07-04",
 		catatan: "Vitamin",
 		merchant: "Apotek",
 	},
@@ -145,7 +145,7 @@ jest.mock("../src/state/finance-context", () => ({
 
 jest.mock("../src/state/report-period", () => {
 	const actual = jest.requireActual("../src/state/report-period");
-	const activePeriod = actual.buildReportPeriod("month");
+	const activePeriod = actual.buildReportPeriod("month", new Date("2026-07-15T00:00:00.000Z"));
 	const savedRule = {
 		id: "rule-1",
 		name: "Gajian 25",
@@ -414,7 +414,7 @@ describe("ReportsScreen visual parity", () => {
 				nominal: 120000,
 				type: "expense",
 				kategori: "Household",
-				tanggal: "2026-06-06",
+				tanggal: "2026-07-06",
 				catatan: "Tisu & sabun",
 				merchant: "Minimarket",
 			},
@@ -422,7 +422,7 @@ describe("ReportsScreen visual parity", () => {
 				nominal: 80000,
 				type: "expense",
 				kategori: "Personal Care",
-				tanggal: "2026-06-07",
+				tanggal: "2026-07-07",
 				catatan: "Skincare",
 				merchant: "Guardian",
 			},

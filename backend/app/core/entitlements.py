@@ -1,4 +1,5 @@
 """Logika entitlement & kuota freemium (murni + akses data)."""
+from calendar import monthrange
 from dataclasses import dataclass
 from datetime import datetime, timezone
 
@@ -21,6 +22,41 @@ def photo_limit(is_premium: bool) -> int:
     return settings.PREMIUM_PHOTO_MONTHLY if is_premium else 0
 
 
+def _parse_datetime(value: object | None) -> datetime | None:
+    if not value:
+        return None
+    try:
+        parsed = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    if parsed.tzinfo is None:
+        return parsed.replace(tzinfo=timezone.utc)
+    return parsed.astimezone(timezone.utc)
+
+
+def _add_months(base: datetime, months: int) -> datetime:
+    year = base.year + (base.month - 1 + months) // 12
+    month = (base.month - 1 + months) % 12 + 1
+    day = min(base.day, monthrange(year, month)[1])
+    return base.replace(year=year, month=month, day=day)
+
+
+def current_period_ym(
+    now: datetime | None = None,
+    subscription_started_at: datetime | None = None,
+) -> str:
+    now = (now or datetime.now(timezone.utc)).astimezone(timezone.utc)
+    if subscription_started_at is None:
+        return now.strftime("%Y-%m")
+
+    period_start = subscription_started_at.astimezone(timezone.utc)
+    while True:
+        next_period_start = _add_months(period_start, 1)
+        if now < next_period_start:
+            return period_start.strftime("%Y-%m")
+        period_start = next_period_start
+
+
 def evaluate(*, is_premium: bool, kind: str, chat_count: int, photo_count: int) -> QuotaDecision:
     if kind == "chat":
         if chat_count < chat_limit(is_premium):
@@ -36,17 +72,13 @@ def evaluate(*, is_premium: bool, kind: str, chat_count: int, photo_count: int) 
     raise ValueError(f"kind tak dikenal: {kind}")
 
 
-def current_period_ym(now: datetime | None = None) -> str:
-    now = now or datetime.now(timezone.utc)
-    return now.strftime("%Y-%m")
-
-
-def load_state(user_id: str) -> dict:
+def load_state(user_id: str, now: datetime | None = None) -> dict:
     client = _get_supabase_service_client()
-    period = current_period_ym()
     is_premium = False
     plan_expires_at = None
     chat_count = photo_count = 0
+    subscription_started_at = None
+    period = current_period_ym(now=now)
     if client is not None:
         prof = (client.table("profiles").select("plan_type,plan_expires_at")
                 .eq("id", user_id).limit(1).execute())
@@ -54,6 +86,23 @@ def load_state(user_id: str) -> dict:
         is_premium = _is_active_premium_profile(prow)
         if prow:
             plan_expires_at = prow.get("plan_expires_at")
+        if is_premium:
+            payments = (
+                client.table("payments")
+                .select("paid_at,created_at")
+                .eq("user_id", user_id)
+                .eq("status", "paid")
+                .order("paid_at", desc=True)
+                .order("created_at", desc=True)
+                .limit(1)
+                .execute()
+            )
+            prow_payment = payments.data[0] if getattr(payments, "data", None) else None
+            if prow_payment:
+                subscription_started_at = _parse_datetime(
+                    prow_payment.get("paid_at") or prow_payment.get("created_at")
+                )
+            period = current_period_ym(subscription_started_at=subscription_started_at)
         usage = (client.table("ai_usage").select("chat_count,photo_count")
                  .eq("user_id", user_id).eq("period_ym", period).limit(1).execute())
         urow = usage.data[0] if getattr(usage, "data", None) else None
