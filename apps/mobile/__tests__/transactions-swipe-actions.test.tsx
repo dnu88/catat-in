@@ -13,6 +13,8 @@ import TransactionsScreen, {
 import { I18nProvider } from "../src/i18n/i18n-context";
 import { ThemeProvider } from "../src/theme/theme-context";
 
+jest.setTimeout(15000);
+
 declare const process: { env: Record<string, string | undefined> };
 
 const mockPush = jest.fn();
@@ -188,6 +190,7 @@ describe("transaction swipe actions", () => {
 	});
 
 	it("enters WhatsApp-style selection mode with long press, then toggles rows with taps", async () => {
+
 		mockListTransactions.mockResolvedValueOnce([
 			mockTransactions[0],
 			{

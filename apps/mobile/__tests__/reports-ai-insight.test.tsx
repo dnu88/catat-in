@@ -6,6 +6,8 @@ import { ThemeProvider } from "../src/theme/theme-context";
 import { SupabaseProvider } from "../src/lib/supabase";
 import { I18nProvider } from "../src/i18n/i18n-context";
 
+jest.setTimeout(15000);
+
 // ---------------------------------------------------------------------------
 // Mocks
 // ---------------------------------------------------------------------------

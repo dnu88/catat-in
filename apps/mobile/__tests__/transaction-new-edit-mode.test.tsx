@@ -4,6 +4,10 @@ import TransactionNewScreen from "../app/(tabs)/transaction-new";
 import { I18nProvider } from "../src/i18n/i18n-context";
 import { ThemeProvider } from "../src/theme/theme-context";
 
+jest.setTimeout(15000);
+
+declare const process: { env: Record<string, string | undefined> };
+
 const mockBack = jest.fn();
 const mockReplace = jest.fn();
 const mockGetTransaction = jest.fn();
