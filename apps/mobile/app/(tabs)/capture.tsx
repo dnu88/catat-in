@@ -281,6 +281,9 @@ export default function CaptureScreen() {
 	const [receiptPath, setReceiptPath] = useState<string | null>(null);
 	const [receiptExtraction, setReceiptExtraction] = useState<ReceiptExtraction | null>(null);
 	const persistedSuggestionKeyRef = useRef<string | null>(null);
+	// Persist success state across focus changes & mode switches.
+	const completedRef = useRef(false);
+	const successTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
 	const { transaction, loading } = useTransactionRealtime(transactionId);
 	const displayedTransaction = transaction ?? optimisticTransaction;
@@ -317,6 +320,8 @@ export default function CaptureScreen() {
 			void loadWalletOptions();
 			return () => {
 				mounted = false;
+				// Auto-dismiss success state when user switches to another tab.
+				if (completedRef.current) resetCapture(true);
 			};
 		}, [activeContext]),
 	);
@@ -416,6 +421,7 @@ export default function CaptureScreen() {
 				tanggal: quickDraft.date,
 			});
 			setTransactionId(createdTransaction.id);
+			completedRef.current = true;
 			setQueuedMessage(
 				quickDrafts.length > 1
 					? tx.multiSaved(quickDrafts.length)
@@ -435,6 +441,7 @@ export default function CaptureScreen() {
 
 
 	const pickReceiptImage = async () => {
+		if (completedRef.current) return;
 		setError(null);
 		setQueuedMessage(null);
 		setReceiptDrafts([]);
@@ -601,6 +608,7 @@ export default function CaptureScreen() {
 				tanggal: firstDraft.date,
 			});
 			setTransactionId(createdTransaction.id);
+			completedRef.current = true;
 
 			let receiptMessage = receiptDrafts.length > 1
 				? `${receiptDrafts.length} transaksi item struk tersimpan.`
@@ -630,9 +638,23 @@ export default function CaptureScreen() {
 
 	const isSuccess =
 		displayedTransaction?.status === "done" ||
-		(displayedTransaction?.confidence ?? 0) >= 0.85;
+		(displayedTransaction?.confidence ?? 0) >= 0.85 ||
+		completedRef.current;
 	const isError = Boolean(error) || displayedTransaction?.status === "error";
 	const isProcessing = Boolean(transactionId) && !isSuccess && !isError;
+
+	// Auto-dismiss success state after 10 seconds so user can immediately record another transaction.
+	useEffect(() => {
+		if (isSuccess && !successTimerRef.current) {
+			successTimerRef.current = setTimeout(() => resetCapture(true), 10000);
+		}
+		return () => {
+			if (successTimerRef.current) {
+				clearTimeout(successTimerRef.current);
+				successTimerRef.current = null;
+			}
+		};
+	}, [isSuccess]);
 	const envelopeSuggestion = (displayedTransaction as any)
 		?.envelope_suggestion as null | {
 		id?: string;
@@ -671,12 +693,17 @@ export default function CaptureScreen() {
 	}, [displayedTransaction, envelopeSuggestion, isSuccess, supabase]);
 
 	const resetCapture = (clearText = true) => {
+		if (successTimerRef.current) {
+			clearTimeout(successTimerRef.current);
+			successTimerRef.current = null;
+		}
 		setTransactionId(null);
 		setOptimisticTransaction(null);
 		setSubmitting(false);
 		setQueuedMessage(null);
 		setError(null);
 		autoProcessReceiptRef.current = null;
+		completedRef.current = false;
 		if (clearText) {
 			setTextInput("");
 			setReceiptAsset(null);
@@ -868,7 +895,7 @@ export default function CaptureScreen() {
 						</View>
 						<Text style={styles.feedbackTitle}>{tx.successTitle}</Text>
 						<Text style={styles.feedbackSub}>
-							{tx.successSub}
+							{queuedMessage ?? tx.successSub}
 						</Text>
 						{envelopeSuggestion ? (
 							<View
