@@ -31,6 +31,7 @@ _REQUIRED_ALLOWED_ORIGINS: list[str] = [
     "https://catat-in-nine.vercel.app",
     "https://kaswise.com",
     "https://www.kaswise.com",
+    "https://app.kaswise.com",
 ]
 
 _REQUIRED_ALLOWED_HOSTS = [
@@ -38,6 +39,7 @@ _REQUIRED_ALLOWED_HOSTS = [
     "127.0.0.1",
     "kaswise.com",
     "www.kaswise.com",
+    "app.kaswise.com",
 ]
 
 
@@ -132,7 +134,7 @@ class Settings(BaseSettings):
         "http://localhost:3000",
         "http://localhost:3001",
     ]
-    ALLOWED_HOSTS: List[str] = ["localhost", "127.0.0.1", "kaswise.com", "www.kaswise.com"]
+    ALLOWED_HOSTS: List[str] = ["localhost", "127.0.0.1", "kaswise.com", "www.kaswise.com", "app.kaswise.com"]
     CORS_ALLOW_CREDENTIALS: bool = False
 
     # Storage

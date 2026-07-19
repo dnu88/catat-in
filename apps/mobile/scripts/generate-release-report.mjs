@@ -60,7 +60,7 @@ const report = {
   bundle,
   markerCount,
   liveVerification,
-  pwaUrl: process.env.KASWISE_LIVE_URL || 'https://kaswise.com/',
+  pwaUrl: process.env.KASWISE_LIVE_URL || 'https://app.kaswise.com/',
 }
 
 // JSON
