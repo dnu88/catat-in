@@ -1,10 +1,9 @@
-import { enableIndexedDbPersistence, getFirestore } from 'firebase/firestore'
+import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager } from 'firebase/firestore'
 import { app } from './firebase'
 
-export const db = getFirestore(app)
-
-if (typeof window !== 'undefined') {
-  void enableIndexedDbPersistence(db).catch(() => {
-    // fallback online-only
-  })
-}
+export const db = initializeFirestore(app, {
+  localCache:
+    typeof window !== 'undefined'
+      ? persistentLocalCache({ tabManager: persistentMultipleTabManager() })
+      : undefined,
+})

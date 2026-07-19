@@ -8,13 +8,33 @@ from decimal import Decimal
 from typing import Literal
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile, status
-from pydantic import BaseModel, ConfigDict, Field, conlist, field_validator, model_validator
+from fastapi import (
+    APIRouter,
+    Depends,
+    File,
+    Form,
+    HTTPException,
+    Request,
+    UploadFile,
+    status,
+)
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    conlist,
+    field_validator,
+    model_validator,
+)
 
 from app.core.auth import get_current_user
 from app.core.config import settings
 from app.core.rate_limit import rate_limit_import
-from app.services.import_service import escape_formula_text, generate_tx_hash, parse_bank_csv
+from app.services.import_service import (
+    escape_formula_text,
+    generate_tx_hash,
+    parse_bank_csv,
+)
 
 router = APIRouter()
 
@@ -91,6 +111,7 @@ class ConfirmImportRequest(StrictBaseModel):
 def _get_supabase_client():
     try:
         from supabase import create_client
+
         return create_client(settings.SUPABASE_URL, settings.SUPABASE_SERVICE_ROLE_KEY)
     except Exception:
         return None
@@ -101,7 +122,13 @@ def _get_plan_type(user_id: str) -> str:
     if not client:
         return "free"
     try:
-        result = client.table("profiles").select("plan_type").eq("id", user_id).single().execute()
+        result = (
+            client.table("profiles")
+            .select("plan_type")
+            .eq("id", user_id)
+            .single()
+            .execute()
+        )
         return (result.data or {}).get("plan_type", "free")
     except Exception:
         return "free"
@@ -112,7 +139,11 @@ def _load_existing_hashes(user_id: str, wallet_id: str | None = None) -> set[str
     if not client:
         return set()
     try:
-        query = client.table("transactions").select("import_hash,nominal,merchant,catatan,tanggal").eq("user_id", user_id)
+        query = (
+            client.table("transactions")
+            .select("import_hash,nominal,merchant,catatan,tanggal")
+            .eq("user_id", user_id)
+        )
         if wallet_id:
             query = query.eq("wallet_id", wallet_id)
         result = query.execute()
@@ -134,7 +165,11 @@ def _load_existing_hashes(user_id: str, wallet_id: str | None = None) -> set[str
 
 async def _read_upload_with_limit(request: Request, file: UploadFile) -> bytes:
     content_length = request.headers.get("content-length")
-    if content_length and content_length.isdigit() and int(content_length) > MAX_FILE_SIZE:
+    if (
+        content_length
+        and content_length.isdigit()
+        and int(content_length) > MAX_FILE_SIZE
+    ):
         raise HTTPException(
             status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
             detail="File terlalu besar. Maksimal 5MB.",
@@ -149,7 +184,9 @@ async def _read_upload_with_limit(request: Request, file: UploadFile) -> bytes:
     return file_bytes
 
 
-def _require_active_wallet_for_context(client, wallet_id: str, user_id: str, body: ConfirmImportRequest) -> dict:
+def _require_active_wallet_for_context(
+    client, wallet_id: str, user_id: str, body: ConfirmImportRequest
+) -> dict:
     wallet_result = (
         client.table("wallets")
         .select("id,user_id,household_id,is_active,created_by")
@@ -159,19 +196,27 @@ def _require_active_wallet_for_context(client, wallet_id: str, user_id: str, bod
     )
     wallet = wallet_result.data
     if not wallet:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Wallet tidak ditemukan")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Wallet tidak ditemukan"
+        )
     if wallet.get("is_active") is False:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Wallet tidak aktif")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Wallet tidak aktif"
+        )
 
     wallet_household_id = wallet.get("household_id")
     if body.context_type == "personal":
         if wallet_household_id is not None or wallet.get("user_id") != user_id:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Wallet tidak ditemukan")
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="Wallet tidak ditemukan"
+            )
         return wallet
 
     household_id = str(body.household_id)
     if str(wallet_household_id) != household_id:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Wallet tidak ditemukan")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Wallet tidak ditemukan"
+        )
 
     membership_result = (
         client.table("household_members")
@@ -182,14 +227,25 @@ def _require_active_wallet_for_context(client, wallet_id: str, user_id: str, bod
         .limit(1)
         .execute()
     )
-    membership = membership_result.data[0] if isinstance(membership_result.data, list) and membership_result.data else None
+    membership = (
+        membership_result.data[0]
+        if isinstance(membership_result.data, list) and membership_result.data
+        else None
+    )
     if not membership or membership.get("role") not in WRITER_HOUSEHOLD_ROLES:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Tidak punya akses impor ke household ini")
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Tidak punya akses impor ke household ini",
+        )
 
     return wallet
 
 
-@router.post("/preview", response_model=ImportPreviewResponse, dependencies=[Depends(rate_limit_import)])
+@router.post(
+    "/preview",
+    response_model=ImportPreviewResponse,
+    dependencies=[Depends(rate_limit_import)],
+)
 async def preview_import(
     request: Request,
     file: UploadFile = File(...),
@@ -217,7 +273,7 @@ async def preview_import(
         )
     except ValueError as exc:
         raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail=str(exc),
         ) from exc
 
@@ -256,7 +312,7 @@ async def confirm_import(
         import_hash = generate_tx_hash(tx.date.isoformat(), description, amount)
         if tx.hash and tx.hash != import_hash:
             raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
                 detail="Hash transaksi import tidak sesuai dengan isi transaksi.",
             )
         if (body.skip_duplicates and tx.is_duplicate) or import_hash in existing_hashes:
@@ -281,24 +337,26 @@ async def confirm_import(
         description = tx.description.strip()
         category = tx.category.strip()
 
-        records.append({
-            "wallet_id": wallet_id,
-            "user_id": user_id,
-            "household_id": household_id,
-            "created_by": user_id,
-            "updated_by": user_id,
-            "type": tx.type,
-            "nominal": amount,
-            "kategori": category,
-            "catatan": description,
-            "merchant": description[:100],
-            "tanggal": tx.date.isoformat(),
-            "input_type": "import",
-            "status": "done",
-            "is_verified": True,
-            "import_hash": import_hash,
-            "created_at": now,
-        })
+        records.append(
+            {
+                "wallet_id": wallet_id,
+                "user_id": user_id,
+                "household_id": household_id,
+                "created_by": user_id,
+                "updated_by": user_id,
+                "type": tx.type,
+                "nominal": amount,
+                "kategori": category,
+                "catatan": description,
+                "merchant": description[:100],
+                "tanggal": tx.date.isoformat(),
+                "input_type": "import",
+                "status": "done",
+                "is_verified": True,
+                "import_hash": import_hash,
+                "created_at": now,
+            }
+        )
 
     # Bulk insert transactions. Wallet balance is maintained by database trigger/RPC,
     # not manually here, to avoid double-counting financial movements.

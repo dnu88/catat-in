@@ -323,6 +323,7 @@ describe("Capture envelope suggestion", () => {
 
 
 	it("continues receipt preview and save when private receipt upload is blocked by RLS", async () => {
+		const consoleErrorSpy = jest.spyOn(console, "error").mockImplementation(() => undefined);
 		mockEnvelopeSuggestion = null;
 		mockUploadReceiptImage.mockRejectedValueOnce(
 			new Error("new row violates row-level security policy"),
@@ -339,6 +340,11 @@ describe("Capture envelope suggestion", () => {
 		fireEvent.press(screen.getByTestId("capture-receipt-confirm"));
 
 		await waitFor(() => expect(mockCreateTransaction).toHaveBeenCalledTimes(1));
+		expect(consoleErrorSpy).toHaveBeenCalledWith(
+			"Receipt image upload skipped:",
+			expect.any(Error),
+		);
+		consoleErrorSpy.mockRestore();
 		expect(mockCreateTransaction).toHaveBeenCalledWith(
 			expect.objectContaining({
 				input_type: "image",
