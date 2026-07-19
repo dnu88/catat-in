@@ -3,8 +3,32 @@ Pytest fixtures for backend tests.
 """
 import pytest
 from fastapi.testclient import TestClient
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 from main import app
+
+
+@pytest.fixture(autouse=True)
+def reset_rate_limit_state():
+    """Keep in-memory rate-limit buckets isolated between tests."""
+    from app.core import rate_limit
+
+    with rate_limit._lock:
+        rate_limit._requests.clear()
+    with rate_limit._ip_lock:
+        rate_limit._ip_requests.clear()
+    with rate_limit._ip_block_lock:
+        rate_limit._ip_invalid_hits.clear()
+        rate_limit._ip_blocked.clear()
+
+    yield
+
+    with rate_limit._lock:
+        rate_limit._requests.clear()
+    with rate_limit._ip_lock:
+        rate_limit._ip_requests.clear()
+    with rate_limit._ip_block_lock:
+        rate_limit._ip_invalid_hits.clear()
+        rate_limit._ip_blocked.clear()
 
 
 @pytest.fixture
@@ -16,7 +40,7 @@ def client():
 @pytest.fixture
 def mock_firestore():
     """Mock Firestore client to avoid real Firebase calls."""
-    from unittest.mock import Mock, MagicMock
+    from unittest.mock import Mock
 
     # Create a more realistic mock structure
     mock_db = Mock()
