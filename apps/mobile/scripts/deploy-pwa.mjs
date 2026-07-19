@@ -155,12 +155,21 @@ function installManifest(expoConfig) {
 }
 
 function withInstallMetadata(indexHtml) {
-  let nextHtml = indexHtml
-  if (!nextHtml.includes(manifestLink)) {
-    nextHtml = nextHtml.replace('</head>', `${manifestLink}
+	let nextHtml = indexHtml
+	if (!nextHtml.includes(manifestLink)) {
+		nextHtml = nextHtml.replace('</head>', `${manifestLink}
 ${appleTouchIconLink}</head>`)
-  }
-  return nextHtml
+	}
+	return nextHtml
+}
+
+function withViewportLock(indexHtml) {
+	const locked = 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, shrink-to-fit=no'
+	if (indexHtml.includes('user-scalable=no')) return indexHtml
+	return indexHtml.replace(
+		/<meta name="viewport" content="[^"]+" \/>/,
+		`<meta name="viewport" content="${locked}" />`,
+	)
 }
 
 function publicRuntimeConfigBlock() {
@@ -203,6 +212,7 @@ function deployDistToTarget() {
   }
 
   indexHtml = withInstallMetadata(indexHtml)
+  indexHtml = withViewportLock(indexHtml)
 
   mkdirSync(targetDir, { recursive: true })
   writeFileSync(targetIndex, indexHtml)

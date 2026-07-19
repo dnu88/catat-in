@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const appDir = resolve(__dirname, '..')
-const liveUrl = (process.env.KASWISE_LIVE_URL || 'https://kaswise.com/').replace(/\/+$/, '/')
+const liveUrl = (process.env.KASWISE_LIVE_URL || 'https://app.kaswise.com/').replace(/\/+$/, '/')
 const timeoutMs = Number(process.env.KASWISE_LIVE_VERIFY_TIMEOUT_MS || 20000)
 const silentSuccess = process.env.KASWISE_LIVE_VERIFY_SILENT === '1'
 const skipLocalBundleCheck = process.env.KASWISE_LIVE_VERIFY_SKIP_LOCAL_BUNDLE === '1'

@@ -3,7 +3,7 @@ import LanguageToggle from '@components/i18n/LanguageToggle'
 import ThemeToggle from '@components/theme/ThemeToggle'
 import { useEffect, useRef, useState } from 'react'
 
-const appUrl = import.meta.env.VITE_KASWISE_APP_URL?.trim() || 'https://kaswise.com'
+const appUrl = import.meta.env.VITE_KASWISE_APP_URL?.trim() || 'https://app.kaswise.com'
 const supportEmail = 'kaswise.id@gmail.com'
 const supportMailto = `mailto:${supportEmail}`
 

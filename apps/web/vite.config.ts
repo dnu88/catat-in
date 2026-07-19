@@ -21,7 +21,7 @@ export default defineConfig({
   preview: {
     host: '0.0.0.0',
     port: 4173,
-    allowedHosts: ['www.kaswise.com', 'preview.kaswise.com'],
+    allowedHosts: ['kaswise.com', 'www.kaswise.com', 'preview.kaswise.com'],
   },
   server: {
     host: '0.0.0.0',
