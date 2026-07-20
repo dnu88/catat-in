@@ -1299,8 +1299,8 @@ export default function SettingsScreen() {
 						</Text>
 						<Text style={styles.sectionSub}>
 							{language === "id"
-								? "Upload CSV/XLSX bank atau e-wallet dan review transaksi sebelum disimpan."
-								: "Upload bank or e-wallet CSV/XLSX files and review transactions before saving."}
+								? "Upload CSV/XLSX/PDF bank atau e-wallet dan review transaksi sebelum disimpan."
+								: "Upload bank or e-wallet CSV/XLSX/PDF files and review transactions before saving."}
 						</Text>
 						<Pressable
 							testID="settings-import-statement-link"
@@ -1313,7 +1313,7 @@ export default function SettingsScreen() {
 								<IconBubble name="upload" tone="primary" size={32} />
 								<View style={styles.navigationTextBlock}>
 									<Text style={styles.navigationTitle}>
-										{language === "id" ? "Import CSV/XLSX" : "Import CSV/XLSX"}
+										{language === "id" ? "Import CSV/XLSX/PDF" : "Import CSV/XLSX/PDF"}
 									</Text>
 									<Text style={styles.navigationHelper}>
 										{language === "id"

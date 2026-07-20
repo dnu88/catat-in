@@ -25,7 +25,7 @@ import {
 } from "../../src/services/import-statements";
 
 const MAX_IMPORT_FILE_BYTES = 5 * 1024 * 1024;
-const ALLOWED_IMPORT_EXTENSIONS = [".csv", ".xlsx"];
+const ALLOWED_IMPORT_EXTENSIONS = [".csv", ".xlsx", ".pdf"];
 
 type PickedImportFile = {
 	uri: string;
@@ -106,6 +106,7 @@ export default function ImportsScreen() {
 				type: [
 					"text/csv",
 					"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+					"application/pdf",
 				],
 			});
 			if (result.canceled) return;
@@ -118,7 +119,7 @@ export default function ImportsScreen() {
 				size: asset.size,
 			};
 			if (!isSupportedImportFile(picked.name)) {
-				setError("Format belum didukung. Gunakan file CSV atau XLSX.");
+				setError("Format belum didukung. Gunakan file CSV, XLSX, atau PDF.");
 				return;
 			}
 			if (picked.size && picked.size > MAX_IMPORT_FILE_BYTES) {
@@ -227,7 +228,7 @@ export default function ImportsScreen() {
 		>
 			<View style={[styles.card, { backgroundColor: theme.colors.surface }]}> 
 				<Text style={[styles.title, { color: theme.colors.textPrimary }]}>Import Rekening Koran</Text>
-				<Text style={[styles.helper, { color: theme.colors.textSecondary }]}>Upload CSV/XLSX dari bank atau e-wallet. Kaswise akan menampilkan preview sebelum transaksi disimpan.</Text>
+				<Text style={[styles.helper, { color: theme.colors.textSecondary }]}>Upload CSV, XLSX, atau PDF dari bank/e-wallet. Kaswise akan menampilkan preview sebelum transaksi disimpan.</Text>
 			</View>
 
 			<View style={[styles.card, { backgroundColor: theme.colors.surface }]}> 
@@ -287,9 +288,9 @@ export default function ImportsScreen() {
 					style={[styles.secondaryButton, { borderColor: theme.colors.borderSoft }]}
 					onPress={chooseFile}
 				>
-					<Text style={[styles.secondaryButtonText, { color: theme.colors.textPrimary }]}>{file ? file.name : "Pilih CSV/XLSX"}</Text>
+					<Text style={[styles.secondaryButtonText, { color: theme.colors.textPrimary }]}>{file ? file.name : "Pilih CSV/XLSX/PDF"}</Text>
 				</Pressable>
-				<Text style={[styles.smallText, { color: theme.colors.textMuted }]}>Maksimal 5MB. PDF rekening koran belum didukung di MVP.</Text>
+				<Text style={[styles.smallText, { color: theme.colors.textMuted }]}>Maksimal 5MB. PDF scan/OCR mungkin perlu waktu lebih lama dan wajib dicek sebelum konfirmasi.</Text>
 				<Pressable
 					testID="imports-preview-submit"
 					accessibilityRole="button"

@@ -30,6 +30,7 @@ from pydantic import (
 from app.core.auth import get_current_user
 from app.core.config import settings
 from app.core.rate_limit import rate_limit_import
+from app.services.import_pdf_service import parse_bank_pdf
 from app.services.import_service import (
     escape_formula_text,
     generate_tx_hash,
@@ -39,6 +40,7 @@ from app.services.import_service import (
 router = APIRouter()
 
 ALLOWED_BANKS = ["bca", "mandiri", "bni", "bri", "gopay", "ovo"]
+PDF_CONTENT_TYPES = {"application/pdf", "application/x-pdf"}
 MAX_FILE_SIZE = 5 * 1024 * 1024  # 5MB
 MAX_ROWS = 10_000
 WRITER_HOUSEHOLD_ROLES = {"owner", "admin", "member"}
@@ -163,6 +165,12 @@ def _load_existing_hashes(user_id: str, wallet_id: str | None = None) -> set[str
         return set()
 
 
+def _is_pdf_upload(file: UploadFile) -> bool:
+    filename = (file.filename or "").lower().strip()
+    content_type = (file.content_type or "").lower().split(";", 1)[0].strip()
+    return filename.endswith(".pdf") or content_type in PDF_CONTENT_TYPES
+
+
 async def _read_upload_with_limit(request: Request, file: UploadFile) -> bytes:
     content_length = request.headers.get("content-length")
     if (
@@ -265,7 +273,8 @@ async def preview_import(
     existing_hashes = _load_existing_hashes(current_user["user_id"])
 
     try:
-        result = parse_bank_csv(
+        parser = parse_bank_pdf if _is_pdf_upload(file) else parse_bank_csv
+        result = parser(
             file_bytes=file_bytes,
             bank_name=bank_name,
             existing_hashes=existing_hashes,
