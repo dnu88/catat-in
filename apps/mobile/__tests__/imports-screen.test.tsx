@@ -110,11 +110,11 @@ describe("imports screen", () => {
 		expect(mockPush).toHaveBeenCalledWith("/(tabs)/capture");
 	});
 
-	it("loads wallets and lets canary users choose bank and file", async () => {
+	it("loads wallets and lets canary users choose CSV/XLSX/PDF files", async () => {
 		(globalThis as any).__KASWISE_FEATURE_FLAGS__.importStatement = true;
 		mockGetDocumentAsync.mockResolvedValue({
 			canceled: false,
-			assets: [{ uri: "file://statement.csv", name: "statement.csv", mimeType: "text/csv", size: 100 }],
+			assets: [{ uri: "file://statement.pdf", name: "statement.pdf", mimeType: "application/pdf", size: 100 }],
 		});
 		renderImports();
 
@@ -124,7 +124,25 @@ describe("imports screen", () => {
 		fireEvent.press(screen.getByTestId("imports-bank-mandiri"));
 		fireEvent.press(screen.getByTestId("imports-choose-file"));
 
-		await waitFor(() => expect(screen.getByText("statement.csv")).toBeTruthy());
+		await waitFor(() => expect(screen.getByText("statement.pdf")).toBeTruthy());
+		expect(mockGetDocumentAsync).toHaveBeenCalledWith(expect.objectContaining({
+			type: expect.arrayContaining(["application/pdf"]),
+		}));
+	});
+
+	it("rejects unsupported file extensions before preview", async () => {
+		(globalThis as any).__KASWISE_FEATURE_FLAGS__.importStatement = true;
+		mockGetDocumentAsync.mockResolvedValue({
+			canceled: false,
+			assets: [{ uri: "file://statement.txt", name: "statement.txt", mimeType: "text/plain", size: 100 }],
+		});
+
+		renderImports();
+		await waitFor(() => expect(screen.getByTestId("imports-wallet-wallet-1")).toBeTruthy());
+		fireEvent.press(screen.getByTestId("imports-choose-file"));
+
+		await waitFor(() => expect(screen.getByText(/Gunakan file CSV, XLSX, atau PDF/i)).toBeTruthy());
+		expect(mockPreviewImportStatement).not.toHaveBeenCalled();
 	});
 
 	it("previews transactions and confirms only new rows", async () => {
