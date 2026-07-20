@@ -16,6 +16,7 @@ import { IconBubble } from "../../src/components/ui";
 import { useTheme } from "../../src/theme/theme-context";
 import { useI18n } from "../../src/i18n/i18n-context";
 import { useEntitlements } from "../../src/hooks/useEntitlements";
+import { featureFlags } from "../../src/config/features";
 import { planStatusLabel } from "../../src/utils/plan-labels";
 import { getStoreReleaseConfig } from "../../src/config/store-release";
 import { getLatestAccountDeletionRequest, submitAccountDeletionRequest, type AccountDeletionRequestItem } from "../../src/services/account-deletion";
@@ -1290,6 +1291,41 @@ export default function SettingsScreen() {
 						<Text style={styles.navigationChevron}>›</Text>
 					</Pressable>
 				</View>
+
+				{featureFlags.importStatement ? (
+					<View key="settings-import-statement" testID="settings-import-statement" style={styles.sectionCard}>
+						<Text style={styles.sectionTitle}>
+							{language === "id" ? "Import Rekening Koran" : "Bank Statement Import"}
+						</Text>
+						<Text style={styles.sectionSub}>
+							{language === "id"
+								? "Upload CSV/XLSX/PDF bank atau e-wallet dan review transaksi sebelum disimpan."
+								: "Upload bank or e-wallet CSV/XLSX/PDF files and review transactions before saving."}
+						</Text>
+						<Pressable
+							testID="settings-import-statement-link"
+							accessibilityRole="button"
+							accessibilityLabel={language === "id" ? "Buka import rekening koran" : "Open bank statement import"}
+							style={styles.navigationRow}
+							onPress={() => router.push("/(tabs)/imports")}
+						>
+							<View style={styles.navigationCopy}>
+								<IconBubble name="upload" tone="primary" size={32} />
+								<View style={styles.navigationTextBlock}>
+									<Text style={styles.navigationTitle}>
+										{language === "id" ? "Import CSV/XLSX/PDF" : "Import CSV/XLSX/PDF"}
+									</Text>
+									<Text style={styles.navigationHelper}>
+										{language === "id"
+											? "Preview duplikat dan error sebelum konfirmasi."
+											: "Preview duplicates and errors before confirming."}
+									</Text>
+								</View>
+							</View>
+							<Text style={styles.navigationChevron}>›</Text>
+						</Pressable>
+					</View>
+				) : null}
 
 				{/* Language Section */}
 				<View key="settings-language" testID="settings-language" style={styles.sectionCard}>

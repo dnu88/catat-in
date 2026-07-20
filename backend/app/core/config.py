@@ -175,6 +175,12 @@ class Settings(BaseSettings):
     FREE_TIER_BILL_REMINDER_LIMIT: int = 3
     FREE_TIER_IMPORT_MONTHS: int = 3
     FREE_TIER_MAX_TRANSACTIONS: int = 10_000
+
+    # Import rekening koran PDF — local extraction first, OCR fallback gated.
+    IMPORT_PDF_OCR_ENABLED: bool = False
+    IMPORT_PDF_MAX_PAGES: int = 20
+    IMPORT_PDF_OCR_MAX_PAGES: int = 5
+    IMPORT_PDF_TEXT_MIN_CHARS: int = 80
     PREMIUM_PRICE_MONTHLY_IDR: int = 29_000
     PREMIUM_PRICE_YEARLY_IDR: int = 249_000
     GROUP_MAX_MEMBERS: int = 10
@@ -187,6 +193,7 @@ class Settings(BaseSettings):
         "SUPABASE_LEGACY_HS256_ENABLED",
         "MAYAR_WEBHOOKS_ENABLED",
         "MAYAR_ACTIVATION_ENABLED",
+        "IMPORT_PDF_OCR_ENABLED",
         mode="before",
     )
     @classmethod

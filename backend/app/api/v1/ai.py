@@ -45,7 +45,11 @@ class LegacyProcessRequest(BaseModel):
 
 async def _read_upload_with_limit(request: Request, file: UploadFile) -> bytes:
     content_length = request.headers.get("content-length")
-    if content_length and content_length.isdigit() and int(content_length) > MAX_FILE_SIZE:
+    if (
+        content_length
+        and content_length.isdigit()
+        and int(content_length) > MAX_FILE_SIZE
+    ):
         raise HTTPException(
             status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
             detail=f"Ukuran file terlalu besar. Maksimal {settings.MAX_UPLOAD_SIZE_MB}MB.",
@@ -64,30 +68,41 @@ async def _read_upload_with_limit(request: Request, file: UploadFile) -> bytes:
 async def chat_input(body: ChatInputRequest, current_user=Depends(get_current_user)):
     if not body.text or len(body.text.strip()) < 2:
         raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail="Teks terlalu pendek. Ceritakan transaksimu lebih lengkap.",
         )
 
     if len(body.text) > 500:
         raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail="Teks terlalu panjang. Maksimal 500 karakter per pesan.",
         )
 
     state = load_state(current_user["user_id"])
-    decision = evaluate(is_premium=state["is_premium"], kind="chat",
-                        chat_count=state["chat_count"], photo_count=state["photo_count"])
+    decision = evaluate(
+        is_premium=state["is_premium"],
+        kind="chat",
+        chat_count=state["chat_count"],
+        photo_count=state["photo_count"],
+    )
     if not decision.allowed:
         raise HTTPException(
             status_code=decision.status_code,
-            detail={"reason": decision.reason, "feature": "chat",
-                    "limit": state["chat_limit"], "used": state["chat_count"]},
+            detail={
+                "reason": decision.reason,
+                "feature": "chat",
+                "limit": state["chat_limit"],
+                "used": state["chat_count"],
+            },
         )
 
     try:
         result = await extract_transaction_from_text(body.text)
     except RuntimeError as exc:
-        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail="Layanan AI sedang tidak tersedia. Coba lagi.") from exc
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Layanan AI sedang tidak tersedia. Coba lagi.",
+        ) from exc
 
     if result.get("transactions"):
         record_use(current_user["user_id"], state["period_ym"], "chat")
@@ -97,7 +112,8 @@ async def chat_input(body: ChatInputRequest, current_user=Depends(get_current_us
 @router.post("/receipt", dependencies=[Depends(rate_limit_ai)])
 async def analyze_receipt(
     request: Request,
-    file: UploadFile = File(...), current_user=Depends(get_current_user)
+    file: UploadFile = File(...),
+    current_user=Depends(get_current_user),
 ):
     if file.content_type not in ALLOWED_IMAGE_TYPES:
         raise HTTPException(
@@ -108,38 +124,54 @@ async def analyze_receipt(
     image_data = await _read_upload_with_limit(request, file)
 
     state = load_state(current_user["user_id"])
-    decision = evaluate(is_premium=state["is_premium"], kind="photo",
-                        chat_count=state["chat_count"], photo_count=state["photo_count"])
+    decision = evaluate(
+        is_premium=state["is_premium"],
+        kind="photo",
+        chat_count=state["chat_count"],
+        photo_count=state["photo_count"],
+    )
     if not decision.allowed:
         raise HTTPException(
             status_code=decision.status_code,
-            detail={"reason": decision.reason, "feature": "photo",
-                    "limit": state["photo_limit"], "used": state["photo_count"]},
+            detail={
+                "reason": decision.reason,
+                "feature": "photo",
+                "limit": state["photo_limit"],
+                "used": state["photo_count"],
+            },
         )
 
     try:
         result = await analyze_receipt_image(image_data, file.content_type)
     except RuntimeError as exc:
-        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail="Layanan OCR sedang tidak tersedia. Coba lagi.") from exc
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Layanan OCR sedang tidak tersedia. Coba lagi.",
+        ) from exc
 
     record_use(current_user["user_id"], state["period_ym"], "photo")
     return result
 
 
-@router.post("/insight", dependencies=[Depends(rate_limit_ai), Depends(require_premium)])
+@router.post(
+    "/insight", dependencies=[Depends(rate_limit_ai), Depends(require_premium)]
+)
 async def get_financial_insight(
     body: InsightRequest, current_user=Depends(get_current_user)
 ):
     context = build_ai_insight_context(
-        current_user["user_id"], body.period,
-        start_date=body.start_date, end_date=body.end_date,
+        current_user["user_id"],
+        body.period,
+        start_date=body.start_date,
+        end_date=body.end_date,
     )
 
     try:
         insight = await generate_financial_insight(context, body.period)
     except RuntimeError as exc:
         raise HTTPException(
-            status_code=status.HTTP_502_BAD_GATEWAY, detail="Insight AI sedang tidak tersedia. Coba lagi."
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Insight AI sedang tidak tersedia. Coba lagi.",
         ) from exc
 
     # Fire-and-forget: create AI Insight ready notification.
@@ -170,20 +202,29 @@ async def legacy_process(
 
     if input_type == "text":
         state = load_state(current_user["user_id"])
-        decision = evaluate(is_premium=state["is_premium"], kind="chat",
-                            chat_count=state["chat_count"], photo_count=state["photo_count"])
+        decision = evaluate(
+            is_premium=state["is_premium"],
+            kind="chat",
+            chat_count=state["chat_count"],
+            photo_count=state["photo_count"],
+        )
         if not decision.allowed:
             raise HTTPException(
                 status_code=decision.status_code,
-                detail={"reason": decision.reason, "feature": "chat",
-                        "limit": state["chat_limit"], "used": state["chat_count"]},
+                detail={
+                    "reason": decision.reason,
+                    "feature": "chat",
+                    "limit": state["chat_limit"],
+                    "used": state["chat_count"],
+                },
             )
 
         try:
             extracted = await extract_transaction_from_text(body.data or "")
         except RuntimeError as exc:
             raise HTTPException(
-                status_code=status.HTTP_502_BAD_GATEWAY, detail="Layanan AI sedang tidak tersedia. Coba lagi."
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail="Layanan AI sedang tidak tersedia. Coba lagi.",
             ) from exc
         tx_list = extracted.get("transactions") or []
         top_tx = tx_list[0] if tx_list else {}
@@ -217,13 +258,21 @@ async def legacy_process(
 
     if input_type == "image":
         state = load_state(current_user["user_id"])
-        decision = evaluate(is_premium=state["is_premium"], kind="photo",
-                            chat_count=state["chat_count"], photo_count=state["photo_count"])
+        decision = evaluate(
+            is_premium=state["is_premium"],
+            kind="photo",
+            chat_count=state["chat_count"],
+            photo_count=state["photo_count"],
+        )
         if not decision.allowed:
             raise HTTPException(
                 status_code=decision.status_code,
-                detail={"reason": decision.reason, "feature": "photo",
-                        "limit": state["photo_limit"], "used": state["photo_count"]},
+                detail={
+                    "reason": decision.reason,
+                    "feature": "photo",
+                    "limit": state["photo_limit"],
+                    "used": state["photo_count"],
+                },
             )
 
         payload = body.data or ""
@@ -238,7 +287,8 @@ async def legacy_process(
             analyzed = await analyze_receipt_image(image_bytes, "image/png")
         except RuntimeError as exc:
             raise HTTPException(
-                status_code=status.HTTP_502_BAD_GATEWAY, detail="Layanan OCR sedang tidak tersedia. Coba lagi."
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail="Layanan OCR sedang tidak tersedia. Coba lagi.",
             ) from exc
         confidence = float(analyzed.get("confidence") or 0.0)
 
@@ -256,6 +306,6 @@ async def legacy_process(
         }
 
     raise HTTPException(
-        status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+        status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
         detail="input_type harus 'text' atau 'image'",
     )

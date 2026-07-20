@@ -22,10 +22,12 @@ anthropic==0.40.0
 # ── PAYMENT ──────────────────────────────────────────────────
 midtransclient==1.4.2
 
-# ── DATA PROCESSING (Import CSV) ─────────────────────────────
+# ── DATA PROCESSING (Import CSV/PDF) ─────────────────────────
 pandas==2.2.2
 openpyxl==3.1.4              # Baca file .xlsx
 chardet==5.2.0               # Deteksi encoding CSV
+pdfplumber==0.11.7           # Extract text/table dari PDF rekening koran
+pypdf==6.4.2                 # Validasi PDF/encrypted guard
 
 # ── IMAGE PROCESSING (Struk) ─────────────────────────────────
 Pillow==12.2.0                # Validasi dan resize gambar sebelum kirim ke AI
