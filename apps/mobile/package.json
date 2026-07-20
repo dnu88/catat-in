@@ -38,6 +38,7 @@
     "expo": "^54.0.34",
     "expo-av": "~16.0.8",
     "expo-constants": "^18.0.13",
+    "expo-document-picker": "^57.0.1",
     "expo-image-picker": "~17.0.11",
     "expo-linking": "^8.0.12",
     "expo-router": "^6.0.23",
