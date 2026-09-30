@@ -97,6 +97,17 @@ export function getDefaultCaptureMode(voiceEnabled: boolean): ModeId {
 	return voiceEnabled ? "Suara" : "Teks";
 }
 
+export function getCaptureSubtitle(voiceEnabled: boolean, isEn: boolean): string {
+	if (voiceEnabled) {
+		return isEn
+			? "Voice, text, or receipt—choose the fastest input."
+			: "Suara, teks, atau struk—pilih input tercepat.";
+	}
+	return isEn
+		? "Text or receipt—choose the fastest input."
+		: "Teks atau struk—pilih input tercepat.";
+}
+
 export function getCaptureModes(voiceEnabled: boolean) {
 	return voiceEnabled ? [voiceMode, ...enabledModes] : enabledModes;
 }
@@ -183,7 +194,7 @@ export default function CaptureScreen() {
 			isEn
 				? {
 						title: "Record a transaction",
-						subtitle: "Voice, text, or receipt—choose the fastest input.",
+						subtitle: getCaptureSubtitle(featureFlags.voiceNote, true),
 						modeLabels: {
 							Teks: "Text",
 							Foto: "Photo",
@@ -246,7 +257,7 @@ export default function CaptureScreen() {
 					}
 				: {
 						title: "Catat transaksi",
-						subtitle: "Suara, teks, atau struk—pilih input tercepat.",
+						subtitle: getCaptureSubtitle(featureFlags.voiceNote, false),
 						modeLabels: {
 							Teks: "Teks",
 							Foto: "Foto",

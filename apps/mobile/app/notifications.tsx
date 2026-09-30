@@ -48,7 +48,7 @@ function NotificationIcon({ type }: { type: string }) {
     case "ai_insight_ready":
       return <KaswiseIcon name="insight" size={20} weight="bold" />;
     default:
-      return <KaswiseIcon name="home" size={20} weight="bold" />;
+      return <KaswiseIcon name="notification" size={20} weight="bold" />;
   }
 }
 
@@ -63,16 +63,18 @@ export default function NotificationsScreen() {
 
   const [items, setItems] = useState<NotificationItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
 
   const load = useCallback(async () => {
     try {
       setLoading(true);
+      setError(false);
       const data = await listNotifications(supabase, { limit: 100 });
       setItems(data.items);
       setUnreadCount(data.unread_count);
     } catch {
-      // silently ignore
+      setError(true);
     } finally {
       setLoading(false);
     }
@@ -122,6 +124,7 @@ export default function NotificationsScreen() {
         <Pressable
           testID="notifications-back"
           accessibilityRole="button"
+          accessibilityLabel={isEn ? "Back" : "Kembali"}
           onPress={() => router.back()}
           style={s.backBtn}
         >
@@ -150,10 +153,29 @@ export default function NotificationsScreen() {
         <View style={s.center}>
           <ActivityIndicator size="large" color={theme.colors.brandPrimary} />
         </View>
+      ) : error ? (
+        <View testID="notifications-error" style={s.center}>
+          <KaswiseIcon
+            name="notification"
+            size={48}
+            color={theme.colors.textMuted}
+            weight="regular"
+          />
+          <Text style={s.emptyText}>{isEn ? "Couldn't load notifications." : "Gagal memuat notifikasi."}</Text>
+          <Pressable
+            testID="notifications-retry"
+            accessibilityRole="button"
+            accessibilityLabel={isEn ? "Retry" : "Coba lagi"}
+            onPress={load}
+            style={s.retryBtn}
+          >
+            <Text style={s.retryText}>{isEn ? "Retry" : "Coba lagi"}</Text>
+          </Pressable>
+        </View>
       ) : items.length === 0 ? (
         <View testID="notifications-empty" style={s.center}>
           <KaswiseIcon
-            name="home"
+            name="notification"
             size={48}
             color={theme.colors.textMuted}
             weight="regular"
@@ -244,6 +266,17 @@ function styles(
     emptyText: {
       color: theme.colors.textMuted,
       fontSize: 15,
+    },
+    retryBtn: {
+      paddingVertical: 10,
+      paddingHorizontal: 20,
+      borderRadius: 999,
+      backgroundColor: fe.blueDeep,
+    },
+    retryText: {
+      color: fe.white,
+      fontSize: 14,
+      fontWeight: "700" as const,
     },
     item: {
       paddingHorizontal: 16,

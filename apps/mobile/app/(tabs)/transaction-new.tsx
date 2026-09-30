@@ -29,86 +29,35 @@ import {
 } from "../../src/services/transactions";
 import { listWallets, type Wallet } from "../../src/services/wallets";
 import { listCategories, type Category } from "../../src/services/categories";
-import { areCategoryNamesEquivalent, getCategoryCanonicalId, getLocalizedCategoryName } from "../../src/services/category-taxonomy";
+import {
+	areCategoryNamesEquivalent,
+	categoryDefinitions,
+	getCategoryCanonicalId,
+	getCategoryDefinitionByName,
+	getLocalizedCategoryName,
+} from "../../src/services/category-taxonomy";
+import { resolveCategoryVisual } from "../../src/theme/category-visuals";
 
-type CategoryOption = { name: string; icon: KaswiseIconName };
-
-const categoryIcons: Record<string, KaswiseIconName> = {
-	Makan: "food",
-	"Makan & Minum": "food",
-	"Makanan & Minuman": "food",
-	"Food & Beverage": "food",
-	Transport: "transport",
-	Transportasi: "transport",
-	Belanja: "groceries",
-	"Belanja Bulanan": "groceries",
-	"Belanja Pribadi": "groceries",
-	Groceries: "groceries",
-	"Personal Shopping": "groceries",
-	Hiburan: "recreation",
-	Entertainment: "recreation",
-	Tagihan: "bills",
-	Bills: "bills",
-	Kesehatan: "sport",
-	Health: "sport",
-	Pendidikan: "file",
-	Education: "file",
-	Pendapatan: "card",
-	Salary: "card",
-	Bonus: "gift",
-	Freelance: "investment",
-	"Kartu Kredit": "creditCard",
-	"Credit Card": "creditCard",
-	Lainnya: "otherExpenses",
-	"Other expenses": "otherExpenses",
+type CategoryOption = {
+	name: string;
+	icon: KaswiseIconName;
+	type: "expense" | "income";
+	isDefault: boolean;
 };
 
-function fallbackCategories(isEn: boolean): CategoryOption[] {
-	return [
-		{ name: isEn ? "Food & Beverage" : "Makan & Minum", icon: "food" },
-		{ name: isEn ? "Groceries" : "Belanja Bulanan", icon: "groceries" },
-		{ name: isEn ? "Personal Shopping" : "Belanja Pribadi", icon: "groceries" },
-		{ name: isEn ? "Transport" : "Transportasi", icon: "transport" },
-		{ name: isEn ? "Bills" : "Tagihan", icon: "bills" },
-		{ name: isEn ? "Credit Card" : "Kartu Kredit", icon: "creditCard" },
-		{ name: isEn ? "Entertainment" : "Hiburan", icon: "recreation" },
-		{ name: isEn ? "Health" : "Kesehatan", icon: "sport" },
-		{ name: isEn ? "Education" : "Pendidikan", icon: "file" },
-		{ name: isEn ? "Salary" : "Gaji", icon: "card" },
-		{ name: "Bonus", icon: "gift" },
-		{ name: "Freelance", icon: "investment" },
-		{ name: isEn ? "Other expenses" : "Lainnya", icon: "otherExpenses" },
-	];
-}
-
-function normalizeCategoryIcon(icon: string | null | undefined, name: string): KaswiseIconName {
-	if (categoryIcons[name]) return categoryIcons[name];
-	const iconName = (icon ?? "") as KaswiseIconName;
-	if (iconName && [
-		"food",
-		"coffee",
-		"transport",
-		"bus",
-		"sport",
-		"recreation",
-		"movie",
-		"bills",
-		"groceries",
-		"investment",
-		"gift",
-		"otherExpenses",
-		"file",
-		"card",
-		"chart",
-		"wallets",
-		"insight",
-		"budgets",
-		"transactions",
-		"creditCard",
-	].includes(iconName)) {
-		return iconName;
-	}
-	return categoryIcons[name] || "otherExpenses";
+function fallbackCategories(
+	isEn: boolean,
+	mode: "light" | "dark",
+): CategoryOption[] {
+	return categoryDefinitions.map((definition) => ({
+		name: definition.labels[isEn ? "en" : "id"],
+		icon: resolveCategoryVisual({
+			categoryName: definition.labels.en,
+			mode,
+		}).icon,
+		type: definition.type,
+		isDefault: true,
+	}));
 }
 
 function todayIso(): string {
@@ -271,7 +220,7 @@ export default function TransactionNewScreen() {
 
 	const [wallets, setWallets] = useState<Wallet[]>([]);
 	const [categories, setCategories] =
-		useState<CategoryOption[]>(() => fallbackCategories(isEn));
+		useState<CategoryOption[]>(() => fallbackCategories(isEn, theme.mode));
 	const [loading, setLoading] = useState(true);
 	const [submitting, setSubmitting] = useState(false);
 	const [error, setError] = useState<string | null>(null);
@@ -306,21 +255,28 @@ export default function TransactionNewScreen() {
 			if (!isCurrentRequest()) return;
 
 			const activeWallets = walletData.filter((w) => w.is_active !== false);
-			let categoryOptions = fallbackCategories(isEn);
-			const defaultCategoryData = categoryData.filter(
-				(c) => c.is_default !== false,
-			);
-			if (defaultCategoryData.length > 0) {
-				const seen = new Set<string>();
+			let categoryOptions = fallbackCategories(isEn, theme.mode);
+			if (categoryData.length > 0) {
+				const seenDefaults = new Set<string>();
 				categoryOptions = [];
-				for (const c of defaultCategoryData) {
-					const localizedName = getLocalizedCategoryName(c.name, isEn ? "en" : "id");
+				for (const c of categoryData) {
+					const definition = getCategoryDefinitionByName(c.name);
 					const canonicalId = getCategoryCanonicalId(c.name);
-					if (canonicalId && seen.has(canonicalId)) continue;
-					if (canonicalId) seen.add(canonicalId);
+					if (c.is_default !== false && canonicalId && seenDefaults.has(canonicalId)) continue;
+					if (c.is_default !== false && canonicalId) seenDefaults.add(canonicalId);
+					const localizedName = c.is_default === false
+						? c.name
+						: getLocalizedCategoryName(c.name, isEn ? "en" : "id");
 					categoryOptions.push({
 						name: localizedName,
-						icon: normalizeCategoryIcon(c.icon, localizedName),
+						icon: resolveCategoryVisual({
+							categoryId: c.id,
+							categoryName: c.name,
+							categories: [c],
+							mode: theme.mode,
+						}).icon,
+						type: c.type ?? definition?.type ?? "expense",
+						isDefault: c.is_default !== false,
 					});
 				}
 			}
@@ -421,6 +377,12 @@ export default function TransactionNewScreen() {
 			? walletId != null && targetWalletId != null && walletId !== targetWalletId
 			: resolvedCategory.length > 0 && resolvedDescription.length > 0) &&
 		!submitting;
+
+	const displayedCategories = categories.filter(
+		(option) =>
+			option.type === txType &&
+			(isEditMode ? option.isDefault : true),
+	);
 
 
 	const resetForm = useCallback(() => {
@@ -718,11 +680,13 @@ export default function TransactionNewScreen() {
 				<View key="transaction-form-category" testID="transaction-form-category" style={styles.field}>
 					<Text style={styles.label}>{tx.category}</Text>
 					<View style={styles.chipRow}>
-						{categories.map((c) => (
+						{displayedCategories.map((c) => (
 							<Pressable
 								key={c.name}
+								testID={`transaction-category-${c.name}`}
 								accessibilityRole="button"
 								accessibilityLabel={tx.pickCategory(c.name)}
+								accessibilityHint={c.icon}
 								accessibilityState={{ selected: category === c.name }}
 								onPress={() => setCategory(c.name)}
 								style={[

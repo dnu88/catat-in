@@ -5,7 +5,7 @@ import {
 	screen,
 	waitFor,
 } from "@testing-library/react-native";
-import { StyleSheet } from "react-native";
+import { Alert, Platform, StyleSheet } from "react-native";
 import type { StyleProp, ViewStyle } from "react-native";
 
 import WalletsScreen from "../app/(tabs)/wallets";
@@ -120,6 +120,11 @@ describe("WalletsScreen", () => {
 		mockDeleteWallet.mockResolvedValue(undefined);
 	});
 
+	afterEach(() => {
+		jest.restoreAllMocks();
+		Object.defineProperty(Platform, "OS", { configurable: true, value: "ios" });
+	});
+
 	it("uses the reference-led gradient hero and stacked wallet treatment", async () => {
 		renderWallets();
 
@@ -181,7 +186,7 @@ describe("WalletsScreen", () => {
 		);
 	});
 
-	it("edits and deletes wallets in their own scope", async () => {
+	it("edits wallets in their own scope", async () => {
 		renderWallets();
 
 		fireEvent.press(await screen.findByTestId("wallet-edit-wallet-family"));
@@ -195,8 +200,35 @@ describe("WalletsScreen", () => {
 				{ type: "household", householdId: "hh-1", role: "admin" },
 			),
 		);
+	});
+
+	it("does not delete a wallet when native confirmation is cancelled", async () => {
+		const alertSpy = jest.spyOn(Alert, "alert").mockImplementation(() => undefined);
+		renderWallets();
 
 		fireEvent.press(await screen.findByTestId("wallet-delete-wallet-family"));
+		const buttons = alertSpy.mock.calls[0]?.[2];
+		expect(alertSpy).toHaveBeenCalledWith(
+			"Hapus dompet?",
+			"Dompet Keluarga akan dihapus permanen.",
+			expect.any(Array),
+		);
+		expect(buttons).toEqual(expect.arrayContaining([
+			expect.objectContaining({ text: "Batal", style: "cancel" }),
+			expect.objectContaining({ text: "Hapus", style: "destructive" }),
+		]));
+		buttons?.[0]?.onPress?.();
+		expect(mockDeleteWallet).not.toHaveBeenCalled();
+	});
+
+	it("deletes a wallet only after native destructive confirmation", async () => {
+		const alertSpy = jest.spyOn(Alert, "alert").mockImplementation(() => undefined);
+		renderWallets();
+
+		fireEvent.press(await screen.findByTestId("wallet-delete-wallet-family"));
+		const destructive = alertSpy.mock.calls[0]?.[2]?.find((button) => button.style === "destructive");
+		destructive?.onPress?.();
+
 		await waitFor(() =>
 			expect(mockDeleteWallet).toHaveBeenCalledWith("wallet-family", {
 				type: "household",
@@ -204,6 +236,22 @@ describe("WalletsScreen", () => {
 				role: "admin",
 			}),
 		);
+	});
+
+	it("uses browser confirm before deleting on web", async () => {
+		Object.defineProperty(Platform, "OS", { configurable: true, value: "web" });
+		Object.defineProperty(globalThis, "confirm", { configurable: true, value: jest.fn() });
+		const confirmSpy = jest.mocked(globalThis.confirm).mockReturnValue(false);
+		renderWallets("en");
+
+		fireEvent.press(await screen.findByTestId("wallet-delete-wallet-family"));
+		expect(confirmSpy).toHaveBeenCalledWith("Delete wallet?\n\nDompet Keluarga will be permanently deleted.");
+		expect(mockDeleteWallet).not.toHaveBeenCalled();
+
+		confirmSpy.mockReturnValue(true);
+		fireEvent.press(screen.getByTestId("wallet-delete-wallet-family"));
+		await waitFor(() => expect(mockDeleteWallet).toHaveBeenCalledTimes(1));
+		Object.defineProperty(Platform, "OS", { configurable: true, value: "ios" });
 	});
 
 	it("uses the selected App language", async () => {

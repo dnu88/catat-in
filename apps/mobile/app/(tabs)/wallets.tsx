@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
 	ActivityIndicator,
+	Alert,
+	Platform,
 	Pressable,
 	RefreshControl,
 	ScrollView,
@@ -58,6 +60,8 @@ const copy = {
 		createError: "Gagal membuat dompet",
 		edit: "Edit",
 		delete: "Hapus",
+		deleteTitle: "Hapus dompet?",
+		deleteMessage: (name: string) => `${name} akan dihapus permanen.`,
 		update: "Simpan perubahan",
 		updateError: "Gagal mengubah dompet",
 		deleteError: "Gagal menghapus dompet",
@@ -89,6 +93,8 @@ const copy = {
 		createError: "Failed to create wallet",
 		edit: "Edit",
 		delete: "Delete",
+		deleteTitle: "Delete wallet?",
+		deleteMessage: (name: string) => `${name} will be permanently deleted.`,
 		update: "Save changes",
 		updateError: "Failed to update wallet",
 		deleteError: "Failed to delete wallet",
@@ -274,7 +280,7 @@ export default function WalletsScreen() {
 		}
 	};
 
-	const handleDelete = async (wallet: ScopedWallet) => {
+	const deleteConfirmedWallet = async (wallet: ScopedWallet) => {
 		setSubmitting(true);
 		setError(null);
 		try {
@@ -286,6 +292,25 @@ export default function WalletsScreen() {
 		} finally {
 			setSubmitting(false);
 		}
+	};
+
+	const handleDelete = (wallet: ScopedWallet) => {
+		const message = tx.deleteMessage(wallet.name);
+		if (Platform.OS === "web") {
+			if (typeof globalThis.confirm === "function" && globalThis.confirm(`${tx.deleteTitle}\n\n${message}`)) {
+				void deleteConfirmedWallet(wallet);
+			}
+			return;
+		}
+
+		Alert.alert(tx.deleteTitle, message, [
+			{ text: tx.cancel, style: "cancel" },
+			{
+				text: tx.delete,
+				style: "destructive",
+				onPress: () => void deleteConfirmedWallet(wallet),
+			},
+		]);
 	};
 
 	const handleCreate = async () => {

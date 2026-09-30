@@ -179,14 +179,64 @@ describe("transaction-new edit mode", () => {
 
 	it("shows only default categories while editing a transaction", async () => {
 		mockListCategories.mockResolvedValueOnce([
-			{ id: "cat-1", name: "Makan", icon: "chart", is_default: true },
-			{ id: "cat-custom", name: "Nongkrong", icon: "coffee", is_default: false },
+			{ id: "cat-1", name: "Makan", icon: "chart", is_default: true, type: "expense" },
+			{ id: "cat-custom", name: "Nongkrong", icon: "coffee", is_default: false, type: "expense" },
 		]);
 		const screen = renderScreen();
 
 		expect(await screen.findByLabelText("Pilih kategori Makan & Minum")).toBeTruthy();
 		expect(screen.queryByLabelText("Pilih kategori Nongkrong")).toBeNull();
 		expect(screen.queryByLabelText("Pilih kategori kustom")).toBeNull();
+	});
+
+	it("keeps custom user categories usable in create mode", async () => {
+		mockSearchParams = {};
+		mockListCategories.mockResolvedValue([
+			{ id: "cat-1", name: "Makan", icon: "chart", is_default: true, type: "expense" },
+			{ id: "cat-custom", name: "Nongkrong", icon: "coffee", is_default: false, type: "expense" },
+		]);
+		const screen = renderScreen();
+
+		expect(await screen.findByLabelText("Pilih kategori Nongkrong")).toBeTruthy();
+		expect(screen.getByLabelText("Pilih kategori Makan & Minum")).toBeTruthy();
+	});
+
+	it("filters canonical and custom categories by transaction type", async () => {
+		mockSearchParams = {};
+		mockListCategories.mockResolvedValue([
+			{ id: "cat-food", name: "Food & Beverage", icon: null, is_default: true, type: "expense" },
+			{ id: "cat-salary", name: "Salary", icon: null, is_default: true, type: "income" },
+			{ id: "cat-custom-income", name: "Royalti", icon: "trophy", is_default: false, type: "income" },
+		]);
+		const screen = renderScreen();
+
+		expect(await screen.findByLabelText("Pilih kategori Makan & Minum")).toBeTruthy();
+		expect(screen.queryByLabelText("Pilih kategori Gaji")).toBeNull();
+		expect(screen.queryByLabelText("Pilih kategori Royalti")).toBeNull();
+
+		fireEvent.press(screen.getByLabelText("Pilih transfer"));
+		expect(screen.queryByTestId("transaction-form-category")).toBeNull();
+	});
+
+	it("uses canonical fallback icons instead of stale local mappings", async () => {
+		mockSearchParams = {};
+		mockListCategories.mockResolvedValue([
+			{ id: "health", name: "Health", icon: null, is_default: true, type: "expense" },
+			{ id: "education", name: "Education", icon: null, is_default: true, type: "expense" },
+			{ id: "shopping", name: "Personal Shopping", icon: null, is_default: true, type: "expense" },
+			{ id: "salary", name: "Salary", icon: null, is_default: true, type: "income" },
+			{ id: "bonus", name: "Bonus", icon: null, is_default: true, type: "income" },
+			{ id: "freelance", name: "Freelance", icon: null, is_default: true, type: "income" },
+		]);
+		const screen = renderScreen();
+
+		expect((await screen.findByTestId("transaction-category-Kesehatan")).props.accessibilityHint).toBe("firstAid");
+		expect(screen.getByTestId("transaction-category-Pendidikan").props.accessibilityHint).toBe("graduationCap");
+		expect(screen.getByTestId("transaction-category-Belanja Pribadi").props.accessibilityHint).toBe("tag");
+		fireEvent.press(screen.getByLabelText("Pilih pemasukan"));
+		expect(screen.getByTestId("transaction-category-Gaji").props.accessibilityHint).toBe("bank");
+		expect(screen.getByTestId("transaction-category-Bonus").props.accessibilityHint).toBe("trophy");
+		expect(screen.getByTestId("transaction-category-Freelance").props.accessibilityHint).toBe("briefcase");
 	});
 
 	it("creates manual transactions in the active household context", async () => {

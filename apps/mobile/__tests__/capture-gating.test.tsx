@@ -33,6 +33,7 @@ jest.mock("../src/hooks/useEntitlements", () => ({ useEntitlements: () => ({ dat
 
 import {
   getCaptureModes,
+  getCaptureSubtitle,
   getDefaultCaptureMode,
   photoLocked,
   quotaLabel,
@@ -61,4 +62,12 @@ test("voice-enabled capture starts like Monveo: voice first", () => {
 test("voice-disabled capture keeps the safe text-first default", () => {
   expect(getDefaultCaptureMode(false)).toBe("Teks");
   expect(getCaptureModes(false).map((mode) => mode.id)).toEqual(["Teks", "Foto"]);
+});
+
+test("subtitle reflects the voice feature flag", () => {
+  expect(getCaptureSubtitle(true, true)).toContain("Voice");
+  expect(getCaptureSubtitle(true, false)).toContain("Suara");
+  expect(getCaptureSubtitle(false, true)).toBe("Text or receipt—choose the fastest input.");
+  expect(getCaptureSubtitle(false, false)).toBe("Teks atau struk—pilih input tercepat.");
+  expect(getCaptureSubtitle(false, true)).not.toContain("Voice");
 });
