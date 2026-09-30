@@ -185,6 +185,10 @@ function publicRuntimeConfigBlock() {
     extra.supabaseAnonKey ||
     extra.EXPO_PUBLIC_SUPABASE_ANON_KEY ||
     env.EXPO_PUBLIC_SUPABASE_ANON_KEY
+  const voiceNoteFeature =
+    process.env.EXPO_PUBLIC_FEATURE_VOICE_NOTE ||
+    env.EXPO_PUBLIC_FEATURE_VOICE_NOTE ||
+    ''
 
   if (!supabaseUrl || !supabaseAnonKey) {
     throw new Error('Missing public Supabase config for PWA deploy')
@@ -201,7 +205,7 @@ function publicRuntimeConfigBlock() {
     },
   }
 
-  return `${marker}\n    <script>\n      var process = window.process = window.process || {};\n      process.env = process.env || {};\n      process.env.NODE_ENV = "production";\n      process.env.EXPO_PUBLIC_SUPABASE_URL = ${JSON.stringify(supabaseUrl)};\n      process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY = ${JSON.stringify(supabaseAnonKey)};\n      process.env.APP_MANIFEST = ${JSON.stringify(JSON.stringify(manifest))};\n    </script>\n`
+  return `${marker}\n    <script>\n      var process = window.process = window.process || {};\n      process.env = process.env || {};\n      process.env.NODE_ENV = "production";\n      process.env.EXPO_PUBLIC_SUPABASE_URL = ${JSON.stringify(supabaseUrl)};\n      process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY = ${JSON.stringify(supabaseAnonKey)};\n      process.env.EXPO_PUBLIC_FEATURE_VOICE_NOTE = ${JSON.stringify(voiceNoteFeature)};\n      process.env.APP_MANIFEST = ${JSON.stringify(JSON.stringify(manifest))};\n    </script>\n`
 }
 
 function deployDistToTarget() {

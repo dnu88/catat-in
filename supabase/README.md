@@ -93,10 +93,11 @@ Edge Functions are implemented in `supabase/functions/`:
 - **Flow**: Claude Haiku vision extraction → confidence scoring → auto-save jika ≥0.85
 - **Output**: `{ status, confidence, review_required, fields }`
 
-### `process-voice` — Voice transcription + extraction
-- **Input**: `{ transaction_id, audio_path, user_id }`
-- **Flow**: Whisper transcribe → Claude Haiku extraction → auto-delete audio file
-- **Output**: `{ status, confidence, review_required, fields }`
+### `process-voice` — Voice transcription + preview extraction
+- **Input**: `{ audio_path }`
+- **Flow**: Whisper transcribe → Claude Haiku extraction → return reviewable draft → auto-delete audio file
+- **Output**: `{ status, transcript, confidence, review_required, fields }`
+- **Persistence**: Does not write a transaction. Mobile saves only after explicit user confirmation.
 
 ### `check-usage` — Premium gate enforcement (Future)
 - **Input**: `{ user_id, feature }`
