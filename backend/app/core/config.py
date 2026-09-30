@@ -25,6 +25,7 @@ _LIST_FIELDS_NO_JSON_DECODE = {
     "ALLOWED_HOSTS",
     "SUPABASE_JWT_ALLOWED_ALGORITHMS",
     "MAYAR_ALLOWED_EMAILS",
+    "ADMIN_EMAILS",
 }
 
 _REQUIRED_ALLOWED_ORIGINS: list[str] = [
@@ -108,6 +109,7 @@ class Settings(BaseSettings):
     MAYAR_REDIRECT_URL: str | None = None
     MAYAR_CALLBACK_URL: str | None = None
     MAYAR_ALLOWED_EMAILS: List[str] = []
+    ADMIN_EMAILS: List[str] = []
     MAYAR_WEBHOOKS_ENABLED: bool = False
     MAYAR_ACTIVATION_ENABLED: bool = False
     # Optional soft-auth: Mayar does not sign webhooks (see ADR-0003). If set,
@@ -223,6 +225,7 @@ class Settings(BaseSettings):
         "ALLOWED_HOSTS",
         "SUPABASE_JWT_ALLOWED_ALGORITHMS",
         "MAYAR_ALLOWED_EMAILS",
+        "ADMIN_EMAILS",
         mode="before",
     )
     @classmethod
@@ -252,6 +255,9 @@ class Settings(BaseSettings):
         ])
         self.MAYAR_ALLOWED_EMAILS = _dedupe_preserve_order([
             str(email).strip().lower() for email in self.MAYAR_ALLOWED_EMAILS if str(email).strip()
+        ])
+        self.ADMIN_EMAILS = _dedupe_preserve_order([
+            str(email).strip().lower() for email in self.ADMIN_EMAILS if str(email).strip()
         ])
 
         is_production = self.ENVIRONMENT.strip().lower() == "production" or not self.DEBUG

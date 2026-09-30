@@ -49,3 +49,16 @@ def test_chat_empty_extraction_no_increment(client):
                         headers={"Authorization": "Bearer x"})
     assert r.status_code == 200
     rec.assert_not_called()
+
+
+def test_admin_chat_bypasses_quota_and_does_not_increment(client):
+    result = {"transactions": [{"amount": 15000, "confidence": 0.9}], "unclear": None}
+    with patch("app.api.v1.ai.is_admin_user", return_value=True), \
+         patch("app.api.v1.ai.load_state") as load_state, \
+         patch("app.api.v1.ai.extract_transaction_from_text", new=AsyncMock(return_value=result)), \
+         patch("app.api.v1.ai.record_use") as rec:
+        r = client.post("/api/v1/ai/chat", json={"text": "beli kopi 15rb"},
+                        headers={"Authorization": "Bearer x"})
+    assert r.status_code == 200
+    load_state.assert_not_called()
+    rec.assert_not_called()

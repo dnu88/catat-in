@@ -16,6 +16,7 @@ import os
 from fastapi import Depends, HTTPException, Request, status
 from starlette.middleware.base import BaseHTTPMiddleware
 
+from app.core.admin import is_admin_user
 from app.core.auth import get_current_user
 from app.core.config import settings
 
@@ -86,9 +87,13 @@ async def _rate_limit_user(scope: str, limit: int, current_user: dict) -> None:
 async def rate_limit_ai(current_user: dict = Depends(get_current_user)):
     """Rate limiter for AI endpoints.
 
+    - Admin/operator accounts bypass internal request limits.
     - Free users: ``RATE_LIMIT_AI_ENDPOINT`` (default 20 req/min).
     - Premium users: ``RATE_LIMIT_AI_PREMIUM`` (default 100 req/min).
     """
+    if is_admin_user(current_user):
+        return current_user
+
     limit = (
         settings.RATE_LIMIT_AI_PREMIUM
         if current_user.get("is_premium")
