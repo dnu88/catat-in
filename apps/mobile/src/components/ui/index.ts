@@ -6,6 +6,7 @@ export * from "./FilterChip";
 export * from "./IconBubble";
 export * from "./InputField";
 export * from "./LoadingState";
+export * from "./OperationalHero";
 export * from "./ScreenHeader";
 export * from "./SectionHeader";
 export * from "./StatCard";

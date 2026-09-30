@@ -87,12 +87,12 @@ describe("category visuals", () => {
 		expect(getCategoryVisualMeta("Other expenses", "light")).toMatchObject({
 			icon: "otherExpenses",
 			tone: "neutral",
-			color: "#6B7280",
+			color: "#5F6673",
 		});
 		expect(getCategoryVisualMeta("Lainnya", "light")).toMatchObject({
 			icon: "otherExpenses",
 			tone: "neutral",
-			color: "#6B7280",
+			color: "#5F6673",
 		});
 	});
 

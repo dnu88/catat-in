@@ -1,7 +1,17 @@
 import { kaswiseTokens, type ThemeMode } from './tokens'
 import { financeEditorial as fe } from './finance-editorial'
 
-export function toMobileTheme(mode: ThemeMode) {
+export type ThemePreferenceValue = ThemeMode | 'system'
+
+export function resolveOperationalThemeMode(
+  _preference: ThemePreferenceValue,
+  _systemScheme: ThemeMode,
+): ThemeMode {
+  return 'light'
+}
+
+export function toMobileTheme(_requestedMode: ThemeMode) {
+  const mode: ThemeMode = resolveOperationalThemeMode('light', 'light')
   const token = kaswiseTokens[mode]
 
   return {

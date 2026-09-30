@@ -30,15 +30,6 @@ import { IconBubble } from "../../src/components/ui";
 import { PageEntrance, StaggeredEntrance } from "../../src/components/motion";
 import { KaswiseIcon, type KaswiseIconName } from "../../src/components/icons/kaswise-icons";
 
-const REPORT_BLUE_PALETTE = [
-	["#42B7EB", "#178BD0"],
-	["#62AEE0", "#0C4E91"],
-	["#3B7DB8", "#0A3D78"],
-	["#285D99", "#071B4F"],
-	["#85C6E8", "#255A94"],
-	["#4D91C7", "#102C62"],
-] as const;
-
 function pieSlicePath(size: number, percentage: number) {
 	const center = size / 2;
 	const radius = Math.max(0, center - 2);
@@ -100,6 +91,7 @@ import {
 	reportCategoryPalette,
 	reportCategoryRoleColors,
 	reportDefaultCategoryColors,
+	reportBlueGradientPalette,
 } from "../../src/theme/report-palettes";
 import { AiInsightCard } from "../../src/components/ai/AiInsightCard";
 import type { AiInsight } from "../../src/services/ai-insights";
@@ -894,7 +886,7 @@ export default function ReportsScreen() {
 			return {
 				...cat,
 				gradientId: `report-blue-${index}`,
-				gradientColors: REPORT_BLUE_PALETTE[index % REPORT_BLUE_PALETTE.length],
+				gradientColors: reportBlueGradientPalette[index % reportBlueGradientPalette.length],
 				dashLength: Math.max(0, rawDashLength - segmentGap),
 				gapLength: donutCircumference - Math.max(0, rawDashLength - segmentGap),
 				sweepLength: rawDashLength,
@@ -1333,7 +1325,7 @@ export default function ReportsScreen() {
 					}
 				>
 				{/* Reference-led analytics hero */}
-				<LinearGradient testID="reports-analytics-hero" colors={[fe.navySurface, fe.blueDeep, fe.blueBright]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.analyticsHero}>
+				<LinearGradient testID="reports-analytics-hero" colors={[fe.navySurface, fe.blueDeep, fe.blueBright]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[styles.analyticsHero, dynamicCategories.length === 0 && styles.analyticsHeroEmpty]}>
 				<View style={styles.headerRow}>
 					<View>
 						<Text style={styles.title}>{tx.title}</Text>
@@ -1359,9 +1351,9 @@ export default function ReportsScreen() {
 					</View>
 				</View>
 				<View testID="reports-hero-bubbles" style={styles.heroBubbleCluster}>
-					{dynamicCategories.slice(0, 5).map((cat, index) => {
+					{dynamicCategories.length === 0 ? null : dynamicCategories.slice(0, 5).map((cat, index) => {
 						const size = [112, 88, 96, 106, 82][index] ?? 88;
-						const tones = REPORT_BLUE_PALETTE[index % REPORT_BLUE_PALETTE.length];
+						const tones = reportBlueGradientPalette[index % reportBlueGradientPalette.length];
 						return (
 							<LinearGradient key={`hero-${cat.id}`} colors={tones} start={{ x: 0.15, y: 0 }} end={{ x: 0.9, y: 1 }} style={[styles.heroBubble, { width: size, height: size, borderRadius: size / 2 }]}>
 								<KaswiseIcon name={cat.icon} color={fe.white} size={18} weight="bold" />
@@ -1890,7 +1882,7 @@ export default function ReportsScreen() {
 							<View testID="reports-bubble-row" style={styles.bubbleRow}>
 								{dynamicCategories.map((cat, index) => {
 									const bubbleSize = Math.round(76 + Math.min(cat.percent, 100) * 0.72);
-									const tones = REPORT_BLUE_PALETTE[index % REPORT_BLUE_PALETTE.length];
+									const tones = reportBlueGradientPalette[index % reportBlueGradientPalette.length];
 									const gradientId = `bubble-blue-${index}`;
 									return (
 										<Pressable
@@ -2449,9 +2441,10 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 		pageEntrance: { flex: 1 },
 		content: { padding: 20, gap: 10, paddingBottom: 26 },
 		analyticsHero: { marginHorizontal: -20, marginTop: -20, paddingHorizontal: 20, paddingTop: 20, paddingBottom: 48, borderBottomLeftRadius: 42, borderBottomRightRadius: 42, overflow: "hidden", gap: 22 },
-		heroBubbleCluster: { minHeight: 238, flexDirection: "row", flexWrap: "wrap", justifyContent: "center", alignContent: "center", gap: 8, paddingHorizontal: 6 },
+		analyticsHeroEmpty: { minHeight: 124, paddingBottom: 24 },
+		heroBubbleCluster: { flexDirection: "row", flexWrap: "wrap", justifyContent: "center", alignContent: "center", gap: 8, paddingHorizontal: 6 },
 		heroBubble: { alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: "rgba(255,255,255,0.20)", shadowColor: fe.navy, shadowOpacity: 0.24, shadowRadius: 14, shadowOffset: { width: 0, height: 8 }, paddingHorizontal: 9 },
-		heroBubbleLabel: { color: "rgba(255,255,255,0.82)", fontSize: 9, fontWeight: "600", marginTop: 4, maxWidth: 78 },
+		heroBubbleLabel: { color: "rgba(255,255,255,0.82)", fontSize: 11, fontWeight: "600", marginTop: 4, maxWidth: 78 },
 		heroBubblePercent: { color: fe.white, fontSize: 13, fontWeight: "800", marginTop: 1 },
 		headerRow: {
 			flexDirection: "row",
@@ -2567,7 +2560,7 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 		},
 		activePeriodTitle: {
 			color: fe.muted,
-			fontSize: 9,
+			fontSize: 11,
 			fontWeight: "800",
 			textTransform: "uppercase",
 			letterSpacing: 0.35,
@@ -2610,7 +2603,7 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 		},
 		savedRulesInlineTitle: {
 			color: fe.muted,
-			fontSize: 10,
+			fontSize: 11,
 			fontWeight: "800",
 			textTransform: "uppercase",
 			letterSpacing: 0.35,
@@ -3159,7 +3152,7 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 		tooltipValue: { fontSize: 10, fontWeight: "600", marginBottom: 2 },
 		chartLabel: {
 			color: fe.muted,
-			fontSize: 10,
+			fontSize: 11,
 			fontWeight: "700",
 			marginTop: 6,
 		},
@@ -3306,7 +3299,7 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 		},
 		ringLabel: {
 			color: "rgba(255,255,255,0.62)",
-			fontSize: 9,
+			fontSize: 11,
 			fontWeight: "700",
 			letterSpacing: 0.5,
 			marginTop: 3,
@@ -3342,7 +3335,7 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 		},
 		bubbleSvg: { position: "absolute", top: 0, left: 0 },
 		bubbleContent: { alignItems: "center", justifyContent: "center", maxWidth: "80%", gap: 1 },
-		bubbleLabel: { color: "rgba(255,255,255,0.82)", fontSize: 8, fontWeight: "600", maxWidth: 72 },
+		bubbleLabel: { color: "rgba(255,255,255,0.82)", fontSize: 11, fontWeight: "600", maxWidth: 72 },
 		bubbleText: { color: fe.white, fontSize: 12, fontWeight: "800" },
 		catLeft: { flexDirection: "row", alignItems: "center", gap: 10, flex: 1 },
 		catEmoji: { fontSize: 18 },

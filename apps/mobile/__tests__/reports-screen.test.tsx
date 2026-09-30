@@ -306,17 +306,29 @@ describe("ReportsScreen visual parity", () => {
 		expect(summaryCardStyle.borderColor).toBe("rgba(6, 10, 28, 0.08)");
 		expect(incomeStyle.color).toBe("#071B4F");
 		expect(expenseStyle.color).toBe("#071B4F");
-		expect(savingsStyle.color).toBe("#060A1C");
+		expect(savingsStyle.color).toBe("#090D18");
 	});
 
-	it("uses the reference-led analytics hero and category bubble cluster", () => {
+	it("uses the reference-led analytics hero and category bubble cluster", async () => {
 		const screen = renderReports();
 
 		expect(screen.getByTestId("reports-analytics-hero")).toBeTruthy();
-		expect(screen.getByTestId("reports-hero-bubbles")).toBeTruthy();
+		expect(await screen.findByTestId("reports-hero-bubbles")).toBeTruthy();
 		const summaryStyle = getFlattenedStyle(screen.getByTestId("reports-summary-card"));
 		expect(summaryStyle.marginTop).toBe(-36);
 		expect(summaryStyle.borderRadius).toBe(28);
+	});
+
+	it("collapses the analytics hero when the selected period has no data", async () => {
+		mockTransactions = [];
+		const screen = renderReports();
+
+		await waitFor(() => {
+			const heroStyle = getFlattenedStyle(screen.getByTestId("reports-analytics-hero"));
+			expect(heroStyle.minHeight).toBe(124);
+		});
+		const heroStyle = getFlattenedStyle(screen.getByTestId("reports-analytics-hero"));
+		expect(heroStyle.paddingBottom).toBe(24);
 	});
 
 	it("queries all deployed transaction columns and normalizes legacy plus current fields for category visuals", async () => {
