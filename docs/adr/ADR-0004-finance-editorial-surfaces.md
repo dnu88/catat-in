@@ -21,7 +21,7 @@ The target direction is the finance-editorial composition used by modern persona
 - one dark primary action per screen,
 - category analytics expressed as bubble proportions.
 
-Kaswise keeps its own identity: Indonesian copy, wallet/budget/transaction domain, AI capture behind the interface, and lime retained only for inflows and success.
+Kaswise keeps its own identity: Indonesian copy, wallet/budget/transaction domain, AI capture behind the interface, tonal blue as the visual accent, muted teal for income, semantic green only for success, and red only for danger or adverse states.
 
 ## Decision
 
@@ -41,6 +41,6 @@ Kaswise keeps its own identity: Indonesian copy, wallet/budget/transaction domai
 ## Consequences
 
 - `home-theme-toggle` is no longer a live marker; the appearance control is now `settings-theme-*` plus `settings-appearance`.
-- Screens not yet migrated (wallets, budgets, bills, transactions, groups, imports) still use the previous token surfaces; they should be migrated to the finance-editorial vocabulary as they are touched.
+- Dashboard, transactions, wallets, reports, budgets, bills, groups, imports, settings, Capture, notifications, upgrade, auth, and legal/support routes now use the Finance Editorial vocabulary. New screens must adopt it from their first implementation.
 - Any new component must extend the limited vocabulary (canvas, sheet, group, row, chip, bubble, primary action) rather than inventing a bespoke promotional card.
 - Accessibility rules are unchanged: 44px minimum touch targets, colour never the only signal, natural Bahasa Indonesia copy understood in two seconds.
