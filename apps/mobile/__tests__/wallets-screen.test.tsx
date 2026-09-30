@@ -22,6 +22,14 @@ let mockActiveContext:
 	type: "personal",
 };
 
+jest.mock("expo-router", () => {
+	const ReactRuntime = jest.requireActual("react");
+	return {
+		useFocusEffect: (callback: () => void | (() => void)) =>
+			ReactRuntime.useEffect(() => callback(), [callback]),
+	};
+});
+
 jest.mock("../src/services/wallets", () => ({
 	listWallets: (...args: unknown[]) => mockListWallets(...args),
 	createWallet: (...args: unknown[]) => mockCreateWallet(...args),
@@ -112,25 +120,22 @@ describe("WalletsScreen", () => {
 		mockDeleteWallet.mockResolvedValue(undefined);
 	});
 
-	it("uses the same card-based hero treatment as Home instead of a solid neon hero", async () => {
+	it("uses the reference-led gradient hero and stacked wallet treatment", async () => {
 		renderWallets();
 
-		const hero = await screen.findByTestId("wallets-total-hero");
+		const hero = await screen.findByTestId("wallets-hero");
 		const heroStyle = getFlattenedStyle(hero);
 
 		expect(heroStyle.backgroundColor).not.toBe("#A3FF12");
-		expect(heroStyle.borderRadius).toBe(24);
-		expect(heroStyle.padding).toBe(18);
-		expect(heroStyle.borderWidth).toBe(1);
-		expect(["rgba(255, 255, 255, 0.06)", "rgba(10, 10, 10, 0.06)"]).toContain(
-			heroStyle.borderColor,
-		);
+		expect(heroStyle.borderBottomLeftRadius).toBe(42);
+		expect(heroStyle.borderBottomRightRadius).toBe(42);
+		expect(screen.getByTestId("wallets-card-stack")).toBeTruthy();
 	});
 
 	it("loads each wallet scope once on the initial render", async () => {
 		renderWallets();
 
-		expect(await screen.findByText("BCA Pribadi")).toBeTruthy();
+		expect((await screen.findAllByText("BCA Pribadi")).length).toBeGreaterThanOrEqual(2);
 		expect(screen.getByText("Dompet Keluarga")).toBeTruthy();
 
 		await waitFor(() => expect(mockListWallets).toHaveBeenCalledTimes(2));
@@ -139,7 +144,7 @@ describe("WalletsScreen", () => {
 	it("shows personal and family wallets together with scope badges", async () => {
 		renderWallets();
 
-		expect(await screen.findByText("BCA Pribadi")).toBeTruthy();
+		expect((await screen.findAllByText("BCA Pribadi")).length).toBeGreaterThanOrEqual(2);
 		expect(screen.getByText("Dompet Keluarga")).toBeTruthy();
 		expect(screen.getByText("Pribadi")).toBeTruthy();
 		expect(screen.getByText("Keluarga Budi")).toBeTruthy();
@@ -181,7 +186,6 @@ describe("WalletsScreen", () => {
 
 		fireEvent.press(await screen.findByTestId("wallet-edit-wallet-family"));
 		fireEvent.changeText(screen.getByLabelText("Nama dompet"), "Dompet Rumah");
-		fireEvent.changeText(screen.getByLabelText("Saldo"), "3000000");
 		fireEvent.press(screen.getByTestId("wallet-update-submit"));
 
 		await waitFor(() =>

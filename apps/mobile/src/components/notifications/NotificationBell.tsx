@@ -14,9 +14,11 @@ import { getUnreadNotificationCount } from "../../services/notifications";
 type Props = {
   /** How often to poll for unread count, in ms. 0 = no polling. */
   pollIntervalMs?: number;
+  /** Optional icon tint for dark/mid-tone headers. */
+  tint?: string;
 };
 
-export function NotificationBell({ pollIntervalMs = 0 }: Props) {
+export function NotificationBell({ pollIntervalMs = 0, tint }: Props) {
   const { theme } = useTheme();
   const { supabase } = useSupabase();
   const router = useRouter();
@@ -54,7 +56,7 @@ export function NotificationBell({ pollIntervalMs = 0 }: Props) {
       <KaswiseIcon
         name="insight"
         size={22}
-        color={theme.colors.textPrimary}
+        color={tint ?? theme.colors.textPrimary}
         weight="bold"
       />
       {unreadCount > 0 && (

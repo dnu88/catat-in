@@ -14,6 +14,7 @@ export type IconBubbleTone =
 
 type IconBubbleProps = {
   name: KaswiseIconName
+  testID?: string
   tone?: IconBubbleTone
   size?: number
   color?: string
@@ -27,6 +28,7 @@ function withAlpha(color: string, alpha: string) {
 
 export function IconBubble({
   name,
+  testID,
   tone = 'primary',
   size = 42,
   color,
@@ -55,6 +57,7 @@ export function IconBubble({
 
   return (
     <View
+      testID={testID}
       style={{
         width: size,
         height: size,

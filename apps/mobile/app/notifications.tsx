@@ -9,7 +9,9 @@ import {
 import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { LinearGradient } from "expo-linear-gradient";
 import { useTheme } from "../src/theme/theme-context";
+import { financeEditorial as fe } from "../src/theme/finance-editorial";
 import { useI18n } from "../src/i18n/i18n-context";
 import { useSupabase } from "../src/lib/supabase";
 import { KaswiseIcon } from "../src/components/icons/kaswise-icons";
@@ -111,7 +113,12 @@ export default function NotificationsScreen() {
   return (
     <View style={s.container}>
       {/* Header */}
-      <View style={s.header}>
+      <LinearGradient
+        colors={[fe.navySurface, fe.blueDeep, fe.blueBright]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={s.header}
+      >
         <Pressable
           testID="notifications-back"
           accessibilityRole="button"
@@ -121,7 +128,7 @@ export default function NotificationsScreen() {
           <KaswiseIcon
             name="back"
             size={18}
-            color={theme.colors.textPrimary}
+            color={fe.white}
             weight="bold"
           />
         </Pressable>
@@ -136,7 +143,7 @@ export default function NotificationsScreen() {
             <Text style={s.markAllText}>{isEn ? "Mark all read" : "Tandai semua dibaca"}</Text>
           </Pressable>
         )}
-      </View>
+      </LinearGradient>
 
       {/* Body */}
       {loading ? (
@@ -157,7 +164,7 @@ export default function NotificationsScreen() {
         <FlatList
           data={items}
           keyExtractor={(item) => item.id}
-          contentContainerStyle={{ paddingBottom: 32 }}
+          contentContainerStyle={{ padding: 16, paddingBottom: 32 }}
           renderItem={({ item }) => (
             <Pressable
               testID={`notification-item-${item.id}`}
@@ -193,33 +200,38 @@ function styles(
   return {
     container: {
       flex: 1,
-      backgroundColor: theme.colors.background,
+      backgroundColor: fe.paper,
     },
     header: {
       flexDirection: "row" as const,
       alignItems: "center" as const,
       paddingTop: insets.top + 8,
       paddingHorizontal: 16,
-      paddingBottom: 12,
-      borderBottomWidth: 1,
-      borderBottomColor: theme.colors.borderSoft,
+      paddingBottom: 18,
+      minHeight: insets.top + 86,
+      borderBottomLeftRadius: 28,
+      borderBottomRightRadius: 28,
     },
     backBtn: {
       padding: 4,
       marginRight: 8,
     },
     title: {
-      color: theme.colors.textPrimary,
-      fontSize: 18,
+      color: fe.white,
+      fontSize: 20,
       fontWeight: "bold" as const,
       flex: 1,
     },
     markAllBtn: {
-      paddingVertical: 4,
-      paddingHorizontal: 8,
+      paddingVertical: 8,
+      paddingHorizontal: 12,
+      borderRadius: 999,
+      backgroundColor: "rgba(255,255,255,0.14)",
+      borderWidth: 1,
+      borderColor: "rgba(255,255,255,0.20)",
     },
     markAllText: {
-      color: theme.colors.brandPrimary,
+      color: fe.white,
       fontSize: 14,
       fontWeight: "600" as const,
     },
@@ -236,8 +248,11 @@ function styles(
     item: {
       paddingHorizontal: 16,
       paddingVertical: 14,
-      borderBottomWidth: 1,
-      borderBottomColor: theme.colors.borderSoft,
+      marginBottom: 10,
+      borderRadius: 22,
+      backgroundColor: fe.white,
+      borderWidth: 1,
+      borderColor: fe.line,
     },
     itemRead: {
       opacity: 0.6,

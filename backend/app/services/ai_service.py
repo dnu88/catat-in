@@ -105,7 +105,13 @@ async def extract_transaction_from_text(user_text: str) -> dict:
         response = await client.messages.create(
             model=settings.ANTHROPIC_MODEL_EXTRACT,
             max_tokens=2048,
-            system=[{"type": "text", "text": TRANSACTION_EXTRACT_PROMPT, "cache_control": {"type": "ephemeral"}}],
+            system=[
+                {
+                    "type": "text",
+                    "text": TRANSACTION_EXTRACT_PROMPT,
+                    "cache_control": {"type": "ephemeral"},
+                }
+            ],
             messages=[{"role": "user", "content": user_text}],
         )
 
@@ -120,12 +126,14 @@ async def extract_transaction_from_text(user_text: str) -> dict:
         raise RuntimeError(f"Claude API error: {exc}") from exc
 
 
-async def analyze_receipt_image(image_data: bytes, media_type: str = "image/jpeg") -> dict:
+async def analyze_receipt_image(
+    image_data: bytes, media_type: str = "image/jpeg"
+) -> dict:
     if not settings.ANTHROPIC_API_KEY:
         return {
             "total_amount": None,
             "merchant": None,
-            "date": datetime.utcnow().date().isoformat(),
+            "date": datetime.now(timezone.utc).date().isoformat(),
             "category": "other",
             "items": [],
             "confidence": 0.2,
@@ -138,7 +146,13 @@ async def analyze_receipt_image(image_data: bytes, media_type: str = "image/jpeg
         response = await client.messages.create(
             model=settings.ANTHROPIC_MODEL_EXTRACT,
             max_tokens=800,
-            system=[{"type": "text", "text": RECEIPT_ANALYSIS_PROMPT, "cache_control": {"type": "ephemeral"}}],
+            system=[
+                {
+                    "type": "text",
+                    "text": RECEIPT_ANALYSIS_PROMPT,
+                    "cache_control": {"type": "ephemeral"},
+                }
+            ],
             messages=[
                 {
                     "role": "user",
@@ -191,7 +205,9 @@ async def generate_financial_insight(user_data: dict, period: str = "monthly") -
     }
 
     if not settings.ANTHROPIC_API_KEY:
-        return normalize_insight_response(_build_local_insight_payload(user_data, period), context)
+        return normalize_insight_response(
+            _build_local_insight_payload(user_data, period), context
+        )
 
     prompt = f"""Kamu adalah financial advisor AI untuk aplikasi Catat.in.
 Tugasmu: analisis data keuangan pengguna dan berikan insight yang actionable.
@@ -230,8 +246,9 @@ INGAT: HANYA kembalikan JSON. Tidak boleh ada teks lain."""
         parsed = json.loads(cleaned)
         return normalize_insight_response(parsed, context)
 
-    except (json.JSONDecodeError, anthropic.APIError, Exception) as exc:
+    except (json.JSONDecodeError, anthropic.APIError, Exception):
         import logging
+
         logging.getLogger("app.services.ai_service").exception(
             "generate_financial_insight failed for period=%s", period
         )
@@ -240,7 +257,9 @@ INGAT: HANYA kembalikan JSON. Tidak boleh ada teks lain."""
             "Silakan coba lagi nanti atau gunakan laporan dashboard."
         )
         fallback = _build_local_insight_payload(user_data, period)
-        fallback["summary"] = f"{error_msg} Berikut ringkasan lokal dari data yang tersedia."
+        fallback["summary"] = (
+            f"{error_msg} Berikut ringkasan lokal dari data yang tersedia."
+        )
         return normalize_insight_response(fallback, context)
 
 
@@ -282,12 +301,12 @@ def normalize_insight_response(raw: dict, context: dict) -> dict:
     risk_flags = _clean_array(raw.get("risk_flags"), max_items=2, max_item_len=200)
 
     # --- data_quality ------------------------------------------------------
-    raw_dq = raw.get("data_quality") if isinstance(raw.get("data_quality"), dict) else {}
+    raw_dq = (
+        raw.get("data_quality") if isinstance(raw.get("data_quality"), dict) else {}
+    )
     data_quality = {
         "transaction_count": int(
-            context.get("transaction_count")
-            or raw_dq.get("transaction_count")
-            or 0
+            context.get("transaction_count") or raw_dq.get("transaction_count") or 0
         ),
         "has_previous_period": bool(
             context.get("has_previous_period")
@@ -315,6 +334,7 @@ def normalize_insight_response(raw: dict, context: dict) -> dict:
 # ---------------------------------------------------------------------------
 # Internal helpers for normalize_insight_response
 # ---------------------------------------------------------------------------
+
 
 def _sanitize_string(value: str, max_len: int = 500) -> str:
     """Strip HTML tags, unescape HTML entities, and cap length."""
@@ -393,8 +413,14 @@ def _build_local_insight_payload(user_data: dict, period: str) -> dict:
         }
 
     top_category = top_categories[0] if top_categories else None
-    top_category_name = top_category.get("category") if isinstance(top_category, dict) else None
-    top_category_percent = _safe_float(top_category.get("percent")) if isinstance(top_category, dict) else None
+    top_category_name = (
+        top_category.get("category") if isinstance(top_category, dict) else None
+    )
+    top_category_percent = (
+        _safe_float(top_category.get("percent"))
+        if isinstance(top_category, dict)
+        else None
+    )
 
     summary = (
         f"Periode ini mencatat {transaction_count} transaksi dengan cashflow bersih {_format_rupiah(net_total)}. "
@@ -403,7 +429,9 @@ def _build_local_insight_payload(user_data: dict, period: str) -> dict:
 
     highlights = [f"Total pengeluaran periode ini {_format_rupiah(expense_total)}."]
     if income_total > 0:
-        highlights.append(f"Total pemasukan periode ini {_format_rupiah(income_total)}.")
+        highlights.append(
+            f"Total pemasukan periode ini {_format_rupiah(income_total)}."
+        )
     if top_category_name and top_category_percent is not None:
         highlights.append(
             f"Kategori terbesar adalah {top_category_name}, sekitar {top_category_percent:.1f}% dari pengeluaran."
@@ -413,22 +441,36 @@ def _build_local_insight_payload(user_data: dict, period: str) -> dict:
         if prev_expense > 0:
             change = ((expense_total - prev_expense) / prev_expense) * 100
             arah = "naik" if change >= 0 else "turun"
-            highlights.append(f"Pengeluaran {arah} {abs(change):.1f}% dibanding periode sebelumnya.")
+            highlights.append(
+                f"Pengeluaran {arah} {abs(change):.1f}% dibanding periode sebelumnya."
+            )
 
     recommendations = []
     if top_category_name:
-        recommendations.append(f"Cek ulang pengeluaran {top_category_name} dan tetapkan batas mingguan agar tetap terkendali.")
-    recommendations.append("Rapikan kategori Lainnya atau transaksi tanpa merchant supaya laporan berikutnya lebih detail.")
+        recommendations.append(
+            f"Cek ulang pengeluaran {top_category_name} dan tetapkan batas mingguan agar tetap terkendali."
+        )
+    recommendations.append(
+        "Rapikan kategori Lainnya atau transaksi tanpa merchant supaya laporan berikutnya lebih detail."
+    )
     if net_total < 0:
-        recommendations.append("Prioritaskan pengeluaran wajib dan tunda belanja non-esensial sampai cashflow kembali positif.")
+        recommendations.append(
+            "Prioritaskan pengeluaran wajib dan tunda belanja non-esensial sampai cashflow kembali positif."
+        )
     else:
-        recommendations.append("Sisihkan sebagian surplus ke tabungan atau budget wallet sebelum dipakai untuk belanja variabel.")
+        recommendations.append(
+            "Sisihkan sebagian surplus ke tabungan atau budget wallet sebelum dipakai untuk belanja variabel."
+        )
 
     risk_flags = []
     if net_total < 0:
-        risk_flags.append("Cashflow periode ini negatif; pengeluaran lebih besar dari pemasukan.")
+        risk_flags.append(
+            "Cashflow periode ini negatif; pengeluaran lebih besar dari pemasukan."
+        )
     if other_category_percent >= 10:
-        risk_flags.append(f"Kategori di luar top kategori masih {other_category_percent:.1f}%, laporan bisa kurang tajam.")
+        risk_flags.append(
+            f"Kategori di luar top kategori masih {other_category_percent:.1f}%, laporan bisa kurang tajam."
+        )
 
     return {
         "period": period,
@@ -492,13 +534,20 @@ def _extract_transaction_locally(user_text: str) -> dict:
     has_wallet_hint = any(tx.get("wallet_hint") for tx in transactions)
     return {
         "transactions": transactions,
-        "unclear": None if has_wallet_hint else "Wallet belum terbaca otomatis. Pilih wallet saat review.",
+        "unclear": None
+        if has_wallet_hint
+        else "Wallet belum terbaca otomatis. Pilih wallet saat review.",
     }
 
 
 def _amount_matches(text: str) -> list[re.Match[str]]:
     spans = _date_spans(text)
-    matches = list(re.finditer(r"(?:rp\s*)?\d+(?:[.,]\d+)?\s*(?:rb|ribu|jt|juta|k|m)\b|rp\s*[\d.,]+|\b\d[\d.]{3,}\b|\b\d{4,}\b", text))
+    matches = list(
+        re.finditer(
+            r"(?:rp\s*)?\d+(?:[.,]\d+)?\s*(?:rb|ribu|jt|juta|k|m)\b|rp\s*[\d.,]+|\b\d[\d.]{3,}\b|\b\d{4,}\b",
+            text,
+        )
+    )
     return [
         match
         for match in matches
@@ -579,8 +628,10 @@ def _parse_year(value: str | None, fallback_year: int) -> int:
     return 2000 + int(value) if len(value) == 2 else int(value)
 
 
-def _find_date_span(text: str, fallback_year: int | None = None) -> tuple[str, int, int] | None:
-    year = fallback_year or datetime.utcnow().date().year
+def _find_date_span(
+    text: str, fallback_year: int | None = None
+) -> tuple[str, int, int] | None:
+    year = fallback_year or datetime.now(timezone.utc).date().year
     month_names = "|".join(MONTH_ALIASES)
     named_match = re.search(
         rf"\b(?:tanggal|tgl|pada)?\s*(\d{{1,2}})\s+({month_names})\s*(\d{{2,4}})?\b",
@@ -596,12 +647,21 @@ def _find_date_span(text: str, fallback_year: int | None = None) -> tuple[str, i
         if parsed:
             return parsed, named_match.start(), named_match.end()
 
-    numeric_full_match = re.search(r"\b(?:tanggal|tgl|pada)?\s*(\d{1,2})[/-](\d{1,2})[/-](\d{2,4})\b", text, flags=re.IGNORECASE)
-    numeric_short_match = re.search(r"\b(?:tanggal|tgl|pada)\s*(\d{1,2})[/-](\d{1,2})\b", text, flags=re.IGNORECASE)
+    numeric_full_match = re.search(
+        r"\b(?:tanggal|tgl|pada)?\s*(\d{1,2})[/-](\d{1,2})[/-](\d{2,4})\b",
+        text,
+        flags=re.IGNORECASE,
+    )
+    numeric_short_match = re.search(
+        r"\b(?:tanggal|tgl|pada)\s*(\d{1,2})[/-](\d{1,2})\b", text, flags=re.IGNORECASE
+    )
     numeric_match = numeric_full_match or numeric_short_match
     if numeric_match:
         parsed = _safe_iso_date(
-            _parse_year(numeric_match.group(3) if len(numeric_match.groups()) >= 3 else None, year),
+            _parse_year(
+                numeric_match.group(3) if len(numeric_match.groups()) >= 3 else None,
+                year,
+            ),
             int(numeric_match.group(2)),
             int(numeric_match.group(1)),
         )
@@ -610,7 +670,9 @@ def _find_date_span(text: str, fallback_year: int | None = None) -> tuple[str, i
 
     iso_match = re.search(r"\b(20\d{2})-(\d{2})-(\d{2})\b", text)
     if iso_match:
-        parsed = _safe_iso_date(int(iso_match.group(1)), int(iso_match.group(2)), int(iso_match.group(3)))
+        parsed = _safe_iso_date(
+            int(iso_match.group(1)), int(iso_match.group(2)), int(iso_match.group(3))
+        )
         if parsed:
             return parsed, iso_match.start(), iso_match.end()
 
@@ -666,8 +728,18 @@ def _extract_amount(text: str) -> float:
 
 
 def _infer_type(text: str) -> str:
-    income_keywords = ["gaji", "bonus", "masuk", "pemasukan", "dibayar", "refund", "transfer masuk"]
-    return "income" if any(keyword in text for keyword in income_keywords) else "expense"
+    income_keywords = [
+        "gaji",
+        "bonus",
+        "masuk",
+        "pemasukan",
+        "dibayar",
+        "refund",
+        "transfer masuk",
+    ]
+    return (
+        "income" if any(keyword in text for keyword in income_keywords) else "expense"
+    )
 
 
 def _infer_category(text: str, tx_type: str) -> str:
@@ -705,7 +777,9 @@ def _extract_wallet_hint(text: str) -> str | None:
 
 
 def _extract_merchant(text: str) -> str | None:
-    match = re.search(r"(?:di|ke)\s+([a-z0-9\s._-]+?)(?:\s+(?:pakai|lewat|via|dengan)\s+|$)", text)
+    match = re.search(
+        r"(?:di|ke)\s+([a-z0-9\s._-]+?)(?:\s+(?:pakai|lewat|via|dengan)\s+|$)", text
+    )
     if not match:
         return None
     merchant = match.group(1).strip()
@@ -713,7 +787,7 @@ def _extract_merchant(text: str) -> str | None:
 
 
 def _extract_relative_date(text: str, fallback_text: str | None = None) -> str:
-    today = datetime.utcnow().date()
+    today = datetime.now(timezone.utc).date()
     found = _find_date_span(text, today.year)
     if found:
         return found[0]

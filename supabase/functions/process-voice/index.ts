@@ -1,17 +1,29 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.4'
 
-const allowedOrigin = Deno.env.get('KASWISE_ALLOWED_ORIGIN') ?? 'https://kaswise.com'
+const defaultAllowedOrigins = ['https://kaswise.com', 'https://app.kaswise.com']
+const configuredAllowedOrigins = (Deno.env.get('KASWISE_ALLOWED_ORIGIN') ?? '')
+  .split(',')
+  .map((origin) => origin.trim())
+  .filter(Boolean)
+const allowedOrigins = Array.from(
+  new Set([...defaultAllowedOrigins, ...configuredAllowedOrigins]),
+)
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': allowedOrigin,
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  'Vary': 'Origin',
+function corsHeadersFor(req: Request): Record<string, string> {
+  const origin = req.headers.get('Origin')
+  const headers: Record<string, string> = {
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Vary': 'Origin',
+  }
+  if (origin && allowedOrigins.includes(origin)) {
+    headers['Access-Control-Allow-Origin'] = origin
+  }
+  return headers
 }
 
 type ProcessVoiceRequest = {
-  transaction_id: string
   audio_path: string
 }
 
@@ -26,43 +38,11 @@ type ExtractedFields = {
 
 type ProcessVoiceResponse = {
   status: 'done' | 'error'
+  transcript: string
   confidence: number
   review_required: boolean
   fields: ExtractedFields
   error_message?: string
-}
-
-async function assertProcessableTransaction(
-  supabase: ReturnType<typeof createClient>,
-  transactionId: string,
-  userId: string,
-): Promise<Response | null> {
-  const { data, error } = await supabase
-    .from('transactions')
-    .select('id, status')
-    .eq('id', transactionId)
-    .eq('user_id', userId)
-    .maybeSingle()
-
-  if (error) {
-    throw error
-  }
-
-  if (!data) {
-    return new Response(
-      JSON.stringify({ error: 'Transaction not found' }),
-      { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
-    )
-  }
-
-  if (data.status !== 'processing') {
-    return new Response(
-      JSON.stringify({ error: 'Transaction is not processable' }),
-      { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
-    )
-  }
-
-  return null
 }
 
 function isOwnVoicePath(audioPath: string, userId: string): boolean {
@@ -82,6 +62,16 @@ async function transcribeAudioWithWhisper(audioUrl: string): Promise<string> {
   }
 
   const audioBlob = await audioResponse.blob()
+  const maxBytes = 5 * 1024 * 1024
+  const contentType = audioBlob.type || audioResponse.headers.get('content-type') || ''
+  const allowedTypes = new Set([
+    'audio/m4a', 'audio/mp4', 'audio/mpeg', 'audio/wav',
+    'audio/webm', 'audio/ogg', 'audio/x-m4a', 'application/octet-stream',
+  ])
+  if (audioBlob.size > maxBytes) throw new Error('Audio file exceeds 5 MB')
+  if (contentType && !allowedTypes.has(contentType.split(';')[0].trim())) {
+    throw new Error('Unsupported audio format')
+  }
 
   const formData = new FormData()
   formData.append('file', audioBlob, 'audio.m4a')
@@ -159,8 +149,15 @@ async function extractFromTextWithAI(rawText: string): Promise<{ confidence: num
 }
 
 serve(async (req) => {
+  const corsHeaders = corsHeadersFor(req)
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
+  }
+  if (req.method !== 'POST') {
+    return new Response(JSON.stringify({ error: 'Method not allowed' }), {
+      status: 405,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    })
   }
 
   let audioPathToDelete: string | null = null
@@ -195,11 +192,11 @@ serve(async (req) => {
 
     const body: ProcessVoiceRequest = await req.json()
 
-    const { transaction_id, audio_path } = body
+    const { audio_path } = body
 
-    if (!transaction_id || !audio_path) {
+    if (!audio_path) {
       return new Response(
-        JSON.stringify({ error: 'transaction_id and audio_path are required' }),
+        JSON.stringify({ error: 'audio_path is required' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
       )
     }
@@ -209,11 +206,6 @@ serve(async (req) => {
         JSON.stringify({ error: 'Invalid audio path' }),
         { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
       )
-    }
-
-    const preflightResponse = await assertProcessableTransaction(supabase, transaction_id, userId)
-    if (preflightResponse) {
-      return preflightResponse
     }
 
     audioPathToDelete = audio_path
@@ -235,34 +227,9 @@ serve(async (req) => {
     const { confidence, fields } = await extractFromTextWithAI(transcription)
     const reviewRequired = confidence < 0.85
 
-    const updatePayload = {
-      status: 'done',
-      confidence,
-      review_required: reviewRequired,
-      nominal: fields.nominal,
-      type: fields.type,
-      kategori: fields.kategori,
-      merchant: fields.merchant,
-      tanggal: fields.tanggal,
-      catatan: fields.catatan,
-      raw_input: transcription,
-      updated_at: new Date().toISOString(),
-    }
-
-    const { error: updateError } = await supabase
-      .from('transactions')
-      .update(updatePayload)
-      .eq('id', transaction_id)
-      .eq('user_id', userId)
-      .select('id')
-      .single()
-
-    if (updateError) {
-      throw updateError
-    }
-
     const response: ProcessVoiceResponse = {
       status: 'done',
+      transcript: transcription,
       confidence,
       review_required: reviewRequired,
       fields,
@@ -278,6 +245,7 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({
         status: 'error',
+        transcript: '',
         confidence: 0,
         review_required: true,
         fields: {

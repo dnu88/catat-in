@@ -50,6 +50,7 @@ import {
 	type Category,
 } from "../../src/services/categories";
 import { useTheme } from "../../src/theme/theme-context";
+import { financeEditorial as fe } from "../../src/theme/finance-editorial";
 import { budgetEnvelopePalette } from "../../src/theme/report-palettes";
 import { resolveCategoryVisual } from "../../src/theme/category-visuals";
 import { areCategoryNamesEquivalent, getLocalizedCategoryHelper, getLocalizedCategoryName } from "../../src/services/category-taxonomy";
@@ -162,7 +163,7 @@ function EnvelopeRow({
 		? theme.colors.danger
 		: progress.is_near_limit
 			? theme.colors.warning
-			: theme.colors.brandPrimary;
+			: fe.blueBright;
 	const categoryVisual = resolveCategoryVisual({
 		categoryId: envelope.parent_category_id,
 		categoryName: envelope.parent_category_name,
@@ -784,7 +785,7 @@ export default function BudgetsScreen() {
 					{ justifyContent: "center", alignItems: "center" },
 				]}
 			>
-				<ActivityIndicator size="large" color={theme.colors.brandPrimary} />
+				<ActivityIndicator size="large" color={fe.blueBright} />
 			</View>
 		);
 	}
@@ -1146,7 +1147,7 @@ export default function BudgetsScreen() {
 	const ListEmpty = () => (
 		<EmptyState
 			icon="budgets"
-			tone="primary"
+			tone="navy"
 			title={tx.emptyTitle}
 			description={tx.emptyDescription}
 		/>
@@ -1208,7 +1209,7 @@ export default function BudgetsScreen() {
 					<RefreshControl
 						refreshing={loading}
 						onRefresh={loadEnvelopes}
-						tintColor={theme.colors.brandPrimary}
+						tintColor={fe.blueBright}
 					/>
 				}
 			/>
@@ -1221,7 +1222,9 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 		screen: { flex: 1, backgroundColor: theme.colors.background },
 		content: { padding: 20, gap: 8, paddingBottom: 26 },
 		addButton: {
-			backgroundColor: theme.colors.brandPrimary,
+			backgroundColor: fe.glassStrong,
+			borderWidth: 1,
+			borderColor: "rgba(255,255,255,0.24)",
 			borderRadius: 999,
 			paddingHorizontal: 14,
 			paddingVertical: 8,
@@ -1230,7 +1233,7 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			justifyContent: "center",
 		},
 		addButtonText: {
-			color: theme.colors.textInverse,
+			color: fe.white,
 			fontSize: 12,
 			fontWeight: "700",
 		},
@@ -1353,7 +1356,7 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			backgroundColor: theme.colors.surface,
 		},
 		colorOptionActive: {
-			borderColor: theme.colors.brandPrimary,
+			borderColor: fe.blueBright,
 			borderWidth: 2,
 		},
 		colorOptionSwatch: { width: 24, height: 24, borderRadius: 12 },
@@ -1378,7 +1381,7 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 		saveButton: {
 			flex: 1,
 			minHeight: 44,
-			backgroundColor: theme.colors.brandPrimary,
+			backgroundColor: fe.blueDeep,
 			borderRadius: 14,
 			alignItems: "center",
 			justifyContent: "center",
@@ -1513,13 +1516,13 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			justifyContent: "center",
 			borderRadius: 999,
 			borderWidth: 1,
-			borderColor: `${theme.colors.brandPrimary}40`,
-			backgroundColor: `${theme.colors.brandPrimary}12`,
+			borderColor: "rgba(23,139,208,0.28)",
+			backgroundColor: "rgba(23,139,208,0.10)",
 			paddingHorizontal: 12,
 			paddingVertical: 6,
 		},
 		editButtonText: {
-			color: theme.colors.brandPrimary,
+			color: fe.blueBright,
 			fontSize: 12,
 			fontWeight: "800",
 		},

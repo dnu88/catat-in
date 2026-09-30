@@ -10,6 +10,7 @@ import * as WebBrowser from "expo-web-browser";
 import { router } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { ScrollView } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
 
 import { KaswiseLogoMark } from "../src/components/brand/KaswiseLogoMark";
 import { supabase } from "../src/lib/supabase";
@@ -20,6 +21,7 @@ import {
   type Pricing,
 } from "../src/services/billing";
 import { useTheme } from "../src/theme/theme-context";
+import { financeEditorial as fe } from "../src/theme/finance-editorial";
 import { useI18n } from "../src/i18n/i18n-context";
 import { getStoreReleaseConfig } from "../src/config/store-release";
 
@@ -181,7 +183,12 @@ export default function UpgradeScreen() {
         showsVerticalScrollIndicator={false}
       >
         {/* Header */}
-        <View style={styles.header}>
+        <LinearGradient
+          colors={[fe.navySurface, fe.blueDeep, fe.blueBright]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.header}
+        >
           <KaswiseLogoMark size={40} />
           <Text accessibilityRole="header" style={styles.title}>
             Kaswise Premium
@@ -189,7 +196,7 @@ export default function UpgradeScreen() {
           <Text style={styles.subtitle}>
             {isEn ? "OCR receipts, AI chat 200/month, AI Insight" : "Foto struk OCR, chat AI 200/bulan, AI Insight"}
           </Text>
-        </View>
+        </LinearGradient>
 
         {/* Promo badge */}
         {isPromo ? (
@@ -322,7 +329,7 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
   return StyleSheet.create({
     screen: {
       flex: 1,
-      backgroundColor: theme.colors.background,
+      backgroundColor: fe.paper,
     },
     scrollContent: {
       flexGrow: 1,
@@ -342,18 +349,25 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
     header: {
       alignItems: "center",
       gap: theme.spacing.sm,
-      paddingTop: theme.spacing.lg,
-      paddingBottom: theme.spacing.md,
+      padding: theme.spacing.xl,
+      paddingVertical: theme.spacing["2xl"],
+      borderRadius: theme.radius["2xl"],
+      overflow: "hidden",
+      shadowColor: fe.navy,
+      shadowOpacity: 0.18,
+      shadowRadius: 24,
+      shadowOffset: { width: 0, height: 12 },
+      elevation: 8,
     },
     title: {
-      fontSize: 22,
-      fontWeight: "800",
-      color: theme.colors.textPrimary,
+      fontSize: 28,
+      fontWeight: "700",
+      color: fe.white,
       textAlign: "center",
     },
     subtitle: {
       fontSize: 14,
-      color: theme.colors.textSecondary,
+      color: "rgba(255,255,255,0.72)",
       textAlign: "center",
       lineHeight: 20,
     },
@@ -374,7 +388,7 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
     },
     // Plan cards
     planCard: {
-      backgroundColor: theme.colors.surface,
+      backgroundColor: fe.white,
       borderRadius: theme.radius.xl,
       borderWidth: 1,
       borderColor: theme.colors.borderSoft,
@@ -436,7 +450,7 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
     },
     // Phase cards (polling, success, error)
     phaseCard: {
-      backgroundColor: theme.colors.surface,
+      backgroundColor: fe.white,
       borderRadius: theme.radius.xl,
       borderWidth: 1,
       borderColor: theme.colors.borderSoft,

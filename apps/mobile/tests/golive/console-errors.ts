@@ -12,5 +12,12 @@ export function isIgnoredGoLiveConsoleError(message: string) {
     return /_getUser|_useSession|gotrue|auth/i.test(normalized);
   }
 
+  // Cloudflare injects browser insights on the live edge, while the PWA CSP keeps
+  // third-party scripts blocked. This is a platform telemetry warning, not an app
+  // runtime failure.
+  if (/static\.cloudflareinsights\.com\/beacon\.min\.js/i.test(normalized)) {
+    return /content security policy|script-src/i.test(normalized);
+  }
+
   return false;
 }

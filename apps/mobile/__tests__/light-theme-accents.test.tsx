@@ -38,13 +38,13 @@ function renderLogin() {
   )
 }
 
-describe('light theme softened brand accents', () => {
-  it('uses a deeper readable green for login primary CTA in light mode', () => {
+describe('light theme finance-editorial accents', () => {
+  it('uses the deep editorial blue for login primary CTA in light mode', () => {
     const screen = renderLogin()
     const button = screen.getByTestId('auth-primary-button')
     const buttonStyle = getFlattenedStyle(button)
 
-    expect(buttonStyle.backgroundColor).toBe('#3F6212')
+    expect(buttonStyle.backgroundColor).toBe('#0A3D78')
     expect(buttonStyle.backgroundColor).not.toBe('#A3FF12')
   })
 })

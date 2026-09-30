@@ -1,25 +1,23 @@
 // =============================================================
-// Kaswise — Theme tokens (Dark Luxury system)
+// Kaswise — Theme tokens (Finance Editorial system)
 //
-// Drop this into `mobile/src/theme/tokens.ts` to replace the old
-// indigo+emerald light system with the new dark luxury direction.
-// Keeps the same shape (light / dark / radius / spacing /
-// typography / opacity / shadow) so `toMobileTheme()` and the
-// rest of the consumers in mobile/src/* keep working unchanged.
-//
-// Light variant = "light luxury" (warm bone ground, white cards,
-// neon CTAs with near-black text). Dark variant = the matte-black
-// brand surface.
+// Source of truth for the mobile theme shape. The visual direction
+// is Finance Editorial: navy→electric-blue gradient heroes, warm
+// paper ground, white rounded cards, ink active controls, tonal-blue
+// accents, and semantic status colors (success=green, income=teal,
+// danger=red). See `finance-editorial.ts` for the canonical palette;
+// these tokens mirror those values into the light/dark shape consumed
+// by `toMobileTheme()`.
 // =============================================================
 
 export type ThemeMode = 'light' | 'dark'
 
 const radius = {
-  sm: 10,
-  md: 14,
-  lg: 18,
-  xl: 20,
-  '2xl': 24,
+  sm: 12,
+  md: 16,
+  lg: 22,
+  xl: 24,
+  '2xl': 28,
   pill: 999,
 } as const
 
@@ -51,10 +49,10 @@ const typography = {
   letterSpacing: { tight: -0.5, normal: 0, wide: 0.4 },
   // Role-specific (kept for backward compatibility with the old tokens)
   support:      { fontSize: 11, fontWeight: '800' },
-  cardTitle:    { fontSize: 16, fontWeight: '700' },
-  sectionTitle: { fontSize: 15, fontWeight: '700' },
+  cardTitle:    { fontSize: 16, fontWeight: '600' },
+  sectionTitle: { fontSize: 13, fontWeight: '700' },
   metric:       { fontSize: 20, fontWeight: '800' },
-  screenTitle:  { fontSize: 22, fontWeight: '800' },
+  screenTitle:  { fontSize: 28, fontWeight: '700' },
   chip:         { fontSize: 11, fontWeight: '800' },
 } as const
 
@@ -107,22 +105,22 @@ export const kaswiseTokens = {
         strong: 'rgba(255, 255, 255, 0.18)',
       },
       brand: {
-        primary:        '#A3FF12',  // Neon Emerald
-        primaryDeep:    '#65A30D',  // Darker neon (for accents on light surfaces)
+        primary:        '#42B7EB',  // Electric blue
+        primaryDeep:    '#178BD0',  // Bright blue
         secondary:      '#4A80F0',  // Soft Navy
-        secondaryDeep:  '#2A5DD0',
+        secondaryDeep:  '#071B4F',
       },
       status: {
-        success: '#A3FF12',
+        success: '#22C55E',
         danger:  '#FF7B7B',
         warning: '#FFC06D',
         info:    '#38BDF8',
       },
       iconBubbles: {
-        primary: { background: 'rgba(163, 255, 18, 0.14)', border: 'rgba(163, 255, 18, 0.25)', color: '#A3FF12' },
+        primary: { background: 'rgba(66, 183, 235, 0.14)', border: 'rgba(66, 183, 235, 0.28)', color: '#42B7EB' },
         navy:    { background: 'rgba(74, 128, 240, 0.14)', border: 'rgba(74, 128, 240, 0.30)', color: '#4A80F0' },
         accent:  { background: 'rgba(74, 128, 240, 0.14)', border: 'rgba(74, 128, 240, 0.30)', color: '#4A80F0' },
-        success: { background: 'rgba(163, 255, 18, 0.10)', border: 'rgba(163, 255, 18, 0.20)', color: '#A3FF12' },
+        success: { background: 'rgba(34, 197, 94, 0.12)', border: 'rgba(34, 197, 94, 0.24)', color: '#22C55E' },
         warning: { background: 'rgba(255, 192, 109, 0.14)', border: 'rgba(255, 192, 109, 0.30)', color: '#FFC06D' },
         danger:  { background: 'rgba(255, 123, 123, 0.14)', border: 'rgba(255, 123, 123, 0.30)', color: '#FF7B7B' },
         info:    { background: 'rgba(56, 189, 248, 0.14)',  border: 'rgba(56, 189, 248, 0.30)',  color: '#38BDF8' },
@@ -140,9 +138,9 @@ export const kaswiseTokens = {
       sm: { shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.30, shadowRadius: 2,  elevation: 2 },
       md: { shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.30, shadowRadius: 12, elevation: 6 },
       lg: { shadowColor: '#000', shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.45, shadowRadius: 30, elevation: 12 },
-      // Neon glow — apply to the FAB, primary buttons on press, and CTAs
-      neon: {
-        shadowColor: '#A3FF12', shadowOffset: { width: 0, height: 8 },
+      // Accent glow — apply to primary CTAs and the FAB
+      accent: {
+        shadowColor: '#42B7EB', shadowOffset: { width: 0, height: 8 },
         shadowOpacity: 0.45, shadowRadius: 22, elevation: 16,
       },
     },
@@ -154,7 +152,7 @@ export const kaswiseTokens = {
   light: {
     color: {
       bg: {
-        base:     '#F5F5F0',  // Warm bone ground
+        base:     '#F7F7F4',  // Finance Editorial paper
         surface:  '#FFFFFF',
         card:     '#FFFFFF',
         muted:    '#FAFAF5',
@@ -175,22 +173,22 @@ export const kaswiseTokens = {
         strong: 'rgba(10, 10, 10, 0.16)',
       },
       brand: {
-        primary:        '#3F6212',
-        primaryDeep:    '#3F6212',
+        primary:        '#178BD0',
+        primaryDeep:    '#0A3D78',
         secondary:      '#4A80F0',
-        secondaryDeep:  '#2A5DD0',
+        secondaryDeep:  '#071B4F',
       },
       status: {
-        success: '#65A30D',   // shifted darker so it reads on white
+        success: '#22C55E',
         danger:  '#DC2626',
         warning: '#B45309',
         info:    '#0284C7',
       },
       iconBubbles: {
-        primary: { background: 'rgba(101, 163, 13, 0.16)', border: 'rgba(101, 163, 13, 0.28)', color: '#65A30D' },
+        primary: { background: 'rgba(23, 139, 208, 0.12)', border: 'rgba(23, 139, 208, 0.26)', color: '#0C4E91' },
         navy:    { background: 'rgba(74, 128, 240, 0.12)', border: 'rgba(42, 93, 208, 0.25)',  color: '#2A5DD0' },
         accent:  { background: 'rgba(74, 128, 240, 0.12)', border: 'rgba(42, 93, 208, 0.25)',  color: '#2A5DD0' },
-        success: { background: 'rgba(101, 163, 13, 0.16)', border: 'rgba(101, 163, 13, 0.28)', color: '#65A30D' },
+        success: { background: 'rgba(34, 197, 94, 0.12)', border: 'rgba(34, 197, 94, 0.24)', color: '#22C55E' },
         warning: { background: 'rgba(245, 158, 11, 0.14)', border: 'rgba(245, 158, 11, 0.30)', color: '#B45309' },
         danger:  { background: 'rgba(239, 68, 68, 0.10)',  border: 'rgba(239, 68, 68, 0.25)',  color: '#DC2626' },
         info:    { background: 'rgba(14, 165, 233, 0.10)', border: 'rgba(14, 165, 233, 0.25)', color: '#0284C7' },
@@ -208,9 +206,9 @@ export const kaswiseTokens = {
       sm: { shadowColor: '#0A0A0A', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.04, shadowRadius: 2,  elevation: 1 },
       md: { shadowColor: '#0A0A0A', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.08, shadowRadius: 12, elevation: 3 },
       lg: { shadowColor: '#0A0A0A', shadowOffset: { width: 0, height: 12 }, shadowOpacity: 0.10, shadowRadius: 30, elevation: 8 },
-      // Light theme glow follows the Bottom Tab + FAB green instead of neon.
-      neon: {
-        shadowColor: '#65A30D', shadowOffset: { width: 0, height: 8 },
+      // Accent glow — follows the primary CTA blue
+      accent: {
+        shadowColor: '#178BD0', shadowOffset: { width: 0, height: 8 },
         shadowOpacity: 0.35, shadowRadius: 22, elevation: 12,
       },
     },

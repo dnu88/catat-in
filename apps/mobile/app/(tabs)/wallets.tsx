@@ -11,6 +11,7 @@ import {
 } from "react-native";
 import { PageEntrance, StaggeredStack } from "../../src/components/motion";
 import { useFocusEffect } from "expo-router";
+import { LinearGradient } from "expo-linear-gradient";
 
 import { useI18n } from "../../src/i18n/i18n-context";
 import {
@@ -22,6 +23,7 @@ import {
 } from "../../src/services/wallets";
 import { useFinanceContext } from "../../src/state/finance-context";
 import { useTheme } from "../../src/theme/theme-context";
+import { financeEditorial as fe } from "../../src/theme/finance-editorial";
 import { subscribeWalletChanges } from "../../src/services/wallet-events";
 
 type WalletType = "bank" | "ewallet" | "cash" | "investment";
@@ -108,13 +110,12 @@ const typeIcons: Record<WalletType, string> = {
 
 function getTypeColor(
 	type: WalletType,
-	theme: ReturnType<typeof useTheme>["theme"],
 ): string {
 	const colorMap: Record<WalletType, string> = {
-		bank: theme.colors.info,
-		ewallet: theme.colors.brandPrimary,
-		cash: theme.colors.success,
-		investment: theme.colors.warning,
+		bank: fe.blueBright,
+		ewallet: fe.blue,
+		cash: fe.blueDeep,
+		investment: "#285D99",
 	};
 	return colorMap[type];
 }
@@ -331,12 +332,13 @@ export default function WalletsScreen() {
 					<RefreshControl
 						refreshing={loading}
 						onRefresh={loadWallets}
-						tintColor={theme.colors.brandPrimary}
+						tintColor={fe.ink}
 					/>
 				}
 			>
 				<StaggeredStack testIDPrefix="wallets-entrance">
-				<View key="wallets-header" testID="wallets-header" style={styles.headerRow}>
+				<LinearGradient key="wallets-header" testID="wallets-hero" colors={[fe.navySurface, fe.blueDeep, fe.blueBright]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.walletHero}>
+				<View testID="wallets-header" style={styles.headerRow}>
 					<View style={styles.headerCopy}>
 						<Text style={styles.title}>{tx.title}</Text>
 						<Text style={styles.subtitle}>{tx.subtitle}</Text>
@@ -355,6 +357,27 @@ export default function WalletsScreen() {
 						</Text>
 					</Pressable>
 				</View>
+				<View testID="wallets-total-hero" style={styles.totalCard}>
+					<Text style={styles.totalLabel}>{tx.total}</Text>
+					<Text style={styles.totalValue}>{formatCurrency(totalBalance)}</Text>
+					<View style={styles.totalRow}>
+						<View style={styles.totalChip}>
+							<Text style={styles.totalChipText}>{wallets.length} {tx.active}</Text>
+						</View>
+					</View>
+					<View testID="wallets-card-stack" style={styles.walletStack}>
+						<View style={styles.walletStackBack} />
+						<View style={styles.walletStackMiddle} />
+						<View style={styles.walletStackFront}>
+							<View>
+								<Text style={styles.walletStackLabel}>{wallets[0]?.name ?? tx.title}</Text>
+								<Text style={styles.walletStackMeta}>{wallets[0] ? tx.types[wallets[0].type as WalletType] : tx.subtitle}</Text>
+							</View>
+							<Text style={styles.walletStackBalance}>{wallets[0] ? formatCurrency(Number(wallets[0].balance ?? 0)) : "—"}</Text>
+						</View>
+					</View>
+				</View>
+				</LinearGradient>
 
 				{editingWallet ? (
 					<View key="wallet-edit-form" testID="wallet-edit-form" style={styles.formCard}>
@@ -488,17 +511,6 @@ export default function WalletsScreen() {
 					</View>
 				) : null}
 
-				<View key="wallets-total-hero" testID="wallets-total-hero" style={styles.totalCard}>
-					<Text style={styles.totalLabel}>{tx.total}</Text>
-					<Text style={styles.totalValue}>{formatCurrency(totalBalance)}</Text>
-					<View style={styles.totalRow}>
-						<View style={styles.totalChip}>
-							<Text style={styles.totalChipText}>
-								{wallets.length} {tx.active}
-							</Text>
-						</View>
-					</View>
-				</View>
 
 				<ScrollView
 					key="wallets-filter"
@@ -533,7 +545,7 @@ export default function WalletsScreen() {
 
 				{loading ? (
 					<View key="wallets-loading" testID="wallets-loading" style={styles.loadingInline}>
-						<ActivityIndicator color={theme.colors.brandPrimary} />
+						<ActivityIndicator color={fe.ink} />
 						<Text style={styles.loadingText}>{tx.loading}</Text>
 					</View>
 				) : null}
@@ -553,7 +565,7 @@ export default function WalletsScreen() {
 								style={[
 									styles.walletIcon,
 									{
-										backgroundColor: `${getTypeColor(wallet.type as WalletType, theme)}26`,
+										backgroundColor: `${getTypeColor(wallet.type as WalletType)}26`,
 									},
 								]}
 							>
@@ -568,7 +580,7 @@ export default function WalletsScreen() {
 										style={[
 											styles.typeBadge,
 											{
-												backgroundColor: `${getTypeColor(wallet.type as WalletType, theme)}26`,
+												backgroundColor: `${getTypeColor(wallet.type as WalletType)}26`,
 											},
 										]}
 									>
@@ -576,7 +588,7 @@ export default function WalletsScreen() {
 											style={[
 												styles.typeBadgeText,
 												{
-													color: getTypeColor(wallet.type as WalletType, theme),
+													color: getTypeColor(wallet.type as WalletType),
 												},
 											]}
 										>
@@ -645,8 +657,9 @@ export default function WalletsScreen() {
 
 function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 	return StyleSheet.create({
-		screen: { flex: 1, backgroundColor: theme.colors.background },
-		content: { padding: 20, gap: 10, paddingBottom: 26 },
+		screen: { flex: 1, backgroundColor: fe.paper },
+		content: { gap: 10, paddingBottom: 26, backgroundColor: fe.paper },
+		walletHero: { paddingHorizontal: 20, paddingTop: 20, paddingBottom: 30, borderBottomLeftRadius: 42, borderBottomRightRadius: 42, overflow: "hidden", gap: 18 },
 		headerRow: {
 			flexDirection: "row",
 			justifyContent: "space-between",
@@ -656,31 +669,34 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 		},
 		headerCopy: { flex: 1 },
 		title: {
-			color: theme.colors.textPrimary,
+			color: fe.white,
 			fontSize: theme.typography.fontSize["4xl"],
 			fontWeight: theme.typography.fontWeight.extrabold,
 			letterSpacing: theme.typography.letterSpacing.tight,
 		},
 		subtitle: {
-			color: theme.colors.textSecondary,
+			color: "rgba(255,255,255,0.64)",
 			fontSize: theme.typography.fontSize.sm,
 			marginTop: 2,
 		},
 		addButton: {
 			minHeight: 44,
 			justifyContent: "center",
-			backgroundColor: theme.colors.brandPrimary,
+			backgroundColor: "rgba(255,255,255,0.14)",
+			borderWidth: 1,
+			borderColor: "rgba(255,255,255,0.22)",
 			borderRadius: theme.radius.pill,
 			paddingHorizontal: 14,
 			paddingVertical: 8,
 		},
 		disabledButton: { opacity: 0.5 },
 		addButtonText: {
-			color: theme.colors.textInverse,
+			color: fe.white,
 			fontSize: theme.typography.fontSize.sm,
 			fontWeight: theme.typography.fontWeight.bold,
 		},
 		formCard: {
+			marginHorizontal: 20,
 			backgroundColor: theme.colors.surface,
 			borderWidth: 1,
 			borderColor: theme.colors.borderSoft,
@@ -715,24 +731,24 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			paddingVertical: 8,
 		},
 		typeChoiceActive: {
-			backgroundColor: theme.colors.brandPrimary,
-			borderColor: theme.colors.brandPrimary,
+			backgroundColor: fe.ink,
+			borderColor: fe.ink,
 		},
 		typeChoiceText: {
 			color: theme.colors.textSecondary,
 			fontSize: 12,
 			fontWeight: "700",
 		},
-		typeChoiceTextActive: { color: theme.colors.textInverse },
+		typeChoiceTextActive: { color: fe.white },
 		submitButton: {
 			minHeight: 44,
 			borderRadius: theme.radius.pill,
-			backgroundColor: theme.colors.brandPrimary,
+			backgroundColor: fe.ink,
 			alignItems: "center",
 			justifyContent: "center",
 		},
 		submitButtonText: {
-			color: theme.colors.textInverse,
+			color: fe.white,
 			fontSize: 14,
 			fontWeight: "800",
 		},
@@ -754,38 +770,36 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			fontWeight: "800",
 		},
 		totalCard: {
-			backgroundColor: theme.colors.card,
-			borderRadius: 24,
-			borderWidth: 1,
-			borderColor: theme.colors.borderSoft,
-			padding: 18,
+			backgroundColor: "transparent",
+			borderRadius: 0,
+			borderWidth: 0,
+			padding: 0,
 			gap: 6,
 			overflow: "hidden",
-			...(theme.mode === "light" ? theme.shadow.lg : {}),
 		},
 		totalLabel: {
-			color: theme.colors.textMuted,
+			color: "rgba(255,255,255,0.62)",
 			fontSize: theme.typography.fontSize.sm,
 			fontWeight: theme.typography.fontWeight.semibold,
 		},
 		totalValue: {
-			color: theme.colors.textPrimary,
+			color: fe.white,
 			fontSize: theme.typography.fontSize["4xl"],
 			fontWeight: theme.typography.fontWeight.extrabold,
 			letterSpacing: theme.typography.letterSpacing.tight,
 		},
 		totalRow: { marginTop: 6 },
 		totalChip: {
-			backgroundColor: theme.colors.glass.background,
+			backgroundColor: "rgba(255,255,255,0.12)",
 			borderWidth: 1,
-			borderColor: theme.colors.glass.border,
+			borderColor: "rgba(255,255,255,0.20)",
 			borderRadius: 999,
 			paddingHorizontal: 12,
 			paddingVertical: 5,
 			alignSelf: "flex-start",
 		},
 		totalChipText: {
-			color: theme.colors.textSecondary,
+			color: "rgba(255,255,255,0.76)",
 			fontSize: theme.typography.fontSize.sm,
 			fontWeight: theme.typography.fontWeight.semibold,
 		},
@@ -801,7 +815,14 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			fontSize: 12,
 			fontWeight: "700",
 		},
-		filterRow: { gap: 8, paddingVertical: 2 },
+		walletStack: { height: 104, marginTop: 12, position: "relative" },
+		walletStackBack: { position: "absolute", left: 30, right: 30, top: 0, height: 70, borderRadius: 22, backgroundColor: "rgba(255,255,255,0.10)" },
+		walletStackMiddle: { position: "absolute", left: 15, right: 15, top: 12, height: 74, borderRadius: 22, backgroundColor: "rgba(45,130,212,0.35)" },
+		walletStackFront: { position: "absolute", left: 0, right: 0, top: 25, minHeight: 76, borderRadius: 22, backgroundColor: "rgba(72,151,211,0.34)", borderWidth: 1, borderColor: "rgba(255,255,255,0.18)", paddingHorizontal: 16, flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+		walletStackLabel: { color: fe.white, fontSize: 13, fontWeight: "800" },
+		walletStackMeta: { color: "rgba(255,255,255,0.64)", fontSize: 11, marginTop: 3 },
+		walletStackBalance: { color: fe.white, fontSize: 14, fontWeight: "800" },
+		filterRow: { gap: 8, paddingVertical: 2, paddingHorizontal: 20 },
 		filterChip: {
 			minHeight: 44,
 			justifyContent: "center",
@@ -813,16 +834,17 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			backgroundColor: theme.colors.surface,
 		},
 		filterChipActive: {
-			backgroundColor: theme.colors.brandPrimary,
-			borderColor: theme.colors.brandPrimary,
+			backgroundColor: fe.ink,
+			borderColor: fe.ink,
 		},
 		filterChipText: {
 			color: theme.colors.textSecondary,
 			fontSize: 12,
 			fontWeight: "700",
 		},
-		filterChipTextActive: { color: theme.colors.textInverse },
+		filterChipTextActive: { color: fe.white },
 		walletCard: {
+			marginHorizontal: 20,
 			backgroundColor: theme.colors.surface,
 			borderRadius: 18,
 			borderWidth: 1,
@@ -885,7 +907,7 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			gap: 10,
 		},
 		walletBalance: {
-			color: theme.colors.textPrimary,
+			color: fe.financialTotal,
 			fontSize: 18,
 			fontWeight: "800",
 		},

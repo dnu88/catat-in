@@ -10,7 +10,9 @@ import {
 	TextInput,
 	View,
 } from "react-native";
+import { Audio } from "expo-av";
 import * as ImagePicker from "expo-image-picker";
+import { LinearGradient } from "expo-linear-gradient";
 import { PageEntrance, StaggeredStack } from "../../src/components/motion";
 import { useFocusEffect, useRouter } from "expo-router";
 
@@ -19,6 +21,7 @@ import { useI18n } from "../../src/i18n/i18n-context";
 import { useSupabase } from "../../src/lib/supabase";
 import { Sentry } from "../../src/lib/sentry";
 import { useTheme } from "../../src/theme/theme-context";
+import { financeEditorial as fe } from "../../src/theme/finance-editorial";
 import { IconBubble } from "../../src/components/ui";
 import {
 	KaswiseIcon,
@@ -50,6 +53,14 @@ import {
 import { listWallets, type Wallet } from "../../src/services/wallets";
 import { useFinanceContext } from "../../src/state/finance-context";
 import { useEntitlements } from "../../src/hooks/useEntitlements";
+import { featureFlags } from "../../src/config/features";
+import {
+	getVoiceAuthSession,
+	processVoiceTransaction,
+	uploadVoiceAudio,
+	type VoiceAudioAsset,
+	type VoiceExtraction,
+} from "../../src/services/voice-intake";
 
 export function photoLocked(ent: { photo_limit: number } | null): boolean {
 	return !!ent && ent.photo_limit === 0;
@@ -73,7 +84,22 @@ const enabledModes = [
 	},
 ] as const;
 
-type ModeId = (typeof enabledModes)[number]["id"];
+const voiceMode = {
+	id: "Suara",
+	label: "Suara",
+	icon: "notification" as KaswiseIconName,
+	helper: "Ucapkan transaksi, Kaswise jadikan catatan",
+} as const;
+
+type ModeId = (typeof enabledModes)[number]["id"] | typeof voiceMode.id;
+
+export function getDefaultCaptureMode(voiceEnabled: boolean): ModeId {
+	return voiceEnabled ? "Suara" : "Teks";
+}
+
+export function getCaptureModes(voiceEnabled: boolean) {
+	return voiceEnabled ? [voiceMode, ...enabledModes] : enabledModes;
+}
 
 type AiTextTransaction = {
 	type?: unknown;
@@ -156,23 +182,24 @@ export default function CaptureScreen() {
 		() =>
 			isEn
 				? {
-						title: "Capture AI",
-						subtitle: "Track automatically with artificial intelligence.",
-						modePrefix: "Mode",
+						title: "Record a transaction",
+						subtitle: "Voice, text, or receipt—choose the fastest input.",
 						modeLabels: {
 							Teks: "Text",
 							Foto: "Photo",
+							Suara: "Voice",
 						},
 						modeHelpers: {
 							Teks: "Type a transaction in natural language",
 							Foto: "Scan shopping receipts with OCR",
+							Suara: "Say the transaction and let Kaswise structure it",
 						},
 						textPlaceholder: "Example: Bought coffee 35k at Kopi Kenangan with QRIS",
 						textInputLabel: "Transaction text input",
-						processTextLabel: "Process transaction with AI",
-						processTextButton: "Process with AI",
-						walletLabel: "Wallet for sync",
-						noWallet: "No active wallet. Saved transaction will not change wallet balance.",
+						processTextLabel: "Save transaction",
+						processTextButton: "Save transaction",
+						walletLabel: "Save to",
+						noWallet: "No wallet yet. The transaction can still be saved.",
 						processingTitle: "Processing...",
 						processingSub: "Kaswise AI is reading your transaction. You can leave this page.",
 						successTitle: "Transaction saved!",
@@ -206,25 +233,36 @@ export default function CaptureScreen() {
 						errorFallback: "Transaction could not be processed. Try again shortly.",
 						tryAgain: "Try Again",
 						tryAgainLabel: "Try processing again",
+						voicePermission: "Microphone permission is needed to record voice notes.",
+						voiceReady: "Voice note ready. Process it to save the transaction.",
+						voiceRecord: "Start recording",
+						voiceStop: "Stop recording",
+						voiceProcess: "Process voice note",
+						voiceReset: "Record again",
+						voiceRecording: "Listening... say it naturally, for example: bought coffee 35k.",
+						voiceEmpty: "No voice note recorded yet.",
+						voiceSaved: "Voice transaction saved.",
+						voiceFeatureDisabled: "Voice capture is being prepared.",
 					}
 				: {
-						title: "Capture AI",
-						subtitle: "Catat otomatis dengan kecerdasan buatan.",
-						modePrefix: "Mode",
+						title: "Catat transaksi",
+						subtitle: "Suara, teks, atau struk—pilih input tercepat.",
 						modeLabels: {
 							Teks: "Teks",
 							Foto: "Foto",
+							Suara: "Suara",
 						},
 						modeHelpers: {
 							Teks: "Ketik transaksi dengan bahasa natural",
 							Foto: "Scan struk belanja dengan OCR",
+							Suara: "Ucapkan transaksi, Kaswise jadikan catatan",
 						},
 						textPlaceholder: "Contoh: Beli kopi 35rb di Kopi Kenangan pakai QRIS",
 						textInputLabel: "Input teks transaksi",
-						processTextLabel: "Proses transaksi dengan AI",
-						processTextButton: "Proses dengan AI",
-						walletLabel: "Akun untuk sinkronisasi",
-						noWallet: "Belum ada akun aktif. Transaksi tersimpan tanpa mengubah saldo akun.",
+						processTextLabel: "Simpan transaksi",
+						processTextButton: "Simpan transaksi",
+						walletLabel: "Simpan ke",
+						noWallet: "Belum ada dompet. Transaksi tetap bisa disimpan.",
 						processingTitle: "Sedang memproses...",
 						processingSub: "AI Kaswise sedang membaca transaksimu. Kamu bisa meninggalkan halaman ini.",
 						successTitle: "Transaksi tercatat! Berhasil disimpan.",
@@ -258,13 +296,32 @@ export default function CaptureScreen() {
 						errorFallback: "Transaksi belum berhasil diproses. Coba lagi sebentar.",
 						tryAgain: "Coba Lagi",
 						tryAgainLabel: "Coba proses lagi",
+						voicePermission: "Izin mikrofon diperlukan untuk mencatat dengan suara.",
+						voiceReady: "Catatan suara siap. Proses untuk menyimpan transaksi.",
+						voiceRecord: "Mulai rekam",
+						voiceStop: "Stop rekam",
+						voiceProcess: "Proses suara",
+						voiceReset: "Rekam ulang",
+						voiceRecording: "Mendengarkan... ucapkan natural, misalnya: beli kopi 35rb.",
+						voiceEmpty: "Belum ada rekaman suara.",
+						voiceSaved: "Transaksi suara tersimpan.",
+						voiceFeatureDisabled: "Capture suara sedang disiapkan.",
 					},
 		[isEn],
 	);
 	const styles = useMemo(() => createStyles(theme), [theme]);
 
-	const [activeMode, setActiveMode] = useState<ModeId>("Teks");
+	const captureModes = useMemo(
+		() => getCaptureModes(featureFlags.voiceNote),
+		[],
+	);
+	const [activeMode, setActiveMode] = useState<ModeId>(() =>
+		getDefaultCaptureMode(featureFlags.voiceNote),
+	);
 	const [textInput, setTextInput] = useState("");
+	const [voiceRecording, setVoiceRecording] = useState<Audio.Recording | null>(null);
+	const [voiceAsset, setVoiceAsset] = useState<VoiceAudioAsset | null>(null);
+	const [voiceDraft, setVoiceDraft] = useState<VoiceExtraction | null>(null);
 	const [transactionId, setTransactionId] = useState<string | null>(null);
 	const [wallets, setWallets] = useState<Wallet[]>([]);
 	const [categoryOptions, setCategoryOptions] = useState<Category[]>([]);
@@ -320,6 +377,7 @@ export default function CaptureScreen() {
 			void loadWalletOptions();
 			return () => {
 				mounted = false;
+				void voiceRecording?.stopAndUnloadAsync().catch(() => undefined);
 				// Auto-dismiss success state when user switches to another tab.
 				if (completedRef.current) resetCapture(true);
 			};
@@ -439,6 +497,145 @@ export default function CaptureScreen() {
 		}
 	};
 
+
+	const startVoiceRecording = async () => {
+		if (!featureFlags.voiceNote || submitting || voiceRecording) return;
+		setError(null);
+		setQueuedMessage(null);
+		setVoiceAsset(null);
+		setVoiceDraft(null);
+		try {
+			const permission = await Audio.requestPermissionsAsync();
+			if (!permission.granted) {
+				setError(tx.voicePermission);
+				return;
+			}
+
+			await Audio.setAudioModeAsync({
+				allowsRecordingIOS: true,
+				playsInSilentModeIOS: true,
+			});
+			const { recording } = await Audio.Recording.createAsync(
+				Audio.RecordingOptionsPresets.HIGH_QUALITY,
+			);
+			setVoiceRecording(recording);
+			setQueuedMessage(tx.voiceRecording);
+		} catch (error) {
+			Sentry.captureException(error);
+			setError(tx.systemError);
+		}
+	};
+
+	const stopVoiceRecording = async () => {
+		if (!voiceRecording) return;
+		try {
+			const status = await voiceRecording.getStatusAsync();
+			await voiceRecording.stopAndUnloadAsync();
+			const uri = voiceRecording.getURI();
+			setVoiceRecording(null);
+			if (status.durationMillis > 60_000) {
+				setError(isEn ? "Voice notes are limited to 60 seconds." : "Rekaman maksimal 60 detik.");
+				return;
+			}
+			if (!uri) {
+				setError(tx.systemError);
+				return;
+			}
+			setVoiceAsset({
+				uri,
+				fileName: `kaswise-voice-${Date.now()}.m4a`,
+				mimeType: "audio/m4a",
+			});
+			setQueuedMessage(tx.voiceReady);
+		} catch (error) {
+			Sentry.captureException(error);
+			setVoiceRecording(null);
+			setError(tx.systemError);
+		}
+	};
+
+	const submitVoiceNote = async () => {
+		if (!voiceAsset || submitting) return;
+		setSubmitting(true);
+		setError(null);
+		setQueuedMessage(null);
+		setVoiceDraft(null);
+
+		try {
+			const session = await getVoiceAuthSession(supabase);
+			if (!session?.access_token || !session.user?.id) {
+				throw new Error(tx.sessionMissing);
+			}
+
+			const audioPath = await uploadVoiceAudio(supabase, session.user.id, voiceAsset);
+			const extraction = await processVoiceTransaction(supabase, audioPath);
+			void refreshEntitlements();
+			setVoiceDraft(extraction);
+			setVoiceAsset(null);
+		} catch (error) {
+			Sentry.captureException(error);
+			setError(error instanceof Error ? error.message : tx.systemError);
+		} finally {
+			setSubmitting(false);
+		}
+	};
+
+	const confirmVoiceDraft = async () => {
+		if (!voiceDraft || submitting) return;
+		const amount = voiceDraft.fields.nominal ?? 0;
+		if (!Number.isFinite(amount) || amount <= 0) {
+			setError(isEn ? "The amount was not recognized. Record the voice note again." : "Nominal belum terbaca. Rekam ulang catatan suara.");
+			return;
+		}
+
+		setSubmitting(true);
+		setError(null);
+		try {
+			const transactionType = voiceDraft.fields.type ?? "expense";
+			const category = voiceDraft.fields.kategori ?? (isEn ? "Other expenses" : "Lainnya");
+			const description = voiceDraft.fields.catatan ?? (isEn ? "Voice transaction" : "Transaksi suara");
+			const date = voiceDraft.fields.tanggal ?? new Date().toISOString().slice(0, 10);
+			const createdTransaction = await createTransaction({
+				wallet_id: walletId,
+				transaction_type: transactionType,
+				amount,
+				category,
+				description,
+				merchant: voiceDraft.fields.merchant,
+				date,
+				input_type: "voice",
+				status: "done",
+				review_required: voiceDraft.review_required,
+				is_verified: false,
+				confidence: voiceDraft.confidence,
+			}, activeContext);
+
+			setTransactionId(createdTransaction.id);
+			setOptimisticTransaction({
+				...createdTransaction,
+				transaction_type: transactionType,
+				type: transactionType,
+				amount,
+				nominal: amount,
+				category,
+				kategori: category,
+				description,
+				catatan: description,
+				merchant: voiceDraft.fields.merchant,
+				date,
+				tanggal: date,
+			});
+			completedRef.current = true;
+			setVoiceDraft(null);
+			setQueuedMessage(tx.voiceSaved);
+			void loadWalletOptions();
+		} catch (error) {
+			Sentry.captureException(error);
+			setError(error instanceof Error ? error.message : tx.systemError);
+		} finally {
+			setSubmitting(false);
+		}
+	};
 
 	const pickReceiptImage = async () => {
 		if (completedRef.current) return;
@@ -706,6 +903,8 @@ export default function CaptureScreen() {
 		completedRef.current = false;
 		if (clearText) {
 			setTextInput("");
+			setVoiceAsset(null);
+			setVoiceDraft(null);
 			setReceiptAsset(null);
 			setReceiptDrafts([]);
 			setReceiptPath(null);
@@ -763,17 +962,25 @@ export default function CaptureScreen() {
 				}
 			>
 				<StaggeredStack testIDPrefix="capture-entrance">
-				<View key="capture-header" testID="capture-header" style={styles.headerRow}>
+				<LinearGradient
+					key="capture-header"
+					testID="capture-header"
+					colors={[fe.navySurface, fe.blueDeep, fe.blueBright]}
+					start={{ x: 0, y: 0 }}
+					end={{ x: 1, y: 1 }}
+					style={styles.headerRow}
+				>
 					<View>
 						<Text style={styles.title}>{tx.title}</Text>
 						<Text style={styles.subtitle}>{tx.subtitle}</Text>
-						{quotaLabel(ent) ? <Text testID="capture-quota-label" style={styles.inputHelper}>{quotaLabel(ent)}</Text> : null}
+						{quotaLabel(ent) ? <Text testID="capture-quota-label" style={styles.heroHelper}>{quotaLabel(ent)}</Text> : null}
 					</View>
-				</View>
+				</LinearGradient>
 
 				<View key="capture-input" testID="capture-input" style={styles.inputArea}>
+
 					<View style={styles.modeGrid}>
-						{enabledModes.map((mode) => (
+						{captureModes.map((mode) => (
 							<Pressable
 								key={mode.id}
 								testID={`capture-mode-${mode.id}`}
@@ -789,17 +996,14 @@ export default function CaptureScreen() {
 									name={mode.icon}
 									size={14}
 									weight="bold"
-									color={activeMode === mode.id ? theme.colors.textInverse : theme.colors.textSecondary}
+									color={activeMode === mode.id ? fe.ink : fe.slate}
 								/>
 								<Text style={[styles.modeChipText, activeMode === mode.id && styles.modeChipTextActive]}>{tx.modeLabels[mode.id]}</Text>
 							</Pressable>
 						))}
 					</View>
 
-					<View style={styles.inputHeader}>
-						<Text style={styles.inputTitle}>{tx.modePrefix} {tx.modeLabels[activeMode]}</Text>
-						<Text style={styles.inputHelper}>{tx.modeHelpers[activeMode]}</Text>
-					</View>
+					<Text style={styles.inputHelper}>{tx.modeHelpers[activeMode]}</Text>
 
 					{activeMode === "Teks" ? (
 						<View style={styles.textContainer}>
@@ -821,7 +1025,7 @@ export default function CaptureScreen() {
 								onPress={submitText}
 								disabled={submitting}
 							>
-								{submitting ? <ActivityIndicator color={theme.colors.textInverse} /> : <Text style={styles.submitButtonText}>{tx.processTextButton}</Text>}
+								{submitting ? <ActivityIndicator color={fe.white} /> : <Text style={styles.submitButtonText}>{tx.processTextButton}</Text>}
 							</Pressable>
 						</View>
 					) : null}
@@ -836,7 +1040,7 @@ export default function CaptureScreen() {
 								<Text style={styles.secondaryButtonText}>{receiptAsset ? tx.changeReceiptPhoto : tx.chooseReceiptPhoto}</Text>
 							</Pressable>
 							<Pressable testID="capture-receipt-process" accessibilityRole="button" accessibilityState={{ disabled: !receiptAsset || submitting, busy: submitting }} style={[styles.submitButton, (!receiptAsset || submitting) && { opacity: 0.7 }]} onPress={submitReceiptPhoto} disabled={!receiptAsset || submitting}>
-								{submitting ? <ActivityIndicator color={theme.colors.textInverse} /> : <Text style={styles.submitButtonText}>{tx.processReceipt}</Text>}
+								{submitting ? <ActivityIndicator color={fe.white} /> : <Text style={styles.submitButtonText}>{tx.processReceipt}</Text>}
 							</Pressable>
 							{receiptDraft ? (
 								<View testID="capture-receipt-preview" style={styles.receiptDraftCard}>
@@ -853,6 +1057,74 @@ export default function CaptureScreen() {
 									))}
 									<Pressable testID="capture-receipt-confirm" accessibilityRole="button" style={styles.submitButton} onPress={confirmReceiptDraft} disabled={submitting}>
 										<Text style={styles.submitButtonText}>{tx.saveReceiptTransaction}</Text>
+									</Pressable>
+								</View>
+							) : null}
+						</View>
+					) : null}
+
+					{activeMode === "Suara" ? (
+						<View style={styles.textContainer}>
+							<View testID="capture-voice-card" style={styles.voiceCard}>
+								<KaswiseIcon
+									name="notification"
+									size={28}
+									weight="bold"
+									color={voiceRecording ? theme.colors.danger : theme.colors.brandPrimary}
+								/>
+								<Text style={styles.voiceTitle}>
+									{voiceRecording
+										? tx.voiceRecording
+										: voiceDraft
+											? (isEn ? "Review the extracted transaction before saving." : "Periksa hasil transaksi sebelum disimpan.")
+											: voiceAsset ? tx.voiceReady : tx.voiceEmpty}
+								</Text>
+							</View>
+							{renderWalletSelector()}
+							<Pressable
+								testID="capture-voice-record"
+								accessibilityRole="button"
+								style={voiceRecording ? styles.secondaryButton : styles.submitButton}
+								onPress={voiceRecording ? stopVoiceRecording : startVoiceRecording}
+								disabled={submitting}
+							>
+								<Text style={voiceRecording ? styles.secondaryButtonText : styles.submitButtonText}>
+									{voiceRecording ? tx.voiceStop : tx.voiceRecord}
+								</Text>
+							</Pressable>
+							{voiceAsset ? (
+								<>
+									<Pressable
+										testID="capture-voice-process"
+										accessibilityRole="button"
+										accessibilityState={{ disabled: submitting, busy: submitting }}
+										style={[styles.submitButton, submitting && { opacity: 0.7 }]}
+										onPress={submitVoiceNote}
+										disabled={submitting}
+									>
+										{submitting ? <ActivityIndicator color={fe.white} /> : <Text style={styles.submitButtonText}>{tx.voiceProcess}</Text>}
+									</Pressable>
+									<Pressable testID="capture-voice-reset" accessibilityRole="button" style={styles.secondaryButton} onPress={() => setVoiceAsset(null)} disabled={submitting}>
+										<Text style={styles.secondaryButtonText}>{tx.voiceReset}</Text>
+									</Pressable>
+								</>
+							) : null}
+							{voiceDraft ? (
+								<View testID="capture-voice-preview" style={styles.receiptDraftCard}>
+									<Text style={styles.suggestionLabel}>{isEn ? "Voice transcript" : "Transkrip suara"}</Text>
+									<Text style={styles.suggestionMeta}>{voiceDraft.transcript}</Text>
+									<Text style={styles.suggestionTitle}>
+										{voiceDraft.fields.catatan ?? (isEn ? "Voice transaction" : "Transaksi suara")}
+									</Text>
+									<Text style={styles.suggestionMeta}>
+										Rp {(voiceDraft.fields.nominal ?? 0).toLocaleString("id-ID")} · {voiceDraft.fields.kategori ?? (isEn ? "Other expenses" : "Lainnya")}
+									</Text>
+									{voiceDraft.review_required ? <Text style={styles.suggestionWarning}>{tx.needsReview}</Text> : null}
+									<Pressable testID="capture-voice-confirm" accessibilityRole="button" style={styles.submitButton} onPress={confirmVoiceDraft} disabled={submitting}>
+										{submitting ? <ActivityIndicator color={fe.white} /> : <Text style={styles.submitButtonText}>{isEn ? "Save transaction" : "Simpan transaksi"}</Text>}
+									</Pressable>
+									<Pressable testID="capture-voice-preview-reset" accessibilityRole="button" style={styles.secondaryButton} onPress={() => setVoiceDraft(null)} disabled={submitting}>
+										<Text style={styles.secondaryButtonText}>{tx.voiceReset}</Text>
 									</Pressable>
 								</View>
 							) : null}
@@ -982,26 +1254,20 @@ export default function CaptureScreen() {
 
 function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 	return StyleSheet.create({
-		screen: { flex: 1, backgroundColor: theme.colors.background },
-		content: { padding: 20, gap: 12, paddingBottom: 26 },
-		headerRow: { marginBottom: 4 },
-		title: {
-			color: theme.colors.textPrimary,
-			fontSize: theme.typography.fontSize["4xl"],
-			fontWeight: theme.typography.fontWeight.extrabold,
-			letterSpacing: theme.typography.letterSpacing.tight,
+		screen: { flex: 1, backgroundColor: fe.paper },
+		content: { padding: 20, gap: 14, paddingBottom: 130 },
+		headerRow: {
+			minHeight: 132, borderRadius: 28, padding: 20, marginBottom: 4,
+			overflow: "hidden", shadowColor: fe.navy, shadowOpacity: 0.18,
+			shadowRadius: 24, shadowOffset: { width: 0, height: 12 }, elevation: 8,
 		},
-		subtitle: {
-			color: theme.colors.textSecondary,
-			fontSize: theme.typography.fontSize.sm,
-			marginTop: 2,
-		},
+		title: { color: fe.white, fontSize: 28, fontWeight: theme.typography.fontWeight.semibold, letterSpacing: -0.6 },
+		subtitle: { color: "rgba(255,255,255,0.72)", fontSize: 13, marginTop: 4 },
 		inputArea: {
-			backgroundColor: theme.colors.surface,
-			borderRadius: 20,
-			borderWidth: 1,
-			borderColor: theme.colors.borderSoft,
-			padding: 16,
+			backgroundColor: "transparent",
+			borderRadius: 0,
+			borderWidth: 0,
+			padding: 0,
 			gap: 16,
 		},
 		inputHeader: { gap: 2 },
@@ -1010,209 +1276,92 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			fontSize: 16,
 			fontWeight: "800",
 		},
-		inputHelper: { color: theme.colors.textSecondary, fontSize: 12 },
+		heroHelper: { color: "rgba(255,255,255,0.72)", fontSize: 12, marginTop: 8 },
+		inputHelper: { color: fe.muted, fontSize: 12 },
 		modeGrid: {
-			flexDirection: "row",
-			flexWrap: "wrap",
-			gap: 8,
+			flexDirection: "row", gap: 0, padding: 4, borderRadius: 16, backgroundColor: fe.white,
 		},
 		modeChip: {
-			minHeight: 40,
-			borderRadius: 999,
-			borderWidth: 1,
-			borderColor: theme.colors.borderSoft,
-			backgroundColor: theme.colors.mutedSurface,
-			paddingHorizontal: 12,
-			flexDirection: "row",
-			alignItems: "center",
-			gap: 6,
+			flex: 1, minHeight: 44, borderRadius: 13, borderWidth: 0, backgroundColor: "transparent",
+			paddingHorizontal: 8, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6,
 		},
-		modeChipActive: {
-			backgroundColor: theme.colors.brandPrimary,
-			borderColor: theme.colors.brandPrimary,
-		},
-		modeChipText: {
-			color: theme.colors.textSecondary,
-			fontSize: 12,
-			fontWeight: theme.typography.fontWeight.bold,
-		},
-		modeChipTextActive: { color: theme.colors.textInverse },
+		modeChipActive: { backgroundColor: fe.paper },
+		modeChipText: { color: fe.slate, fontSize: 13, fontWeight: "500" },
+		modeChipTextActive: { color: fe.ink, fontWeight: "600" },
 		textContainer: { gap: 12 },
 		receiptPickerCard: {
-			minHeight: 180,
-			borderRadius: 16,
-			borderWidth: 1,
-			borderColor: theme.colors.borderStrong,
-			backgroundColor: theme.colors.mutedSurface,
-			alignItems: "center",
-			justifyContent: "center",
-			overflow: "hidden",
-			padding: 12,
+			minHeight: 190, borderRadius: 20, borderWidth: 0, backgroundColor: fe.white,
+			alignItems: "center", justifyContent: "center", overflow: "hidden", padding: 12,
 		},
 		receiptPreviewImage: {
 			width: "100%",
 			height: 220,
 			borderRadius: 12,
 		},
-		receiptPlaceholderText: {
-			color: theme.colors.textMuted,
-			fontSize: 13,
-			textAlign: "center",
-			lineHeight: 20,
+		receiptPlaceholderText: { color: fe.muted, fontSize: 13, textAlign: "center", lineHeight: 20 },
+		voiceCard: {
+			minHeight: 190, borderRadius: 20, borderWidth: 0, backgroundColor: fe.white,
+			alignItems: "center", justifyContent: "center", padding: 20, gap: 14,
 		},
+		voiceTitle: { color: fe.slate, fontSize: 13, fontWeight: "500", textAlign: "center", lineHeight: 20 },
 		receiptDraftCard: {
-			backgroundColor: theme.colors.card,
-			borderRadius: 14,
-			borderWidth: 1,
-			borderColor: theme.colors.borderSoft,
-			padding: 12,
-			gap: 8,
+			backgroundColor: fe.white, borderRadius: 18, borderWidth: 0, padding: 14, gap: 10,
 		},
 		receiptItemRow: { gap: 2 },
 		textArea: {
-			minHeight: 120,
-			borderWidth: 1,
-			borderColor: theme.colors.borderStrong,
-			borderRadius: 14,
-			color: theme.colors.textPrimary,
-			backgroundColor: theme.colors.mutedSurface,
-			padding: 14,
-			fontSize: 14,
-			textAlignVertical: "top",
+			minHeight: 130, borderWidth: 0, borderRadius: 18, color: fe.ink,
+			backgroundColor: fe.white, padding: 16, fontSize: 15, textAlignVertical: "top",
 		},
 		submitButton: {
-			backgroundColor: theme.colors.brandPrimary,
-			borderRadius: theme.radius.pill,
-			paddingVertical: 14,
-			alignItems: "center",
-			justifyContent: "center",
+			backgroundColor: fe.ink, borderRadius: 16, paddingVertical: 15,
+			alignItems: "center", justifyContent: "center",
 		},
-		submitButtonText: {
-			color: theme.colors.textInverse,
-			fontSize: theme.typography.fontSize.lg,
-			fontWeight: theme.typography.fontWeight.bold,
-		},
+		submitButtonText: { color: fe.white, fontSize: 15, fontWeight: "600" },
 		walletSelector: { gap: 8 },
-		walletSelectorLabel: {
-			color: theme.colors.textSecondary,
-			fontSize: 12,
-			fontWeight: "700",
-		},
+		walletSelectorLabel: { color: fe.muted, fontSize: 12, fontWeight: "600" },
 		walletChipRow: { flexDirection: "row", gap: 8, paddingVertical: 2 },
 		walletChip: {
-			minHeight: 40,
-			justifyContent: "center",
-			borderRadius: 999,
-			borderWidth: 1,
-			borderColor: theme.colors.borderSoft,
-			backgroundColor: theme.colors.mutedSurface,
-			paddingHorizontal: 12,
+			minHeight: 42, justifyContent: "center", borderRadius: 14, borderWidth: 0,
+			backgroundColor: fe.white, paddingHorizontal: 14,
 		},
-		walletChipActive: {
-			backgroundColor: theme.colors.brandPrimary,
-			borderColor: theme.colors.brandPrimary,
-		},
-		walletChipText: {
-			color: theme.colors.textSecondary,
-			fontSize: 12,
-			fontWeight: "800",
-		},
-		walletChipTextActive: { color: theme.colors.textInverse },
-		walletEmptyText: {
-			color: theme.colors.warning,
-			fontSize: 12,
-			lineHeight: 18,
-		},
-		comingSoonText: {
-			color: theme.colors.textMuted,
-			fontSize: 12,
-			textAlign: "center",
-			marginTop: 8,
-		},
+		walletChipActive: { backgroundColor: fe.ink },
+		walletChipText: { color: fe.slate, fontSize: 13, fontWeight: "500" },
+		walletChipTextActive: { color: fe.white },
+		walletEmptyText: { color: fe.muted, fontSize: 12, lineHeight: 18 },
+		comingSoonText: { color: fe.muted, fontSize: 12, textAlign: "center", marginTop: 8 },
 		feedbackCard: {
-			backgroundColor: theme.colors.card,
-			borderRadius: 14,
-			borderWidth: 1,
-			borderColor: theme.colors.borderSoft,
-			padding: 20,
-			gap: 10,
-			alignItems: "center",
+			backgroundColor: fe.white, borderRadius: 18, borderWidth: 0, padding: 20,
+			gap: 10, alignItems: "center",
 		},
 		feedbackIconWrap: {
-			width: 48,
-			height: 48,
-			borderRadius: 24,
-			backgroundColor: theme.colors.mutedSurface,
-			alignItems: "center",
-			justifyContent: "center",
+			width: 48, height: 48, borderRadius: 24, backgroundColor: fe.paper,
+			alignItems: "center", justifyContent: "center",
 		},
-		feedbackTitle: {
-			color: theme.colors.textPrimary,
-			fontSize: 16,
-			fontWeight: "800",
-			textAlign: "center",
-		},
-		feedbackSub: {
-			color: theme.colors.textSecondary,
-			fontSize: 13,
-			textAlign: "center",
-			lineHeight: 20,
-		},
+		feedbackTitle: { color: fe.ink, fontSize: 16, fontWeight: "600", textAlign: "center" },
+		feedbackSub: { color: fe.slate, fontSize: 13, textAlign: "center", lineHeight: 20 },
 		suggestionCard: {
-			alignSelf: "stretch",
-			backgroundColor: theme.colors.card,
-			borderRadius: 14,
-			borderWidth: 1,
-			borderColor: theme.colors.borderSoft,
-			padding: 12,
-			gap: 4,
+			alignSelf: "stretch", backgroundColor: fe.paper, borderRadius: 14, borderWidth: 0, padding: 14, gap: 4,
 		},
 		suggestionLabel: {
-			color: theme.colors.textSecondary,
-			fontSize: 11,
-			fontWeight: theme.typography.fontWeight.bold,
-			textTransform: "uppercase",
-			letterSpacing: 0.4,
+			color: fe.muted, fontSize: 11, fontWeight: "700", textTransform: "uppercase", letterSpacing: 0.4,
 		},
-		suggestionTitle: {
-			color: theme.colors.brandPrimary,
-			fontSize: 15,
-			fontWeight: theme.typography.fontWeight.extrabold,
-		},
-		suggestionMeta: {
-			color: theme.colors.textSecondary,
-			fontSize: 12,
-			lineHeight: 18,
-		},
+		suggestionTitle: { color: fe.ink, fontSize: 15, fontWeight: "600" },
+		suggestionMeta: { color: fe.slate, fontSize: 12, lineHeight: 18 },
 		suggestionWarning: {
 			color: theme.colors.warning,
 			fontSize: 12,
 			fontWeight: theme.typography.fontWeight.bold,
 		},
 		secondaryButton: {
-			backgroundColor: theme.iconBubbles.primary.background,
-			borderRadius: 999,
-			paddingVertical: 10,
-			minHeight: 44,
-			justifyContent: "center",
-			alignItems: "center",
-			marginTop: 4,
+			backgroundColor: fe.white, borderRadius: 14, paddingVertical: 12, minHeight: 46,
+			justifyContent: "center", alignItems: "center", marginTop: 4,
 		},
-		secondaryButtonText: {
-			color: theme.colors.brandPrimary,
-			fontSize: 13,
-			fontWeight: "700",
-		},
+		secondaryButtonText: { color: fe.ink, fontSize: 13, fontWeight: "600" },
 		textLinkButton: {
 			minHeight: 44,
 			justifyContent: "center",
 			alignItems: "center",
 		},
-		textLink: {
-			color: theme.colors.textMuted,
-			fontSize: 13,
-			fontWeight: "700",
-			textAlign: "center",
-		},
+		textLink: { color: fe.muted, fontSize: 13, fontWeight: "500", textAlign: "center" },
 	});
 }

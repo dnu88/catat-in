@@ -1,5 +1,7 @@
 # Home Dark Luxury Parity Matrix
 
+> **Historical only:** this pixel-parity target is superseded by [ADR-0004: Finance Editorial Surfaces](../adr/ADR-0004-finance-editorial-surfaces.md). Do not use its Dark Luxury or lime decisions for new implementation work.
+
 **Reference:** `Kaswise Design System/ui_kits/mobile/Screens.jsx` HomeScreen
 
 **Component references:** `Kaswise Design System/ui_kits/mobile/Components.jsx`

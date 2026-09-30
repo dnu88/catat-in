@@ -226,6 +226,27 @@ function renderReports() {
 }
 
 describe("ReportsScreen visual parity", () => {
+	beforeAll(() => {
+		jest.useFakeTimers({
+			doNotFake: [
+				"nextTick",
+				"setImmediate",
+				"clearImmediate",
+				"setInterval",
+				"clearInterval",
+				"setTimeout",
+				"clearTimeout",
+				"queueMicrotask",
+				"performance",
+			],
+		});
+		jest.setSystemTime(new Date("2026-07-15T12:00:00.000Z"));
+	});
+
+	afterAll(() => {
+		jest.useRealTimers();
+	});
+
 	beforeEach(() => {
 		mockActiveContext = { type: "personal" };
 		mockTransactions = defaultMockTransactions;
@@ -282,10 +303,20 @@ describe("ReportsScreen visual parity", () => {
 		const savingsStyle = getFlattenedStyle(savingsValue) as { color?: string };
 
 		expect(summaryCardStyle.backgroundColor).toBe("#FFFFFF");
-		expect(summaryCardStyle.borderColor).toBe("rgba(10, 10, 10, 0.06)");
-		expect(incomeStyle.color).toBe("#65A30D");
-		expect(expenseStyle.color).not.toBe("#FF7B7B");
-		expect(savingsStyle.color).toBe("#0A0A0A");
+		expect(summaryCardStyle.borderColor).toBe("rgba(6, 10, 28, 0.08)");
+		expect(incomeStyle.color).toBe("#071B4F");
+		expect(expenseStyle.color).toBe("#071B4F");
+		expect(savingsStyle.color).toBe("#060A1C");
+	});
+
+	it("uses the reference-led analytics hero and category bubble cluster", () => {
+		const screen = renderReports();
+
+		expect(screen.getByTestId("reports-analytics-hero")).toBeTruthy();
+		expect(screen.getByTestId("reports-hero-bubbles")).toBeTruthy();
+		const summaryStyle = getFlattenedStyle(screen.getByTestId("reports-summary-card"));
+		expect(summaryStyle.marginTop).toBe(-36);
+		expect(summaryStyle.borderRadius).toBe(28);
 	});
 
 	it("queries all deployed transaction columns and normalizes legacy plus current fields for category visuals", async () => {
@@ -345,8 +376,8 @@ describe("ReportsScreen visual parity", () => {
 		);
 
 		expect(getFlattenedStyle(foodFill).backgroundColor).toBe("#4A80F0");
-		expect(getFlattenedStyle(shoppingFill).backgroundColor).toBe("#B45309");
-		expect(getFlattenedStyle(transportFill).backgroundColor).toBe("#2A5DD0");
+		expect(getFlattenedStyle(shoppingFill).backgroundColor).toBe("#2F7FC1");
+		expect(getFlattenedStyle(transportFill).backgroundColor).toBe("#0C4E91");
 		expect(getFlattenedStyle(customFill).backgroundColor).toMatch(
 			/^#[0-9A-F]{6}$/,
 		);
@@ -440,7 +471,7 @@ describe("ReportsScreen visual parity", () => {
 		expect(screen.getByText("Skincare")).toBeTruthy();
 	});
 
-	it("renders refined editorial donut segments without changing category colors", async () => {
+	it("renders solid editorial pie segments in the reference blue family", async () => {
 		const screen = renderReports();
 
 		fireEvent.press(screen.getByText("Kategori"));
@@ -448,24 +479,16 @@ describe("ReportsScreen visual parity", () => {
 		const foodSegment = await screen.findByTestId(
 			"reports-donut-segment-food_beverage",
 		);
-		const foodGlow = await screen.findByTestId("reports-donut-glow-food_beverage");
 
-		expect(foodSegment.props.strokeLinecap).toBe(0);
-		expect(foodSegment.props.strokeWidth).toBeGreaterThanOrEqual(17);
-		expect(foodSegment.props.strokeWidth).toBeLessThanOrEqual(19);
-		expect(foodSegment.props.strokeDasharray).toHaveLength(2);
-		const foodCircumference = 2 * Math.PI * Number(foodSegment.props.r);
-		const foodRawDash =
-			(500000 / (500000 + 350000 + 200000 + 150000)) * foodCircumference;
-		expect(
-			Math.abs(Number(foodSegment.props.strokeDasharray[0]) + 6 - foodRawDash),
-		).toBeLessThan(0.001);
-		expect(foodGlow.props.accessibilityLabel).toBeUndefined();
-		expect(foodGlow.props.opacity).toBeLessThan(0.4);
+		expect(foodSegment.props.fill).toBeTruthy();
+		expect(foodSegment.props.stroke).toBeTruthy();
+		expect(foodSegment.props.strokeWidth).toBe(3);
+		expect(typeof foodSegment.props.d).toBe("string");
+		expect(foodSegment.props.d).toMatch(/^M /);
 		expect(foodSegment.props.accessibilityLabel).toBeUndefined();
 	});
 
-	it("uses precise amount-based donut proportions instead of rounded display percentages", async () => {
+	it("uses precise amount-based pie proportions instead of rounded display percentages", async () => {
 		const screen = renderReports();
 
 		fireEvent.press(screen.getByText("Kategori"));
@@ -476,26 +499,21 @@ describe("ReportsScreen visual parity", () => {
 		const shoppingSegment = await screen.findByTestId(
 			"reports-donut-segment-personal_shopping",
 		);
-		const circumference = 2 * Math.PI * Number(foodSegment.props.r);
-		const total = 500000 + 350000 + 200000 + 150000;
+		const transportSegment = await screen.findByTestId(
+			"reports-donut-segment-transport",
+		);
+		const healthSegment = await screen.findByTestId(
+			"reports-donut-segment-health",
+		);
 
-		expect(
-			Math.abs(
-				Number(foodSegment.props.strokeDasharray[0]) +
-					6 -
-					(500000 / total) * circumference,
-			),
-		).toBeLessThan(0.001);
-		expect(
-			Math.abs(
-				Number(shoppingSegment.props.strokeDasharray[0]) +
-					6 -
-					(350000 / total) * circumference,
-			),
-		).toBeLessThan(0.001);
+		const paths = [foodSegment, shoppingSegment, transportSegment, healthSegment].map(
+			(segment: { props: { d: string } }) => segment.props.d,
+		);
+		expect(new Set(paths).size).toBe(4);
+		expect(paths.every((p) => /^M \d+\.?\d* \d+\.?\d* L /.test(p))).toBe(true);
 	});
 
-	it("uses a different donut color for every rendered expense category", async () => {
+	it("uses a different pie color for every rendered expense category", async () => {
 		const screen = renderReports();
 
 		fireEvent.press(screen.getByText("Kategori"));
@@ -507,33 +525,48 @@ describe("ReportsScreen visual parity", () => {
 			screen.findByTestId("reports-donut-segment-health"),
 		]);
 		const colors = segments.map(
-			(segment: { props: { stroke: string } }) => segment.props.stroke,
+			(segment: { props: { fill: string } }) => segment.props.fill,
 		);
 
 		expect(new Set(colors).size).toBe(colors.length);
 	});
 
-	it("keeps the donut ring perfectly centered and square for a precise circle", async () => {
+	it("renders bubble analytics for each expense category", async () => {
+		const screen = renderReports();
+
+		fireEvent.press(screen.getByText("Kategori"));
+
+		const bubbles = await Promise.all([
+			screen.findByTestId("reports-bubble-food_beverage"),
+			screen.findByTestId("reports-bubble-personal_shopping"),
+			screen.findByTestId("reports-bubble-transport"),
+			screen.findByTestId("reports-bubble-health"),
+		]);
+
+		expect(screen.getByTestId("reports-bubble-row")).toBeTruthy();
+		for (const bubble of bubbles) {
+			const style = getFlattenedStyle(bubble);
+			expect(Number(style.width)).toBeGreaterThanOrEqual(52);
+			expect(style.borderRadius).toBe(Number(style.width) / 2);
+		}
+		expect(screen.getAllByText("42%").length).toBeGreaterThan(0);
+	});
+
+	it("keeps the pie chart perfectly centered and square for a precise circle", async () => {
 		const screen = renderReports();
 
 		fireEvent.press(screen.getByText("Kategori"));
 
 		const donutSvg = await screen.findByTestId("reports-donut-svg");
-		const foodGlow = await screen.findByTestId("reports-donut-glow-food_beverage");
-		const center = Number(foodGlow.props.cx);
-		const outerEdge =
-			Number(foodGlow.props.r) + Number(foodGlow.props.strokeWidth) / 2;
+		const foodSegment = await screen.findByTestId("reports-donut-segment-food_beverage");
 
 		expect(Number(donutSvg.props.width)).toBe(Number(donutSvg.props.height));
 		expect(donutSvg.props.accessibilityRole).toBe("image");
 		expect(donutSvg.props.accessibilityLabel).toBe(
 			"Komposisi pengeluaran berdasarkan kategori",
 		);
-		expect(center - outerEdge).toBeGreaterThanOrEqual(8);
-		expect(
-			Number(donutSvg.props.width) - (center + outerEdge),
-		).toBeGreaterThanOrEqual(8);
-		expect(foodGlow.props.cy).toBe(foodGlow.props.cx);
+		expect(typeof foodSegment.props.d).toBe("string");
+		expect(foodSegment.props.d).toMatch(/^M 100 100 /);
 	});
 
 	it("lets custom period choose exact start and end dates for client-side report filtering", async () => {

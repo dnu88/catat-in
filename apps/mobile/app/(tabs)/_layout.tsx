@@ -13,6 +13,7 @@ import { KaswiseIcon } from "../../src/components/icons/kaswise-icons";
 import { useI18n } from "../../src/i18n/i18n-context";
 import { useSupabase } from "../../src/lib/supabase";
 import { useTheme } from "../../src/theme/theme-context";
+import { financeEditorial as fe } from "../../src/theme/finance-editorial";
 
 export default function TabsLayout() {
 	const { supabase } = useSupabase();
@@ -20,8 +21,7 @@ export default function TabsLayout() {
 	const { t } = useI18n();
 	const router = useRouter();
 	const insets = useSafeAreaInsets();
-	const tabBottomPadding = Math.max(18, insets.bottom + 8);
-	const tabBarHeight = 56 + tabBottomPadding;
+	const tabBottomOffset = Math.max(10, insets.bottom);
 	const [session, setSession] = useState<unknown>(null);
 	const [loading, setLoading] = useState(true);
 
@@ -56,7 +56,7 @@ export default function TabsLayout() {
 			<View
 				style={[
 					styles.loadingWrap,
-					{ backgroundColor: theme.colors.background },
+					{ backgroundColor: fe.paper },
 				]}
 			>
 				<ActivityIndicator color={theme.colors.brandPrimary} />
@@ -96,20 +96,25 @@ export default function TabsLayout() {
 		<Tabs
 			screenOptions={{
 				headerShown: true,
+				tabBarShowLabel: false,
 				tabBarStyle: {
-					backgroundColor: theme.colors.tabBarBackground,
-					borderTopColor: theme.colors.borderSoft,
-					borderTopWidth: 1,
-					height: tabBarHeight,
-					paddingBottom: tabBottomPadding,
-					paddingTop: 4,
-					elevation: theme.mode === "dark" ? 0 : 4,
+					position: "absolute",
+					left: 20,
+					right: 20,
+					bottom: tabBottomOffset,
+					backgroundColor: fe.paper,
+					borderTopWidth: 0,
+					height: 64,
+					paddingBottom: 6,
+					paddingTop: 6,
+					borderRadius: 28,
+					elevation: 12,
+					shadowColor: fe.navy,
+					shadowOpacity: 0.16,
+					shadowRadius: 22,
 				},
-				tabBarActiveTintColor:
-					theme.mode === "light"
-						? theme.colors.brandPrimaryDeep
-						: theme.colors.brandPrimary,
-				tabBarInactiveTintColor: theme.colors.textMuted,
+				tabBarActiveTintColor: fe.white,
+				tabBarInactiveTintColor: fe.slate,
 				tabBarLabelStyle: {
 					fontSize: 11,
 					fontWeight: "700",
@@ -119,11 +124,11 @@ export default function TabsLayout() {
 					paddingVertical: 0,
 				},
 				headerStyle: {
-					backgroundColor: theme.colors.headerBackground,
-					borderBottomColor: theme.colors.borderSoft,
+					backgroundColor: fe.white,
+					borderBottomColor: fe.line,
 					borderBottomWidth: 1,
 				},
-				headerTintColor: theme.colors.textPrimary,
+				headerTintColor: fe.ink,
 				headerTitleStyle: {
 					fontWeight: "800",
 					fontSize: 18,
@@ -136,13 +141,11 @@ export default function TabsLayout() {
 				options={{
 					title: t("tabDashboard"),
 					headerTitle: t("headerKaswise"),
+					headerShown: false,
 					tabBarIcon: ({ color, focused }) => (
-						<KaswiseIcon
-							name="home"
-							color={color}
-							size={focused ? 22 : 20}
-							weight={focused ? "fill" : "regular"}
-						/>
+						<View style={[styles.tabIconWrap, focused && styles.tabIconActive]}>
+							<KaswiseIcon name="home" color={color} size={20} weight={focused ? "fill" : "regular"} />
+						</View>
 					),
 				}}
 			/>
@@ -150,13 +153,11 @@ export default function TabsLayout() {
 				name="transactions"
 				options={{
 					title: t("tabTransactions"),
+					headerShown: false,
 					tabBarIcon: ({ color, focused }) => (
-						<KaswiseIcon
-							name="transactions"
-							color={color}
-							size={focused ? 22 : 20}
-							weight={focused ? "fill" : "regular"}
-						/>
+						<View style={[styles.tabIconWrap, focused && styles.tabIconActive]}>
+							<KaswiseIcon name="transactions" color={color} size={20} weight={focused ? "fill" : "regular"} />
+						</View>
 					),
 				}}
 			/>
@@ -164,23 +165,21 @@ export default function TabsLayout() {
 			  name="capture"
 				options={{
 					title: t("tabCapture"),
+					headerShown: false,
 					tabBarLabel: "",
 					tabBarIcon: ({ focused }) => (
 						<View
 							style={[
 								styles.captureTabIcon,
 								{
-									backgroundColor:
-										theme.mode === "light"
-											? theme.colors.brandPrimaryDeep
-											: theme.colors.brandPrimary,
-									borderColor: theme.colors.background,
+									backgroundColor: fe.ink,
+									borderColor: fe.paper,
 								},
 							]}
 						>
 							<KaswiseIcon
 								name="capture"
-								color={theme.colors.textInverse}
+								color={fe.white}
 								size={22}
 								weight={focused ? "fill" : "bold"}
 							/>
@@ -192,13 +191,11 @@ export default function TabsLayout() {
 				name="reports"
 				options={{
 					title: t("tabReports"),
+					headerShown: false,
 					tabBarIcon: ({ color, focused }) => (
-						<KaswiseIcon
-							name="reports"
-							color={color}
-							size={focused ? 22 : 20}
-							weight={focused ? "fill" : "regular"}
-						/>
+						<View style={[styles.tabIconWrap, focused && styles.tabIconActive]}>
+							<KaswiseIcon name="reports" color={color} size={20} weight={focused ? "fill" : "regular"} />
+						</View>
 					),
 				}}
 			/>
@@ -206,13 +203,11 @@ export default function TabsLayout() {
 				name="settings"
 				options={{
 					title: t("tabSettings"),
+					headerShown: false,
 					tabBarIcon: ({ color, focused }) => (
-						<KaswiseIcon
-							name="settings"
-							color={color}
-							size={focused ? 22 : 20}
-							weight={focused ? "fill" : "regular"}
-						/>
+						<View style={[styles.tabIconWrap, focused && styles.tabIconActive]}>
+							<KaswiseIcon name="settings" color={color} size={20} weight={focused ? "fill" : "regular"} />
+						</View>
 					),
 				}}
 			/>
@@ -275,6 +270,16 @@ const styles = StyleSheet.create({
 		alignItems: "center",
 		justifyContent: "center",
 	},
+	tabIconWrap: {
+		width: 40,
+		height: 40,
+		borderRadius: 20,
+		alignItems: "center",
+		justifyContent: "center",
+	},
+	tabIconActive: {
+		backgroundColor: fe.navySurface,
+	},
 	captureTabIcon: {
 		width: 44,
 		height: 44,
@@ -282,7 +287,7 @@ const styles = StyleSheet.create({
 		borderWidth: 3,
 		alignItems: "center",
 		justifyContent: "center",
-		marginTop: -20,
+		marginTop: 0,
 	},
 	headerBackButton: {
 		minHeight: 44,

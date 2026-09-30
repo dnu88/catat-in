@@ -11,6 +11,15 @@ import CaptureScreen from "../app/(tabs)/capture";
 import { I18nProvider } from "../src/i18n/i18n-context";
 import { ThemeProvider } from "../src/theme/theme-context";
 
+jest.mock("expo-av", () => ({
+	Audio: {
+		requestPermissionsAsync: jest.fn(),
+		setAudioModeAsync: jest.fn(),
+		Recording: { createAsync: jest.fn() },
+		RecordingOptionsPresets: { HIGH_QUALITY: {} },
+	},
+}));
+
 const mockCreateEnvelopeAllocation = jest.fn(async (..._args: unknown[]) => ({
 	id: "alloc-1",
 }));
@@ -206,7 +215,7 @@ describe("Capture envelope suggestion", () => {
 	it("shows suggested envelope without blocking save", () => {
 		renderCapture();
 
-		expect(screen.getByText(/Dompet/i)).toBeTruthy();
+		expect(screen.getAllByText(/Dompet/i).length).toBeGreaterThan(0);
 		expect(screen.getByText(/Kopi/i)).toBeTruthy();
 		expect(screen.getByText(/17\.000|Rp17\.000 tersisa/i)).toBeTruthy();
 		expect(screen.getByText(/Langsung simpan/i)).toBeTruthy();
@@ -220,6 +229,17 @@ describe("Capture envelope suggestion", () => {
 		expect(screen.queryByTestId("capture-mode-Rekam")).toBeNull();
 		expect(screen.queryByTestId("capture-mode-Import")).toBeNull();
 		expect(screen.queryByText(/Rekam suara transaksi|Record transaction voice notes|Whisper/i)).toBeNull();
+	});
+
+	it("renders an action-first Quiet Ledger capture shell", () => {
+		renderCapture();
+
+		expect(screen.getByText("Catat transaksi")).toBeTruthy();
+		expect(screen.queryByTestId("capture-flow-card")).toBeNull();
+		expect(screen.queryByText(/ala Monveo/i)).toBeNull();
+		expect(screen.getByTestId("capture-mode-Teks")).toBeTruthy();
+		expect(screen.queryByText("Mode Teks")).toBeNull();
+		expect(screen.getByText("Simpan transaksi")).toBeTruthy();
 	});
 
 	it("shows review copy inside the suggestion card for low-confidence matches", () => {
@@ -279,7 +299,7 @@ describe("Capture envelope suggestion", () => {
 			"Beli kopi 35rb",
 		);
 		expect(screen.getByDisplayValue("Beli kopi 35rb")).toBeTruthy();
-		fireEvent.press(screen.getByLabelText("Proses transaksi dengan AI"));
+		fireEvent.press(screen.getByLabelText("Simpan transaksi"));
 
 		await waitFor(() => expect(mockAnalyzeTransactionText).toHaveBeenCalledTimes(1), {
 			timeout: 4000,
@@ -299,10 +319,10 @@ describe("Capture envelope suggestion", () => {
 
 		renderCapture();
 
-		expect(await screen.findByText("Track automatically with artificial intelligence.")).toBeTruthy();
+		expect(await screen.findByText("Voice, text, or receipt—choose the fastest input.")).toBeTruthy();
 		expect(screen.getByText("Text")).toBeTruthy();
 		expect(screen.getByText("Photo")).toBeTruthy();
-		expect(screen.getByText("Process with AI")).toBeTruthy();
+		expect(screen.getByText("Save transaction")).toBeTruthy();
 	});
 
 	it("shows a clear login message when receipt processing has no active session", async () => {
@@ -323,6 +343,7 @@ describe("Capture envelope suggestion", () => {
 
 
 	it("continues receipt preview and save when private receipt upload is blocked by RLS", async () => {
+		const consoleErrorSpy = jest.spyOn(console, "error").mockImplementation(() => undefined);
 		mockEnvelopeSuggestion = null;
 		mockUploadReceiptImage.mockRejectedValueOnce(
 			new Error("new row violates row-level security policy"),
@@ -339,6 +360,11 @@ describe("Capture envelope suggestion", () => {
 		fireEvent.press(screen.getByTestId("capture-receipt-confirm"));
 
 		await waitFor(() => expect(mockCreateTransaction).toHaveBeenCalledTimes(1));
+		expect(consoleErrorSpy).toHaveBeenCalledWith(
+			"Receipt image upload skipped:",
+			expect.any(Error),
+		);
+		consoleErrorSpy.mockRestore();
 		expect(mockCreateTransaction).toHaveBeenCalledWith(
 			expect.objectContaining({
 				input_type: "image",

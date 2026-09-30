@@ -56,8 +56,8 @@ jest.mock("../src/theme/theme-context", () => ({
 				background: "#F5F5F0",
 				tabBarBackground: "#FFFFFF",
 				borderSoft: "#E5E7EB",
-				brandPrimaryDeep: "#65A30D",
-				brandPrimary: "#3F6212",
+				brandPrimaryDeep: "#0A3D78",
+				brandPrimary: "#178BD0",
 				textMuted: "#6B7280",
 				headerBackground: "#FFFFFF",
 				textPrimary: "#0A0A0A",
@@ -72,20 +72,22 @@ describe("tabs layout spacing", () => {
 		jest.clearAllMocks();
 	});
 
-	it("adds safe bottom breathing room for the bottom tab and capture FAB", async () => {
+	it("renders the compact floating navigation above the safe-area inset", async () => {
 		render(<TabsLayout />);
 
 		await waitFor(() => expect(mockTabs).toHaveBeenCalled());
 
 		const screenOptions = (mockTabs.mock.calls[0][0] as any).screenOptions;
-		expect(screenOptions.tabBarStyle.height).toBeGreaterThanOrEqual(78);
-		expect(screenOptions.tabBarStyle.paddingBottom).toBeGreaterThanOrEqual(18);
+		expect(screenOptions.tabBarStyle.height).toBe(64);
+		expect(screenOptions.tabBarStyle.bottom).toBe(24);
+		expect(screenOptions.tabBarStyle.paddingBottom).toBe(6);
+		expect(screenOptions.tabBarStyle.borderRadius).toBe(28);
 
 		const captureScreen = mockTabsScreen.mock.calls
 			.map(([props]) => props as any)
 			.find((props) => props.name === "capture");
 		expect(captureScreen).toBeTruthy();
 		const captureIcon = captureScreen.options.tabBarIcon({ focused: false });
-		expect(captureIcon.props.style[0].marginTop).toBeLessThanOrEqual(-18);
+		expect(captureIcon.props.style[0].marginTop).toBe(0);
 	});
 });

@@ -51,3 +51,16 @@ def test_premium_receipt_fairuse_429(client):
                         headers={"Authorization": "Bearer x"})
     assert r.status_code == 429
     assert r.json()["detail"]["reason"] == "fair_use"
+
+
+def test_admin_receipt_bypasses_quota_and_does_not_increment(client):
+    result = {"total_amount": 50000, "readable": True, "confidence": 0.8, "items": []}
+    with patch("app.api.v1.ai.is_admin_user", return_value=True), \
+         patch("app.api.v1.ai.load_state") as load_state, \
+         patch("app.api.v1.ai.analyze_receipt_image", new=AsyncMock(return_value=result)), \
+         patch("app.api.v1.ai.record_use") as rec:
+        r = client.post("/api/v1/ai/receipt", files=_file(),
+                        headers={"Authorization": "Bearer x"})
+    assert r.status_code == 200
+    load_state.assert_not_called()
+    rec.assert_not_called()

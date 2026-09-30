@@ -27,12 +27,12 @@ export function KaswiseLogoMark({
 					<Stop offset="100%" stopColor={kaswiseLogoPalette.mistEnd} />
 				</LinearGradient>
 				<LinearGradient id="ks-g3" x1="0" y1="0" x2="1" y2="1">
-					<Stop offset="0%" stopColor={kaswiseLogoPalette.forestStart} />
-					<Stop offset="100%" stopColor={kaswiseLogoPalette.forestEnd} />
+					<Stop offset="0%" stopColor={kaswiseLogoPalette.navyStart} />
+					<Stop offset="100%" stopColor={kaswiseLogoPalette.navyEnd} />
 				</LinearGradient>
 				<LinearGradient id="ks-g4" x1="0" y1="1" x2="1" y2="0">
-					<Stop offset="0%" stopColor={kaswiseLogoPalette.emeraldStart} />
-					<Stop offset="100%" stopColor={kaswiseLogoPalette.emeraldEnd} />
+					<Stop offset="0%" stopColor={kaswiseLogoPalette.blueStart} />
+					<Stop offset="100%" stopColor={kaswiseLogoPalette.blueEnd} />
 				</LinearGradient>
 			</Defs>
 			<Polygon

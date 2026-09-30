@@ -267,7 +267,7 @@ describe("DashboardScreen dark luxury Home parity", () => {
 		expect(screen.getByLabelText("Sari berhijab")).toBeTruthy();
 		const avatarStyle = getFlattenedStyle(screen.getByTestId("home-avatar"));
 		expect(avatarStyle.width).toBe(40);
-		expect(avatarStyle.borderWidth).toBe(2);
+		expect(avatarStyle.borderWidth).toBe(0);
 		expect(avatarStyle.backgroundColor).not.toBe("#A3FF12");
 		expect(screen.queryByText("DB")).toBeNull();
 	});
@@ -312,12 +312,14 @@ describe("DashboardScreen dark luxury Home parity", () => {
 		).toBeTruthy();
 
 		expect(screen.getByTestId("home-entrance-hero")).toBeTruthy();
-		expect(screen.getByTestId("home-theme-toggle")).toBeTruthy();
+		expect(screen.queryByTestId("home-theme-toggle")).toBeNull();
 		expect(screen.getByTestId("home-amount-visibility-toggle")).toBeTruthy();
 		expect(screen.getByTestId("home-monthly-remaining")).toBeTruthy();
 		expect(screen.getByTestId("home-active-period-label")).toBeTruthy();
 		expect(screen.getByTestId("home-monthly-expense")).toBeTruthy();
-		expect(screen.getByTestId("home-entrance-actions")).toBeTruthy();
+		expect(screen.queryByTestId("home-entrance-actions")).toBeNull();
+		expect(screen.queryByTestId("home-entrance-money-focus")).toBeNull();
+		expect(screen.queryByTestId("home-first-use-card")).toBeNull();
 		expect(screen.getByTestId("home-entrance-budget")).toBeTruthy();
 		expect(screen.getByTestId("home-entrance-recent")).toBeTruthy();
 
@@ -329,8 +331,9 @@ describe("DashboardScreen dark luxury Home parity", () => {
 		expect(screen.getByText("Kelola")).toBeTruthy();
 		expect(screen.queryByText("↗ 15%")).toBeNull();
 
-		expect(screen.getByText("Input AI")).toBeTruthy();
+		expect(screen.queryByText("Input AI")).toBeNull();
 		expect(screen.queryByText("Import")).toBeNull();
+		expect(screen.queryByText("Catat sekali, pisahkan semua ruang uang.")).toBeNull();
 
 		expect(screen.getByText("Anggaran")).toBeTruthy();
 		expect(screen.getByText("Lihat →")).toBeTruthy();
@@ -352,10 +355,9 @@ describe("DashboardScreen dark luxury Home parity", () => {
 			expectedDate,
 			"Total saldo",
 			"Rp 0",
-			"Input AI",
-			"Anggaran",
 			"Terakhir",
 			"Belum ada transaksi",
+			"Anggaran",
 		]);
 	});
 
@@ -391,70 +393,18 @@ describe("DashboardScreen dark luxury Home parity", () => {
 		await waitFor(() =>
 			expect(screen.queryByTestId("home-envelope-alert")).toBeNull(),
 		);
+		expect(screen.queryByTestId("home-budget-section")).toBeNull();
 		expect(screen.queryByText(/perlu cek/i)).toBeNull();
 		expect(screen.queryByText(/Kopi hampir habis/i)).toBeNull();
 	});
 
-	it("guides a new user to create the first wallet and persists guide progress", async () => {
+	it("keeps onboarding out of the operational dashboard", async () => {
 		const screen = renderDashboard();
-
-		await waitFor(() =>
-			expect(screen.getByTestId("home-first-use-card")).toBeTruthy(),
-		);
-		expect(screen.getAllByText("Buat dompet pertama").length).toBeGreaterThan(0);
-		expect(screen.getAllByText("Buka Dompet").length).toBeGreaterThan(0);
-
-		fireEvent.press(screen.getByTestId("home-first-use-primary"));
-		expect(mockPush).toHaveBeenLastCalledWith("/(tabs)/wallets");
-
-		fireEvent.press(screen.getByTestId("home-first-use-next"));
-		await waitFor(() =>
-			expect(AsyncStorage.setItem).toHaveBeenCalledWith(
-				"first-use-guide:v1:user-1",
-				expect.stringContaining('"lastStep":1'),
-			),
-		);
-		expect(screen.getAllByText("Catat satu transaksi nyata").length).toBeGreaterThan(0);
-	});
-
-	it("uses persisted report visit state before completing the Reports setup step", async () => {
-		mockWallets = [{ id: "wallet-1", name: "Cash", balance: 100000, is_active: true }];
-		mockTransactions = [
-			{
-				id: "tx-1",
-				merchant: "Kopi",
-				description: "Kopi",
-				category: "Groceries",
-				amount: 25000,
-				transaction_type: "expense",
-				date: "2026-05-20",
-			},
-		];
-
-		const screen = renderDashboard();
-
-		await waitFor(() =>
-			expect(screen.getAllByText("Cek laporan pertama").length).toBeGreaterThan(0),
-		);
-		expect(screen.getAllByText("Buka Laporan").length).toBeGreaterThan(0);
-		expect(screen.getByTestId("home-first-use-card")).toBeTruthy();
-	});
-
-	it("hides the first-use guide after dismissal and persists the choice", async () => {
-		const screen = renderDashboard();
-
-		await waitFor(() =>
-			expect(screen.getByTestId("home-first-use-card")).toBeTruthy(),
-		);
-		fireEvent.press(screen.getByTestId("home-first-use-dismiss"));
 
 		await waitFor(() =>
 			expect(screen.queryByTestId("home-first-use-card")).toBeNull(),
 		);
-		expect(AsyncStorage.setItem).toHaveBeenCalledWith(
-			"first-use-guide:v1:user-1",
-			expect.stringContaining('"dismissed":true'),
-		);
+		expect(screen.queryByText("Langkah 1 dari 4")).toBeNull();
 	});
 
 	it("loads dashboard wallet, transactions, and budget alerts for the active finance context", async () => {
@@ -511,8 +461,8 @@ describe("DashboardScreen dark luxury Home parity", () => {
 		const incomeAmountStyle = StyleSheet.flatten(
 			screen.getByTestId("home-recent-amount-tx-income").props.style,
 		) as TextStyle;
-		expect(expenseAmountStyle.color).toBe("#DC2626");
-		expect(incomeAmountStyle.color).toBe("#65A30D");
+		expect(expenseAmountStyle.color).toBe("#263246");
+		expect(incomeAmountStyle.color).toBe("#168FA8");
 		expect(listBudgetEnvelopes).toHaveBeenCalledWith(
 			expect.anything(),
 			"user-1",
@@ -527,64 +477,45 @@ describe("DashboardScreen dark luxury Home parity", () => {
 
 		expect(screen.queryByText("Import")).toBeNull();
 
-		fireEvent.press(screen.getByText("Input AI"));
-		expect(mockPush).toHaveBeenLastCalledWith("/(tabs)/capture");
-
-		fireEvent.press(screen.getByText("Lihat →"));
+		fireEvent.press(await screen.findByText("Lihat →"));
 		expect(mockPush).toHaveBeenLastCalledWith("/(tabs)/budgets");
 
 		fireEvent.press(screen.getByText("Semua →"));
 		expect(mockPush).toHaveBeenLastCalledWith("/(tabs)/transactions");
 	});
 
-	it("uses Bottom Tab and FAB green for light theme primary accents", async () => {
+	it("uses the finance editorial surface system", async () => {
 		const screen = renderDashboard();
 
 		const avatar = screen.getByTestId("home-avatar");
 		const avatarStyle = getFlattenedStyle(avatar);
 		expect(avatarStyle.width).toBe(40);
 		expect(avatarStyle.height).toBe(40);
-		expect(avatarStyle.borderWidth).toBe(2);
-		expect(avatarStyle.backgroundColor).toBe("#FFFFFF");
-		expect(avatarStyle.backgroundColor).not.toBe("#3F6212");
+		expect(avatarStyle.borderWidth).toBe(0);
+		expect(avatarStyle.backgroundColor).toBe("rgba(255, 255, 255, 0.20)");
 
 		const hero = screen.getByTestId("home-hero-card");
 		const heroStyle = getFlattenedStyle(hero);
-		expect(heroStyle.borderRadius).toBe(24);
-		expect(heroStyle.padding).toBe(18);
+		expect(heroStyle.borderRadius).toBe(0);
+		expect(heroStyle.backgroundColor).toBe("#0C4E91");
+		expect(heroStyle.borderBottomLeftRadius).toBe(42);
+		expect(heroStyle.borderBottomRightRadius).toBe(42);
 		expect(heroStyle.shadowOpacity).toBeUndefined();
 
 		expect(screen.getAllByTestId("finance-context-switcher")).toHaveLength(1);
 		expect(screen.queryByTestId("home-wallet-pill")).toBeNull();
 
-		const quickAction = screen.getByTestId("home-quick-action-manual");
-		expect(quickAction.props.accessibilityRole).toBe("button");
-		expect(quickAction.props.accessibilityLabel).toBe("Aksi cepat Input AI");
-		const quickActionStyle = getFlattenedStyle(quickAction);
-		expect(quickActionStyle.borderRadius).toBe(16);
-		expect(quickActionStyle.paddingVertical).toBe(12);
-		expect(quickActionStyle.paddingHorizontal).toBe(8);
-
-		const sectionCard = screen.getByTestId("home-budget-section");
+		const sectionCard = await screen.findByTestId("home-budget-section");
 		const sectionCardStyle = getFlattenedStyle(sectionCard);
-		expect(sectionCardStyle.borderRadius).toBe(18);
-		expect(sectionCardStyle.padding).toBe(14);
+		expect(sectionCardStyle.backgroundColor).toBe("transparent");
+		expect(sectionCardStyle.borderWidth).toBe(0);
 
 		const cta = screen.getByTestId("home-budget-action");
 		expect(cta.props.accessibilityRole).toBe("button");
 		expect(cta.props.accessibilityLabel).toBe("Lihat semua budget");
 		expect(getFlattenedStyle(cta).backgroundColor).toBeUndefined();
 
-		const primaryBubble = screen.getByTestId("home-quick-bubble-manual");
-		const primaryBubbleStyle = getFlattenedStyle(primaryBubble);
-		expect(primaryBubbleStyle.width).toBe(32);
-		expect(primaryBubbleStyle.height).toBe(32);
-		expect(
-			SOFT_GREEN_BACKGROUNDS.includes(
-				primaryBubbleStyle.backgroundColor as string,
-			) ||
-				SOFT_GREEN_BORDERS.includes(primaryBubbleStyle.borderColor as string),
-		).toBe(true);
+		expect(screen.queryByTestId("home-quick-action-manual")).toBeNull();
 	});
 
 	it("shows transaction review CTA when review count > 0", async () => {

@@ -2,15 +2,17 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Image, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useFocusEffect, useRouter } from "expo-router";
+import { LinearGradient } from "expo-linear-gradient";
 
 import { FinanceContextSwitcher } from "../../src/components/FinanceContextSwitcher";
 import { PageEntrance, StaggeredEntrance } from "../../src/components/motion";
-import { KaswiseIcon } from "../../src/components/icons/kaswise-icons";
+import {
+	KaswiseIcon,
+	type KaswiseIconName,
+} from "../../src/components/icons/kaswise-icons";
 import { NotificationBell } from "../../src/components/notifications/NotificationBell";
 import { PROFILE_AVATARS, ProfileAvatarIllustration, readProfileVisualMetadata } from "../../src/components/profile/ProfileAvatar";
-import { TrialBanner } from "../../src/components/premium/TrialBanner";
-import { UpsellCard } from "../../src/components/premium/UpsellCard";
-import { EmptyState } from "../../src/components/ui";
+
 import { useI18n } from "../../src/i18n/i18n-context";
 import { useSupabase } from "../../src/lib/supabase";
 import {
@@ -34,29 +36,15 @@ import { listCategories, type Category } from "../../src/services/categories";
 import { getLocalizedCategoryName } from "../../src/services/category-taxonomy";
 import { resolveCategoryVisual } from "../../src/theme/category-visuals";
 import { useFinanceContext } from "../../src/state/finance-context";
-import { useEntitlements } from "../../src/hooks/useEntitlements";
 import {
 	formatReportPeriodLabel,
 	isCurrentMonthPeriod,
 	isDateInReportPeriod,
 	useReportPeriod,
 } from "../../src/state/report-period";
-import {
-	readFirstUseGuideState,
-	saveFirstUseGuideState,
-	type FirstUseGuideState,
-} from "../../src/services/first-use-guide";
 import { useTheme } from "../../src/theme/theme-context";
+import { financeEditorial as fe, resolveFinancialIconPalette } from "../../src/theme/finance-editorial";
 
-const quickActions = [
-	{
-		id: "manual",
-		label: "Input AI",
-		icon: "capture",
-		route: "/(tabs)/capture",
-		tone: "primary",
-	},
-] as const;
 
 function formatCurrency(value: number) {
 	return `Rp ${Math.abs(value).toLocaleString("id-ID", { maximumFractionDigits: 0 })}`;
@@ -98,11 +86,10 @@ function getInitials(fullName: string) {
 
 export default function DashboardScreen() {
 	const { supabase } = useSupabase();
-	const { theme, toggleTheme } = useTheme();
+	const { theme } = useTheme();
 	const { language } = useI18n();
 	const { activeContext } = useFinanceContext();
 	const { activePeriod, resetToCurrentMonth } = useReportPeriod();
-	const { data: entitlements } = useEntitlements();
 	const router = useRouter();
 	const isEn = language === "en";
 	const tx = useMemo(
@@ -136,22 +123,6 @@ export default function DashboardScreen() {
 						totalBalanceSub: "All active wallets",
 						monthlyExpense: "Spending",
 						monthlyExpenseSub: "This month",
-						onboardingEyebrow: "First steps",
-						onboardingTitle: "Start with one wallet and one transaction.",
-						onboardingBody: "Kaswise works best after it knows where your money lives and has one daily transaction to read.",
-						onboardingPrimaryNoWallet: "Create first wallet",
-						onboardingPrimaryTransaction: "Record first transaction",
-						onboardingSecondary: "Open budgets",
-						guideNext: "Next",
-						guideHide: "Hide",
-						guideStepCounter: (current: number, total: number) => `Step ${current} of ${total}`,
-						guideComplete: "Done",
-						guideOpenMenu: "Open menu",
-						onboardingSteps: [
-							"Create a wallet for cash, bank, or e-wallet balance.",
-							"Type a transaction like: bought coffee 35k.",
-							"Add a category budget after your first transaction.",
-						],
 						over: "over budget",
 						near: "almost used up",
 						overUntil: (amount: number, day: string, month: string) =>
@@ -191,22 +162,6 @@ export default function DashboardScreen() {
 						totalBalanceSub: "Semua dompet aktif",
 						monthlyExpense: "Pengeluaran",
 						monthlyExpenseSub: "Bulan ini",
-						onboardingEyebrow: "Langkah awal",
-						onboardingTitle: "Mulai dari satu dompet dan satu transaksi.",
-						onboardingBody: "Kaswise paling terasa setelah tahu uangmu ada di mana dan punya satu transaksi harian untuk dibaca.",
-						onboardingPrimaryNoWallet: "Buat dompet pertama",
-						onboardingPrimaryTransaction: "Catat transaksi pertama",
-						onboardingSecondary: "Buka budget",
-						guideNext: "Lanjut",
-						guideHide: "Sembunyikan",
-						guideStepCounter: (current: number, total: number) => `Langkah ${current} dari ${total}`,
-						guideComplete: "Selesai",
-						guideOpenMenu: "Buka menu",
-						onboardingSteps: [
-							"Buat dompet untuk saldo tunai, bank, atau e-wallet.",
-							"Tulis transaksi seperti: beli kopi 35rb.",
-							"Tambahkan budget kategori setelah transaksi pertama.",
-						],
 						over: "lewat budget",
 						near: "hampir habis",
 						overUntil: (amount: number, day: string, month: string) =>
@@ -234,13 +189,6 @@ export default function DashboardScreen() {
 	const [profileAvatarKey, setProfileAvatarKey] = useState("");
 
 	const [refreshing, setRefreshing] = useState(false);
-	const [dashboardReady, setDashboardReady] = useState(false);
-	const [guideStateReady, setGuideStateReady] = useState(false);
-	const [guideUserId, setGuideUserId] = useState("");
-	const [firstUseGuideState, setFirstUseGuideState] =
-		useState<FirstUseGuideState>({});
-	const [activeBudgetCount, setActiveBudgetCount] = useState(0);
-	const [currentGuideStep, setCurrentGuideStep] = useState(0);
 	const [isNominalHidden, setIsNominalHidden] = useState(false);
 
 	useEffect(() => {
@@ -287,20 +235,11 @@ export default function DashboardScreen() {
 						setRecentTransactions([]);
 						setReviewSummary(null);
 						setCategoryOptions([]);
-						setGuideUserId("");
-						setFirstUseGuideState({});
-						setGuideStateReady(true);
-						setActiveBudgetCount(0);
 					}
 					return;
 				}
 
-				const persistedGuideState = await readFirstUseGuideState(user.id);
-
 				if (isMounted()) {
-					setGuideUserId(user.id);
-					setFirstUseGuideState(persistedGuideState);
-					setGuideStateReady(true);
 					const metadata = (user.user_metadata ?? {}) as Record<string, unknown>;
 					const resolvedName =
 						(typeof metadata.full_name === "string" && metadata.full_name) ||
@@ -330,7 +269,6 @@ export default function DashboardScreen() {
 				const activeEnvelopes = envelopes.filter(
 					(envelope) => getEnvelopeStatus(envelope) === "active",
 				);
-				if (isMounted()) setActiveBudgetCount(activeEnvelopes.length);
 				const allocations = await listEnvelopeAllocations(
 					supabase,
 					activeEnvelopes.map((envelope) => envelope.id),
@@ -358,19 +296,13 @@ export default function DashboardScreen() {
 					console.error("Error loading home envelope alerts:", error);
 					setEnvelopeAlerts([]);
 					setReviewSummary(null);
-					setGuideStateReady(true);
-					setActiveBudgetCount(0);
 				}
-			} finally {
-				if (isMounted()) setDashboardReady(true);
 			}
 	}, [supabase, activeContext]);
 
 	useFocusEffect(
 		useCallback(() => {
 			let mounted = true;
-			setDashboardReady(false);
-			setGuideStateReady(false);
 			void loadDashboard(() => mounted);
 			return () => {
 				mounted = false;
@@ -423,6 +355,10 @@ export default function DashboardScreen() {
 			transaction.category,
 			isEn ? "en" : "id",
 		);
+		const iconPalette = resolveFinancialIconPalette(
+			transaction.category,
+			transaction.transaction_type,
+		);
 
 		return {
 			id: transaction.id,
@@ -439,10 +375,9 @@ export default function DashboardScreen() {
 					: ("expense" as const),
 			icon:
 				transaction.transaction_type === "income" ? "chart" : categoryVisual.icon,
-			iconColor:
-				transaction.transaction_type === "income"
-					? theme.colors.success
-					: categoryVisual.color,
+			iconColor: iconPalette.color,
+			iconBackground: iconPalette.background,
+			iconBorder: iconPalette.border,
 		};
 	});
 
@@ -466,119 +401,6 @@ export default function DashboardScreen() {
 		month: "long",
 		year: "numeric",
 	});
-	const guideSteps = useMemo(
-		() => [
-			{
-				id: "wallet",
-				title: isEn ? "Create your first wallet" : "Buat dompet pertama",
-				body: isEn
-					? "Set where your money lives: cash, bank, or e-wallet."
-					: "Tentukan uangmu ada di mana: tunai, bank, atau e-wallet.",
-				action: isEn ? "Open Wallets" : "Buka Dompet",
-				route: "/(tabs)/wallets",
-				isComplete: wallets.length > 0,
-			},
-			{
-				id: "capture",
-				title: isEn ? "Record one real transaction" : "Catat satu transaksi nyata",
-				body: isEn
-					? "Use a short sentence, for example: bought coffee 35k."
-					: "Pakai kalimat pendek, misalnya: beli kopi 35rb.",
-				action: isEn ? "Open Capture" : "Buka Catat",
-				route: "/(tabs)/capture",
-				isComplete: recentTransactions.length > 0,
-			},
-			{
-				id: "budget",
-				title: isEn ? "Add a category budget" : "Buat budget kategori",
-				body: isEn
-					? "Start with one recurring category like food, transport, or bills."
-					: "Mulai dari satu kategori rutin seperti makan, transport, atau tagihan.",
-				action: isEn ? "Open Budgets" : "Buka Budget",
-				route: "/(tabs)/budgets",
-				isComplete: activeBudgetCount > 0,
-			},
-			{
-				id: "reports",
-				title: isEn ? "Check the first report" : "Cek laporan pertama",
-				body: isEn
-					? "Use Reports to see how transactions affect cashflow and categories."
-					: "Gunakan Laporan untuk melihat dampak transaksi ke arus kas dan kategori.",
-				action: isEn ? "Open Reports" : "Buka Laporan",
-				route: "/(tabs)/reports",
-				isComplete: recentTransactions.length > 0 && Boolean(firstUseGuideState.reportsVisited),
-			},
-		],
-		[
-			activeBudgetCount,
-			firstUseGuideState.reportsVisited,
-			isEn,
-			recentTransactions.length,
-			wallets.length,
-		],
-	);
-	const guideCompletionKey = guideSteps
-		.map((step) => `${step.id}:${step.isComplete ? "1" : "0"}`)
-		.join("|");
-	const showFirstUseGuide =
-		dashboardReady &&
-		guideStateReady &&
-		!firstUseGuideState.dismissed &&
-		guideSteps.some((step) => !step.isComplete);
-	const activeGuideStep = guideSteps[currentGuideStep] ?? guideSteps[0];
-	const canMoveGuideNext = currentGuideStep < guideSteps.length - 1;
-
-	useEffect(() => {
-		if (!dashboardReady || !guideStateReady) return;
-		const firstIncompleteIndex = guideSteps.findIndex((step) => !step.isComplete);
-		setCurrentGuideStep((currentStep) => {
-			const savedStep =
-				typeof firstUseGuideState.lastStep === "number"
-					? firstUseGuideState.lastStep
-					: currentStep;
-			const clampedStep = Math.max(
-				0,
-				Math.min(savedStep, guideSteps.length - 1),
-			);
-			if (!guideSteps[clampedStep]?.isComplete) return clampedStep;
-			return firstIncompleteIndex >= 0 ? firstIncompleteIndex : clampedStep;
-		});
-	}, [
-		dashboardReady,
-		firstUseGuideState.lastStep,
-		guideCompletionKey,
-		guideStateReady,
-		guideSteps,
-	]);
-
-	const updateGuideStep = useCallback(
-		(nextStep: number) => {
-			const clampedStep = Math.max(
-				0,
-				Math.min(nextStep, guideSteps.length - 1),
-			);
-			setCurrentGuideStep(clampedStep);
-			setFirstUseGuideState((state) => ({
-				...state,
-				lastStep: clampedStep,
-			}));
-			if (guideUserId) {
-				void saveFirstUseGuideState(guideUserId, { lastStep: clampedStep })
-					.then(setFirstUseGuideState)
-					.catch(() => undefined);
-			}
-		},
-		[guideSteps.length, guideUserId],
-	);
-
-	const dismissGuide = useCallback(() => {
-		setFirstUseGuideState((state) => ({ ...state, dismissed: true }));
-		if (guideUserId) {
-			void saveFirstUseGuideState(guideUserId, { dismissed: true })
-				.then(setFirstUseGuideState)
-				.catch(() => undefined);
-		}
-	}, [guideUserId]);
 
 	const budgetAlertMeta = primaryEnvelopeAlert
 		? (() => {
@@ -613,7 +435,7 @@ export default function DashboardScreen() {
 					<RefreshControl
 						refreshing={refreshing}
 						onRefresh={onRefresh}
-						tintColor={theme.colors.brandPrimary}
+						tintColor={fe.white}
 					/>
 				}
 			>
@@ -623,21 +445,7 @@ export default function DashboardScreen() {
 						<Text style={styles.dateText}>{dateText}</Text>
 					</View>
 					<View style={styles.headerActions}>
-						<Pressable
-							testID="home-theme-toggle"
-							accessibilityRole="button"
-							accessibilityLabel={theme.mode === "dark" ? tx.switchToLightTheme : tx.switchToDarkTheme}
-							style={({ pressed }) => [styles.headerIconButton, pressed && { opacity: 0.74 }]}
-							onPress={toggleTheme}
-						>
-							<KaswiseIcon
-								name={theme.mode === "dark" ? "sun" : "moon"}
-								size={18}
-								weight="bold"
-								color={theme.colors.textSecondary}
-							/>
-						</Pressable>
-						<NotificationBell pollIntervalMs={60000} />
+						<NotificationBell pollIntervalMs={60000} tint={fe.white} />
 						<View testID="home-avatar" style={styles.avatarWrap}>
 							{profilePhotoUrl ? (
 								<Image
@@ -654,8 +462,16 @@ export default function DashboardScreen() {
 					</View>
 				</View>
 
+				<View style={styles.heroStage}>
 				<StaggeredEntrance index={0} testID="home-entrance-hero">
-					<View testID="home-hero-card" style={styles.heroCard}>
+					<LinearGradient
+						testID="home-hero-card"
+						colors={[fe.navySurface, fe.blueDeep, fe.blueBright]}
+						locations={[0, 0.55, 1]}
+						start={{ x: 0.1, y: 0 }}
+						end={{ x: 0.95, y: 1 }}
+						style={styles.heroCard}
+					>
 						<View style={styles.heroTopRow}>
 							<View style={styles.heroContextRow}>
 								<FinanceContextSwitcher variant="hero" />
@@ -688,16 +504,13 @@ export default function DashboardScreen() {
 						</View>
 
 						<View style={styles.balanceBlock}>
-							<Text style={styles.heroLabel}>{heroTitle}</Text>
+							<Text style={styles.heroLabel}>{tx.totalBalance}</Text>
 							<View style={styles.amountRow}>
 								<Text
-									testID="home-monthly-remaining"
-									style={[
-										styles.heroAmount,
-										monthlyRemainingTone === "danger" && styles.heroAmountDanger,
-									]}
+									testID="home-total-balance"
+									style={styles.heroAmount}
 								>
-									{displayAmount(formatSignedCurrency(monthlyRemaining))}
+									{displayAmount(formatCurrency(totalBalance))}
 								</Text>
 							</View>
 						</View>
@@ -721,11 +534,11 @@ export default function DashboardScreen() {
 
 						<View style={styles.heroMetricRow}>
 							<View style={styles.heroMetricCard}>
-								<Text style={styles.heroMetricLabel}>{tx.totalBalance}</Text>
-								<Text testID="home-total-balance" style={styles.heroMetricValue}>
-									{displayAmount(formatCurrency(totalBalance))}
+								<Text style={styles.heroMetricLabel}>{heroTitle}</Text>
+								<Text testID="home-monthly-remaining" style={[styles.heroMetricValue, monthlyRemainingTone === "danger" && styles.heroAmountDanger]}>
+									{displayAmount(formatSignedCurrency(monthlyRemaining))}
 								</Text>
-								<Text style={styles.heroMetricSub}>{tx.totalBalanceSub}</Text>
+								<Text style={styles.heroMetricSub}>{activePeriodLabel}</Text>
 							</View>
 							<View style={styles.heroMetricCard}>
 								<Text style={styles.heroMetricLabel}>{tx.monthlyExpense}</Text>
@@ -735,147 +548,100 @@ export default function DashboardScreen() {
 								<Text style={styles.heroMetricSub}>{tx.monthlyExpenseSub}</Text>
 							</View>
 						</View>
-						</View>
-						</StaggeredEntrance>
-
-				{/* NEW: Trial Banner + Upsell Card for free users */}
-				{entitlements?.plan === "free" ? (
-					<>
-						<StaggeredEntrance index={1} testID="home-entrance-trial">
-							<TrialBanner />
-						</StaggeredEntrance>
-						<StaggeredEntrance index={2} testID="home-entrance-upsell">
-							<UpsellCard />
-						</StaggeredEntrance>
-					</>
-				) : null}
-
-				<StaggeredEntrance index={entitlements?.plan === "free" ? 3 : 1} testID="home-entrance-actions">
-					<View style={styles.quickActionRow}>
-						{quickActions.map((action) => (
-						<Pressable
-							key={action.id}
-							testID={`home-quick-action-${action.id}`}
-							accessibilityRole="button"
-							accessibilityLabel={tx.quickActionA11y(action.label)}
-							style={styles.quickActionCard}
-							onPress={() => router.push(action.route as never)}
-						>
-							<View
-								testID={`home-quick-bubble-${action.id}`}
-								style={[styles.iconBubble, styles[`${action.tone}Bubble`]]}
-							>
-								<KaswiseIcon
-									name={action.icon}
-									size={16}
-									weight="bold"
-									color={
-										action.tone === "primary"
-											? theme.iconBubbles.primary.color
-											: theme.iconBubbles.info.color
-									}
-								/>
+						{wallets.length > 0 ? (
+							<View style={styles.walletStack}>
+								<View style={styles.walletStackBack} />
+								<View style={styles.walletStackMiddle} />
+								<LinearGradient
+									colors={["rgba(72,151,211,0.58)", "rgba(7,27,79,0.94)"]}
+									start={{ x: 0, y: 0 }}
+									end={{ x: 1, y: 1 }}
+									style={styles.walletStackFront}
+								>
+									<Text style={styles.walletStackBrand}>KASWISE</Text>
+									<Text style={styles.walletStackMeta}>
+										{wallets.length} {isEn ? "active wallets" : "dompet aktif"}
+									</Text>
+								</LinearGradient>
 							</View>
-							<Text style={styles.quickActionLabel}>{action.label}</Text>
+						) : null}
+						</LinearGradient>
+						</StaggeredEntrance>
+				</View>
+
+				<View style={styles.paperSheet}>
+				<StaggeredEntrance index={1} testID="home-entrance-recent">
+					<View style={styles.sectionCard}>
+						<View style={styles.sectionTopRow}>
+							<Text style={styles.sectionTitle}>{tx.recentTitle}</Text>
+						<Pressable
+							accessibilityRole="button"
+							accessibilityLabel={tx.allTransactionsA11y}
+							hitSlop={12}
+							onPress={() => router.push("/(tabs)/transactions" as never)}
+						>
+							<Text style={styles.sectionAction}>{tx.allTransactions}</Text>
 						</Pressable>
-						))}
+					</View>
+					{displayedTransactions.length ? (
+						displayedTransactions.map((item, index) => (
+							<View
+								key={item.id}
+								style={[
+									styles.txRow,
+									index === displayedTransactions.length - 1 &&
+										styles.txRowLast,
+								]}
+							>
+								<View
+									style={[
+										styles.txBubble,
+										{
+											backgroundColor: item.iconBackground,
+											borderColor: item.iconBorder,
+										},
+									]}
+								>
+									<KaswiseIcon
+										name={item.icon}
+										color={item.iconColor}
+										size={18}
+										weight="bold"
+									/>
+								</View>
+								<View style={styles.txInfo}>
+									<Text style={styles.txTitle}>{item.title}</Text>
+									<Text style={styles.txMeta}>{item.meta}</Text>
+								</View>
+								<Text
+									testID={`home-recent-amount-${item.id}`}
+									style={[
+										styles.txAmount,
+										item.amountTone === "income"
+											? styles.txAmountIncome
+											: styles.txAmountExpense,
+									]}
+								>
+									{item.amount}
+								</Text>
+							</View>
+						))
+					) : (
+						<View style={styles.emptyInline}>
+							<KaswiseIcon name="transactions" size={20} color={theme.colors.textMuted} />
+							<View style={styles.emptyInlineCopy}>
+								<Text style={styles.emptyInlineTitle}>{isEn ? "No transactions yet" : "Belum ada transaksi"}</Text>
+								<Text style={styles.emptyInlineBody}>
+									{isEn ? "Use the + button to record the first one." : "Gunakan tombol + untuk mencatat transaksi pertama."}
+								</Text>
+							</View>
+						</View>
+					)}
 					</View>
 				</StaggeredEntrance>
 
-
-				{showFirstUseGuide ? (
-					<StaggeredEntrance index={entitlements?.plan === "free" ? 4 : 2} testID="home-entrance-first-use">
-						<View testID="home-first-use-card" style={styles.firstUseCard}>
-							<View style={styles.firstUseTopRow}>
-								<View style={styles.firstUseCopy}>
-									<Text style={styles.firstUseEyebrow}>{tx.onboardingEyebrow}</Text>
-									<Text style={styles.firstUseCounter}>
-										{tx.guideStepCounter(currentGuideStep + 1, guideSteps.length)}
-									</Text>
-									<Text style={styles.firstUseTitle}>{activeGuideStep.title}</Text>
-									<Text style={styles.firstUseBody}>{activeGuideStep.body}</Text>
-								</View>
-								<View style={styles.firstUseTopActions}>
-									<Pressable
-										testID="home-first-use-dismiss"
-										accessibilityRole="button"
-										accessibilityLabel={tx.guideHide}
-										hitSlop={10}
-										style={styles.firstUseDismissButton}
-										onPress={dismissGuide}
-									>
-										<Text style={styles.firstUseDismissText}>{tx.guideHide}</Text>
-									</Pressable>
-									<View style={[styles.iconBubble, styles.primaryBubble]}>
-										<KaswiseIcon
-											name={activeGuideStep.id === "wallet" ? "wallets" : activeGuideStep.id === "budget" ? "budgets" : activeGuideStep.id === "reports" ? "chart" : "capture"}
-											size={18}
-											weight="bold"
-											color={theme.iconBubbles.primary.color}
-										/>
-									</View>
-								</View>
-							</View>
-
-							<View style={styles.firstUseStepList}>
-								{guideSteps.map((step, index) => (
-									<Pressable
-										key={step.id}
-										testID={`home-first-use-step-${step.id}`}
-										accessibilityRole="button"
-										accessibilityLabel={step.title}
-										accessibilityState={{ selected: index === currentGuideStep }}
-										style={[
-											styles.firstUseStepRow,
-											index === currentGuideStep && styles.firstUseStepRowActive,
-										]}
-										onPress={() => updateGuideStep(index)}
-									>
-										<Text
-											style={[
-												styles.firstUseStepNumber,
-												step.isComplete && styles.firstUseStepNumberDone,
-											]}
-										>
-											{step.isComplete ? "✓" : `0${index + 1}`}
-										</Text>
-										<View style={styles.firstUseStepCopy}>
-											<Text style={styles.firstUseStepText}>{step.title}</Text>
-											<Text style={styles.firstUseStepMeta}>
-												{step.isComplete ? tx.guideComplete : step.action}
-											</Text>
-										</View>
-									</Pressable>
-								))}
-							</View>
-
-							<View style={styles.firstUseActionRow}>
-								<Pressable
-									testID="home-first-use-primary"
-									accessibilityRole="button"
-									accessibilityLabel={`${tx.guideOpenMenu}: ${activeGuideStep.action}`}
-									style={styles.firstUsePrimaryButton}
-									onPress={() => router.push(activeGuideStep.route as never)}
-								>
-									<Text style={styles.firstUsePrimaryText}>{activeGuideStep.action}</Text>
-								</Pressable>
-								{canMoveGuideNext ? (
-									<Pressable
-										testID="home-first-use-next"
-										accessibilityRole="button"
-										accessibilityLabel={tx.guideNext}
-										style={styles.firstUseSecondaryButton}
-										onPress={() => updateGuideStep(currentGuideStep + 1)}
-									>
-										<Text style={styles.firstUseSecondaryText}>{tx.guideNext}</Text>
-									</Pressable>
-								) : null}
-							</View>
-						</View>
-					</StaggeredEntrance>
-				) : null}
-
-				<StaggeredEntrance index={entitlements?.plan === "free" ? 5 : 3} testID="home-entrance-budget">
+				{primaryEnvelopeAlert ? (
+				<StaggeredEntrance index={2} testID="home-entrance-budget">
 					<View testID="home-budget-section" style={styles.sectionCard}>
 					<View style={styles.sectionTopRow}>
 						<Text style={styles.sectionTitle}>{tx.budget}</Text>
@@ -919,9 +685,10 @@ export default function DashboardScreen() {
 					) : null}
 					</View>
 				</StaggeredEntrance>
+				) : null}
 
 				{reviewSummary && reviewSummary.count > 0 ? (
-					<StaggeredEntrance index={entitlements?.plan === "free" ? 6 : 4} testID="home-entrance-review">
+					<StaggeredEntrance index={3} testID="home-entrance-review">
 						<View testID="home-transaction-review-card" style={styles.sectionCard}>
 							<View style={styles.sectionTopRow}>
 								<View style={{ flexDirection: "row", alignItems: "center", gap: theme.spacing.sm }}>
@@ -953,76 +720,8 @@ export default function DashboardScreen() {
 						</View>
 					</StaggeredEntrance>
 				) : null}
+				</View>
 
-				<StaggeredEntrance index={(reviewSummary && reviewSummary.count > 0 ? 5 : 4) + (entitlements?.plan === "free" ? 2 : 0)} testID="home-entrance-recent">
-					<View style={styles.sectionCard}>
-						<View style={styles.sectionTopRow}>
-							<Text style={styles.sectionTitle}>{tx.recentTitle}</Text>
-						<Pressable
-							accessibilityRole="button"
-							accessibilityLabel={tx.allTransactionsA11y}
-							hitSlop={12}
-							onPress={() => router.push("/(tabs)/transactions" as never)}
-						>
-							<Text style={styles.sectionAction}>{tx.allTransactions}</Text>
-						</Pressable>
-					</View>
-					{displayedTransactions.length ? (
-						displayedTransactions.map((item, index) => (
-							<View
-								key={item.id}
-								style={[
-									styles.txRow,
-									index === displayedTransactions.length - 1 &&
-										styles.txRowLast,
-								]}
-							>
-								<View
-									style={[
-										styles.txBubble,
-										{
-											backgroundColor: colorWithAlpha(item.iconColor, "18"),
-											borderColor: colorWithAlpha(item.iconColor, "40"),
-										},
-									]}
-								>
-									<KaswiseIcon
-										name={item.icon}
-										color={item.iconColor}
-										size={18}
-										weight="bold"
-									/>
-								</View>
-								<View style={styles.txInfo}>
-									<Text style={styles.txTitle}>{item.title}</Text>
-									<Text style={styles.txMeta}>{item.meta}</Text>
-								</View>
-								<Text
-									testID={`home-recent-amount-${item.id}`}
-									style={[
-										styles.txAmount,
-										item.amountTone === "income"
-											? styles.txAmountIncome
-											: styles.txAmountExpense,
-									]}
-								>
-									{item.amount}
-								</Text>
-							</View>
-						))
-					) : (
-						<EmptyState
-							icon="transactions"
-							title={isEn ? "No transactions yet" : "Belum ada transaksi"}
-							description={
-								isEn
-									? "Record your first transaction from the Capture tab to see it here."
-									: "Catat transaksi pertamamu dari tab Catat untuk melihatnya di sini."
-							}
-						/>
-					)}
-					</View>
-				</StaggeredEntrance>
 			</ScrollView>
 		</PageEntrance>
 	);
@@ -1030,40 +729,21 @@ export default function DashboardScreen() {
 
 function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 	return StyleSheet.create({
-		screen: {
-			flex: 1,
-			backgroundColor: theme.colors.background,
-		},
+		screen: { flex: 1, backgroundColor: fe.navySurface },
 		scrollView: {
 			flex: 1,
 		},
-		content: {
-			padding: 16,
-			paddingBottom: 110,
-			gap: 14,
-		},
+		content: { padding: 0, paddingBottom: 110, gap: 0 },
 		headerRow: {
-			flexDirection: "row",
-			justifyContent: "space-between",
-			alignItems: "center",
-			paddingTop: 6,
-			gap: 8,
+			flexDirection: "row", justifyContent: "space-between", alignItems: "center",
+			paddingHorizontal: 20, paddingTop: 18, paddingBottom: 8, gap: 8,
 		},
 		headerCopy: {
 			flexShrink: 1,
 			minWidth: 0,
 		},
-		greeting: {
-			color: theme.colors.textPrimary,
-			fontSize: 22,
-			fontWeight: theme.typography.fontWeight.extrabold,
-			letterSpacing: -0.3,
-		},
-		dateText: {
-			color: theme.colors.textMuted,
-			fontSize: 13,
-			marginTop: 2,
-		},
+		greeting: { color: fe.white, fontSize: 22, fontWeight: theme.typography.fontWeight.semibold, letterSpacing: -0.3 },
+		dateText: { color: "rgba(255,255,255,0.58)", fontSize: 13, marginTop: 2 },
 		headerActions: {
 			flexDirection: "row",
 			alignItems: "center",
@@ -1071,46 +751,22 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			flexShrink: 1,
 			minWidth: 0,
 		},
-		headerIconButton: {
-			width: 38,
-			height: 38,
-			borderRadius: 19,
-			borderWidth: 1,
-			borderColor: theme.colors.borderSoft,
-			backgroundColor: theme.colors.mutedSurface,
-			alignItems: "center",
-			justifyContent: "center",
-		},
 		avatarWrap: {
-			width: 40,
-			height: 40,
-			borderRadius: 20,
-			backgroundColor: theme.colors.surfaceElevated,
-			borderWidth: 2,
-			borderColor: theme.mode === "dark"
-				? colorWithAlpha(theme.colors.textInverse, "D9")
-				: colorWithAlpha(theme.colors.textPrimary, "24"),
-			alignItems: "center",
-			justifyContent: "center",
-			overflow: "hidden",
+			width: 40, height: 40, borderRadius: 20, backgroundColor: fe.glassStrong,
+			borderWidth: 0, alignItems: "center", justifyContent: "center", overflow: "hidden",
 		},
 		avatarImage: {
 			width: 34,
 			height: 34,
 			borderRadius: 17,
 		},
-		avatarText: {
-			color: theme.colors.textInverse,
-			fontSize: 12,
-			fontWeight: theme.typography.fontWeight.bold,
-		},
+		avatarText: { color: fe.white, fontSize: 12, fontWeight: theme.typography.fontWeight.bold },
+		heroStage: { backgroundColor: fe.paper },
 		heroCard: {
-			backgroundColor: theme.colors.card,
-			borderRadius: 24,
-			padding: 18,
-			borderWidth: 1,
-			borderColor: theme.colors.borderSoft,
-			overflow: "hidden",
+			backgroundColor: fe.blue, borderRadius: 0, paddingHorizontal: 20, paddingTop: 18,
+			paddingBottom: 38, borderWidth: 0, overflow: "hidden",
+			borderBottomLeftRadius: 42,
+			borderBottomRightRadius: 42,
 		},
 		heroTopRow: {
 			position: "relative",
@@ -1137,14 +793,14 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			width: 34,
 			height: 34,
 			borderRadius: 17,
+			backgroundColor: fe.glass,
+			borderColor: fe.glassStrong,
 			borderWidth: 1,
-			borderColor: theme.colors.borderSoft,
-			backgroundColor: theme.colors.mutedSurface,
 			alignItems: "center",
 			justifyContent: "center",
 		},
 		manageText: {
-			color: theme.colors.textMuted,
+			color: "rgba(255,255,255,0.76)",
 			fontSize: 12,
 			fontWeight: theme.typography.fontWeight.semibold,
 		},
@@ -1153,12 +809,8 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			marginBottom: 16,
 		},
 		heroLabel: {
-			color: theme.colors.textMuted,
-			fontSize: 11,
-			fontWeight: theme.typography.fontWeight.bold,
-			textTransform: "uppercase",
-			letterSpacing: 0.4,
-			marginBottom: 4,
+			color: "rgba(255,255,255,0.54)", fontSize: 13, fontWeight: theme.typography.fontWeight.medium,
+			marginBottom: 6,
 		},
 		amountRow: {
 			flexDirection: "row",
@@ -1166,14 +818,9 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			gap: 10,
 			flexWrap: "wrap",
 		},
-		heroAmount: {
-			color: theme.colors.textPrimary,
-			fontSize: 30,
-			fontWeight: theme.typography.fontWeight.extrabold,
-			letterSpacing: -0.6,
-		},
+		heroAmount: { color: fe.white, fontSize: 38, fontWeight: theme.typography.fontWeight.semibold, letterSpacing: -1.1 },
 		heroAmountDanger: {
-			color: theme.colors.danger,
+			color: fe.financialExpenseAlert,
 		},
 		heroPeriodRow: {
 			flexDirection: "row",
@@ -1183,18 +830,10 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			flexWrap: "wrap",
 		},
 		heroPeriodChip: {
-			borderWidth: 1,
-			borderColor: theme.colors.borderSoft,
-			borderRadius: 999,
-			backgroundColor: theme.colors.mutedSurface,
-			paddingHorizontal: 10,
-			paddingVertical: 5,
+			borderWidth: 1, borderColor: fe.glassStrong, borderRadius: 999, backgroundColor: fe.glass,
+			paddingHorizontal: 11, paddingVertical: 6,
 		},
-		heroPeriodText: {
-			color: theme.colors.textSecondary,
-			fontSize: 11,
-			fontWeight: theme.typography.fontWeight.bold,
-		},
+		heroPeriodText: { color: "rgba(255,255,255,0.72)", fontSize: 11, fontWeight: theme.typography.fontWeight.medium },
 		heroPeriodReset: {
 			minHeight: 30,
 			borderRadius: 999,
@@ -1203,247 +842,52 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			justifyContent: "center",
 			backgroundColor: theme.iconBubbles.primary.background,
 			borderWidth: 1,
-			borderColor: theme.iconBubbles.primary.border,
+			borderColor: fe.glassStrong,
 		},
 		heroPeriodResetText: {
-			color: theme.iconBubbles.primary.color,
+			color: fe.white,
 			fontSize: 11,
 			fontWeight: theme.typography.fontWeight.extrabold,
 		},
 		heroMetricRow: {
-			flexDirection: "row",
-			gap: 10,
+			flexDirection: "row", gap: 24, paddingTop: 14, borderTopWidth: 1, borderTopColor: fe.glass,
 		},
 		heroMetricCard: {
 			flex: 1,
-			borderWidth: 1,
-			borderColor: theme.colors.borderSoft,
-			borderRadius: 16,
-			backgroundColor: theme.colors.mutedSurface,
-			padding: 12,
+			borderWidth: 0,
+			borderRadius: 0,
+			backgroundColor: "transparent",
+			paddingVertical: 8,
+			paddingHorizontal: 0,
 			gap: 3,
 		},
-		heroMetricLabel: {
-			color: theme.colors.textMuted,
-			fontSize: 11,
-			fontWeight: theme.typography.fontWeight.bold,
-		},
-		heroMetricValue: {
-			color: theme.colors.textPrimary,
-			fontSize: 15,
-			fontWeight: theme.typography.fontWeight.extrabold,
-		},
-		heroMetricSub: {
-			color: theme.colors.textDim,
-			fontSize: 10,
-			fontWeight: theme.typography.fontWeight.semibold,
-		},
-		quickActionRow: {
-			flexDirection: "row",
-			gap: 8,
-		},
-		quickActionCard: {
-			flex: 1,
-			minHeight: 72,
-			backgroundColor: theme.colors.card,
-			borderRadius: 16,
-			borderWidth: 1,
-			borderColor: theme.colors.borderSoft,
-			paddingVertical: 12,
-			paddingHorizontal: 8,
-			alignItems: "center",
-			gap: 6,
-		},
-		iconBubble: {
-			width: 32,
-			height: 32,
-			borderRadius: 16,
-			borderWidth: 1,
-			alignItems: "center",
-			justifyContent: "center",
-		},
-		primaryBubble: {
-			backgroundColor: theme.iconBubbles.primary.background,
-			borderColor: theme.iconBubbles.primary.border,
-		},
-		primaryBubbleText: {
-			color: theme.colors.brandPrimary,
-		},
-		warningBubble: {
-			backgroundColor: theme.iconBubbles.warning.background,
-			borderColor: theme.iconBubbles.warning.border,
-		},
-		warningBubbleText: {
-			color: theme.colors.warning,
-		},
-		infoBubble: {
-			backgroundColor: theme.iconBubbles.info.background,
-			borderColor: theme.iconBubbles.info.border,
-		},
-		infoBubbleText: {
-			color: theme.colors.info,
-		},
-		quickActionLabel: {
-			color: theme.colors.textSecondary,
-			fontSize: 11,
-			fontWeight: theme.typography.fontWeight.bold,
-		},
-		firstUseCard: {
-			backgroundColor: theme.colors.surface,
-			borderRadius: 20,
-			borderWidth: 1,
-			borderColor: theme.colors.borderSoft,
-			padding: 16,
-			gap: 14,
-		},
-		firstUseTopRow: {
-			flexDirection: "row",
-			justifyContent: "space-between",
-			alignItems: "flex-start",
-			gap: 12,
-		},
-		firstUseCopy: { flex: 1, gap: 6 },
-		firstUseTopActions: {
-			alignItems: "flex-end",
-			gap: 10,
-		},
-		firstUseDismissButton: {
-			minHeight: 32,
-			borderRadius: 999,
-			backgroundColor: theme.colors.mutedSurface,
-			paddingHorizontal: 10,
-			alignItems: "center",
-			justifyContent: "center",
-		},
-		firstUseDismissText: {
-			color: theme.colors.textMuted,
-			fontSize: 11,
-			fontWeight: theme.typography.fontWeight.bold,
-		},
-		firstUseEyebrow: {
-			color: theme.colors.brandPrimary,
-			fontSize: 11,
-			fontWeight: theme.typography.fontWeight.extrabold,
-			letterSpacing: 0.5,
-			textTransform: "uppercase",
-		},
-		firstUseCounter: {
-			color: theme.colors.textMuted,
-			fontSize: 11,
-			fontWeight: theme.typography.fontWeight.bold,
-		},
-		firstUseTitle: {
-			color: theme.colors.textPrimary,
-			fontSize: 18,
-			fontWeight: theme.typography.fontWeight.extrabold,
-			letterSpacing: -0.3,
-			lineHeight: 23,
-		},
-		firstUseBody: {
-			color: theme.colors.textSecondary,
-			fontSize: 13,
-			lineHeight: 20,
-		},
-		firstUseStepList: { gap: 8 },
-		firstUseStepRow: {
-			flexDirection: "row",
-			alignItems: "center",
-			gap: 10,
-			minHeight: 44,
-			borderRadius: 14,
-			padding: 8,
-		},
-		firstUseStepRowActive: {
-			backgroundColor: theme.colors.mutedSurface,
-		},
-		firstUseStepNumber: {
-			width: 30,
-			height: 30,
-			borderRadius: 10,
-			backgroundColor: theme.iconBubbles.primary.background,
-			borderWidth: 1,
-			borderColor: theme.iconBubbles.primary.border,
-			color: theme.iconBubbles.primary.color,
-			fontSize: 11,
-			fontWeight: theme.typography.fontWeight.extrabold,
-			textAlign: "center",
-			textAlignVertical: "center",
-			lineHeight: 28,
-		},
-		firstUseStepNumberDone: {
-			backgroundColor: theme.colors.brandPrimary,
-			borderColor: theme.colors.brandPrimary,
-			color: theme.colors.textInverse,
-		},
-		firstUseStepCopy: { flex: 1, gap: 2 },
-		firstUseStepText: {
-			color: theme.colors.textPrimary,
-			fontSize: 12,
-			fontWeight: theme.typography.fontWeight.bold,
-			lineHeight: 18,
-		},
-		firstUseStepMeta: {
-			color: theme.colors.textMuted,
-			fontSize: 11,
-			fontWeight: theme.typography.fontWeight.semibold,
-		},
-		firstUseActionRow: {
-			flexDirection: "row",
-			gap: 10,
-			flexWrap: "wrap",
-		},
-		firstUsePrimaryButton: {
-			flexGrow: 1,
-			minHeight: 44,
-			borderRadius: theme.radius.sm,
-			backgroundColor: theme.colors.brandPrimary,
-			alignItems: "center",
-			justifyContent: "center",
-			paddingHorizontal: 14,
-		},
-		firstUsePrimaryText: {
-			color: theme.colors.textInverse,
-			fontSize: 13,
-			fontWeight: theme.typography.fontWeight.extrabold,
-		},
-		firstUseSecondaryButton: {
-			minHeight: 44,
-			borderRadius: theme.radius.sm,
-			borderWidth: 1,
-			borderColor: theme.colors.borderStrong,
-			backgroundColor: theme.colors.mutedSurface,
-			alignItems: "center",
-			justifyContent: "center",
-			paddingHorizontal: 14,
-		},
-		firstUseSecondaryText: {
-			color: theme.colors.textPrimary,
-			fontSize: 13,
-			fontWeight: theme.typography.fontWeight.bold,
-		},
-		sectionCard: {
-			backgroundColor: theme.colors.card,
-			borderWidth: 1,
-			borderColor: theme.colors.borderSoft,
-			borderRadius: 18,
-			padding: 14,
-			gap: 10,
-		},
+		heroMetricLabel: { color: "rgba(255,255,255,0.54)", fontSize: 11, fontWeight: theme.typography.fontWeight.medium },
+		heroMetricValue: { color: fe.white, fontSize: 15, fontWeight: theme.typography.fontWeight.semibold },
+		heroMetricSub: { color: "rgba(255,255,255,0.42)", fontSize: 10, fontWeight: theme.typography.fontWeight.medium },
+		walletStack: { height: 84, marginTop: 20, marginBottom: 4, position: "relative" },
+		walletStackBack: { position: "absolute", left: 30, right: 30, top: 0, height: 50, borderRadius: 18, backgroundColor: "rgba(6,30,87,0.22)" },
+		walletStackMiddle: { position: "absolute", left: 15, right: 15, top: 11, height: 52, borderRadius: 18, backgroundColor: "rgba(6,30,87,0.38)" },
+		walletStackFront: { position: "absolute", left: 0, right: 0, top: 22, height: 56, borderRadius: 18, backgroundColor: fe.navySurface, paddingHorizontal: 18, flexDirection: "row", alignItems: "center", justifyContent: "space-between", shadowColor: fe.navy, shadowOpacity: 0.28, shadowRadius: 14, shadowOffset: { width: 0, height: 8 } },
+		walletStackBrand: { color: fe.white, fontSize: 12, fontWeight: theme.typography.fontWeight.bold, letterSpacing: 1.2 },
+		walletStackMeta: { color: "rgba(255,255,255,0.68)", fontSize: 11 },
+		paperSheet: { backgroundColor: fe.paper, borderTopLeftRadius: 0, borderTopRightRadius: 0, paddingHorizontal: 20, paddingTop: 26, paddingBottom: 20, gap: 18, minHeight: 420 },
+		sectionCard: { backgroundColor: "transparent", borderWidth: 0, borderRadius: 0, padding: 0, gap: 12 },
 		sectionTopRow: {
 			flexDirection: "row",
 			justifyContent: "space-between",
 			alignItems: "center",
 		},
-		sectionTitle: {
-			color: theme.colors.textPrimary,
-			fontSize: 14,
-			fontWeight: theme.typography.fontWeight.bold,
+		sectionTitle: { color: fe.ink, fontSize: 20, fontWeight: theme.typography.fontWeight.semibold, letterSpacing: -0.35 },
+		sectionAction: { color: fe.muted, fontSize: 12, fontWeight: theme.typography.fontWeight.semibold },
+		emptyInline: {
+			flexDirection: "row",
+			alignItems: "center",
+			gap: 12,
+			paddingVertical: 16,
 		},
-		sectionAction: {
-			color: theme.colors.brandPrimary,
-			fontSize: 12,
-			fontWeight: theme.typography.fontWeight.bold,
-		},
+		emptyInlineCopy: { flex: 1, gap: 2 },
+		emptyInlineTitle: { color: fe.ink, fontSize: 14, fontWeight: theme.typography.fontWeight.semibold },
+		emptyInlineBody: { color: fe.slate, fontSize: 12, lineHeight: 18 },
 		budgetContent: {
 			gap: 6,
 		},
@@ -1456,20 +900,13 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			flex: 1,
 			gap: 3,
 		},
-		budgetName: {
-			color: theme.colors.textPrimary,
-			fontSize: 13,
-			fontWeight: theme.typography.fontWeight.bold,
-		},
+		budgetName: { color: fe.ink, fontSize: 13, fontWeight: theme.typography.fontWeight.semibold },
 		budgetPercent: {
 			color: theme.colors.warning,
 			fontSize: 12,
 			fontWeight: theme.typography.fontWeight.extrabold,
 		},
-		budgetMeta: {
-			color: theme.colors.textMuted,
-			fontSize: 11,
-		},
+		budgetMeta: { color: fe.slate, fontSize: 11 },
 		progressTrack: {
 			height: 6,
 			backgroundColor: theme.colors.borderBase,
@@ -1482,19 +919,8 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			backgroundColor: theme.colors.warning,
 			borderRadius: 999,
 		},
-		budgetStatus: {
-			color: theme.colors.textMuted,
-			fontSize: 11,
-			marginTop: 2,
-		},
-		txRow: {
-			flexDirection: "row",
-			alignItems: "center",
-			gap: 12,
-			paddingVertical: 8,
-			borderBottomWidth: 1,
-			borderBottomColor: theme.colors.borderSoft,
-		},
+		budgetStatus: { color: fe.slate, fontSize: 11, marginTop: 2 },
+		txRow: { flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: fe.line },
 		txRowLast: {
 			borderBottomWidth: 0,
 		},
@@ -1514,25 +940,10 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 		txInfo: {
 			flex: 1,
 		},
-		txTitle: {
-			color: theme.colors.textPrimary,
-			fontSize: 13,
-			fontWeight: theme.typography.fontWeight.bold,
-		},
-		txMeta: {
-			color: theme.colors.textDim,
-			fontSize: 11,
-			marginTop: 2,
-		},
-		txAmount: {
-			fontSize: 13,
-			fontWeight: theme.typography.fontWeight.extrabold,
-		},
-		txAmountIncome: {
-			color: theme.colors.success,
-		},
-		txAmountExpense: {
-			color: theme.colors.danger,
-		},
+		txTitle: { color: fe.ink, fontSize: 14, fontWeight: theme.typography.fontWeight.semibold },
+		txMeta: { color: fe.muted, fontSize: 11, marginTop: 2 },
+		txAmount: { fontSize: 13, fontWeight: theme.typography.fontWeight.semibold },
+		txAmountIncome: { color: fe.financialIncome },
+		txAmountExpense: { color: fe.financialExpense },
 		});
 }

@@ -17,9 +17,26 @@ jest.mock("../src/state/finance-context", () => ({ useFinanceContext: () => ({ a
 jest.mock("../src/services/transaction-classifier", () => ({ classifyTransactionTextBatch: jest.fn(() => []), CLASSIFIER_HIGH_CONFIDENCE_THRESHOLD: 0.8 }));
 jest.mock("../src/services/category-taxonomy", () => ({ getLocalizedCategoryName: (n: string) => n }));
 jest.mock("expo-image-picker", () => ({ requestMediaLibraryPermissionsAsync: jest.fn(), launchImageLibraryAsync: jest.fn() }));
+jest.mock("expo-av", () => ({
+  Audio: {
+    requestPermissionsAsync: jest.fn(),
+    setAudioModeAsync: jest.fn(),
+    Recording: {
+      createAsync: jest.fn(),
+    },
+    RecordingOptionsPresets: { HIGH_QUALITY: {} },
+  },
+}));
+jest.mock("../src/config/features", () => ({ featureFlags: { voiceNote: false, importStatement: false } }));
+jest.mock("../src/services/voice-intake", () => ({ getVoiceAuthSession: jest.fn(), processVoiceTransaction: jest.fn(), uploadVoiceAudio: jest.fn() }));
 jest.mock("../src/hooks/useEntitlements", () => ({ useEntitlements: () => ({ data: null, loading: false, refresh: jest.fn() }) }));
 
-import { photoLocked, quotaLabel } from "../app/(tabs)/capture";
+import {
+  getCaptureModes,
+  getDefaultCaptureMode,
+  photoLocked,
+  quotaLabel,
+} from "../app/(tabs)/capture";
 
 test("photo locked when limit 0 (free)", () => {
   expect(photoLocked({ photo_limit: 0 } as any)).toBe(true);
@@ -30,4 +47,18 @@ test("photo locked when limit 0 (free)", () => {
 test("quota label shows used/limit", () => {
   expect(quotaLabel({ chat_used: 3, chat_limit: 25 } as any)).toBe("Chat AI: 3/25");
   expect(quotaLabel(null)).toBe("");
+});
+
+test("voice-enabled capture starts like Monveo: voice first", () => {
+  expect(getDefaultCaptureMode(true)).toBe("Suara");
+  expect(getCaptureModes(true).map((mode) => mode.id)).toEqual([
+    "Suara",
+    "Teks",
+    "Foto",
+  ]);
+});
+
+test("voice-disabled capture keeps the safe text-first default", () => {
+  expect(getDefaultCaptureMode(false)).toBe("Teks");
+  expect(getCaptureModes(false).map((mode) => mode.id)).toEqual(["Teks", "Foto"]);
 });

@@ -25,6 +25,7 @@ import {
 } from "../../src/services/households";
 import { useFinanceContext } from "../../src/state/finance-context";
 import { useTheme } from "../../src/theme/theme-context";
+import { financeEditorial as fe } from "../../src/theme/finance-editorial";
 
 type ActiveForm = "create" | "join" | null;
 
@@ -367,28 +368,32 @@ export default function GroupsScreen() {
 
 function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 	return StyleSheet.create({
-		screen: { flex: 1, backgroundColor: theme.colors.background },
+		screen: { flex: 1, backgroundColor: fe.paper },
 		content: { padding: 20, gap: 12, paddingBottom: 26 },
 		headerActions: { flexDirection: "row", gap: 8 },
 		addButton: {
-			backgroundColor: theme.colors.brandPrimary,
+			backgroundColor: fe.glassStrong,
+			borderWidth: 1,
+			borderColor: "rgba(255,255,255,0.24)",
 			borderRadius: theme.radius.pill,
 			paddingHorizontal: 14,
 			paddingVertical: 8,
 		},
 		addButtonText: {
-			color: theme.colors.textInverse,
+			color: fe.white,
 			fontSize: 12,
 			fontWeight: "800",
 		},
 		secondaryButton: {
-			backgroundColor: theme.iconBubbles.primary.background,
+			backgroundColor: "rgba(255,255,255,0.12)",
+			borderWidth: 1,
+			borderColor: "rgba(255,255,255,0.20)",
 			borderRadius: theme.radius.pill,
 			paddingHorizontal: 14,
 			paddingVertical: 8,
 		},
 		secondaryButtonText: {
-			color: theme.colors.brandPrimary,
+			color: fe.white,
 			fontSize: 12,
 			fontWeight: "800",
 		},

@@ -428,13 +428,40 @@ describe("Budget envelopes screen", () => {
 		const colorOptionIds = colorOptionNodes.map((node) => node.props.testID);
 		expect(colorOptionNodes).toHaveLength(8);
 		expect(new Set(colorOptionIds).size).toBe(colorOptionIds.length);
-		expect(colorOptionIds).not.toContain("budget-wallet-color-#4A80F0");
-		expect(colorOptionIds).not.toContain("budget-wallet-color-#2563EB");
-		expect(colorOptionIds).not.toContain("budget-wallet-color-#9333EA");
-		expect(colorOptionIds).not.toContain("budget-wallet-color-#0891B2");
-		expect(screen.getByTestId("budget-wallet-color-#DB2777")).toBeTruthy();
-		expect(screen.getByTestId("budget-wallet-color-#854D0E")).toBeTruthy();
-		fireEvent.press(screen.getByTestId("budget-wallet-color-#DB2777"));
+		// Budget envelopes stay inside the reports tonal-blue family: no legacy
+		// confetti swatches (lime, purple, pink, amber, orange, teal, slate).
+		[
+			"#4A80F0",
+			"#DB2777",
+			"#854D0E",
+			"#DC2626",
+			"#7C3AED",
+			"#0F766E",
+			"#EA580C",
+			"#A3FF12",
+			"#A78BFA",
+			"#2DD4BF",
+			"#FDBA74",
+			"#94A3B8",
+			"#F472B6",
+			"#65A30D",
+			"#F59E0B",
+		].forEach((legacy) => {
+			expect(colorOptionIds).not.toContain(`budget-wallet-color-${legacy}`);
+		});
+		[
+			"#62AEE0",
+			"#42B7EB",
+			"#4D91C7",
+			"#178BD0",
+			"#3B7DB8",
+			"#2F7FC1",
+			"#285D99",
+			"#0C4E91",
+		].forEach((blue) => {
+			expect(screen.getByTestId(`budget-wallet-color-${blue}`)).toBeTruthy();
+		});
+		fireEvent.press(screen.getByTestId("budget-wallet-color-#0C4E91"));
 		fireEvent.changeText(
 			screen.getByPlaceholderText("Catatan"),
 			"Kopi Kenangan, Fore",
@@ -449,7 +476,7 @@ describe("Budget envelopes screen", () => {
 				parent_category_id: "cat-food",
 				limit_amount: 250000,
 				icon: "food",
-				color: "#DB2777",
+				color: "#0C4E91",
 				notes: "Kopi Kenangan, Fore",
 			}),
 		);
