@@ -63,11 +63,21 @@
     "verification": "Transactions screen must keep the Bills chip/filter path and bill creation entry points."
   },
   {
-    "id": "home.dashboard_privacy_period",
-    "description": "Home dashboard preserves privacy/theme toggles, active period label, and main financial summary cards.",
+    "id": "ui.finance_editorial_surfaces",
+    "description": "Finance editorial surfaces stay live: paper content sheet, grouped settings, appearance control, and category bubble analytics.",
     "critical": true,
     "markers": [
-      "home-theme-toggle",
+      "settings-appearance",
+      "settings-theme-system",
+      "settings-theme-dark",
+      "reports-bubble-row"
+    ]
+  },
+  {
+    "id": "home.dashboard_privacy_period",
+    "description": "Home dashboard preserves the privacy toggle, active period label, navy balance hero, and main financial summary cards.",
+    "critical": true,
+    "markers": [
       "home-amount-visibility-toggle",
       "home-active-period-label",
       "home-total-balance",
