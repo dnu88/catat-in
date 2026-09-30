@@ -1,8 +1,10 @@
 import type { ComponentProps } from 'react'
 import {
   ArrowLeft,
+  Bank,
   Basket,
   Bell,
+  Briefcase,
   Camera,
   CheckCircle,
   Bus,
@@ -19,10 +21,12 @@ import {
   EyeSlash,
   FileText,
   FilmSlate,
+  FirstAid,
   ForkKnife,
   GameController,
   Gear,
   Gift,
+  GraduationCap,
   House,
   ImageSquare,
   Lightbulb,
@@ -35,9 +39,11 @@ import {
   ShoppingCart,
   SoccerBall,
   Sun,
+  Tag,
   TrendUp,
   Trash,
   TrayArrowDown,
+  Trophy,
   UploadSimple,
   X,
   UsersThree,
@@ -88,6 +94,12 @@ const iconMap = {
   creditCard: CreditCard,
   more: DotsThree,
   otherExpenses: DotsThreeCircle,
+  firstAid: FirstAid,
+  graduationCap: GraduationCap,
+  tag: Tag,
+  bank: Bank,
+  trophy: Trophy,
+  briefcase: Briefcase,
 } as const
 
 export type KaswiseIconName = keyof typeof iconMap

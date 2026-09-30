@@ -29,7 +29,7 @@ describe('Category Service', () => {
     expect(mockInsert).toHaveBeenCalledWith({
       user_id: 'user-123',
       name: 'Food',
-      icon: '📦',
+      icon: 'otherExpenses',
       is_default: false,
     });
     expect(result.id).toBe('cat-1');

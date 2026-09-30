@@ -62,7 +62,7 @@ export async function createCategory(category: CategoryCreate): Promise<Category
   const payload: Record<string, unknown> = {
     user_id: userId,
     name: category.name,
-    icon: category.icon ?? '📦',
+    icon: category.icon ?? 'otherExpenses',
     is_default: false,
   };
   if (category.type) payload.type = category.type;
