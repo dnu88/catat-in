@@ -376,8 +376,8 @@ describe("ReportsScreen visual parity", () => {
 		);
 
 		expect(getFlattenedStyle(foodFill).backgroundColor).toBe("#4A80F0");
-		expect(getFlattenedStyle(shoppingFill).backgroundColor).toBe("#B45309");
-		expect(getFlattenedStyle(transportFill).backgroundColor).toBe("#2A5DD0");
+		expect(getFlattenedStyle(shoppingFill).backgroundColor).toBe("#2F7FC1");
+		expect(getFlattenedStyle(transportFill).backgroundColor).toBe("#0C4E91");
 		expect(getFlattenedStyle(customFill).backgroundColor).toMatch(
 			/^#[0-9A-F]{6}$/,
 		);
