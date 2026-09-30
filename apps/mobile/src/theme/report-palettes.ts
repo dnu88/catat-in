@@ -2,7 +2,7 @@ import type { ThemeMode } from "./tokens";
 
 export const reportCategoryPalette: Record<ThemeMode, string[]> = {
 	light: [
-		"#65A30D",
+		"#178BD0",
 		"#2A5DD0",
 		"#B45309",
 		"#DC2626",
@@ -12,7 +12,7 @@ export const reportCategoryPalette: Record<ThemeMode, string[]> = {
 		"#0F766E",
 	],
 	dark: [
-		"#A3FF12",
+		"#42B7EB",
 		"#4A80F0",
 		"#F59E0B",
 		"#FF7B7B",
@@ -53,7 +53,7 @@ export const reportDefaultCategoryColors = {
 
 export const budgetEnvelopePalette: Record<ThemeMode, string[]> = {
 	light: [
-		"#65A30D",
+		"#178BD0",
 		"#4A80F0",
 		"#854D0E",
 		"#DC2626",
@@ -64,7 +64,7 @@ export const budgetEnvelopePalette: Record<ThemeMode, string[]> = {
 		"#475569",
 	],
 	dark: [
-		"#A3FF12",
+		"#42B7EB",
 		"#4A80F0",
 		"#F59E0B",
 		"#FF7B7B",
@@ -81,10 +81,10 @@ export const kaswiseLogoPalette = {
 	graphiteEnd: "#1F2937",
 	mistStart: "#9CA3AF",
 	mistEnd: "#4B5563",
-	forestStart: "#166534",
-	forestEnd: "#022C22",
-	emeraldStart: "#A3FF12",
-	emeraldEnd: "#65A30D",
+	navyStart: "#0A3D78",
+	navyEnd: "#071B4F",
+	blueStart: "#42B7EB",
+	blueEnd: "#178BD0",
 } as const;
 
 export function getReportCategoryColor(mode: ThemeMode, index: number) {

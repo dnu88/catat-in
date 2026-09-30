@@ -6,14 +6,16 @@ import { AccountDeletionSection } from "../../src/components/settings/AccountDel
 import { LegalSupportSection } from "../../src/components/settings/LegalSupportSection";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as ImagePicker from "expo-image-picker";
+import { LinearGradient } from "expo-linear-gradient";
 import Svg, { Circle, Path, Rect } from "react-native-svg";
 
 import { useSupabase } from "../../src/lib/supabase";
 import type { KaswiseIconName } from "../../src/components/icons/kaswise-icons";
 import { KaswiseIcon } from "../../src/components/icons/kaswise-icons";
-import { KaswiseLogoMark } from "../../src/components/brand/KaswiseLogoMark";
-import { IconBubble } from "../../src/components/ui";
+
+
 import { useTheme } from "../../src/theme/theme-context";
+import { financeEditorial as fe } from "../../src/theme/finance-editorial";
 import { useI18n } from "../../src/i18n/i18n-context";
 import { useEntitlements } from "../../src/hooks/useEntitlements";
 import { featureFlags } from "../../src/config/features";
@@ -385,9 +387,15 @@ function createBudgets({
 	}));
 }
 
+const THEME_OPTIONS = [
+	{ id: "system", testID: "settings-theme-system", idLabel: "Sistem", enLabel: "System" },
+	{ id: "light", testID: "settings-theme-light", idLabel: "Terang", enLabel: "Light" },
+	{ id: "dark", testID: "settings-theme-dark", idLabel: "Gelap", enLabel: "Dark" },
+] as const;
+
 export default function SettingsScreen() {
 	const { supabase } = useSupabase();
-	const { theme } = useTheme();
+	const { theme, preference, setPreference } = useTheme();
 	const { language, setLanguage, t } = useI18n();
 	const styles = useMemo(() => createStyles(theme), [theme]);
 	const storeReleaseConfig = useMemo(() => getStoreReleaseConfig(), []);
@@ -1050,22 +1058,20 @@ export default function SettingsScreen() {
 					<RefreshControl
 						refreshing={refreshing}
 						onRefresh={onRefresh}
-						tintColor={theme.colors.brandPrimary}
+						tintColor={fe.blue}
 					/>
 				}
 			>
 				<StaggeredStack testIDPrefix="settings-entrance">
-				{/* Header */}
-				<View key="settings-header" testID="settings-header" style={styles.headerRow}>
-					<View style={styles.headerCopy}>
-						<Text style={styles.title}>{t("settingsTitle")}</Text>
-						<Text style={styles.subtitle}>{t("settingsSubtitle")}</Text>
-					</View>
-					<KaswiseLogoMark testID="settings-kaswise-logo-mark" size={42} />
-				</View>
-
 				{/* Profile Card */}
-				<View key="settings-profile" testID="settings-profile" style={styles.profileCard}>
+				<LinearGradient
+					key="settings-profile"
+					testID="settings-profile"
+					colors={[fe.navySurface, fe.blueDeep, fe.blueBright]}
+					start={{ x: 0, y: 0 }}
+					end={{ x: 1, y: 1 }}
+					style={styles.profileCard}
+				>
 					<View style={styles.profileAvatar}>
 						{profilePhotoUrl ? (
 							<Image source={{ uri: profilePhotoUrl }} style={styles.profileAvatarImage} />
@@ -1097,6 +1103,31 @@ export default function SettingsScreen() {
 							</Text>
 						) : null}
 					</View>
+				</LinearGradient>
+
+				{/* Appearance Section */}
+				<View key="settings-appearance" testID="settings-appearance" style={styles.sectionCard}>
+					<Text style={styles.sectionTitle}>{language === "id" ? "Tampilan" : "Appearance"}</Text>
+					<View style={styles.themeGrid}>
+						{THEME_OPTIONS.map((option) => {
+							const active = preference === option.id;
+							return (
+								<Pressable
+									key={option.id}
+									testID={option.testID}
+									accessibilityRole="button"
+									accessibilityLabel={language === "id" ? option.idLabel : option.enLabel}
+									accessibilityState={{ selected: active }}
+									onPress={() => setPreference(option.id)}
+									style={[styles.themeChip, active && styles.themeChipActive]}
+								>
+									<Text style={[styles.themeChipText, active && styles.themeChipTextActive]}>
+										{language === "id" ? option.idLabel : option.enLabel}
+									</Text>
+								</Pressable>
+							);
+						})}
+					</View>
 				</View>
 
 				{/* Account Security */}
@@ -1117,7 +1148,7 @@ export default function SettingsScreen() {
 						onPress={() => setPasswordExpanded((value) => !value)}
 					>
 						<View style={styles.navigationCopy}>
-							<IconBubble name="lock" tone="primary" size={32} />
+							<KaswiseIcon name="lock" size={20} color={theme.colors.textMuted} />
 							<View style={styles.navigationTextBlock}>
 								<Text style={styles.navigationTitle}>{language === "id" ? "Ubah Password" : "Change Password"}</Text>
 								<Text style={styles.navigationHelper}>
@@ -1194,7 +1225,7 @@ export default function SettingsScreen() {
 						<>
 							<View style={styles.navigationRow}>
 								<View style={styles.navigationCopy}>
-									<IconBubble name="card" tone="primary" size={32} />
+									<KaswiseIcon name="card" size={20} color={theme.colors.textMuted} />
 									<View style={styles.navigationTextBlock}>
 										<Text style={styles.navigationTitle}>
 											{planStatusLabel(entitlements)}
@@ -1220,10 +1251,10 @@ export default function SettingsScreen() {
 									<Pressable
 										testID="settings-upgrade-button"
 										accessibilityRole="button"
-										style={styles.primaryButton}
+										style={styles.planAction}
 										onPress={() => router.push("/upgrade")}
 									>
-										<Text style={styles.primaryButtonText}>
+										<Text style={styles.planActionText}>
 											{language === "id" ? "Upgrade ke Premium" : "Upgrade to Premium"}
 										</Text>
 									</Pressable>
@@ -1238,10 +1269,10 @@ export default function SettingsScreen() {
 								<Pressable
 									testID="settings-extend-button"
 									accessibilityRole="button"
-									style={styles.primaryButton}
+									style={styles.planAction}
 									onPress={() => router.push("/upgrade")}
 								>
-									<Text style={styles.primaryButtonText}>
+									<Text style={styles.planActionText}>
 										{language === "id" ? "Perpanjang" : "Extend"}
 									</Text>
 								</Pressable>
@@ -1276,7 +1307,7 @@ export default function SettingsScreen() {
 						onPress={() => router.push("/(tabs)/groups")}
 					>
 						<View style={styles.navigationCopy}>
-							<IconBubble name="groups" tone="primary" size={32} />
+							<KaswiseIcon name="groups" size={20} color={theme.colors.textMuted} />
 							<View style={styles.navigationTextBlock}>
 								<Text style={styles.navigationTitle}>
 									{language === "id" ? "Pusat Keluarga" : "Family Center"}
@@ -1310,7 +1341,7 @@ export default function SettingsScreen() {
 							onPress={() => router.push("/(tabs)/imports")}
 						>
 							<View style={styles.navigationCopy}>
-								<IconBubble name="upload" tone="primary" size={32} />
+								<KaswiseIcon name="upload" size={20} color={theme.colors.textMuted} />
 								<View style={styles.navigationTextBlock}>
 									<Text style={styles.navigationTitle}>
 										{language === "id" ? "Import CSV/XLSX/PDF" : "Import CSV/XLSX/PDF"}
@@ -1344,14 +1375,8 @@ export default function SettingsScreen() {
 								style={[
 									styles.themeChip,
 									language === lang && {
-										backgroundColor:
-											theme.mode === "light"
-												? theme.colors.brandPrimaryDeep
-												: theme.colors.brandPrimary,
-										borderColor:
-											theme.mode === "light"
-												? theme.colors.brandPrimaryDeep
-												: theme.colors.brandPrimary,
+										backgroundColor: fe.blueDeep,
+										borderColor: fe.blueDeep,
 									},
 								]}
 							>
@@ -1722,12 +1747,12 @@ function ProfilePhotoAction({
 					borderRadius: 24,
 					alignItems: "center",
 					justifyContent: "center",
-					backgroundColor: colorWithAlpha(theme.colors.brandPrimary, theme.mode === "dark" ? "18" : "14"),
+					backgroundColor: "rgba(12,78,145,0.12)",
 					borderWidth: 1,
-					borderColor: colorWithAlpha(theme.colors.brandPrimary, "55"),
+					borderColor: "rgba(12,78,145,0.28)",
 				}}
 			>
-				<KaswiseIcon name={icon} color={theme.colors.brandPrimary} size={22} />
+				<KaswiseIcon name={icon} color={fe.blue} size={22} />
 			</View>
 			<Text style={{ color: theme.colors.textSecondary, fontSize: 11, fontWeight: "800", textAlign: "center" }}>{label}</Text>
 		</Pressable>
@@ -1736,7 +1761,7 @@ function ProfilePhotoAction({
 
 function ToggleRow({
 	icon,
-	tone,
+	tone: _tone,
 	title,
 	helper,
 	value,
@@ -1761,35 +1786,29 @@ function ToggleRow({
 				flexDirection: "row",
 				justifyContent: "space-between",
 				alignItems: "center",
-				paddingVertical: 10,
-				borderTopWidth: 1,
-				borderTopColor: theme.colors.borderSoft,
+				minHeight: 60,
+				paddingHorizontal: 14,
+				paddingVertical: 12,
+				borderRadius: 16,
+				backgroundColor: fe.white,
 				gap: 12,
 			}}
 		>
 			<View
 				style={{ flexDirection: "row", alignItems: "center", gap: 12, flex: 1 }}
 			>
-				<IconBubble name={icon} tone={tone} size={32} />
+				<KaswiseIcon name={icon} size={20} color={theme.colors.textMuted} />
 				<View style={{ flex: 1 }}>
 					<Text
 						style={{
 							color: theme.colors.textPrimary,
-							fontSize: 13,
-							fontWeight: "700",
+							fontSize: 15,
+							fontWeight: "600",
 						}}
 					>
 						{title}
 					</Text>
-					<Text
-						style={{
-							color: theme.colors.textMuted,
-							fontSize: 11,
-							marginTop: 1,
-						}}
-					>
-						{helper}
-					</Text>
+					<Text style={{ display: "none" }}>{helper}</Text>
 				</View>
 			</View>
 			<View
@@ -1799,8 +1818,8 @@ function ToggleRow({
 					borderRadius: 999,
 					backgroundColor: value
 						? theme.mode === "light"
-							? theme.colors.brandPrimaryDeep
-							: theme.colors.brandPrimary
+							? fe.blueDeep
+							: fe.blueBright
 						: theme.colors.borderStrong,
 					padding: 2,
 					justifyContent: "center",
@@ -1822,8 +1841,8 @@ function ToggleRow({
 
 function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 	return StyleSheet.create({
-		screen: { flex: 1, backgroundColor: theme.colors.background },
-		content: { padding: 20, gap: 10, paddingBottom: 26 },
+		screen: { flex: 1, backgroundColor: fe.paper },
+		content: { padding: 20, gap: 22, paddingBottom: 130 },
 		headerRow: {
 			marginBottom: 4,
 			flexDirection: "row",
@@ -1832,63 +1851,26 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			gap: 14,
 		},
 		headerCopy: { flex: 1 },
-		title: {
-			color: theme.colors.textPrimary,
-			fontSize: theme.typography.fontSize["4xl"],
-			fontWeight: theme.typography.fontWeight.extrabold,
-			letterSpacing: theme.typography.letterSpacing.tight,
-		},
-		subtitle: {
-			color: theme.colors.textSecondary,
-			fontSize: theme.typography.fontSize.sm,
-			marginTop: 2,
-		},
+		title: { color: fe.ink, fontSize: 28, fontWeight: theme.typography.fontWeight.semibold, letterSpacing: -0.6 },
+		subtitle: { color: fe.slate, fontSize: 13, marginTop: 2 },
 		profileCard: {
-			backgroundColor: theme.colors.surface,
-			borderRadius: theme.radius.lg,
-			borderWidth: 1,
-			borderColor: theme.colors.borderSoft,
-			padding: 14,
-			flexDirection: "row",
-			alignItems: "center",
-			gap: 14,
+			minHeight: 148, borderRadius: 28, borderWidth: 1,
+			borderColor: "rgba(255,255,255,0.16)", padding: 20,
+			flexDirection: "row", alignItems: "center", gap: 14,
+			overflow: "hidden", shadowColor: fe.navy, shadowOpacity: 0.18,
+			shadowRadius: 24, shadowOffset: { width: 0, height: 12 }, elevation: 8,
 		},
 		profileAvatar: {
-			width: 68,
-			height: 68,
-			borderRadius: 34,
-			backgroundColor: theme.colors.mutedSurface,
-			alignItems: "center",
-			justifyContent: "center",
-			overflow: "hidden",
+			width: 64, height: 64, borderRadius: 32, backgroundColor: fe.paper,
+			alignItems: "center", justifyContent: "center", overflow: "hidden",
 		},
-		profileAvatarImage: {
-			width: 68,
-			height: 68,
-			borderRadius: 34,
-		},
-		profileAvatarText: {
-			color: theme.colors.textPrimary,
-			fontSize: 16,
-			fontWeight: "800",
-		},
+		profileAvatarImage: { width: 64, height: 64, borderRadius: 32 },
+		profileAvatarText: { color: fe.ink, fontSize: 16, fontWeight: "700" },
 		profileInfo: { flex: 1 },
-		profileName: {
-			color: theme.colors.textPrimary,
-			fontSize: theme.typography.fontSize.lg,
-			fontWeight: theme.typography.fontWeight.extrabold,
-		},
-		profileEmail: {
-			color: theme.colors.textMuted,
-			fontSize: theme.typography.fontSize.sm,
-			marginTop: 2,
-		},
+		profileName: { color: fe.white, fontSize: 17, fontWeight: theme.typography.fontWeight.semibold },
+		profileEmail: { color: "rgba(255,255,255,0.68)", fontSize: 12, marginTop: 2 },
 		profilePhotoButton: { alignSelf: "flex-start", marginTop: 8 },
-		profilePhotoButtonText: {
-			color: theme.colors.brandPrimary,
-			fontSize: 12,
-			fontWeight: "800",
-		},
+		profilePhotoButtonText: { color: fe.white, fontSize: 12, fontWeight: "600" },
 		inlineMessage: {
 			color: theme.colors.success,
 			fontSize: 11,
@@ -1896,46 +1878,24 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			marginTop: 6,
 		},
 		inlineMessageError: { color: theme.colors.danger },
-		sectionCard: {
-			backgroundColor: theme.colors.surface,
-			borderRadius: 18,
-			borderWidth: 1,
-			borderColor: theme.colors.borderSoft,
-			padding: 14,
-			gap: 10,
-		},
+		sectionCard: { backgroundColor: "transparent", borderRadius: 0, borderWidth: 0, padding: 0, gap: 8 },
 		sectionTitle: {
-			color: theme.colors.textPrimary,
-			fontSize: 15,
-			fontWeight: "800",
+			color: fe.muted, fontSize: 12, fontWeight: "700", textTransform: "uppercase",
+			letterSpacing: 0.8, paddingHorizontal: 4,
 		},
-		sectionSub: { color: theme.colors.textSecondary, fontSize: 12 },
+		sectionSub: { display: "none" },
 		themeGrid: { flexDirection: "row", gap: 8 },
 		themeChip: {
-			flex: 1,
-			paddingVertical: 10,
-			minHeight: 44,
-			justifyContent: "center",
-			borderRadius: 12,
-			borderWidth: 1,
-			borderColor: theme.colors.borderSoft,
-			backgroundColor: theme.colors.mutedSurface,
-			alignItems: "center",
+			flex: 1, minHeight: 46, justifyContent: "center", alignItems: "center",
+			borderRadius: 14, borderWidth: 0, backgroundColor: fe.white,
 		},
-		themeChipText: {
-			color: theme.colors.textSecondary,
-			fontSize: 12,
-			fontWeight: "700",
-		},
+		themeChipText: { color: fe.slate, fontSize: 13, fontWeight: "600" },
+		themeChipActive: { backgroundColor: fe.blueDeep },
+		themeChipTextActive: { color: theme.colors.textInverse },
 		navigationRow: {
-			minHeight: 56,
-			borderTopWidth: 1,
-			borderTopColor: theme.colors.borderSoft,
-			paddingTop: 10,
-			flexDirection: "row",
-			alignItems: "center",
-			justifyContent: "space-between",
-			gap: 12,
+			minHeight: 60, borderRadius: 16, borderWidth: 0, backgroundColor: fe.white,
+			paddingHorizontal: 14, paddingVertical: 12, flexDirection: "row",
+			alignItems: "center", justifyContent: "space-between", gap: 12,
 		},
 		navigationCopy: {
 			flex: 1,
@@ -1944,32 +1904,15 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			gap: 12,
 		},
 		navigationTextBlock: { flex: 1 },
-		navigationTitle: {
-			color: theme.colors.textPrimary,
-			fontSize: 13,
-			fontWeight: "800",
-		},
+		navigationTitle: { color: fe.ink, fontSize: 15, fontWeight: "600" },
 		navigationHelper: {
-			color: theme.colors.textMuted,
-			fontSize: 11,
-			marginTop: 1,
+			display: "none",
 		},
-		navigationChevron: {
-			color: theme.colors.textMuted,
-			fontSize: 24,
-			fontWeight: "700",
-		},
+		navigationChevron: { color: fe.muted, fontSize: 22, fontWeight: "600" },
 		passwordForm: { gap: 10, paddingTop: 2 },
 		textInput: {
-			minHeight: 46,
-			borderRadius: 14,
-			borderWidth: 1,
-			borderColor: theme.colors.borderSoft,
-			backgroundColor: theme.colors.mutedSurface,
-			color: theme.colors.textPrimary,
-			paddingHorizontal: 14,
-			fontSize: 14,
-			fontWeight: "600",
+			minHeight: 48, borderRadius: 14, borderWidth: 0, backgroundColor: fe.white,
+			color: fe.ink, paddingHorizontal: 14, fontSize: 14, fontWeight: "500",
 		},
 		readOnlyInput: {
 			opacity: 0.78,
@@ -1979,28 +1922,24 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			paddingTop: 14,
 		},
 		primaryButton: {
-			minHeight: 48,
-			borderRadius: 14,
-			backgroundColor: theme.colors.buttonPrimaryBg,
-			alignItems: "center",
-			justifyContent: "center",
-			paddingHorizontal: 16,
-			paddingVertical: 12,
+			minHeight: 48, borderRadius: 14, backgroundColor: fe.blueDeep, alignItems: "center",
+			justifyContent: "center", paddingHorizontal: 16, paddingVertical: 12,
 		},
 		buttonDisabled: { opacity: 0.68 },
-		primaryButtonText: {
-			color: theme.colors.buttonPrimaryText,
-			fontSize: 14,
-			fontWeight: "800",
+		primaryButtonText: { color: theme.colors.textInverse, fontSize: 14, fontWeight: "700" },
+		planAction: {
+			alignSelf: "flex-start", minHeight: 42, justifyContent: "center",
+			paddingHorizontal: 16, borderRadius: 12, backgroundColor: fe.paper,
 		},
+		planActionText: { color: fe.blue, fontSize: 13, fontWeight: "700" },
 		appInfo: { alignItems: "center", paddingVertical: 10, gap: 4 },
-		appName: { color: theme.colors.textMuted, fontSize: 13, fontWeight: "700" },
+		appName: { color: fe.slate, fontSize: 13, fontWeight: "600" },
 		appTagline: { color: theme.colors.textMuted, fontSize: 11 },
 		seedButton: {
 			backgroundColor:
 				theme.mode === "light"
-					? theme.colors.brandPrimaryDeep
-					: theme.colors.brandPrimary,
+					? fe.blueDeep
+					: fe.blueBright,
 			borderRadius: 14,
 			minHeight: 46,
 			alignItems: "center",
@@ -2021,14 +1960,9 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 		},
 		seedResultError: { color: theme.colors.danger },
 		logoutBtn: {
-			backgroundColor: `${theme.colors.danger}12`,
-			borderWidth: 1,
-			borderColor: `${theme.colors.danger}40`,
-			borderRadius: 14,
-			paddingVertical: 14,
-			alignItems: "center",
+			backgroundColor: fe.white, borderRadius: 16, paddingVertical: 15, alignItems: "center",
 		},
-		logoutText: { color: theme.colors.danger, fontSize: 14, fontWeight: "700" },
+		logoutText: { color: theme.colors.danger, fontSize: 14, fontWeight: "600" },
 		sheetOverlay: {
 			flex: 1,
 			justifyContent: "flex-end",
@@ -2036,17 +1970,8 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 		},
 		sheetBackdrop: { ...StyleSheet.absoluteFillObject },
 		bottomSheet: {
-			maxHeight: "90%",
-			backgroundColor: theme.colors.surface,
-			borderTopLeftRadius: 30,
-			borderTopRightRadius: 30,
-			borderWidth: 1,
-			borderColor: theme.colors.borderSoft,
-			overflow: "hidden",
-			shadowColor: theme.colors.textPrimary,
-			shadowOpacity: theme.mode === "dark" ? 0.34 : 0.14,
-			shadowRadius: 24,
-			elevation: 18,
+			maxHeight: "90%", backgroundColor: fe.paper,
+			borderTopLeftRadius: 30, borderTopRightRadius: 30, overflow: "hidden",
 		},
 		sheetHeader: {
 			paddingHorizontal: 20,
@@ -2097,7 +2022,7 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 		avatarTabText: { color: theme.colors.textMuted, fontSize: 12, fontWeight: "800" },
 		avatarTabTextActive: { color: theme.colors.textPrimary },
 		avatarTabUnderline: { height: 2, borderRadius: 999, backgroundColor: "transparent" },
-		avatarTabUnderlineActive: { backgroundColor: theme.colors.brandPrimary },
+		avatarTabUnderlineActive: { backgroundColor: fe.blue },
 		avatarGrid: {
 			flexDirection: "row",
 			flexWrap: "wrap",
@@ -2115,8 +2040,8 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			backgroundColor: theme.colors.mutedSurface,
 		},
 		avatarOptionSelected: {
-			borderColor: theme.colors.brandPrimary,
-			shadowColor: theme.colors.brandPrimary,
+			borderColor: fe.blue,
+			shadowColor: fe.blue,
 			shadowOpacity: theme.mode === "dark" ? 0.34 : 0.20,
 			shadowRadius: 12,
 			elevation: 7,

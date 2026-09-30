@@ -13,6 +13,7 @@ import {
 	View,
 } from "react-native";
 import { PageEntrance, StaggeredStack } from "../../src/components/motion";
+import { LinearGradient } from "expo-linear-gradient";
 import * as ExpoRouter from "expo-router";
 
 const { useLocalSearchParams } = ExpoRouter as { useLocalSearchParams?: any };
@@ -22,12 +23,11 @@ import {
 	EmptyState,
 	FilterChip,
 	IconBubble,
-	ScreenHeader,
-	StatCard,
 	StateMessage,
 } from "../../src/components/ui";
 import { LoadingState } from "../../src/components/ui/LoadingState";
 import { useTheme } from "../../src/theme/theme-context";
+import { financeEditorial as fe, resolveFinancialIconPalette } from "../../src/theme/finance-editorial";
 import { resolveCategoryVisual } from "../../src/theme/category-visuals";
 import { useI18n } from "../../src/i18n/i18n-context";
 import { useFinanceContext } from "../../src/state/finance-context";
@@ -49,6 +49,13 @@ type Period = "week" | "month" | "year";
 type TransactionPeriod = "report" | Period;
 
 const OTHER_CATEGORY_NAMES = ["Lainnya", "Other", "Other expenses"];
+
+export function getTransactionIconPalette(
+	categoryName: string | null | undefined,
+	type: Transaction["transaction_type"],
+) {
+	return resolveFinancialIconPalette(categoryName, type);
+}
 
 function isReviewable(tx: Transaction): boolean {
 	if (tx.is_verified === true) return false;
@@ -223,12 +230,10 @@ function TransactionRow({
 	});
 	const rowIconName =
 		item.transaction_type === "income" ? "chart" : categoryVisual.icon;
-	const rowIconTone =
-		item.transaction_type === "income" ? "success" : categoryVisual.tone;
-	const rowIconColor =
-		item.transaction_type === "income" ? theme.colors.success : categoryVisual.color;
+	const rowIconPalette = getTransactionIconPalette(item.category, item.transaction_type);
 
 	const translateX = useRef(new Animated.Value(0)).current;
+	const [actionsVisible, setActionsVisible] = useState(false);
 	const snapTo = useCallback(
 		(toValue: number, after?: () => void) => {
 			Animated.spring(translateX, {
@@ -269,9 +274,13 @@ function TransactionRow({
 		if (!selectionMode) return;
 		onToggleSelect(item.id);
 	}, [item.id, onToggleSelect, selectionMode]);
-	const resetSwipe = useCallback(() => snapTo(0), [snapTo]);
+	const resetSwipe = useCallback(() => {
+		setActionsVisible(false);
+		snapTo(0);
+	}, [snapTo]);
 	useEffect(() => {
 		if (selectionMode) {
+			setActionsVisible(false);
 			resetSwipe();
 		}
 	}, [resetSwipe, selectionMode]);
@@ -291,12 +300,18 @@ function TransactionRow({
 					);
 				},
 				onPanResponderMove: (_, gestureState) => {
+					setActionsVisible(gestureState.dx < -2);
 					translateX.setValue(getSwipeTranslateX(gestureState.dx));
 				},
 				onPanResponderRelease: (_, gestureState) => {
-					snapTo(shouldOpenSwipe(gestureState.dx) ? -SWIPE_REVEAL_WIDTH : 0);
+					const shouldOpen = shouldOpenSwipe(gestureState.dx);
+					setActionsVisible(shouldOpen);
+					snapTo(shouldOpen ? -SWIPE_REVEAL_WIDTH : 0);
 				},
-				onPanResponderTerminate: () => snapTo(0),
+				onPanResponderTerminate: () => {
+					setActionsVisible(false);
+					snapTo(0);
+				},
 			}),
 		[selectionMode, snapTo, translateX],
 	);
@@ -307,9 +322,9 @@ function TransactionRow({
 			style={styles.swipeShell}
 		>
 			{selectionMode ? null : (
-				<View
+				<Animated.View
 					testID={`transaction-swipe-actions-${item.id}`}
-					style={styles.swipeActions}
+					style={[styles.swipeActions, { opacity: actionsVisible ? 1 : 0 }]}
 				>
 					<Pressable
 						accessibilityRole="button"
@@ -335,7 +350,7 @@ function TransactionRow({
 							{isEn ? "Delete" : "Hapus"}
 						</Text>
 					</Pressable>
-				</View>
+				</Animated.View>
 			)}
 			<Animated.View
 				{...panResponder.panHandlers}
@@ -360,16 +375,19 @@ function TransactionRow({
 						styles.row,
 						index < total - 1 && {
 							borderBottomWidth: 1,
-							borderBottomColor: theme.colors.borderSoft,
+							borderBottomColor: fe.line,
 						},
 					]}
 				>
 					<View style={styles.rowIconPressable}>
 						<View style={[styles.rowIcon, selected && styles.rowIconSelected]}>
 							<IconBubble
+								testID={`transaction-icon-${item.id}`}
 								name={rowIconName}
-								tone={rowIconTone}
-								color={rowIconColor}
+								tone={item.transaction_type === "income" ? "success" : "navy"}
+								color={rowIconPalette.color}
+								backgroundColor={rowIconPalette.background}
+								borderColor={rowIconPalette.border}
 								size={40}
 							/>
 						</View>
@@ -399,8 +417,8 @@ function TransactionRow({
 						style={[
 							styles.rowAmount,
 							item.transaction_type === "income"
-								? { color: theme.colors.success }
-								: { color: theme.colors.danger },
+								? { color: fe.financialIncome }
+								: { color: fe.financialExpense },
 						]}
 					>
 						{item.transaction_type === "income" ? "+" : "-"} Rp{" "}
@@ -679,24 +697,25 @@ export default function TransactionsScreen() {
 
 	const listHeader = useMemo(() => (
 		<StaggeredStack testIDPrefix="transactions-entrance">
-			<View testID="transactions-header-block" style={styles.headerBlock}>
-				<ScreenHeader
-					title={isEn ? "Transactions" : "Transaksi"}
-					subtitle={
-						isEn
-							? "Track your daily cash flow in detail."
-							: "Pantau arus kas harianmu dengan detail."
-					}
-					action={
-						<View style={styles.headerActionRow}>
-							{selectedTransactionIds.length === 0 ? (
-								<View style={styles.summaryBadge}>
-									<Text style={styles.summaryBadgeText}>{list.length} item</Text>
-								</View>
-							) : null}
+			<LinearGradient testID="transactions-hero" colors={[fe.navySurface, fe.blueDeep, fe.blueBright]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.txHero}>
+		<View testID="transactions-header-block" style={styles.headerBlock}>
+				<View style={styles.headerRow}>
+					<View style={styles.headerCopy}>
+						<Text accessibilityRole="header" style={styles.headerTitle}>
+							{isEn ? "Transactions" : "Transaksi"}
+						</Text>
+						<Text style={styles.headerSubtitle}>
+							{isEn
+								? "Track your daily cash flow in detail."
+								: "Pantau arus kas harianmu dengan detail."}
+						</Text>
+					</View>
+					{selectedTransactionIds.length === 0 ? (
+						<View style={styles.summaryBadge}>
+							<Text style={styles.summaryBadgeText}>{list.length} item</Text>
 						</View>
-					}
-				/>
+					) : null}
+				</View>
 				{selectedTransactionIds.length > 0 ? (
 					<View testID="transactions-selection-toolbar" style={styles.selectionToolbar}>
 						<View style={styles.selectionCountBlock}>
@@ -721,7 +740,7 @@ export default function TransactionsScreen() {
 							>
 								<KaswiseIcon
 									name="close"
-									color={theme.colors.textPrimary}
+									color={fe.ink}
 									size={18}
 									weight="bold"
 								/>
@@ -752,9 +771,31 @@ export default function TransactionsScreen() {
 						</View>
 					</View>
 				) : null}
-			</View>
+				</View>
 
-			{loadError ? <StateMessage key="transactions-error" message={loadError} tone="error" /> : null}
+				<View testID="transactions-stat-row" style={styles.statRow}>
+				<View testID="transactions-stat-income" style={styles.statCardShell}>
+					<View style={styles.statCard}>
+						<IconBubble name="chart" tone="success" color={fe.financialIncome} backgroundColor="rgba(22,143,168,0.12)" borderColor="rgba(22,143,168,0.24)" size={36} />
+						<View style={styles.statCardContent}>
+							<Text style={styles.statLabel}>{isEn ? "Income" : "Pemasukan"}</Text>
+							<Text style={styles.statValueText}>{formatCompactRupiah(totalIncome)}</Text>
+						</View>
+					</View>
+				</View>
+				<View testID="transactions-stat-expense" style={styles.statCardShell}>
+					<View style={styles.statCard}>
+						<IconBubble name="transactions" tone="navy" color={fe.blue} backgroundColor="rgba(12,78,145,0.12)" borderColor="rgba(12,78,145,0.24)" size={36} />
+						<View style={styles.statCardContent}>
+							<Text style={styles.statLabel}>{isEn ? "Expense" : "Pengeluaran"}</Text>
+							<Text style={styles.statValueText}>{formatCompactRupiah(totalExpense)}</Text>
+						</View>
+					</View>
+				</View>
+				</View>
+				</LinearGradient>
+
+				{loadError ? <StateMessage key="transactions-error" message={loadError} tone="error" /> : null}
 
 			<View testID="transactions-report-period-card" style={styles.reportPeriodCard}>
 				<Text style={styles.reportPeriodTitle}>
@@ -792,22 +833,13 @@ export default function TransactionsScreen() {
 						onPress={() => setActivePeriod(period)}
 						style={[
 							styles.periodChip,
-							activePeriod === period && {
-								backgroundColor:
-									theme.mode === "light"
-										? theme.colors.brandPrimaryDeep
-										: theme.colors.brandPrimary,
-								borderColor:
-									theme.mode === "light"
-										? theme.colors.brandPrimaryDeep
-										: theme.colors.brandPrimary,
-							},
+							activePeriod === period && styles.periodChipActive,
 						]}
 					>
 						<Text
 							style={[
 								styles.periodChipText,
-								activePeriod === period && { color: theme.colors.textInverse },
+								activePeriod === period && styles.periodChipTextActive,
 							]}
 						>
 							{isEn
@@ -828,31 +860,6 @@ export default function TransactionsScreen() {
 						</Text>
 					</Pressable>
 				))}
-			</View>
-
-			<View testID="transactions-stat-row" style={styles.statRow}>
-				<View testID="transactions-stat-income" style={styles.statCardShell}>
-					<StatCard
-						label={isEn ? "Income" : "Pemasukan"}
-						value={formatCompactRupiah(totalIncome)}
-						icon="chart"
-						tone="success"
-						style={styles.statCard}
-						contentStyle={styles.statCardContent}
-						valueTextStyle={styles.statValueText}
-					/>
-				</View>
-				<View testID="transactions-stat-expense" style={styles.statCardShell}>
-					<StatCard
-						label={isEn ? "Expense" : "Pengeluaran"}
-						value={formatCompactRupiah(totalExpense)}
-						icon="transactions"
-						tone="danger"
-						style={styles.statCard}
-						contentStyle={styles.statCardContent}
-						valueTextStyle={styles.statValueText}
-					/>
-				</View>
 			</View>
 
 			<ScrollView
@@ -913,10 +920,6 @@ export default function TransactionsScreen() {
 		loadError,
 		selectedTransactionIds.length,
 		styles,
-		theme.colors.brandPrimary,
-		theme.colors.brandPrimaryDeep,
-		theme.colors.textInverse,
-		theme.mode,
 		totalExpense,
 		totalIncome,
 	]);
@@ -977,7 +980,7 @@ export default function TransactionsScreen() {
 					<RefreshControl
 						refreshing={loading}
 						onRefresh={loadTransactions}
-						tintColor={theme.colors.brandPrimary}
+						tintColor={fe.ink}
 					/>
 				}
 			/>
@@ -995,7 +998,7 @@ export default function TransactionsScreen() {
 			>
 				<KaswiseIcon
 					name="capture"
-					color={theme.colors.textInverse}
+					color={fe.white}
 					size={26}
 					weight="bold"
 				/>
@@ -1005,71 +1008,32 @@ export default function TransactionsScreen() {
 }
 
 function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
-	const lightBrand =
-		theme.mode === "light"
-			? theme.colors.brandPrimaryDeep
-			: theme.colors.brandPrimary;
+	const lightBrand = fe.ink;
 
 	return StyleSheet.create({
-		screen: { flex: 1, backgroundColor: theme.colors.background },
-		content: {
-			padding: theme.spacing.xl,
-			gap: theme.spacing.sm + theme.spacing.xs - 2,
-			paddingBottom: 26,
-		},
-		headerBlock: {
-			marginBottom: theme.spacing.lg,
-			paddingBottom: theme.spacing.xs,
-		},
+		screen: { flex: 1, backgroundColor: fe.paper },
+		content: { padding: 20, gap: 12, paddingBottom: 130 },
+		txHero: { marginHorizontal: -20, marginTop: -20, paddingHorizontal: 20, paddingTop: 16, paddingBottom: 24, borderBottomLeftRadius: 42, borderBottomRightRadius: 42, overflow: "hidden", gap: 14 },
+		headerBlock: { marginBottom: 0, paddingTop: 0, paddingBottom: 0 },
+		headerRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", gap: 12 },
+		headerCopy: { flex: 1 },
+		headerTitle: { color: fe.white, fontSize: 28, fontWeight: "600", letterSpacing: -0.6 },
+		headerSubtitle: { color: "rgba(255,255,255,0.64)", fontSize: 13, marginTop: 3, lineHeight: 19 },
 		headerActionRow: {
 			flexDirection: "row",
 			alignItems: "center",
 			gap: theme.spacing.xs,
 			justifyContent: "flex-end",
 		},
-		summaryBadge: {
-			backgroundColor: theme.colors.mutedSurface,
-			borderWidth: 1,
-			borderColor: theme.colors.borderSoft,
-			borderRadius: theme.radius.pill,
-			paddingHorizontal: theme.spacing.md,
-			paddingVertical: theme.spacing.sm - 2,
-		},
-		summaryBadgeText: {
-			color: theme.colors.textSecondary,
-			fontSize: theme.typography.fontSize.sm,
-			fontWeight: theme.typography.fontWeight.bold,
-		},
-		selectionToolbar: {
-			marginTop: theme.spacing.md,
-			paddingHorizontal: theme.spacing.md,
-			paddingVertical: theme.spacing.md,
-			borderRadius: theme.radius.lg,
-			borderWidth: 1,
-			borderColor:
-				theme.mode === "light" ? "rgba(101, 163, 13, 0.18)" : "rgba(163, 255, 18, 0.16)",
-			backgroundColor:
-				theme.mode === "light" ? "rgba(101, 163, 13, 0.08)" : "rgba(163, 255, 18, 0.08)",
-			flexDirection: "row",
-			alignItems: "center",
-			justifyContent: "space-between",
-			gap: theme.spacing.md,
-			flexWrap: "wrap",
-		},
+		summaryBadge: { backgroundColor: "rgba(255,255,255,0.14)", borderWidth: 1, borderColor: "rgba(255,255,255,0.22)", borderRadius: 999, paddingHorizontal: 13, paddingVertical: 7 },
+		summaryBadgeText: { color: fe.white, fontSize: 12, fontWeight: "600" },
+		selectionToolbar: { marginTop: 12, paddingHorizontal: 14, paddingVertical: 12, borderRadius: 16, borderWidth: 0, backgroundColor: fe.white, flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" },
 		selectionCountBlock: {
 			flex: 1,
 			minWidth: 0,
 		},
-		selectionCountText: {
-			color: lightBrand,
-			fontSize: theme.typography.fontSize.md,
-			fontWeight: theme.typography.fontWeight.extrabold,
-		},
-		selectionHintText: {
-			color: theme.colors.textSecondary,
-			fontSize: theme.typography.fontSize.sm,
-			marginTop: 2,
-		},
+		selectionCountText: { color: fe.ink, fontSize: 14, fontWeight: "700" },
+		selectionHintText: { color: fe.slate, fontSize: 12, marginTop: 2 },
 		selectionToolbarActions: {
 			flexDirection: "row",
 			alignItems: "center",
@@ -1077,17 +1041,7 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			gap: theme.spacing.xs,
 			flexShrink: 0,
 		},
-		selectionIconButton: {
-			width: 42,
-			height: 42,
-			borderRadius: 21,
-			backgroundColor: theme.colors.surface,
-			borderWidth: 1,
-			borderColor: theme.colors.borderSoft,
-			alignItems: "center",
-			justifyContent: "center",
-			position: "relative",
-		},
+		selectionIconButton: { width: 42, height: 42, borderRadius: 21, backgroundColor: fe.paper, borderWidth: 0, alignItems: "center", justifyContent: "center", position: "relative" },
 		selectionDeleteIconButton: {
 			backgroundColor: theme.mode === "light" ? "rgba(220, 38, 38, 0.08)" : "rgba(248, 113, 113, 0.14)",
 			borderColor: theme.colors.danger,
@@ -1104,95 +1058,31 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			alignItems: "center",
 			justifyContent: "center",
 			borderWidth: 2,
-			borderColor: theme.colors.surface,
+			borderColor: fe.white,
 		},
 		selectionDeleteCountText: {
-			color: theme.colors.textInverse,
+			color: fe.white,
 			fontSize: 10,
 			fontWeight: theme.typography.fontWeight.extrabold,
 			lineHeight: 10,
 		},
-		reportPeriodCard: {
-			backgroundColor: theme.colors.surface,
-			borderWidth: 1,
-			borderColor: theme.colors.borderSoft,
-			borderRadius: theme.radius.md,
-			paddingHorizontal: theme.spacing.md,
-			paddingVertical: theme.spacing.sm + 2,
-			marginBottom: theme.spacing.sm,
-		},
-		reportPeriodTitle: {
-			color: theme.colors.textMuted,
-			fontSize: 11,
-			fontWeight: theme.typography.fontWeight.bold,
-			marginBottom: 2,
-		},
-		reportPeriodLabel: {
-			color: lightBrand,
-			fontSize: 13,
-			fontWeight: theme.typography.fontWeight.extrabold,
-		},
-		periodRow: {
-			flexDirection: "row",
-			gap: theme.spacing.sm,
-			marginBottom: theme.spacing.lg,
-		},
-		periodChip: {
-			flex: 1,
-			paddingVertical: theme.spacing.sm + 2,
-			minHeight: 44,
-			borderRadius: theme.radius.sm + 2,
-			borderWidth: 1,
-			borderColor: theme.colors.borderSoft,
-			backgroundColor: theme.colors.surface,
-			alignItems: "center",
-			justifyContent: "center",
-		},
-		periodChipText: {
-			color: theme.colors.textSecondary,
-			fontSize: 13,
-			fontWeight: theme.typography.fontWeight.bold,
-		},
-		statRow: {
-			flexDirection: "row",
-			gap: theme.spacing.sm + theme.spacing.xs - 2,
-			marginTop: theme.spacing.xs,
-			marginBottom: theme.spacing.xl,
-		},
-		statCardShell: {
-			flex: 1,
-			minWidth: 0,
-			minHeight: 140,
-		},
-		statCard: {
-			flex: 1,
-			minHeight: 140,
-			paddingHorizontal: theme.spacing.md,
-			paddingVertical: theme.spacing.lg,
-		},
-		statCardContent: {
-			flex: 1,
-			justifyContent: "space-between",
-		},
-		statValueText: {
-			lineHeight: 28,
-		},
-		filterScroller: {
-			marginTop: theme.spacing.xs,
-			marginRight: -theme.spacing.xl,
-			marginBottom: theme.spacing.lg,
-		},
-		filterContent: {
-			gap: theme.spacing.sm,
-			paddingRight: theme.spacing.xl,
-			paddingBottom: theme.spacing.xs,
-		},
-		swipeShell: {
-			position: "relative",
-			overflow: "hidden",
-			borderRadius: theme.radius.lg,
-			backgroundColor: theme.colors.surface,
-		},
+		reportPeriodCard: { backgroundColor: fe.white, borderWidth: 0, borderRadius: 18, paddingHorizontal: 16, paddingVertical: 14, marginBottom: 4 },
+		reportPeriodTitle: { color: fe.muted, fontSize: 11, fontWeight: "600", marginBottom: 3 },
+		reportPeriodLabel: { color: fe.ink, fontSize: 14, fontWeight: "700" },
+		periodRow: { flexDirection: "row", gap: 8, marginBottom: 16 },
+		periodChip: { flex: 1, paddingVertical: 10, minHeight: 44, borderRadius: 14, borderWidth: 0, backgroundColor: fe.white, alignItems: "center", justifyContent: "center" },
+		periodChipActive: { backgroundColor: fe.ink },
+		periodChipText: { color: fe.slate, fontSize: 13, fontWeight: "600" },
+		periodChipTextActive: { color: fe.white },
+		statRow: { flexDirection: "row", gap: 12, marginTop: 2, marginBottom: 0 },
+		statCardShell: { flex: 1, minWidth: 0, minHeight: 132 },
+		statCard: { flex: 1, minHeight: 132, padding: 16, borderRadius: 20, backgroundColor: "rgba(255,255,255,0.12)", borderWidth: 1, borderColor: "rgba(255,255,255,0.18)", justifyContent: "space-between" },
+		statCardContent: { gap: 4 },
+		statLabel: { color: "rgba(255,255,255,0.70)", fontSize: 12, fontWeight: "600" },
+		statValueText: { color: fe.white, fontSize: 22, fontWeight: "700", lineHeight: 28 },
+		filterScroller: { marginTop: 4, marginRight: -20, marginBottom: 16 },
+		filterContent: { gap: 8, paddingRight: 20, paddingBottom: 4 },
+		swipeShell: { position: "relative", overflow: "hidden", borderRadius: 18, backgroundColor: fe.white },
 		swipeActions: {
 			position: "absolute",
 			top: 0,
@@ -1208,61 +1098,20 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			alignItems: "center",
 			justifyContent: "center",
 		},
-		swipeEditButton: {
-			backgroundColor:
-				theme.mode === "light"
-					? theme.colors.brandPrimaryDeep
-					: theme.colors.brandPrimary,
-		},
+		swipeEditButton: { backgroundColor: fe.blue },
 		swipeDeleteButton: {
 			backgroundColor: theme.colors.danger,
 		},
-		swipeActionText: {
-			color: theme.colors.textInverse,
-			fontSize: 12,
-			fontWeight: theme.typography.fontWeight.extrabold,
-		},
-		rowCard: {
-			backgroundColor: theme.colors.background,
-			borderRadius: theme.radius.lg,
-		},
-		rowCardSelected: {
-			backgroundColor:
-				theme.mode === "light" ? "rgba(101, 163, 13, 0.08)" : "rgba(163, 255, 18, 0.08)",
-		},
+		swipeActionText: { color: fe.white, fontSize: 12, fontWeight: "700" },
+		rowCard: { backgroundColor: fe.white, borderRadius: 18 },
+		rowCardSelected: { backgroundColor: "rgba(38,81,150,0.08)" },
 		rowIconPressable: {
 			position: "relative",
 		},
-		rowIconSelected: {
-			borderWidth: 1,
-			borderColor: lightBrand,
-		},
-		rowSelectionBadge: {
-			position: "absolute",
-			right: -2,
-			top: -2,
-			width: 18,
-			height: 18,
-			borderRadius: 9,
-			backgroundColor: lightBrand,
-			alignItems: "center",
-			justifyContent: "center",
-			borderWidth: 2,
-			borderColor: theme.colors.background,
-		},
-		rowSelectionBadgeText: {
-			color: theme.colors.textInverse,
-			fontSize: 11,
-			fontWeight: theme.typography.fontWeight.extrabold,
-			lineHeight: 11,
-		},
-		row: {
-			flexDirection: "row",
-			alignItems: "center",
-			gap: theme.spacing.md,
-			paddingVertical: theme.spacing.md,
-			minHeight: 44,
-		},
+		rowIconSelected: { borderWidth: 1, borderColor: fe.blue },
+		rowSelectionBadge: { position: "absolute", right: -2, top: -2, width: 18, height: 18, borderRadius: 9, backgroundColor: fe.blue, alignItems: "center", justifyContent: "center", borderWidth: 2, borderColor: fe.paper },
+		rowSelectionBadgeText: { color: fe.white, fontSize: 11, fontWeight: "700", lineHeight: 11 },
+		row: { flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 12, minHeight: 58 },
 		rowIcon: {
 			width: 44,
 			height: 44,
@@ -1271,41 +1120,12 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			justifyContent: "center",
 		},
 		rowInfo: { flex: 1 },
-		rowTitle: {
-			color: theme.colors.textPrimary,
-			fontSize: theme.typography.fontSize.md,
-			fontWeight: theme.typography.fontWeight.bold,
-		},
-		rowMerchant: {
-			color: theme.colors.textSecondary,
-			fontSize: theme.typography.fontSize.sm,
-			marginTop: 1,
-		},
-		rowSub: { color: theme.colors.textMuted, fontSize: 11, marginTop: 2 },
-		rowAmount: {
-			fontSize: theme.typography.fontSize.md,
-			fontWeight: theme.typography.fontWeight.extrabold,
-			marginRight: theme.spacing.sm,
-			textAlign: "right",
-		},
-		fab: {
-			position: "absolute",
-			right: 22,
-			bottom: 108,
-			width: 56,
-			height: 56,
-			borderRadius: 28,
-			backgroundColor: lightBrand,
-			alignItems: "center",
-			justifyContent: "center",
-			...theme.shadow.lg,
-		},
+		rowTitle: { color: fe.ink, fontSize: 14, fontWeight: "600" },
+		rowMerchant: { color: fe.slate, fontSize: 12, marginTop: 1 },
+		rowSub: { color: fe.muted, fontSize: 11, marginTop: 2 },
+		rowAmount: { fontSize: 14, fontWeight: "700", marginRight: 8, textAlign: "right" },
+		fab: { position: "absolute", right: 22, bottom: 104, width: 56, height: 56, borderRadius: 28, backgroundColor: fe.ink, alignItems: "center", justifyContent: "center", shadowColor: fe.navy, shadowOpacity: 0.22, shadowRadius: 14, shadowOffset: { width: 0, height: 8 }, elevation: 8 },
 		fabDisabled: { opacity: 0.45 },
-		fabIcon: {
-			color: theme.colors.textInverse,
-			fontSize: 26,
-			fontWeight: theme.typography.fontWeight.extrabold,
-			lineHeight: 28,
-		},
+		fabIcon: { color: fe.white, fontSize: 26, fontWeight: "700", lineHeight: 28 },
 	});
 }

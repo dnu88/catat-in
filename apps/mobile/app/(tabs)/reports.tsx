@@ -13,14 +13,69 @@ import {
 	TextInput,
 } from "react-native";
 import { useFocusEffect, useRouter } from "expo-router";
-import Svg, { Circle } from "react-native-svg";
+import { LinearGradient } from "expo-linear-gradient";
+import Svg, {
+	Circle,
+	Defs,
+	LinearGradient as SvgLinearGradient,
+	Path,
+	Stop,
+} from "react-native-svg";
 
 import { useTheme } from "../../src/theme/theme-context";
+import { financeEditorial as fe } from "../../src/theme/finance-editorial";
 import { useSupabase } from "../../src/lib/supabase";
 import { IOSWheelDatePicker } from "../../src/components/date/IOSWheelDatePicker";
 import { IconBubble } from "../../src/components/ui";
 import { PageEntrance, StaggeredEntrance } from "../../src/components/motion";
 import { KaswiseIcon, type KaswiseIconName } from "../../src/components/icons/kaswise-icons";
+
+const REPORT_BLUE_PALETTE = [
+	["#42B7EB", "#178BD0"],
+	["#62AEE0", "#0C4E91"],
+	["#3B7DB8", "#0A3D78"],
+	["#285D99", "#071B4F"],
+	["#85C6E8", "#255A94"],
+	["#4D91C7", "#102C62"],
+] as const;
+
+function pieSlicePath(size: number, percentage: number) {
+	const center = size / 2;
+	const radius = Math.max(0, center - 2);
+	const sweep = Math.min(99.999, Math.max(0.001, percentage)) * 3.6;
+	const startAngle = -90;
+	const endAngle = startAngle + sweep;
+	const point = (angle: number) => {
+		const radians = (angle * Math.PI) / 180;
+		return {
+			x: center + radius * Math.cos(radians),
+			y: center + radius * Math.sin(radians),
+		};
+	};
+	const start = point(startAngle);
+	const end = point(endAngle);
+	return `M ${center} ${center} L ${start.x} ${start.y} A ${radius} ${radius} 0 ${sweep > 180 ? 1 : 0} 1 ${end.x} ${end.y} Z`;
+}
+
+function pieWedgePath(size: number, startFraction: number, endFraction: number) {
+	const center = size / 2;
+	const radius = Math.max(0, center - 1);
+	const startDeg = -90 + Math.max(0, startFraction) * 360;
+	const endDeg = -90 + Math.min(1, endFraction) * 360;
+	const sweep = endDeg - startDeg;
+	if (sweep <= 0) return "";
+	const point = (angle: number) => {
+		const radians = (angle * Math.PI) / 180;
+		return {
+			x: center + radius * Math.cos(radians),
+			y: center + radius * Math.sin(radians),
+		};
+	};
+	const start = point(startDeg);
+	const end = point(endDeg);
+	const largeArc = sweep > 180 ? 1 : 0;
+	return `M ${center} ${center} L ${start.x} ${start.y} A ${radius} ${radius} 0 ${largeArc} 1 ${end.x} ${end.y} Z`;
+}
 import {
 	resolveCategoryVisual,
 	type CategoryTone,
@@ -808,18 +863,15 @@ export default function ReportsScreen() {
 	const netValueFor = (idx: number) =>
 		(chartData.income[idx] ?? 0) - (chartData.expense[idx] ?? 0);
 	const pulseAccessibilityLabel = `${tx.trendTitle}: ${periodDisplayLabel}`;
-	const donutSize = 180;
+	const donutSize = 200;
 	const donutCenter = donutSize / 2;
 	const donutRadius = 64;
-	const donutStrokeWidth = 18;
-	const donutGlowStrokeWidth = 21;
+	const donutStrokeWidth = 48;
+	const donutGlowStrokeWidth = 52;
 	const donutCircumference = 2 * Math.PI * donutRadius;
 	const donutSegmentGap = 6;
-	const incomeAccent = categoryRoleColors.success;
-	const expenseAccent =
-		theme.mode === "light"
-			? theme.colors.textPrimary
-			: categoryRoleColors.danger;
+	const incomeAccent = fe.financialTotal;
+	const expenseAccent = fe.financialTotal;
 	const totalIncomeJuta = summaryIncome / 1_000_000;
 	const totalExpenseJuta = summaryExpense / 1_000_000;
 	const netJuta = summaryNet / 1_000_000;
@@ -832,7 +884,7 @@ export default function ReportsScreen() {
 		dynamicCategories.reduce((sum, cat) => sum + Math.max(0, cat.percent), 0) ||
 		100;
 	const donutSegments = dynamicCategories
-		.map((cat) => {
+		.map((cat, index) => {
 			const normalizedRatio =
 				categoryValueTotal > 0
 					? Math.max(0, cat.value ?? 0) / categoryValueTotal
@@ -841,17 +893,23 @@ export default function ReportsScreen() {
 			const segmentGap = Math.min(donutSegmentGap, rawDashLength * 0.32);
 			return {
 				...cat,
+				gradientId: `report-blue-${index}`,
+				gradientColors: REPORT_BLUE_PALETTE[index % REPORT_BLUE_PALETTE.length],
 				dashLength: Math.max(0, rawDashLength - segmentGap),
 				gapLength: donutCircumference - Math.max(0, rawDashLength - segmentGap),
 				sweepLength: rawDashLength,
 				offsetLength: 0,
+				ratio: normalizedRatio,
 			};
 		})
 		.map((cat, index, items) => {
 			const previousLength = items
 				.slice(0, index)
 				.reduce((sum, item) => sum + item.sweepLength, 0);
-			return { ...cat, offsetLength: previousLength };
+			const previousRatio = items
+				.slice(0, index)
+				.reduce((sum, item) => sum + item.ratio, 0);
+			return { ...cat, offsetLength: previousLength, startFraction: previousRatio };
 		});
 
 	const selectedCategory =
@@ -1270,11 +1328,12 @@ export default function ReportsScreen() {
 						<RefreshControl
 							refreshing={dataLoading}
 							onRefresh={() => setRefreshTick((value) => value + 1)}
-							tintColor={theme.colors.brandPrimary}
+							tintColor={fe.ink}
 						/>
 					}
 				>
-				{/* Header */}
+				{/* Reference-led analytics hero */}
+				<LinearGradient testID="reports-analytics-hero" colors={[fe.navySurface, fe.blueDeep, fe.blueBright]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.analyticsHero}>
 				<View style={styles.headerRow}>
 					<View>
 						<Text style={styles.title}>{tx.title}</Text>
@@ -1292,16 +1351,27 @@ export default function ReportsScreen() {
 						<Pressable
 							accessibilityRole="button"
 							accessibilityLabel={tx.shareA11y}
-							style={({ pressed }) => [
-								styles.shareButton,
-								pressed && { opacity: 0.7 },
-							]}
+							style={({ pressed }) => [styles.shareButton, pressed && { opacity: 0.7 }]}
 							onPress={handleShare}
 						>
 							<Text style={styles.shareButtonText}>{tx.share}</Text>
 						</Pressable>
 					</View>
 				</View>
+				<View testID="reports-hero-bubbles" style={styles.heroBubbleCluster}>
+					{dynamicCategories.slice(0, 5).map((cat, index) => {
+						const size = [112, 88, 96, 106, 82][index] ?? 88;
+						const tones = REPORT_BLUE_PALETTE[index % REPORT_BLUE_PALETTE.length];
+						return (
+							<LinearGradient key={`hero-${cat.id}`} colors={tones} start={{ x: 0.15, y: 0 }} end={{ x: 0.9, y: 1 }} style={[styles.heroBubble, { width: size, height: size, borderRadius: size / 2 }]}>
+								<KaswiseIcon name={cat.icon} color={fe.white} size={18} weight="bold" />
+								<Text numberOfLines={1} style={styles.heroBubbleLabel}>{cat.label}</Text>
+								<Text style={styles.heroBubblePercent}>{cat.percent}%</Text>
+							</LinearGradient>
+						);
+					})}
+				</View>
+				</LinearGradient>
 
 				{/* Summary Row — shown before controls */}
 				<StaggeredEntrance index={0} testID="reports-entrance-summary">
@@ -1331,7 +1401,7 @@ export default function ReportsScreen() {
 						<Text style={styles.summaryLabel}>{tx.savings}</Text>
 						<Text
 							testID="reports-summary-savings-value"
-							style={[styles.summaryValue, { color: theme.colors.textPrimary }]}
+							style={[styles.summaryValue, { color: fe.ink }]}
 						>
 							{formatCompactRupiah(summaryNet)}
 						</Text>
@@ -1355,7 +1425,7 @@ export default function ReportsScreen() {
 					<View testID="reports-envelope-entry" style={styles.envelopeEntryCard}>
 					<View style={styles.envelopeEntryTopRow}>
 						<View style={styles.envelopeEntryTitleRow}>
-							<IconBubble name="budgets" tone="primary" size={36} />
+							<IconBubble name="budgets" tone="navy" color={fe.blue} backgroundColor="rgba(12,78,145,0.12)" borderColor="rgba(12,78,145,0.24)" size={36} />
 							<View
 								testID="reports-envelope-copy"
 								style={styles.envelopeEntryCopy}
@@ -1547,7 +1617,7 @@ export default function ReportsScreen() {
 												<KaswiseIcon
 													name="more"
 													size={18}
-													color={selected ? (theme.mode === "light" ? theme.colors.brandPrimaryDeep : theme.colors.brandPrimary) : theme.colors.textMuted}
+													color={selected ? (fe.ink) : fe.muted}
 													weight="bold"
 												/>
 											</Pressable>
@@ -1681,7 +1751,7 @@ export default function ReportsScreen() {
 														<Text
 															style={[
 																styles.tooltipValue,
-																{ color: theme.colors.success },
+																{ color: fe.financialIncome },
 															]}
 														>
 															{tx.tooltipIncome}: {" "}
@@ -1690,7 +1760,7 @@ export default function ReportsScreen() {
 														<Text
 															style={[
 																styles.tooltipValue,
-																{ color: theme.colors.danger },
+																{ color: fe.financialExpense },
 															]}
 														>
 															{tx.tooltipExpense}: {" "}
@@ -1709,7 +1779,7 @@ export default function ReportsScreen() {
 									<View
 										style={[
 											styles.legendDot,
-											{ backgroundColor: theme.colors.success },
+											{ backgroundColor: fe.financialIncome },
 										]}
 									/>
 									<Text style={styles.legendText}>{tx.income}</Text>
@@ -1718,7 +1788,7 @@ export default function ReportsScreen() {
 									<View
 										style={[
 											styles.legendDot,
-											{ backgroundColor: theme.colors.danger },
+											{ backgroundColor: fe.financialExpense },
 										]}
 									/>
 									<Text style={styles.legendText}>{tx.expense}</Text>
@@ -1779,76 +1849,79 @@ export default function ReportsScreen() {
 										accessibilityLabel={tx.donutA11y}
 										style={styles.donutSvg}
 									>
-										<Circle
-											cx={donutCenter}
-											cy={donutCenter}
-											r={donutRadius + 4}
-											fill="none"
-											stroke={theme.colors.borderSoft}
-											strokeWidth={1}
-											opacity={theme.mode === "dark" ? 0.55 : 0.72}
-										/>
-										<Circle
-											cx={donutCenter}
-											cy={donutCenter}
-											r={donutRadius}
-											fill="none"
-											stroke={theme.colors.borderSoft}
-											strokeWidth={donutStrokeWidth}
-											opacity={theme.mode === "dark" ? 0.18 : 0.28}
-										/>
-										<Circle
-											cx={donutCenter}
-											cy={donutCenter}
-											r={donutRadius - 14}
-											fill="none"
-											stroke={
-												theme.mode === "dark"
-													? "rgba(255,255,255,0.08)"
-													: "rgba(15,23,42,0.06)"
-											}
-											strokeWidth={1}
-										/>
+										<Defs>
+											{donutSegments.map((cat) => (
+												<SvgLinearGradient key={cat.gradientId} id={cat.gradientId} x1="0%" y1="0%" x2="100%" y2="100%">
+													<Stop offset="0%" stopColor={cat.gradientColors[0]} />
+													<Stop offset="52%" stopColor={cat.gradientColors[1]} />
+													<Stop offset="100%" stopColor={fe.navySurface} />
+												</SvgLinearGradient>
+											))}
+										</Defs>
 										{donutSegments.map((cat) => (
-											<Circle
-												key={`glow-${cat.id}`}
-												testID={`reports-donut-glow-${cat.id}`}
-												cx={donutCenter}
-												cy={donutCenter}
-												r={donutRadius}
-												fill="none"
-												stroke={cat.color}
-												strokeWidth={donutGlowStrokeWidth}
-												strokeDasharray={`${cat.dashLength} ${cat.gapLength}`}
-												strokeDashoffset={-cat.offsetLength}
-												strokeLinecap="butt"
-												opacity={theme.mode === "dark" ? 0.09 : 0.045}
-												transform={`rotate(-90 ${donutCenter} ${donutCenter})`}
-											/>
-										))}
-										{donutSegments.map((cat) => (
-											<Circle
+											<Path
 												key={cat.id}
 												testID={`reports-donut-segment-${cat.id}`}
-												cx={donutCenter}
-												cy={donutCenter}
-												r={donutRadius}
-												fill="none"
-												stroke={cat.color}
-												strokeWidth={donutStrokeWidth}
-												strokeDasharray={`${cat.dashLength} ${cat.gapLength}`}
-												strokeDashoffset={-cat.offsetLength}
-												strokeLinecap="butt"
-												opacity={theme.mode === "dark" ? 0.9 : 0.86}
-												transform={`rotate(-90 ${donutCenter} ${donutCenter})`}
+												d={pieWedgePath(
+													donutSize,
+													cat.startFraction,
+													cat.startFraction + cat.ratio,
+												)}
+												fill={`url(#${cat.gradientId})`}
+												stroke={fe.white}
+												strokeWidth={3}
+												strokeLinejoin="round"
 											/>
 										))}
+										<Circle
+											cx={donutSize * 0.36}
+											cy={donutSize * 0.28}
+											r={donutSize * 0.22}
+											fill="rgba(255,255,255,0.10)"
+										/>
 									</Svg>
 									<View style={styles.ringInner}>
 										<Text style={styles.ringValue}>{donutTotalLabel}</Text>
 										<Text style={styles.ringLabel}>{tx.ringLabel}</Text>
 									</View>
 								</View>
+							</View>
+
+							<View testID="reports-bubble-row" style={styles.bubbleRow}>
+								{dynamicCategories.map((cat, index) => {
+									const bubbleSize = Math.round(76 + Math.min(cat.percent, 100) * 0.72);
+									const tones = REPORT_BLUE_PALETTE[index % REPORT_BLUE_PALETTE.length];
+									const gradientId = `bubble-blue-${index}`;
+									return (
+										<Pressable
+											key={`bubble-${cat.id}`}
+											testID={`reports-bubble-${cat.id}`}
+											accessibilityRole="button"
+											accessibilityLabel={tx.openCategoryA11y(cat.label)}
+											onPress={() => setSelectedCategoryId(cat.id)}
+											style={[styles.bubble, { width: bubbleSize, height: bubbleSize, borderRadius: bubbleSize / 2 }]}
+										>
+											<Svg width={bubbleSize} height={bubbleSize} style={styles.bubbleSvg} pointerEvents="none">
+												<Defs>
+													<SvgLinearGradient id={gradientId} x1="0%" y1="0%" x2="100%" y2="100%">
+														<Stop offset="0%" stopColor={tones[0]} stopOpacity={0.84} />
+														<Stop offset="52%" stopColor={tones[1]} stopOpacity={0.92} />
+														<Stop offset="100%" stopColor={fe.navySurface} />
+													</SvgLinearGradient>
+												</Defs>
+												<Circle cx={bubbleSize / 2} cy={bubbleSize / 2} r={bubbleSize / 2 - 2} fill={`url(#${gradientId})`} />
+												<Path d={pieSlicePath(bubbleSize, cat.percent)} fill="rgba(255,255,255,0.26)" />
+												<Circle cx={bubbleSize * 0.36} cy={bubbleSize * 0.25} r={bubbleSize * 0.16} fill="rgba(255,255,255,0.11)" />
+												<Circle cx={bubbleSize / 2} cy={bubbleSize / 2} r={bubbleSize / 2 - 2} fill="none" stroke="rgba(255,255,255,0.32)" strokeWidth={1} />
+											</Svg>
+											<View style={styles.bubbleContent} pointerEvents="none">
+												<KaswiseIcon name={cat.icon} color={fe.white} size={15} weight="bold" />
+												<Text style={styles.bubbleLabel} numberOfLines={1}>{cat.label}</Text>
+												<Text style={styles.bubbleText}>{cat.percent}%</Text>
+											</View>
+										</Pressable>
+									);
+								})}
 							</View>
 
 							{dynamicCategories.map((cat, idx) => (
@@ -2109,7 +2182,7 @@ export default function ReportsScreen() {
 							value={ruleName}
 							onChangeText={setRuleName}
 							placeholder={defaultRuleName}
-							placeholderTextColor={theme.colors.textMuted}
+							placeholderTextColor={fe.muted}
 							style={styles.ruleNameInput}
 						/>
 						<View style={styles.modalActions}>
@@ -2214,7 +2287,7 @@ export default function ReportsScreen() {
 										value={editingRuleName}
 										onChangeText={setEditingRuleName}
 										placeholder={renameSavedRule.name}
-										placeholderTextColor={theme.colors.textMuted}
+										placeholderTextColor={fe.muted}
 										style={styles.ruleNameInput}
 										autoFocus
 										selectTextOnFocus
@@ -2367,23 +2440,19 @@ export default function ReportsScreen() {
 }
 
 function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
-	const brandText =
-		theme.mode === "light"
-			? theme.colors.brandPrimaryDeep
-			: theme.colors.brandPrimary;
-	const brandSoftBg =
-		theme.mode === "light"
-			? "rgba(101, 163, 13, 0.14)"
-			: "rgba(163, 255, 18, 0.10)";
-	const brandSoftBorder =
-		theme.mode === "light"
-			? "rgba(101, 163, 13, 0.28)"
-			: "rgba(163, 255, 18, 0.35)";
+	const brandText = fe.ink;
+	const brandSoftBg = fe.paper;
+	const brandSoftBorder = "transparent";
 
 	return StyleSheet.create({
-		screen: { flex: 1, backgroundColor: theme.colors.background },
+		screen: { flex: 1, backgroundColor: fe.paper },
 		pageEntrance: { flex: 1 },
 		content: { padding: 20, gap: 10, paddingBottom: 26 },
+		analyticsHero: { marginHorizontal: -20, marginTop: -20, paddingHorizontal: 20, paddingTop: 20, paddingBottom: 48, borderBottomLeftRadius: 42, borderBottomRightRadius: 42, overflow: "hidden", gap: 22 },
+		heroBubbleCluster: { minHeight: 238, flexDirection: "row", flexWrap: "wrap", justifyContent: "center", alignContent: "center", gap: 8, paddingHorizontal: 6 },
+		heroBubble: { alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: "rgba(255,255,255,0.20)", shadowColor: fe.navy, shadowOpacity: 0.24, shadowRadius: 14, shadowOffset: { width: 0, height: 8 }, paddingHorizontal: 9 },
+		heroBubbleLabel: { color: "rgba(255,255,255,0.82)", fontSize: 9, fontWeight: "600", marginTop: 4, maxWidth: 78 },
+		heroBubblePercent: { color: fe.white, fontSize: 13, fontWeight: "800", marginTop: 1 },
 		headerRow: {
 			flexDirection: "row",
 			justifyContent: "space-between",
@@ -2391,54 +2460,53 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			gap: 12,
 		},
 		title: {
-			color: theme.colors.textPrimary,
+			color: fe.white,
 			fontSize: theme.typography.fontSize["4xl"],
 			fontWeight: theme.typography.fontWeight.extrabold,
 			letterSpacing: theme.typography.letterSpacing.tight,
 		},
 		subtitle: {
-			color: theme.colors.textSecondary,
+			color: "rgba(255,255,255,0.64)",
 			fontSize: theme.typography.fontSize.sm,
 			marginTop: 2,
 		},
 		monthBadge: {
-			backgroundColor: brandSoftBg,
+			backgroundColor: "rgba(255,255,255,0.12)",
 			borderWidth: 1,
-			borderColor: brandSoftBorder,
+			borderColor: "rgba(255,255,255,0.20)",
 			borderRadius: theme.radius.pill,
 			paddingHorizontal: 12,
 			paddingVertical: 6,
 		},
 		monthBadgeText: {
-			color: brandText,
+			color: fe.white,
 			fontSize: theme.typography.fontSize.sm,
 			fontWeight: theme.typography.fontWeight.bold,
 		},
 		contextBadge: {
-			backgroundColor: theme.colors.mutedSurface,
-			borderColor: theme.colors.borderSoft,
+			backgroundColor: "rgba(255,255,255,0.12)",
+			borderColor: "rgba(255,255,255,0.20)",
 			borderRadius: theme.radius.pill,
 			borderWidth: 1,
 			paddingHorizontal: 12,
 			paddingVertical: 6,
 		},
 		contextBadgeText: {
-			color: theme.colors.textSecondary,
+			color: fe.white,
 			fontSize: theme.typography.fontSize.sm,
 			fontWeight: theme.typography.fontWeight.bold,
 		},
 		headerRight: { alignItems: "flex-end", gap: 8 },
 		shareButton: {
-			backgroundColor:
-				theme.mode === "light"
-					? theme.colors.brandPrimaryDeep
-					: theme.colors.brandPrimary,
+			backgroundColor: "rgba(255,255,255,0.16)",
+			borderWidth: 1,
+			borderColor: "rgba(255,255,255,0.22)",
 			borderRadius: theme.radius.pill,
 			paddingHorizontal: 12,
 			paddingVertical: 6,
 		},
 		shareButtonText: {
-			color: theme.colors.textInverse,
+			color: fe.white,
 			fontSize: 11,
 			fontWeight: theme.typography.fontWeight.bold,
 		},
@@ -2463,26 +2531,26 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			paddingHorizontal: 12,
 			borderRadius: 999,
 			borderWidth: 1,
-			borderColor: theme.colors.borderSoft,
-			backgroundColor: theme.colors.surface,
+			borderColor: fe.line,
+			backgroundColor: fe.white,
 		},
 		periodChipActive: {
-			backgroundColor: brandSoftBg,
-			borderColor: brandSoftBorder,
+			backgroundColor: fe.ink,
+			borderColor: fe.ink,
 		},
 		periodChipText: {
 			fontSize: 11,
 			fontWeight: "600",
-			color: theme.colors.textSecondary,
+			color: fe.slate,
 		},
 		periodChipTextActive: {
-			color: brandText,
+			color: fe.white,
 		},
 		periodControlsCard: {
-			backgroundColor: theme.colors.surface,
+			backgroundColor: fe.white,
 			borderRadius: 16,
 			borderWidth: 1,
-			borderColor: theme.colors.borderSoft,
+			borderColor: fe.line,
 			padding: 10,
 			gap: 8,
 		},
@@ -2498,21 +2566,21 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			minWidth: 180,
 		},
 		activePeriodTitle: {
-			color: theme.colors.textMuted,
-			fontSize: 10,
+			color: fe.muted,
+			fontSize: 9,
 			fontWeight: "800",
 			textTransform: "uppercase",
 			letterSpacing: 0.35,
 		},
 		activePeriodValue: {
-			color: theme.colors.textPrimary,
+			color: fe.ink,
 			fontSize: 13,
 			fontWeight: "800",
 			lineHeight: 17,
 			marginTop: 1,
 		},
 		activePeriodDate: {
-			color: theme.colors.textMuted,
+			color: fe.muted,
 			fontSize: 11,
 			fontWeight: "700",
 			lineHeight: 15,
@@ -2536,12 +2604,12 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 		},
 		savedRulesInline: {
 			borderTopWidth: 1,
-			borderTopColor: theme.colors.borderSoft,
+			borderTopColor: fe.line,
 			paddingTop: 8,
 			gap: 6,
 		},
 		savedRulesInlineTitle: {
-			color: theme.colors.textMuted,
+			color: fe.muted,
 			fontSize: 10,
 			fontWeight: "800",
 			textTransform: "uppercase",
@@ -2557,15 +2625,15 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			minHeight: 46,
 			borderRadius: 14,
 			borderWidth: 1,
-			borderColor: theme.colors.borderSoft,
-			backgroundColor: theme.colors.mutedSurface,
+			borderColor: fe.line,
+			backgroundColor: fe.paper,
 			flexDirection: "row",
 			alignItems: "stretch",
 			overflow: "hidden",
 		},
 		savedRuleChipShellActive: {
-			backgroundColor: brandSoftBg,
-			borderColor: brandSoftBorder,
+			backgroundColor: fe.ink,
+			borderColor: fe.ink,
 		},
 		savedRuleChip: {
 			flex: 1,
@@ -2581,24 +2649,24 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			alignItems: "center",
 			justifyContent: "center",
 			borderLeftWidth: 1,
-			borderLeftColor: theme.colors.borderSoft,
+			borderLeftColor: fe.line,
 		},
 		savedRuleManageButtonActive: {
-			borderLeftColor: brandSoftBorder,
-			backgroundColor: `${theme.colors.surface}66`,
+			borderLeftColor: "rgba(255,255,255,0.18)",
+			backgroundColor: "rgba(255,255,255,0.10)",
 		},
 		savedRuleName: {
-			color: theme.colors.textPrimary,
+			color: fe.ink,
 			fontSize: 12,
 			fontWeight: "800",
 		},
-		savedRuleNameActive: { color: brandText },
+		savedRuleNameActive: { color: fe.white },
 		savedRuleSummary: {
-			color: theme.colors.textMuted,
+			color: fe.muted,
 			fontSize: 10,
 			fontWeight: "700",
 		},
-		savedRuleSummaryActive: { color: brandText },
+		savedRuleSummaryActive: { color: fe.white },
 		customRulePrompt: {
 			flexDirection: "row",
 			alignItems: "center",
@@ -2621,7 +2689,7 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			fontWeight: "800",
 		},
 		saveRuleHint: {
-			color: theme.colors.textSecondary,
+			color: fe.slate,
 			fontSize: 12,
 			fontWeight: "600",
 			marginBottom: 8,
@@ -2630,40 +2698,40 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			minHeight: 46,
 			borderRadius: 14,
 			borderWidth: 1,
-			borderColor: theme.colors.borderSoft,
-			backgroundColor: theme.colors.mutedSurface,
-			color: theme.colors.textPrimary,
+			borderColor: fe.line,
+			backgroundColor: fe.paper,
+			color: fe.ink,
 			fontSize: 14,
 			fontWeight: "700",
 			paddingHorizontal: 12,
 			marginBottom: 12,
 		},
 		ruleManageSheet: {
-			backgroundColor: theme.colors.surface,
+			backgroundColor: fe.white,
 			borderTopLeftRadius: 24,
 			borderTopRightRadius: 24,
 			paddingHorizontal: 20,
 			paddingTop: 10,
 			paddingBottom: 34,
 			borderTopWidth: 1,
-			borderColor: theme.colors.borderSoft,
+			borderColor: fe.line,
 		},
 		ruleManageHandle: {
 			alignSelf: "center",
 			width: 42,
 			height: 4,
 			borderRadius: 999,
-			backgroundColor: theme.colors.borderSoft,
+			backgroundColor: fe.line,
 			marginBottom: 14,
 		},
 		ruleManageName: {
-			color: theme.colors.textPrimary,
+			color: fe.ink,
 			fontSize: 15,
 			fontWeight: "800",
 			textAlign: "center",
 		},
 		ruleManageSummary: {
-			color: theme.colors.textMuted,
+			color: fe.muted,
 			fontSize: 12,
 			fontWeight: "700",
 			textAlign: "center",
@@ -2677,13 +2745,13 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			minHeight: 46,
 			borderRadius: 14,
 			borderWidth: 1,
-			borderColor: theme.colors.borderSoft,
-			backgroundColor: theme.colors.mutedSurface,
+			borderColor: fe.line,
+			backgroundColor: fe.paper,
 			paddingHorizontal: 14,
 			justifyContent: "center",
 		},
 		ruleManageMenuText: {
-			color: theme.colors.textPrimary,
+			color: fe.ink,
 			fontSize: 14,
 			fontWeight: "800",
 		},
@@ -2701,7 +2769,7 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 		},
 		modalCenterOverlay: {
 			flex: 1,
-			backgroundColor: `${theme.colors.background}${theme.opacity[50] * 100}`,
+			backgroundColor: `${fe.paper}${theme.opacity[50] * 100}`,
 			alignItems: "center",
 			justifyContent: "center",
 			padding: 20,
@@ -2711,8 +2779,8 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			maxWidth: 360,
 			borderRadius: 22,
 			borderWidth: 1,
-			borderColor: theme.colors.borderSoft,
-			backgroundColor: theme.colors.surface,
+			borderColor: fe.line,
+			backgroundColor: fe.white,
 			padding: 18,
 		},
 		deleteRuleCard: {
@@ -2721,17 +2789,17 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			borderRadius: 22,
 			borderWidth: 1,
 			borderColor: `${theme.colors.danger}30`,
-			backgroundColor: theme.colors.surface,
+			backgroundColor: fe.white,
 			padding: 18,
 		},
 		renameRuleTitle: {
-			color: theme.colors.textPrimary,
-			fontSize: 17,
+			color: fe.ink,
+			fontSize: 14,
 			fontWeight: "800",
 			textAlign: "center",
 		},
 		renameRuleSummary: {
-			color: theme.colors.textMuted,
+			color: fe.muted,
 			fontSize: 12,
 			fontWeight: "700",
 			textAlign: "center",
@@ -2743,7 +2811,7 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			gap: 10,
 		},
 		deleteRuleBody: {
-			color: theme.colors.textSecondary,
+			color: fe.slate,
 			fontSize: 13,
 			fontWeight: "600",
 			lineHeight: 18,
@@ -2767,23 +2835,23 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			alignItems: "center",
 			justifyContent: "center",
 			marginTop: 12,
-			backgroundColor: theme.colors.mutedSurface,
+			backgroundColor: fe.paper,
 		},
 		ruleManageCancelText: {
-			color: theme.colors.textSecondary,
+			color: fe.slate,
 			fontSize: 13,
 			fontWeight: "800",
 		},
 		loadingCard: {
-			backgroundColor: theme.colors.surface,
+			backgroundColor: fe.white,
 			borderRadius: 12,
 			borderWidth: 1,
-			borderColor: theme.colors.borderSoft,
+			borderColor: fe.line,
 			paddingVertical: 10,
 			paddingHorizontal: 12,
 		},
 		loadingText: {
-			color: theme.colors.textSecondary,
+			color: fe.slate,
 			fontSize: 12,
 			fontWeight: "600",
 		},
@@ -2814,10 +2882,10 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			fontWeight: "600",
 		},
 		envelopeEntryCard: {
-			backgroundColor: theme.colors.surface,
+			backgroundColor: fe.white,
 			borderRadius: 18,
 			borderWidth: 1,
-			borderColor: theme.colors.borderSoft,
+			borderColor: fe.line,
 			padding: 14,
 		},
 		envelopeEntryTopRow: {
@@ -2840,12 +2908,12 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			paddingRight: 8,
 		},
 		envelopeEntryTitle: {
-			color: theme.colors.textPrimary,
+			color: fe.ink,
 			fontSize: 15,
 			fontWeight: "800",
 		},
 		envelopeEntryMeta: {
-			color: theme.colors.textMuted,
+			color: fe.muted,
 			fontSize: 12,
 			lineHeight: 16,
 			marginTop: 2,
@@ -2874,30 +2942,31 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			minWidth: 96,
 			paddingVertical: 10,
 			paddingHorizontal: 16,
-			borderRadius: 12,
-			borderWidth: 1,
-			borderColor: theme.colors.borderSoft,
-			backgroundColor: theme.colors.surface,
+			borderRadius: 14,
+			borderWidth: 0,
+			backgroundColor: fe.white,
 			alignItems: "center",
 		},
 		tabChipActive: {
-			backgroundColor: brandSoftBg,
-			borderColor: brandSoftBorder,
+			backgroundColor: fe.ink,
+			borderColor: fe.ink,
 		},
 		tabChipText: {
-			color: theme.colors.textSecondary,
+			color: fe.slate,
 			fontSize: 13,
-			fontWeight: "700",
+			fontWeight: "500",
 		},
-		tabChipTextActive: { color: brandText },
+		tabChipTextActive: { color: fe.white },
 		summaryCard: {
-			backgroundColor: theme.colors.card,
-			borderRadius: 24,
+			backgroundColor: fe.white,
+			borderRadius: 28,
 			padding: 18,
 			borderWidth: 1,
-			borderColor: theme.colors.borderSoft,
+			borderColor: fe.line,
 			gap: 14,
 			overflow: "hidden",
+			marginTop: -36,
+			zIndex: 2,
 		},
 		summaryTopRow: {
 			flexDirection: "row",
@@ -2910,39 +2979,39 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 		},
 		summaryDivider: {
 			width: 1,
-			backgroundColor: theme.colors.borderSoft,
+			backgroundColor: fe.line,
 		},
 		summarySavingsRow: {
 			borderTopWidth: 1,
-			borderTopColor: theme.colors.borderSoft,
+			borderTopColor: fe.line,
 			paddingTop: 12,
 			gap: 4,
 		},
 		summaryLabel: {
-			color: theme.colors.textSecondary,
+			color: fe.slate,
 			fontSize: 12,
 			fontWeight: "600",
 		},
 		summaryValue: { fontSize: 18, fontWeight: "800", marginTop: 2 },
 		summarySavingRate: {
-			color: theme.colors.textMuted,
+			color: fe.muted,
 			fontSize: 11,
 			marginTop: 2,
 		},
 		chartCard: {
-			backgroundColor: theme.colors.surface,
+			backgroundColor: fe.white,
 			borderRadius: 20,
 			borderWidth: 1,
-			borderColor: theme.colors.borderSoft,
+			borderColor: fe.line,
 			padding: 16,
 			gap: 10,
 		},
 		chartTitle: {
-			color: theme.colors.textPrimary,
+			color: fe.ink,
 			fontSize: 16,
 			fontWeight: "800",
 		},
-		chartSub: { color: theme.colors.textSecondary, fontSize: 12 },
+		chartSub: { color: fe.slate, fontSize: 12 },
 		lineChartArea: {
 			height: 190,
 			marginTop: 8,
@@ -2958,7 +3027,7 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 		},
 		gridLine: {
 			height: 1,
-			backgroundColor: theme.colors.borderSoft,
+			backgroundColor: fe.line,
 		},
 		lineGraphLayer: {
 			flex: 1,
@@ -3011,15 +3080,15 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 					: "rgba(10,10,10,0.45)",
 		},
 		incomePulse: {
-			backgroundColor: theme.colors.success,
-			shadowColor: theme.colors.success,
+			backgroundColor: fe.financialIncome,
+			shadowColor: fe.financialIncome,
 			shadowOpacity: theme.mode === "light" ? 0.18 : 0.28,
 			shadowRadius: 8,
 			shadowOffset: { width: 0, height: 4 },
 		},
 		expensePulse: {
-			backgroundColor: theme.colors.danger,
-			shadowColor: theme.colors.danger,
+			backgroundColor: fe.financialExpense,
+			shadowColor: fe.financialExpense,
 			shadowOpacity: theme.mode === "light" ? 0.12 : 0.26,
 			shadowRadius: 8,
 			shadowOffset: { width: 0, height: 4 },
@@ -3029,13 +3098,13 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			height: 10,
 			borderRadius: 5,
 			borderWidth: 2,
-			borderColor: theme.colors.surface,
+			borderColor: fe.white,
 		},
 		netDotPositive: {
-			backgroundColor: theme.colors.brandPrimary,
+			backgroundColor: fe.ink,
 		},
 		netDotNegative: {
-			backgroundColor: theme.colors.textPrimary,
+			backgroundColor: fe.ink,
 		},
 		lineDot: {
 			position: "absolute",
@@ -3043,7 +3112,7 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			height: 10,
 			borderRadius: 5,
 			borderWidth: 2,
-			borderColor: theme.colors.surface,
+			borderColor: fe.white,
 			zIndex: 3,
 		},
 		incomeDot: {
@@ -3073,23 +3142,23 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			left: "50%",
 			marginLeft: -62,
 			width: 124,
-			backgroundColor: theme.colors.surface,
+			backgroundColor: fe.white,
 			borderRadius: theme.radius.md,
 			padding: 8,
 			borderWidth: 1,
-			borderColor: theme.colors.borderSoft,
+			borderColor: fe.line,
 			...theme.shadow.md,
 			zIndex: 12,
 		},
 		tooltipTitle: {
 			fontSize: 11,
 			fontWeight: "700",
-			color: theme.colors.textPrimary,
+			color: fe.ink,
 			marginBottom: 4,
 		},
 		tooltipValue: { fontSize: 10, fontWeight: "600", marginBottom: 2 },
 		chartLabel: {
-			color: theme.colors.textMuted,
+			color: fe.muted,
 			fontSize: 10,
 			fontWeight: "700",
 			marginTop: 6,
@@ -3098,58 +3167,57 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 		legendItem: { flexDirection: "row", alignItems: "center", gap: 6 },
 		legendDot: { width: 8, height: 8, borderRadius: 999 },
 		legendText: {
-			color: theme.colors.textMuted,
+			color: fe.muted,
 			fontSize: 11,
 			fontWeight: "600",
 		},
 		categoryCard: {
-			backgroundColor: theme.colors.surface,
-			borderRadius: 20,
-			borderWidth: 1,
-			borderColor: theme.colors.borderSoft,
-			padding: 16,
-			gap: 10,
+			backgroundColor: fe.white,
+			borderRadius: 22,
+			borderWidth: 0,
+			padding: 18,
+			gap: 12,
 		},
 		categoryCardTitle: {
-			color: theme.colors.textPrimary,
-			fontSize: 16,
-			fontWeight: "800",
+			color: fe.ink,
+			fontSize: 18,
+			fontWeight: "600",
 		},
-		categoryCardSub: { color: theme.colors.textSecondary, fontSize: 12 },
+		categoryCardSub: { color: fe.slate, fontSize: 12 },
 		otherInsightCard: {
-			backgroundColor: theme.colors.mutedSurface,
+			backgroundColor: fe.paper,
 			borderWidth: 1,
-			borderColor: theme.colors.borderSoft,
+			borderColor: fe.line,
 			borderRadius: 14,
 			padding: 12,
 		},
 		otherInsightText: {
-			color: theme.colors.textSecondary,
+			color: fe.slate,
 			fontSize: 12,
 			fontWeight: "700",
 			lineHeight: 17,
 		},
 		top5Card: {
-			backgroundColor: theme.colors.surface,
+			backgroundColor: fe.white,
 			borderRadius: 20,
 			borderWidth: 1,
-			borderColor: theme.colors.borderSoft,
+			borderColor: fe.line,
 			padding: 16,
 			gap: 12,
 		},
 		top5Title: {
-			color: theme.colors.textPrimary,
+			color: fe.ink,
 			fontSize: 16,
 			fontWeight: "800",
 		},
-		top5Sub: { color: theme.colors.textSecondary, fontSize: 12 },
+		top5Sub: { color: fe.slate, fontSize: 12 },
 		top5Row: {
 			flexDirection: "row",
 			alignItems: "center",
 			justifyContent: "space-between",
 			paddingTop: 12,
 			borderTopWidth: 1,
-			borderTopColor: theme.colors.borderSoft,
+			borderTopColor: fe.line,
 		},
 		top5Left: {
 			flexDirection: "row",
@@ -3169,13 +3237,13 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 		},
 		top5RankText: { color: brandText, fontSize: 12, fontWeight: "800" },
 		top5Label: {
-			color: theme.colors.textPrimary,
+			color: fe.ink,
 			fontSize: 14,
 			fontWeight: "700",
 			flexShrink: 1,
 		},
 		top5Amount: {
-			color: theme.colors.textSecondary,
+			color: fe.financialExpense,
 			fontSize: 13,
 			fontWeight: "700",
 		},
@@ -3185,34 +3253,28 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			paddingBottom: 20,
 		},
 		donutChart: {
-			width: 180,
-			height: 180,
-			borderRadius: 90,
+			width: 200,
+			height: 200,
+			borderRadius: 100,
 			alignItems: "center",
 			justifyContent: "center",
 			overflow: "visible",
 			position: "relative",
-			backgroundColor:
-				theme.mode === "light"
-					? theme.colors.mutedSurface
-					: theme.colors.surface,
+			backgroundColor: fe.navySurface,
 			borderWidth: 1,
-			borderColor:
-				theme.mode === "light"
-					? "rgba(15,23,42,0.08)"
-					: "rgba(255,255,255,0.09)",
-			shadowColor: theme.colors.textPrimary,
-			shadowOpacity: theme.mode === "light" ? 0.09 : 0.32,
-			shadowRadius: 28,
+			borderColor: "rgba(255,255,255,0.18)",
+			shadowColor: fe.blueBright,
+			shadowOpacity: 0.28,
+			shadowRadius: 30,
 			shadowOffset: { width: 0, height: 16 },
-			elevation: 7,
+			elevation: 8,
 		},
 		donutSvg: {
 			position: "absolute",
 			top: 0,
 			left: 0,
-			width: 180,
-			height: 180,
+			width: 200,
+			height: 200,
 		},
 		donutSegment: {
 			height: 150,
@@ -3220,34 +3282,31 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 		},
 		ringInner: {
 			position: "absolute",
-			top: 41,
-			left: 41,
-			width: 98,
-			height: 98,
-			borderRadius: 49,
-			backgroundColor: theme.colors.card,
+			top: 63,
+			left: 63,
+			width: 74,
+			height: 74,
+			borderRadius: 37,
+			backgroundColor: "rgba(7,27,79,0.92)",
 			alignItems: "center",
 			justifyContent: "center",
 			borderWidth: 1,
-			borderColor:
-				theme.mode === "light"
-					? "rgba(15,23,42,0.07)"
-					: theme.colors.borderSoft,
-			shadowColor: theme.colors.textPrimary,
-			shadowOpacity: theme.mode === "light" ? 0.06 : 0.24,
+			borderColor: "rgba(255,255,255,0.20)",
+			shadowColor: fe.blueGlow,
+			shadowOpacity: 0.18,
 			shadowRadius: 18,
 			shadowOffset: { width: 0, height: 10 },
 			elevation: 4,
 		},
 		ringValue: {
-			color: theme.colors.textPrimary,
-			fontSize: 17,
+			color: fe.white,
+			fontSize: 14,
 			fontWeight: "900",
 			letterSpacing: -0.4,
 		},
 		ringLabel: {
-			color: theme.colors.textMuted,
-			fontSize: 10,
+			color: "rgba(255,255,255,0.62)",
+			fontSize: 9,
 			fontWeight: "700",
 			letterSpacing: 0.5,
 			marginTop: 3,
@@ -3257,21 +3316,45 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			flexDirection: "row",
 			justifyContent: "space-between",
 			alignItems: "center",
-			paddingVertical: 10,
+			paddingVertical: 12,
 			borderTopWidth: 1,
-			borderTopColor: theme.colors.borderSoft,
+			borderTopColor: fe.line,
 		},
+		bubbleRow: {
+			flexDirection: "row",
+			flexWrap: "wrap",
+			gap: 12,
+			alignItems: "center",
+			justifyContent: "center",
+			paddingVertical: 14,
+			paddingHorizontal: 2,
+		},
+		bubble: {
+			alignItems: "center",
+			justifyContent: "center",
+			borderWidth: 0,
+			position: "relative",
+			shadowColor: fe.blueBright,
+			shadowOpacity: 0.22,
+			shadowRadius: 16,
+			shadowOffset: { width: 0, height: 9 },
+			elevation: 5,
+		},
+		bubbleSvg: { position: "absolute", top: 0, left: 0 },
+		bubbleContent: { alignItems: "center", justifyContent: "center", maxWidth: "80%", gap: 1 },
+		bubbleLabel: { color: "rgba(255,255,255,0.82)", fontSize: 8, fontWeight: "600", maxWidth: 72 },
+		bubbleText: { color: fe.white, fontSize: 12, fontWeight: "800" },
 		catLeft: { flexDirection: "row", alignItems: "center", gap: 10, flex: 1 },
 		catEmoji: { fontSize: 18 },
 		catName: {
-			color: theme.colors.textPrimary,
-			fontSize: 13,
-			fontWeight: "700",
+			color: fe.ink,
+			fontSize: 14,
+			fontWeight: "600",
 		},
-		catAmount: { color: theme.colors.textMuted, fontSize: 11, marginTop: 1 },
+		catAmount: { color: fe.muted, fontSize: 11, marginTop: 1 },
 		catRight: { alignItems: "flex-end", gap: 4 },
 		catPct: {
-			color: theme.colors.brandPrimary,
+			color: fe.ink,
 			fontSize: 13,
 			fontWeight: "800",
 		},
@@ -3279,7 +3362,7 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			width: 60,
 			height: 4,
 			borderRadius: 999,
-			backgroundColor: theme.colors.mutedSurface,
+			backgroundColor: fe.paper,
 		},
 		catBarFill: { height: "100%", borderRadius: 999 },
 		customRangeBadge: {
@@ -3299,11 +3382,11 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 		},
 		modalOverlay: {
 			flex: 1,
-			backgroundColor: `${theme.colors.background}${theme.opacity[50] * 100}`,
+			backgroundColor: `${fe.paper}${theme.opacity[50] * 100}`,
 			justifyContent: "flex-end",
 		},
 		modalContent: {
-			backgroundColor: theme.colors.surface,
+			backgroundColor: fe.white,
 			borderTopLeftRadius: 24,
 			borderTopRightRadius: 24,
 			padding: 20,
@@ -3311,7 +3394,7 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			maxHeight: "80%",
 		},
 		dateRangeModalContent: {
-			backgroundColor: theme.colors.surface,
+			backgroundColor: fe.white,
 			borderTopLeftRadius: 24,
 			borderTopRightRadius: 24,
 			padding: 18,
@@ -3325,7 +3408,7 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			paddingBottom: 2,
 		},
 		modalTitle: {
-			color: theme.colors.textPrimary,
+			color: fe.ink,
 			fontSize: 18,
 			fontWeight: "800",
 			textAlign: "center",
@@ -3335,7 +3418,7 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			marginBottom: 16,
 		},
 		modalSectionTitle: {
-			color: theme.colors.textSecondary,
+			color: fe.slate,
 			fontSize: 12,
 			fontWeight: "600",
 			marginBottom: 8,
@@ -3351,17 +3434,17 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			width: 44,
 			height: 44,
 			borderRadius: 22,
-			backgroundColor: theme.colors.mutedSurface,
+			backgroundColor: fe.paper,
 			alignItems: "center",
 			justifyContent: "center",
 		},
 		modalButtonText: {
-			color: theme.colors.textPrimary,
+			color: fe.ink,
 			fontSize: 20,
 			fontWeight: "700",
 		},
 		modalValue: {
-			color: theme.colors.textPrimary,
+			color: fe.ink,
 			fontSize: 20,
 			fontWeight: "800",
 			minWidth: 60,
@@ -3376,8 +3459,8 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			paddingHorizontal: 14,
 			borderRadius: 999,
 			borderWidth: 1,
-			borderColor: theme.colors.borderSoft,
-			backgroundColor: theme.colors.background,
+			borderColor: fe.line,
+			backgroundColor: fe.paper,
 			marginRight: 8,
 		},
 		dayChip: {
@@ -3386,22 +3469,22 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			paddingHorizontal: 10,
 			borderRadius: 999,
 			borderWidth: 1,
-			borderColor: theme.colors.borderSoft,
-			backgroundColor: theme.colors.background,
+			borderColor: fe.line,
+			backgroundColor: fe.paper,
 			marginRight: 8,
 			alignItems: "center",
 		},
 		monthChipActive: {
-			backgroundColor: brandSoftBg,
-			borderColor: brandSoftBorder,
+			backgroundColor: fe.ink,
+			borderColor: fe.ink,
 		},
 		monthChipText: {
-			color: theme.colors.textSecondary,
+			color: fe.slate,
 			fontSize: 12,
 			fontWeight: "600",
 		},
 		monthChipTextActive: {
-			color: brandText,
+			color: fe.white,
 		},
 		modalActions: {
 			flexDirection: "row",
@@ -3414,7 +3497,7 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			marginTop: 10,
 			paddingTop: 10,
 			borderTopWidth: 1,
-			borderTopColor: theme.colors.borderSoft,
+			borderTopColor: fe.line,
 		},
 		modalActionButton: {
 			flex: 1,
@@ -3424,21 +3507,21 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			alignItems: "center",
 		},
 		modalActionCancel: {
-			backgroundColor: theme.colors.mutedSurface,
+			backgroundColor: fe.paper,
 		},
 		modalActionConfirm: {
 			backgroundColor:
 				theme.mode === "light"
-					? theme.colors.brandPrimaryDeep
-					: theme.colors.brandPrimary,
+					? fe.ink
+					: fe.ink,
 		},
 		modalActionCancelText: {
-			color: theme.colors.textSecondary,
+			color: fe.slate,
 			fontSize: 14,
 			fontWeight: "700",
 		},
 		modalActionConfirmText: {
-			color: theme.colors.textInverse,
+			color: fe.white,
 			fontSize: 14,
 			fontWeight: "700",
 		},
@@ -3448,10 +3531,10 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			alignItems: "center",
 			paddingVertical: 12,
 			borderBottomWidth: 1,
-			borderBottomColor: theme.colors.borderSoft,
+			borderBottomColor: fe.line,
 		},
 		compareLabel: {
-			color: theme.colors.textSecondary,
+			color: fe.slate,
 			fontSize: 13,
 			fontWeight: "600",
 		},
@@ -3460,7 +3543,7 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			gap: 4,
 		},
 		compareCurrent: {
-			color: theme.colors.textPrimary,
+			color: fe.ink,
 			fontSize: 14,
 			fontWeight: "800",
 		},
@@ -3469,10 +3552,10 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			fontWeight: "700",
 		},
 		compareDeltaPositive: {
-			color: theme.colors.success,
+			color: fe.financialIncome,
 		},
 		compareDeltaNegative: {
-			color: theme.colors.danger,
+			color: fe.financialExpenseAlert,
 		},
 		detailHeaderRow: {
 			flexDirection: "row",
@@ -3502,7 +3585,7 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			paddingRight: 54,
 		},
 		detailSubtitle: {
-			color: theme.colors.textSecondary,
+			color: fe.slate,
 			fontSize: 12,
 			fontWeight: "600",
 			textAlign: "center",
@@ -3522,23 +3605,23 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			gap: 12,
 			paddingVertical: 12,
 			borderBottomWidth: 1,
-			borderBottomColor: theme.colors.borderSoft,
+			borderBottomColor: fe.line,
 		},
 		detailTxInfo: {
 			flex: 1,
 		},
 		detailTxTitle: {
-			color: theme.colors.textPrimary,
+			color: fe.ink,
 			fontSize: 13,
 			fontWeight: "800",
 		},
 		detailTxMeta: {
-			color: theme.colors.textMuted,
+			color: fe.muted,
 			fontSize: 11,
 			marginTop: 3,
 		},
 		detailTxAmount: {
-			color: theme.colors.danger,
+			color: fe.financialExpense,
 			fontSize: 13,
 			fontWeight: "800",
 		},

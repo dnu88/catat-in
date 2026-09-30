@@ -6,6 +6,7 @@ import TransactionsScreen, {
 	SWIPE_GESTURE_CONFIG,
 	SWIPE_SNAP_SPRING_CONFIG,
 	filterTransactionsByPeriod,
+	getTransactionIconPalette,
 	getSwipeTranslateX,
 	getTransactionDateValue,
 	shouldOpenSwipe,
@@ -328,18 +329,60 @@ describe("transaction swipe actions", () => {
 			screen.getByTestId("transactions-stat-expense").props.style as object,
 		) as ViewStyle;
 
-		expect(headerStyle.marginBottom).toBeGreaterThanOrEqual(12);
+		const heroStyle = StyleSheet.flatten(
+			screen.getByTestId("transactions-hero").props.style as object,
+		) as ViewStyle;
+
+		expect(heroStyle.borderBottomLeftRadius).toBe(42);
+		expect(heroStyle.borderBottomRightRadius).toBe(42);
 		expect(periodRowStyle.marginBottom).toBeGreaterThanOrEqual(16);
 		expect(screen.getByTestId("transactions-period-report")).toBeTruthy();
 		expect(screen.getByTestId("transactions-report-period-label")).toBeTruthy();
-		expect(statRowStyle.marginTop).toBeGreaterThanOrEqual(4);
-		expect(statRowStyle.marginBottom).toBeGreaterThanOrEqual(20);
+		expect(statRowStyle.marginTop).toBeGreaterThanOrEqual(2);
 		expect(filterScrollerStyle.marginTop).toBeGreaterThanOrEqual(4);
 		expect(filterScrollerStyle.marginBottom).toBeGreaterThanOrEqual(16);
 		expect(incomeCardStyle.flex).toBe(1);
 		expect(expenseCardStyle.flex).toBe(1);
-		expect(incomeCardStyle.minHeight).toBeGreaterThanOrEqual(136);
-		expect(expenseCardStyle.minHeight).toBeGreaterThanOrEqual(136);
+		expect(incomeCardStyle.minHeight).toBeGreaterThanOrEqual(132);
+		expect(expenseCardStyle.minHeight).toBeGreaterThanOrEqual(132);
+	});
+
+	it("uses finance editorial surfaces instead of lime dark-luxury chrome", async () => {
+		const screen = renderScreen();
+
+		await waitFor(() => expect(screen.getByText("Kopi sore")).toBeTruthy());
+
+		const periodCard = StyleSheet.flatten(
+			screen.getByTestId("transactions-report-period-card").props.style as object,
+		) as ViewStyle;
+		const activePeriod = StyleSheet.flatten(
+			screen.getByTestId("transactions-period-report").props.style as object,
+		) as ViewStyle;
+		const fab = StyleSheet.flatten(
+			screen.getByTestId("transactions-fab").props.style as object,
+		) as ViewStyle;
+
+		expect(periodCard.backgroundColor).toBe("#FFFFFF");
+		expect(periodCard.borderWidth).toBe(0);
+		expect(activePeriod.backgroundColor).toBe("#060A1C");
+		expect(fab.backgroundColor).toBe("#060A1C");
+	});
+
+	it("uses tonal-blue category icons while keeping income semantically green", async () => {
+		const screen = renderScreen();
+
+		await waitFor(() => expect(screen.getByText("Kopi sore")).toBeTruthy());
+
+		const iconStyle = StyleSheet.flatten(
+			screen.getByTestId("transaction-icon-tx-1").props.style as object,
+		) as ViewStyle;
+		const expensePalette = getTransactionIconPalette("Makan", "expense");
+		const incomePalette = getTransactionIconPalette("Gaji", "income");
+
+		expect(iconStyle.backgroundColor).toBe(expensePalette.background);
+		expect(iconStyle.borderColor).toBe(expensePalette.border);
+		expect(expensePalette.color).not.toBe("#A3FF12");
+		expect(incomePalette.color).toBe("#168FA8");
 	});
 
 	it("adds right-side breathing room to transaction amounts", async () => {
@@ -353,6 +396,7 @@ describe("transaction swipe actions", () => {
 
 		expect(amountStyle.marginRight).toBeGreaterThanOrEqual(8);
 		expect(amountStyle.textAlign).toBe("right");
+		expect(amountStyle.color).toBe("#263246");
 	});
 
 	it("uses spring physics and resisted overdrag for organic row swipes", () => {

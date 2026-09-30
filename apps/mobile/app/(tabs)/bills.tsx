@@ -22,6 +22,7 @@ import {
 } from "../../src/components/ui";
 import { LoadingState } from "../../src/components/ui/LoadingState";
 import { useTheme } from "../../src/theme/theme-context";
+import { financeEditorial as fe } from "../../src/theme/finance-editorial";
 import { useI18n } from "../../src/i18n/i18n-context";
 import { useFinanceContext } from "../../src/state/finance-context";
 import { listBills, createBill, updateBill, type Bill, type BillCreate } from "../../src/services/bills";
@@ -61,8 +62,8 @@ type BillWithStatus = Bill & { status: BillStatus };
 
 function hashBillNameToColor(name: string): string {
   const palette = [
-    "#4A80F0", "#E85D75", "#50B86C", "#F5A623", "#8B5CF6",
-    "#06B6D4", "#EC4899", "#F59E0B", "#10B981", "#6366F1",
+    fe.blueBright, fe.blue, "#2F7FC1", "#285D99", fe.blueGlow,
+    fe.blueDeep, "#4D91C7", "#255A94", "#62AEE0", fe.navySurface,
   ];
   let hash = 0;
   for (let i = 0; i < name.length; i++) {
@@ -633,7 +634,7 @@ export default function BillsScreen() {
 
 function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 	return StyleSheet.create({
-		screen: { flex: 1, backgroundColor: theme.colors.background },
+		screen: { flex: 1, backgroundColor: fe.paper },
 		content: { padding: 20, gap: 10, paddingBottom: 26 },
 		headerRow: {
 			flexDirection: "row",
@@ -650,13 +651,15 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 		addButton: {
 			minHeight: 44,
 			justifyContent: "center",
-			backgroundColor: theme.colors.brandPrimary,
+			backgroundColor: fe.glassStrong,
+			borderWidth: 1,
+			borderColor: "rgba(255,255,255,0.24)",
 			borderRadius: 999,
 			paddingHorizontal: 14,
 			paddingVertical: 8,
 		},
 		addButtonText: {
-			color: theme.colors.textInverse,
+			color: fe.white,
 			fontSize: 12,
 			fontWeight: "700",
 		},
@@ -688,8 +691,8 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 		alertTitle: { color: theme.colors.danger, fontSize: 14, fontWeight: "800" },
 		alertSub: { color: theme.colors.textSecondary, fontSize: 12, marginTop: 2 },
 		summaryCard: {
-			backgroundColor: theme.colors.surface,
-			borderRadius: 18,
+			backgroundColor: fe.white,
+			borderRadius: 22,
 			borderWidth: 1,
 			borderColor: theme.colors.borderSoft,
 			padding: 16,
@@ -721,8 +724,8 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			fontWeight: "700",
 		},
 		billCard: {
-			backgroundColor: theme.colors.surface,
-			borderRadius: 18,
+			backgroundColor: fe.white,
+			borderRadius: 22,
 			borderWidth: 1,
 			borderColor: theme.colors.borderSoft,
 			padding: 14,
@@ -774,8 +777,8 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			fontWeight: "700",
 		},
 		emptyCard: {
-			backgroundColor: theme.colors.surface,
-			borderRadius: 18,
+			backgroundColor: fe.white,
+			borderRadius: 22,
 			borderWidth: 1,
 			borderColor: theme.colors.borderSoft,
 			borderStyle: "dashed",

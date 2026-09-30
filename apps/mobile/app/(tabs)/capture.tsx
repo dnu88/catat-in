@@ -11,6 +11,7 @@ import {
 	View,
 } from "react-native";
 import * as ImagePicker from "expo-image-picker";
+import { LinearGradient } from "expo-linear-gradient";
 import { PageEntrance, StaggeredStack } from "../../src/components/motion";
 import { useFocusEffect, useRouter } from "expo-router";
 
@@ -19,6 +20,7 @@ import { useI18n } from "../../src/i18n/i18n-context";
 import { useSupabase } from "../../src/lib/supabase";
 import { Sentry } from "../../src/lib/sentry";
 import { useTheme } from "../../src/theme/theme-context";
+import { financeEditorial as fe } from "../../src/theme/finance-editorial";
 import { IconBubble } from "../../src/components/ui";
 import {
 	KaswiseIcon,
@@ -763,13 +765,20 @@ export default function CaptureScreen() {
 				}
 			>
 				<StaggeredStack testIDPrefix="capture-entrance">
-				<View key="capture-header" testID="capture-header" style={styles.headerRow}>
+				<LinearGradient
+					key="capture-header"
+					testID="capture-header"
+					colors={[fe.navySurface, fe.blueDeep, fe.blueBright]}
+					start={{ x: 0, y: 0 }}
+					end={{ x: 1, y: 1 }}
+					style={styles.headerRow}
+				>
 					<View>
 						<Text style={styles.title}>{tx.title}</Text>
 						<Text style={styles.subtitle}>{tx.subtitle}</Text>
 						{quotaLabel(ent) ? <Text testID="capture-quota-label" style={styles.inputHelper}>{quotaLabel(ent)}</Text> : null}
 					</View>
-				</View>
+				</LinearGradient>
 
 				<View key="capture-input" testID="capture-input" style={styles.inputArea}>
 					<View style={styles.modeGrid}>
@@ -821,7 +830,7 @@ export default function CaptureScreen() {
 								onPress={submitText}
 								disabled={submitting}
 							>
-								{submitting ? <ActivityIndicator color={theme.colors.textInverse} /> : <Text style={styles.submitButtonText}>{tx.processTextButton}</Text>}
+								{submitting ? <ActivityIndicator color={fe.white} /> : <Text style={styles.submitButtonText}>{tx.processTextButton}</Text>}
 							</Pressable>
 						</View>
 					) : null}
@@ -836,7 +845,7 @@ export default function CaptureScreen() {
 								<Text style={styles.secondaryButtonText}>{receiptAsset ? tx.changeReceiptPhoto : tx.chooseReceiptPhoto}</Text>
 							</Pressable>
 							<Pressable testID="capture-receipt-process" accessibilityRole="button" accessibilityState={{ disabled: !receiptAsset || submitting, busy: submitting }} style={[styles.submitButton, (!receiptAsset || submitting) && { opacity: 0.7 }]} onPress={submitReceiptPhoto} disabled={!receiptAsset || submitting}>
-								{submitting ? <ActivityIndicator color={theme.colors.textInverse} /> : <Text style={styles.submitButtonText}>{tx.processReceipt}</Text>}
+								{submitting ? <ActivityIndicator color={fe.white} /> : <Text style={styles.submitButtonText}>{tx.processReceipt}</Text>}
 							</Pressable>
 							{receiptDraft ? (
 								<View testID="capture-receipt-preview" style={styles.receiptDraftCard}>
@@ -982,19 +991,30 @@ export default function CaptureScreen() {
 
 function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 	return StyleSheet.create({
-		screen: { flex: 1, backgroundColor: theme.colors.background },
-		content: { padding: 20, gap: 12, paddingBottom: 26 },
-		headerRow: { marginBottom: 4 },
+		screen: { flex: 1, backgroundColor: fe.paper },
+		content: { padding: 20, gap: 14, paddingBottom: 130 },
+		headerRow: {
+			minHeight: 132,
+			borderRadius: 28,
+			padding: 20,
+			marginBottom: 4,
+			overflow: "hidden",
+			shadowColor: fe.navy,
+			shadowOpacity: 0.18,
+			shadowRadius: 24,
+			shadowOffset: { width: 0, height: 12 },
+			elevation: 8,
+		},
 		title: {
-			color: theme.colors.textPrimary,
-			fontSize: theme.typography.fontSize["4xl"],
-			fontWeight: theme.typography.fontWeight.extrabold,
-			letterSpacing: theme.typography.letterSpacing.tight,
+			color: fe.white,
+			fontSize: 28,
+			fontWeight: theme.typography.fontWeight.semibold,
+			letterSpacing: -0.6,
 		},
 		subtitle: {
-			color: theme.colors.textSecondary,
-			fontSize: theme.typography.fontSize.sm,
-			marginTop: 2,
+			color: "rgba(255,255,255,0.72)",
+			fontSize: 13,
+			marginTop: 4,
 		},
 		inputArea: {
 			backgroundColor: theme.colors.surface,

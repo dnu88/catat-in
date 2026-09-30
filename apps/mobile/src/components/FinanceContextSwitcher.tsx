@@ -4,6 +4,7 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 import { useI18n } from "../i18n/i18n-context";
 import { useFinanceContext } from "../state/finance-context";
 import { useTheme } from "../theme/theme-context";
+import { financeEditorial as fe } from "../theme/finance-editorial";
 
 export function FinanceContextSwitcher({
 	variant = "compact",
@@ -127,10 +128,10 @@ function createStyles(
 			borderRadius: isHero ? theme.radius.pill : theme.radius.md,
 			borderWidth: 1,
 			borderColor: isHero
-				? `${theme.colors.brandPrimary}40`
+				? fe.glassStrong
 				: theme.colors.borderSoft,
 			backgroundColor: isHero
-				? `${theme.colors.brandPrimary}12`
+				? fe.glass
 				: theme.colors.card,
 			paddingHorizontal: isHero ? theme.spacing.md : 6,
 			paddingVertical: isHero ? theme.spacing.sm : 4,
@@ -145,10 +146,10 @@ function createStyles(
 			borderRadius: theme.radius.pill,
 			alignItems: "center",
 			justifyContent: "center",
-			backgroundColor: `${theme.colors.brandPrimary}18`,
+			backgroundColor: isHero ? fe.glassStrong : `${theme.colors.brandPrimary}18`,
 		},
 		iconText: {
-			color: theme.colors.brandPrimary,
+			color: isHero ? fe.white : theme.colors.brandPrimary,
 			fontWeight: "800",
 		},
 		labelBlock: {
@@ -156,17 +157,17 @@ function createStyles(
 			minWidth: 0,
 		},
 		caption: {
-			color: isHero ? theme.colors.brandPrimary : theme.colors.textMuted,
+			color: isHero ? "rgba(255,255,255,0.54)" : theme.colors.textMuted,
 			fontSize: isHero ? theme.typography.fontSize.xs : 9,
 			fontWeight: theme.typography.fontWeight.semibold,
 		},
 		label: {
-			color: theme.colors.textPrimary,
+			color: isHero ? fe.white : theme.colors.textPrimary,
 			fontSize: isHero ? theme.typography.fontSize.md : 12,
 			fontWeight: theme.typography.fontWeight.extrabold,
 		},
 		caret: {
-			color: theme.colors.textSecondary,
+			color: isHero ? "rgba(255,255,255,0.70)" : theme.colors.textSecondary,
 			fontSize: 12,
 			fontWeight: "800",
 		},

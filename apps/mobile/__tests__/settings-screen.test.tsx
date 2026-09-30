@@ -101,9 +101,14 @@ describe('SettingsScreen honest controls', () => {
   it('keeps working settings controls and removes dead taps', async () => {
     const screen = await renderSettings()
 
-    expect(screen.getByText('Pengaturan')).toBeTruthy()
+    expect(screen.queryByText('Pengaturan')).toBeNull()
     expect(screen.getByTestId('settings-profile')).toBeTruthy()
+    expect(screen.queryByTestId('settings-kaswise-logo-mark')).toBeNull()
     expect(screen.getByText('Bahasa aplikasi')).toBeTruthy()
+    expect(screen.getByText('Tampilan')).toBeTruthy()
+    expect(screen.getByTestId('settings-theme-system')).toBeTruthy()
+    expect(screen.getByTestId('settings-theme-light')).toBeTruthy()
+    expect(screen.getByTestId('settings-theme-dark')).toBeTruthy()
     expect(screen.getByText('Notifikasi')).toBeTruthy()
     expect(screen.getByText('Keluarga')).toBeTruthy()
     expect(screen.getByText('Pusat Keluarga')).toBeTruthy()
@@ -209,9 +214,17 @@ describe('SettingsScreen honest controls', () => {
     const screen = await renderSettings()
 
     fireEvent.press(screen.getByTestId('settings-language-en'))
-    expect(screen.getByText('Settings')).toBeTruthy()
+    expect(screen.queryByText('Settings')).toBeNull()
     expect(screen.getByText('App language')).toBeTruthy()
     expect(screen.getByText('Notifications')).toBeTruthy()
     expect(screen.getByText('Sign Out')).toBeTruthy()
+  })
+
+  it('moves theme preference into settings', async () => {
+    const screen = await renderSettings()
+
+    fireEvent.press(screen.getByTestId('settings-theme-dark'))
+
+    expect(AsyncStorage.setItem).toHaveBeenCalledWith('kaswise:theme-preference', 'dark')
   })
 })

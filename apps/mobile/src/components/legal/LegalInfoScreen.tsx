@@ -1,7 +1,9 @@
 import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
 
 import { KaswiseLogoMark } from "../brand/KaswiseLogoMark";
 import { useTheme } from "../../theme/theme-context";
+import { financeEditorial as fe } from "../../theme/finance-editorial";
 import { mobileLegalPages, type MobileLegalPage } from "../../content/legal-pages";
 
 export function LegalInfoScreen({ page }: { page: MobileLegalPage }) {
@@ -12,7 +14,12 @@ export function LegalInfoScreen({ page }: { page: MobileLegalPage }) {
   return (
     <View testID={`legal-screen-${page}`} style={styles.screen}>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        <View style={styles.heroCard}>
+        <LinearGradient
+          colors={[fe.navySurface, fe.blueDeep, fe.blueBright]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.heroCard}
+        >
           <View style={styles.brandRow}>
             <KaswiseLogoMark size={36} />
             <View style={styles.brandCopy}>
@@ -30,7 +37,7 @@ export function LegalInfoScreen({ page }: { page: MobileLegalPage }) {
           >
             <Text style={styles.primaryButtonText}>{content.ctaLabel}</Text>
           </Pressable>
-        </View>
+        </LinearGradient>
 
         {content.sections.map((section, index) => (
           <View key={section.title} style={styles.sectionCard}>
@@ -48,7 +55,7 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
   return StyleSheet.create({
     screen: {
       flex: 1,
-      backgroundColor: theme.colors.background,
+      backgroundColor: fe.paper,
     },
     content: {
       padding: 20,
@@ -58,9 +65,8 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
     heroCard: {
       borderRadius: theme.radius.xl,
       borderWidth: 1,
-      borderColor: theme.colors.borderSoft,
-      backgroundColor: theme.colors.surface,
-      padding: 18,
+      borderColor: "rgba(255,255,255,0.16)",
+      padding: 20,
       gap: 14,
     },
     brandRow: {
@@ -73,32 +79,32 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
       gap: 4,
     },
     eyebrow: {
-      color: theme.colors.brandPrimary,
+      color: "rgba(255,255,255,0.72)",
       fontSize: 12,
       fontWeight: "800",
       textTransform: "uppercase",
       letterSpacing: 0.4,
     },
     title: {
-      color: theme.colors.textPrimary,
-      fontSize: 24,
-      fontWeight: "800",
+      color: fe.white,
+      fontSize: 28,
+      fontWeight: "700",
       lineHeight: 30,
     },
     intro: {
-      color: theme.colors.textSecondary,
+      color: "rgba(255,255,255,0.72)",
       fontSize: 14,
       lineHeight: 21,
     },
     primaryButton: {
       alignSelf: "flex-start",
-      backgroundColor: theme.mode === "light" ? theme.colors.brandPrimaryDeep : theme.colors.brandPrimary,
+      backgroundColor: fe.white,
       borderRadius: theme.radius.pill,
       paddingHorizontal: 16,
       paddingVertical: 10,
     },
     primaryButtonText: {
-      color: theme.colors.textInverse,
+      color: fe.navySurface,
       fontSize: 13,
       fontWeight: "800",
     },
@@ -106,7 +112,7 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
       borderRadius: theme.radius.xl,
       borderWidth: 1,
       borderColor: theme.colors.borderSoft,
-      backgroundColor: theme.colors.surface,
+      backgroundColor: fe.white,
       padding: 18,
       gap: 8,
     },

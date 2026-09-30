@@ -52,9 +52,9 @@ describe('Kaswise brand logo placement', () => {
     expect(screen.getByTestId('kaswise-logo-polygon-4').props.accessibilityLabel).toBe('75,85 90,85 106,45 118,50 112,10 80,30 91,45')
   })
 
-  it('renders the Kaswise mark in settings', () => {
+  it('keeps the operational settings screen free of decorative branding', () => {
     const screen = renderWithProviders(<SettingsScreen />)
 
-    expect(screen.getByTestId('settings-kaswise-logo-mark')).toBeTruthy()
+    expect(screen.queryByTestId('settings-kaswise-logo-mark')).toBeNull()
   })
 })

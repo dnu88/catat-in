@@ -9,12 +9,14 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Link } from "expo-router";
+import { LinearGradient } from "expo-linear-gradient";
 
 import type { IconBubbleTone } from "./IconBubble";
 import type { KaswiseIconName } from "../icons/kaswise-icons";
 import { IconBubble } from "./IconBubble";
 import { KaswiseIcon } from "../icons/kaswise-icons";
 import { useTheme } from "../../theme/theme-context";
+import { financeEditorial as fe } from "../../theme/finance-editorial";
 
 type AuthScreenLayoutProps = {
 	children: ReactNode;
@@ -58,7 +60,12 @@ export function AuthHeroPanel({
 	const styles = useMemo(() => createHeroStyles(theme), [theme]);
 
 	return (
-		<View style={styles.heroPanel}>
+		<LinearGradient
+			colors={[fe.navySurface, fe.blueDeep, fe.blueBright]}
+			start={{ x: 0, y: 0 }}
+			end={{ x: 1, y: 1 }}
+			style={styles.heroPanel}
+		>
 			<View style={styles.heroBadgeRow}>
 				<IconBubble name={icon} tone={iconTone} size={52} />
 				<View style={styles.brandCopy}>
@@ -96,7 +103,7 @@ export function AuthHeroPanel({
 					})}
 				</View>
 			) : null}
-		</View>
+		</LinearGradient>
 	);
 }
 
@@ -258,7 +265,7 @@ function createLayoutStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 	return StyleSheet.create({
 		screen: {
 			flex: 1,
-			backgroundColor: theme.colors.background,
+			backgroundColor: fe.paper,
 		},
 		content: {
 			flexGrow: 1,
@@ -272,17 +279,11 @@ function createLayoutStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 }
 
 function createHeroStyles(theme: ReturnType<typeof useTheme>["theme"]) {
-	const brandText =
-		theme.mode === "light"
-			? theme.colors.brandPrimaryDeep
-			: theme.colors.brandPrimary;
-
 	return StyleSheet.create({
 		heroPanel: {
-			backgroundColor: theme.colors.mutedSurface,
-			borderRadius: theme.radius.xl,
+						borderRadius: theme.radius["2xl"],
 			borderWidth: 1,
-			borderColor: theme.colors.borderSoft,
+			borderColor: "rgba(255,255,255,0.16)",
 			padding: theme.spacing.xl,
 			paddingBottom: theme.spacing.lg,
 			gap: theme.spacing.lg,
@@ -297,20 +298,20 @@ function createHeroStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			gap: theme.spacing.xs,
 		},
 		brandEyebrow: {
-			color: brandText,
+			color: "rgba(255,255,255,0.72)",
 			fontSize: theme.typography.support.fontSize,
 			fontWeight: "800",
 			textTransform: "uppercase",
 			letterSpacing: 0.6,
 		},
 		brandTitle: {
-			color: theme.colors.textPrimary,
-			fontSize: 22,
-			fontWeight: "800",
-			lineHeight: 28,
+			color: fe.white,
+			fontSize: 28,
+			fontWeight: "700",
+			lineHeight: 32,
 		},
 		heroBody: {
-			color: theme.colors.textSecondary,
+			color: "rgba(255,255,255,0.72)",
 			fontSize: 14,
 			lineHeight: 22,
 			marginTop: theme.spacing.xs,
@@ -328,12 +329,12 @@ function createHeroStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			paddingHorizontal: theme.spacing.md,
 			paddingVertical: theme.spacing.sm,
 			borderRadius: theme.radius.pill,
-			backgroundColor: theme.colors.surfaceElevated,
+			backgroundColor: "rgba(255,255,255,0.12)",
 			borderWidth: 1,
-			borderColor: theme.colors.borderSoft,
+			borderColor: "rgba(255,255,255,0.20)",
 		},
 		heroStatText: {
-			color: theme.colors.textSecondary,
+			color: fe.white,
 			fontSize: theme.typography.support.fontSize,
 			fontWeight: "700",
 		},

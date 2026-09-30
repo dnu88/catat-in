@@ -10,6 +10,7 @@ import {
 } from "react-native";
 import { PageEntrance, StaggeredStack } from "../../src/components/motion";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
+import { LinearGradient } from "expo-linear-gradient";
 
 import { IOSWheelDatePicker } from "../../src/components/date/IOSWheelDatePicker";
 import { KaswiseIcon } from "../../src/components/icons/kaswise-icons";
@@ -17,6 +18,7 @@ import type { KaswiseIconName } from "../../src/components/icons/kaswise-icons";
 import { IconBubble } from "../../src/components/ui";
 import { LoadingState } from "../../src/components/ui/LoadingState";
 import { useTheme } from "../../src/theme/theme-context";
+import { financeEditorial as fe } from "../../src/theme/finance-editorial";
 import { useI18n } from "../../src/i18n/i18n-context";
 import { useFinanceContext } from "../../src/state/finance-context";
 import {
@@ -518,7 +520,14 @@ export default function TransactionNewScreen() {
 				keyboardShouldPersistTaps="handled"
 			>
 				<StaggeredStack testIDPrefix="transaction-new-entrance">
-				<View key="transaction-form-header" testID="transaction-form-header" style={styles.headerRow}>
+				<LinearGradient
+					key="transaction-form-header"
+					testID="transaction-form-header"
+					colors={[fe.navySurface, fe.blueDeep, fe.blueBright]}
+					start={{ x: 0, y: 0 }}
+					end={{ x: 1, y: 1 }}
+					style={styles.headerRow}
+				>
 					<View>
 						<Text style={styles.title}>
 							{isEditMode ? tx.editTitle : tx.createTitle}
@@ -535,12 +544,12 @@ export default function TransactionNewScreen() {
 					>
 						<KaswiseIcon
 							name="back"
-							color={theme.colors.textPrimary}
+							color={fe.white}
 							size={16}
 							weight="bold"
 						/>
 					</Pressable>
-				</View>
+				</LinearGradient>
 
 				{!canCreate && (
 					<View key="transaction-form-readonly" testID="transaction-form-readonly" style={styles.warningCard}>
@@ -565,13 +574,13 @@ export default function TransactionNewScreen() {
 								styles.typeChip,
 								txType === t && {
 									backgroundColor:
-										t === "income" ? theme.colors.success
+										t === "income" ? fe.financialIncome
 										: t === "transfer" ? theme.colors.info
-										: theme.colors.danger,
+										: fe.financialExpense,
 									borderColor:
-										t === "income" ? theme.colors.success
+										t === "income" ? fe.financialIncome
 										: t === "transfer" ? theme.colors.info
-										: theme.colors.danger,
+										: fe.financialExpense,
 								},
 							]}
 						>
@@ -890,26 +899,35 @@ export default function TransactionNewScreen() {
 
 function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 	return StyleSheet.create({
-		screen: { flex: 1, backgroundColor: theme.colors.background },
+		screen: { flex: 1, backgroundColor: fe.paper },
 		content: { padding: 20, gap: 16, paddingBottom: 30 },
 		headerRow: {
+			minHeight: 132,
 			flexDirection: "row",
 			justifyContent: "space-between",
 			alignItems: "flex-start",
 			gap: 12,
+			padding: 20,
+			borderRadius: 28,
+			overflow: "hidden",
+			shadowColor: fe.navy,
+			shadowOpacity: 0.18,
+			shadowRadius: 24,
+			shadowOffset: { width: 0, height: 12 },
+			elevation: 8,
 		},
 		title: {
-			color: theme.colors.textPrimary,
+			color: fe.white,
 			fontSize: 26,
 			fontWeight: "800",
 			letterSpacing: -0.4,
 		},
-		subtitle: { color: theme.colors.textSecondary, fontSize: 13, marginTop: 2 },
+		subtitle: { color: "rgba(255,255,255,0.68)", fontSize: 13, marginTop: 4 },
 		closeBtn: {
 			minWidth: 44,
 			minHeight: 44,
 			borderRadius: 22,
-			backgroundColor: theme.colors.mutedSurface,
+			backgroundColor: "rgba(255,255,255,0.14)",
 			alignItems: "center",
 			justifyContent: "center",
 		},
