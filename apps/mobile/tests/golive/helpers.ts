@@ -107,7 +107,7 @@ export async function createBudget(page: Page, name = testData.budgetName) {
   await openBudgets(page);
   await page.getByRole('button', { name: /\+ Baru|\+ New/i }).click();
   await expect(page.getByTestId('envelope-create-form')).toBeVisible();
-  await page.getByLabel(/Nama dompet|Wallet name/i).first().fill(name);
+  await page.getByLabel(/Nama budget|Budget name|Nama dompet|Wallet name/i).first().fill(name);
   await page.getByLabel(/Limit/i).first().fill(testData.budgetLimit);
   await page.getByTestId('budget-category-dropdown').click();
   await page.getByRole('button', { name: /Kategori: Makan|Category: Food|Food & Beverage|Makan & Minum/i }).first().click();
@@ -117,7 +117,7 @@ export async function createBudget(page: Page, name = testData.budgetName) {
   await page.getByTestId('budget-end-date-dropdown').click();
   await page.getByTestId(`budget-end-date-option-${range.endDay}`).click();
   await page.getByLabel(/Catatan|Notes/i).first().fill('makan kopi gofood nasi ayam');
-  await page.getByRole('button', { name: /Simpan dompet|Save budget wallet/i }).click();
+  await page.getByRole('button', { name: /Simpan budget|Simpan dompet|Save budget wallet|Save budget/i }).click();
   await expect(page.getByText(name).first()).toBeVisible({ timeout: 30_000 });
 }
 
@@ -173,7 +173,6 @@ export async function createManualExpense(page: Page) {
   await page.getByLabel('Deskripsi transaksi').fill(testData.manualDescription);
   await page.getByRole('button', { name: new RegExp(`Pilih dompet ${testData.walletName}`) }).first().click();
   await page.getByRole('button', { name: /Pilih kategori Makan/i }).click();
-  await page.getByLabel('Tanggal transaksi').fill(todayKey());
   await page.getByLabel('Merchant transaksi opsional').fill('GoLive Warteg');
 
   const stopDialogAutoAccept = registerExpectedDialogAutoAccept(page, /Berhasil|Transaksi tersimpan/i);
@@ -195,6 +194,8 @@ export async function createManualExpense(page: Page) {
 export async function createCaptureExpense(page: Page) {
   await gotoApp(page, '/capture');
   await expect(page.getByTestId('capture-input')).toBeVisible();
+  const textMode = page.getByTestId('capture-mode-Teks');
+  if (await textMode.isVisible().catch(() => false)) await textMode.click();
   const walletChip = page.getByRole('button', { name: new RegExp(`Dompet.*${testData.walletName}|Wallet.*${testData.walletName}`) }).first();
   if (await walletChip.isVisible().catch(() => false)) await walletChip.click();
   await page.getByLabel(/Input teks transaksi|Transaction text input/i).fill(testData.captureDescription);
