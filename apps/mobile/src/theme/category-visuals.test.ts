@@ -83,6 +83,19 @@ describe("category visuals", () => {
 		expect(getCategoryVisualMeta("Freelance", "light")).toMatchObject({ icon: "briefcase" });
 	});
 
+	it("treats the English fallback category as neutral, not as a hashed palette colour", () => {
+		expect(getCategoryVisualMeta("Other expenses", "light")).toMatchObject({
+			icon: "otherExpenses",
+			tone: "neutral",
+			color: "#6B7280",
+		});
+		expect(getCategoryVisualMeta("Lainnya", "light")).toMatchObject({
+			icon: "otherExpenses",
+			tone: "neutral",
+			color: "#6B7280",
+		});
+	});
+
 	it("ships matching default icons for canonical categories", () => {
 		const icons = Object.fromEntries(
 			getDefaultCategoryCreates().map((category) => [category.name, category.icon]),

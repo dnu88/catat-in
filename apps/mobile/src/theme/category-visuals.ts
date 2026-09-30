@@ -132,6 +132,11 @@ export function getCategoryVisualMeta(
 		"gifts & donations": { color: roleColors.danger, icon: "gift", tone: "danger" },
 		"kartu kredit": { color: roleColors.navy, icon: "creditCard", tone: "navy" },
 		"credit card": { color: roleColors.navy, icon: "creditCard", tone: "navy" },
+		"other expenses": {
+			color: neutralCategoryColor,
+			icon: "otherExpenses",
+			tone: "neutral",
+		},
 		other: {
 			color: neutralCategoryColor,
 			icon: "otherExpenses",
