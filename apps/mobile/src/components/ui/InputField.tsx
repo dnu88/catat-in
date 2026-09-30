@@ -1,4 +1,4 @@
-import { useState, type ComponentProps } from "react";
+import { forwardRef, useState, type ComponentProps } from "react";
 import { Text, TextInput, View } from "react-native";
 import { useTheme } from "../../theme/theme-context";
 
@@ -14,21 +14,28 @@ type InputFieldProps = {
 	autoComplete?: ComponentProps<typeof TextInput>["autoComplete"];
 	autoCorrect?: boolean;
 	textContentType?: ComponentProps<typeof TextInput>["textContentType"];
+	returnKeyType?: ComponentProps<typeof TextInput>["returnKeyType"];
+	testID?: string;
 };
 
-export function InputField({
-	label,
-	value,
-	onChangeText,
-	placeholder,
-	error,
-	secureTextEntry,
-	keyboardType,
-	autoCapitalize,
-	autoComplete,
-	autoCorrect,
-	textContentType,
-}: InputFieldProps) {
+export const InputField = forwardRef<TextInput, InputFieldProps>(function InputField(
+	{
+		label,
+		value,
+		onChangeText,
+		placeholder,
+		error,
+		secureTextEntry,
+		keyboardType,
+		autoCapitalize,
+		autoComplete,
+		autoCorrect,
+		textContentType,
+		returnKeyType,
+		testID,
+	},
+	ref,
+) {
 	const { theme } = useTheme();
 	const [focused, setFocused] = useState(false);
 
@@ -70,7 +77,11 @@ export function InputField({
 				{label}
 			</Text>
 			<TextInput
+				ref={ref}
+				testID={testID}
 				accessibilityLabel={label}
+				aria-invalid={error ? true : undefined}
+				accessibilityHint={error}
 				value={value}
 				onChangeText={onChangeText}
 				placeholder={placeholder}
@@ -81,6 +92,7 @@ export function InputField({
 				autoComplete={autoComplete}
 				autoCorrect={autoCorrect}
 				textContentType={textContentType}
+				returnKeyType={returnKeyType}
 				onFocus={() => setFocused(true)}
 				onBlur={() => setFocused(false)}
 				style={{
@@ -96,6 +108,8 @@ export function InputField({
 			/>
 			{error ? (
 				<Text
+					accessibilityRole="alert"
+					accessibilityLiveRegion="polite"
 					style={{
 						color: theme.colors.danger,
 						fontSize: theme.typography.support.fontSize,
@@ -107,4 +121,4 @@ export function InputField({
 			) : null}
 		</View>
 	);
-}
+});

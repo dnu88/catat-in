@@ -46,10 +46,11 @@ describe('Kaswise brand logo placement', () => {
     const screen = renderWithProviders(<LoginScreen />)
 
     expect(screen.getByTestId('login-kaswise-logo-mark')).toBeTruthy()
-    expect(screen.getByTestId('kaswise-logo-polygon-1').props.accessibilityLabel).toBe('15,35 35,85 50,85 30,35')
-    expect(screen.getByTestId('kaswise-logo-polygon-2').props.accessibilityLabel).toBe('35,85 60,35 75,35 50,85')
-    expect(screen.getByTestId('kaswise-logo-polygon-3').props.accessibilityLabel).toBe('60,35 75,85 90,85 75,35')
-    expect(screen.getByTestId('kaswise-logo-polygon-4').props.accessibilityLabel).toBe('75,85 90,85 106,45 118,50 112,10 80,30 91,45')
+    expect(screen.getByTestId('login-kaswise-logo-mark').props.accessibilityRole).toBe('image')
+    for (const id of ['1', '2', '3', '4']) {
+      const polygon = screen.getByTestId(`kaswise-logo-polygon-${id}`, { includeHiddenElements: true })
+      expect(polygon.props.accessibilityLabel).toBeUndefined()
+    }
   })
 
   it('keeps the operational settings screen free of decorative branding', () => {
