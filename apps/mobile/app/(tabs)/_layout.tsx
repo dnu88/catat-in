@@ -1,4 +1,4 @@
-import { Redirect, Tabs, useRouter } from "expo-router";
+import { Redirect, Tabs, useRouter, useSegments } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useEffect, useState } from "react";
 import {
@@ -15,11 +15,22 @@ import { useSupabase } from "../../src/lib/supabase";
 import { useTheme } from "../../src/theme/theme-context";
 import { financeEditorial as fe } from "../../src/theme/finance-editorial";
 
+const PRIMARY_TAB_ROUTES = new Set([
+	"index",
+	"transactions",
+	"capture",
+	"reports",
+	"settings",
+]);
+
 export default function TabsLayout() {
 	const { supabase } = useSupabase();
 	const { theme } = useTheme();
 	const { t } = useI18n();
 	const router = useRouter();
+	const segments = useSegments();
+	const activeRoute = segments[segments.length - 1] ?? "index";
+	const isPrimaryTabRoute = PRIMARY_TAB_ROUTES.has(activeRoute);
 	const insets = useSafeAreaInsets();
 	const tabBottomOffset = Math.max(10, insets.bottom);
 	const [session, setSession] = useState<unknown>(null);
@@ -97,22 +108,24 @@ export default function TabsLayout() {
 			screenOptions={{
 				headerShown: true,
 				tabBarShowLabel: false,
-				tabBarStyle: {
-					position: "absolute",
-					left: 20,
-					right: 20,
-					bottom: tabBottomOffset,
-					backgroundColor: fe.paper,
-					borderTopWidth: 0,
-					height: 64,
-					paddingBottom: 6,
-					paddingTop: 6,
-					borderRadius: 28,
-					elevation: 12,
-					shadowColor: fe.navy,
-					shadowOpacity: 0.16,
-					shadowRadius: 22,
-				},
+				tabBarStyle: isPrimaryTabRoute
+					? {
+							position: "absolute",
+							left: 20,
+							right: 20,
+							bottom: tabBottomOffset,
+							backgroundColor: fe.paper,
+							borderTopWidth: 0,
+							height: 64,
+							paddingBottom: 6,
+							paddingTop: 6,
+							borderRadius: 28,
+							elevation: 12,
+							shadowColor: fe.navy,
+							shadowOpacity: 0.16,
+							shadowRadius: 22,
+						}
+					: { display: "none" },
 				tabBarActiveTintColor: fe.white,
 				tabBarInactiveTintColor: fe.slate,
 				tabBarLabelStyle: {
@@ -140,6 +153,7 @@ export default function TabsLayout() {
 				name="index"
 				options={{
 					title: t("tabDashboard"),
+					tabBarAccessibilityLabel: t("tabDashboard"),
 					headerTitle: t("headerKaswise"),
 					headerShown: false,
 					tabBarIcon: ({ color, focused }) => (
@@ -153,6 +167,7 @@ export default function TabsLayout() {
 				name="transactions"
 				options={{
 					title: t("tabTransactions"),
+					tabBarAccessibilityLabel: t("tabTransactions"),
 					headerShown: false,
 					tabBarIcon: ({ color, focused }) => (
 						<View style={[styles.tabIconWrap, focused && styles.tabIconActive]}>
@@ -165,6 +180,7 @@ export default function TabsLayout() {
 			  name="capture"
 				options={{
 					title: t("tabCapture"),
+					tabBarAccessibilityLabel: t("tabCapture"),
 					headerShown: false,
 					tabBarLabel: "",
 					tabBarIcon: ({ focused }) => (
@@ -191,6 +207,7 @@ export default function TabsLayout() {
 				name="reports"
 				options={{
 					title: t("tabReports"),
+					tabBarAccessibilityLabel: t("tabReports"),
 					headerShown: false,
 					tabBarIcon: ({ color, focused }) => (
 						<View style={[styles.tabIconWrap, focused && styles.tabIconActive]}>
@@ -203,6 +220,7 @@ export default function TabsLayout() {
 				name="settings"
 				options={{
 					title: t("tabSettings"),
+					tabBarAccessibilityLabel: t("tabSettings"),
 					headerShown: false,
 					tabBarIcon: ({ color, focused }) => (
 						<View style={[styles.tabIconWrap, focused && styles.tabIconActive]}>
@@ -258,6 +276,7 @@ export default function TabsLayout() {
 					...hiddenScreenOptions,
 					title: "Manual",
 					headerTitle: t("headerManualTransaction"),
+					headerShown: false,
 				}}
 			/>
 		</Tabs>

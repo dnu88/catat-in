@@ -8,6 +8,7 @@ const mockTabs = jest.fn((props: any) => (
 	<View testID="mock-tabs">{props.children}</View>
 ));
 const mockTabsScreen = jest.fn((_props: any) => null);
+let mockSegments = ["(tabs)", "index"];
 
 jest.mock("expo-router", () => {
 	const { View } = require("react-native");
@@ -20,6 +21,7 @@ jest.mock("expo-router", () => {
 		),
 		Tabs,
 		useRouter: () => ({ back: jest.fn() }),
+		useSegments: () => mockSegments,
 	};
 });
 
@@ -70,6 +72,7 @@ jest.mock("../src/theme/theme-context", () => ({
 describe("tabs layout spacing", () => {
 	beforeEach(() => {
 		jest.clearAllMocks();
+		mockSegments = ["(tabs)", "index"];
 	});
 
 	it("renders the compact floating navigation above the safe-area inset", async () => {
@@ -89,5 +92,39 @@ describe("tabs layout spacing", () => {
 		expect(captureScreen).toBeTruthy();
 		const captureIcon = captureScreen.options.tabBarIcon({ focused: false });
 		expect(captureIcon.props.style[0].marginTop).toBe(0);
+	});
+
+	it("exposes exactly five accessible primary tab destinations", async () => {
+		render(<TabsLayout />);
+		await waitFor(() => expect(mockTabs).toHaveBeenCalled());
+
+		const screens = mockTabsScreen.mock.calls.map(([props]) => props as any);
+		const visibleScreens = screens.filter(
+			(screen) => screen.options.href !== null,
+		);
+		expect(visibleScreens.map((screen) => screen.name)).toEqual([
+			"index",
+			"transactions",
+			"capture",
+			"reports",
+			"settings",
+		]);
+		for (const screen of visibleScreens) {
+			expect(screen.options.tabBarAccessibilityLabel).toBe(screen.options.title);
+		}
+	});
+
+	it("removes the floating tab bar and duplicate native header on task routes", async () => {
+		mockSegments = ["(tabs)", "transaction-new"];
+		render(<TabsLayout />);
+		await waitFor(() => expect(mockTabs).toHaveBeenCalled());
+
+		const screenOptions = (mockTabs.mock.calls[0][0] as any).screenOptions;
+		expect(screenOptions.tabBarStyle).toEqual({ display: "none" });
+
+		const transactionScreen = mockTabsScreen.mock.calls
+			.map(([props]) => props as any)
+			.find((props) => props.name === "transaction-new");
+		expect(transactionScreen.options.headerShown).toBe(false);
 	});
 });
