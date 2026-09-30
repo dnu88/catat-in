@@ -10,22 +10,18 @@ const allowedOrigins = Array.from(
   new Set([...defaultAllowedOrigins, ...configuredAllowedOrigins]),
 )
 
-function corsHeadersFor(req: Request) {
-  const origin = req.headers.get('Origin') ?? defaultAllowedOrigins[0]
-  const allowedOrigin = allowedOrigins.includes(origin) ? origin : defaultAllowedOrigins[0]
-  return {
-    'Access-Control-Allow-Origin': allowedOrigin,
+function corsHeadersFor(req: Request): Record<string, string> {
+  const origin = req.headers.get('Origin')
+  const headers: Record<string, string> = {
     'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
     'Vary': 'Origin',
   }
+  if (origin && allowedOrigins.includes(origin)) {
+    headers['Access-Control-Allow-Origin'] = origin
+  }
+  return headers
 }
-
-const corsHeaders = corsHeadersFor(
-  new Request(defaultAllowedOrigins[0], {
-    headers: { Origin: defaultAllowedOrigins[0] },
-  }),
-)
 
 type ProcessImageRequest = {
   transaction_id: string
@@ -70,6 +66,7 @@ async function assertProcessableTransaction(
   supabase: ReturnType<typeof createClient>,
   transactionId: string,
   userId: string,
+  corsHeaders: Record<string, string>,
 ): Promise<Response | null> {
   const { data, error } = await supabase
     .from('transactions')
@@ -170,6 +167,12 @@ serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
   }
+  if (req.method !== 'POST') {
+    return new Response(JSON.stringify({ error: 'Method not allowed' }), {
+      status: 405,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    })
+  }
 
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!
@@ -217,7 +220,7 @@ serve(async (req) => {
       )
     }
 
-    const preflightResponse = await assertProcessableTransaction(supabase, transaction_id, userId)
+    const preflightResponse = await assertProcessableTransaction(supabase, transaction_id, userId, corsHeaders)
     if (preflightResponse) {
       return preflightResponse
     }
