@@ -1,14 +1,31 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.4'
 
-const allowedOrigin = Deno.env.get('KASWISE_ALLOWED_ORIGIN') ?? 'https://kaswise.com'
+const defaultAllowedOrigins = ['https://kaswise.com', 'https://app.kaswise.com']
+const configuredAllowedOrigins = (Deno.env.get('KASWISE_ALLOWED_ORIGIN') ?? '')
+  .split(',')
+  .map((origin) => origin.trim())
+  .filter(Boolean)
+const allowedOrigins = Array.from(
+  new Set([...defaultAllowedOrigins, ...configuredAllowedOrigins]),
+)
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': allowedOrigin,
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  'Vary': 'Origin',
+function corsHeadersFor(req: Request) {
+  const origin = req.headers.get('Origin') ?? defaultAllowedOrigins[0]
+  const allowedOrigin = allowedOrigins.includes(origin) ? origin : defaultAllowedOrigins[0]
+  return {
+    'Access-Control-Allow-Origin': allowedOrigin,
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Vary': 'Origin',
+  }
 }
+
+const corsHeaders = corsHeadersFor(
+  new Request(defaultAllowedOrigins[0], {
+    headers: { Origin: defaultAllowedOrigins[0] },
+  }),
+)
 
 type ProcessTextRequest = {
   transaction_id: string
@@ -124,6 +141,7 @@ async function extractFromTextWithAI(rawText: string): Promise<{ confidence: num
 }
 
 serve(async (req) => {
+  const corsHeaders = corsHeadersFor(req)
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
   }
