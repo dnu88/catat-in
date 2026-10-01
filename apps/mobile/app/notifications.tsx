@@ -127,14 +127,16 @@ export default function NotificationsScreen() {
           accessibilityRole="button"
           accessibilityLabel={isEn ? "Back" : "Kembali"}
           onPress={() => goBackSafely(router, "/(tabs)")}
-          style={s.backBtn}
+          style={s.backBtnTouch}
         >
-          <KaswiseIcon
-            name="back"
-            size={18}
-            color={fe.white}
-            weight="bold"
-          />
+          <View style={s.backBtn}>
+            <KaswiseIcon
+              name="back"
+              size={18}
+              color={fe.white}
+              weight="bold"
+            />
+          </View>
         </Pressable>
         <Text style={s.title}>{isEn ? "Notifications" : "Notifikasi"}</Text>
         {unreadCount > 0 && (
@@ -168,9 +170,11 @@ export default function NotificationsScreen() {
             accessibilityRole="button"
             accessibilityLabel={isEn ? "Retry" : "Coba lagi"}
             onPress={load}
-            style={s.retryBtn}
+            style={s.touchTarget}
           >
-            <Text style={s.retryText}>{isEn ? "Retry" : "Coba lagi"}</Text>
+            <View style={s.retryBtn}>
+              <Text style={s.retryText}>{isEn ? "Retry" : "Coba lagi"}</Text>
+            </View>
           </Pressable>
         </View>
       ) : items.length === 0 ? (
@@ -237,7 +241,19 @@ function styles(
     },
     backBtn: {
       padding: 4,
+    },
+    backBtnTouch: {
+      minHeight: 44,
+      minWidth: 44,
+      alignItems: "center" as const,
+      justifyContent: "center" as const,
       marginRight: 8,
+    },
+    touchTarget: {
+      minHeight: 44,
+      minWidth: 44,
+      alignItems: "center" as const,
+      justifyContent: "center" as const,
     },
     title: {
       color: fe.white,

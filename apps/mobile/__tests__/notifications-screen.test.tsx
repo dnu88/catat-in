@@ -3,6 +3,8 @@
  */
 import React from "react";
 import { render, fireEvent, waitFor, act } from "@testing-library/react-native";
+import { StyleSheet } from "react-native";
+import type { StyleProp, ViewStyle } from "react-native";
 import NotificationsScreen from "../app/notifications";
 import { ThemeProvider } from "../src/theme/theme-context";
 import { I18nProvider } from "../src/i18n/i18n-context";
@@ -46,6 +48,10 @@ function renderScreen() {
       )
     )
   );
+}
+
+function getFlattenedStyle(node: { props: { style?: StyleProp<ViewStyle> } }): ViewStyle {
+  return StyleSheet.flatten(node.props.style) ?? {};
 }
 
 describe("NotificationsScreen", () => {
@@ -114,5 +120,20 @@ describe("NotificationsScreen", () => {
       expect(screen.getByTestId("notifications-back")).toBeTruthy();
     }, { timeout: 3000 });
     expect(screen.getByTestId("notifications-back").props.accessibilityLabel).toBe("Kembali");
+  });
+
+  it("gives the back and retry controls a real 44x44 touch box", async () => {
+    mockListNotifications.mockRejectedValueOnce(new Error("network"));
+    const screen = renderScreen();
+
+    await waitFor(() => {
+      expect(screen.getByTestId("notifications-error")).toBeTruthy();
+    }, { timeout: 3000 });
+
+    for (const id of ["notifications-back", "notifications-retry"]) {
+      const control = getFlattenedStyle(screen.getByTestId(id));
+      expect(Number(control.minHeight)).toBeGreaterThanOrEqual(44);
+      expect(Number(control.minWidth)).toBeGreaterThanOrEqual(44);
+    }
   });
 });
