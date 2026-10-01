@@ -5,6 +5,7 @@ import { useFocusEffect, useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
 
 import { FinanceContextSwitcher } from "../../src/components/FinanceContextSwitcher";
+import { featureFlags } from "../../src/config/features";
 import { PageEntrance, StaggeredEntrance } from "../../src/components/motion";
 import {
 	KaswiseIcon,
@@ -92,6 +93,7 @@ export default function DashboardScreen() {
 	const { activePeriod, resetToCurrentMonth } = useReportPeriod();
 	const router = useRouter();
 	const isEn = language === "en";
+	const simpleNavigation = featureFlags.simpleNavigation;
 	const tx = useMemo(
 		() =>
 			isEn
@@ -322,6 +324,8 @@ export default function DashboardScreen() {
 	}, [loadDashboard]);
 
 	const primaryEnvelopeAlert = envelopeAlerts[0];
+	const hasReview = !!reviewSummary && reviewSummary.count > 0;
+	const hasAttention = hasReview || !!primaryEnvelopeAlert;
 	const totalBalance = wallets.reduce(
 		(sum, wallet) => sum + Number(wallet.balance ?? 0),
 		0,
@@ -501,14 +505,14 @@ export default function DashboardScreen() {
 										color={theme.colors.textSecondary}
 									/>
 								</Pressable>
-								<Pressable
+								{!simpleNavigation ? <Pressable
 									accessibilityRole="button"
 									accessibilityLabel={tx.manageWallets}
 									hitSlop={12}
 									onPress={() => router.push("/(tabs)/wallets" as never)}
 								>
 									<Text style={styles.manageText}>{tx.manage}</Text>
-								</Pressable>
+								</Pressable> : null}
 							</View>
 						</View>
 
@@ -579,7 +583,38 @@ export default function DashboardScreen() {
 				</View>
 
 				<View style={styles.paperSheet}>
-				<StaggeredEntrance index={1} testID="home-entrance-recent">
+				{simpleNavigation && hasAttention ? (
+					<View testID="home-attention-section" style={styles.attentionSection}>
+						{hasReview ? (
+							<StaggeredEntrance key="review" index={1} testID="home-entrance-review">
+								<View testID="home-transaction-review-card" style={styles.attentionRow}>
+									<Text style={styles.attentionTitle}>{tx.reviewTitle(reviewSummary!.count)}</Text>
+									<Pressable testID="home-review-action" accessibilityRole="button" accessibilityLabel={tx.reviewCta}
+										style={styles.attentionAction} onPress={() => router.push("/(tabs)/transactions?review=1" as never)}>
+										<Text style={styles.sectionAction}>{tx.reviewCta}</Text>
+									</Pressable>
+								</View>
+							</StaggeredEntrance>
+						) : null}
+						{primaryEnvelopeAlert ? (
+							<StaggeredEntrance key="budget" index={hasReview ? 2 : 1} testID="home-entrance-budget">
+								<View testID="home-envelope-alert" style={styles.attentionRow}>
+									<View style={styles.attentionCopy}>
+										<Text style={styles.attentionTitle}>
+											{primaryEnvelopeAlert.envelope.name} {primaryEnvelopeAlert.progress.is_over_budget ? tx.over : tx.near}
+										</Text>
+										<Text style={styles.budgetMeta}>{budgetAlertMeta}</Text>
+									</View>
+									<Pressable testID="home-budget-action" accessibilityRole="button" accessibilityLabel={tx.budgetActionA11y}
+										style={styles.attentionAction} onPress={() => router.push("/(tabs)/budgets" as never)}>
+										<Text style={styles.sectionAction}>{tx.view}</Text>
+									</Pressable>
+								</View>
+							</StaggeredEntrance>
+						) : null}
+					</View>
+				) : null}
+				<StaggeredEntrance index={simpleNavigation && hasAttention ? (hasReview && primaryEnvelopeAlert ? 3 : 2) : 1} testID="home-entrance-recent">
 					<View style={styles.sectionCard}>
 						<View style={styles.sectionTopRow}>
 							<Text style={styles.sectionTitle}>{tx.recentTitle}</Text>
@@ -649,7 +684,7 @@ export default function DashboardScreen() {
 					</View>
 				</StaggeredEntrance>
 
-				{primaryEnvelopeAlert ? (
+				{!simpleNavigation && primaryEnvelopeAlert ? (
 				<StaggeredEntrance index={2} testID="home-entrance-budget">
 					<View testID="home-budget-section" style={styles.sectionCard}>
 					<View style={styles.sectionTopRow}>
@@ -696,7 +731,7 @@ export default function DashboardScreen() {
 				</StaggeredEntrance>
 				) : null}
 
-				{reviewSummary && reviewSummary.count > 0 ? (
+				{!simpleNavigation && reviewSummary && reviewSummary.count > 0 ? (
 					<StaggeredEntrance index={3} testID="home-entrance-review">
 						<View testID="home-transaction-review-card" style={styles.sectionCard}>
 							<View style={styles.sectionTopRow}>
@@ -881,6 +916,11 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 		walletStackMeta: { color: "rgba(255,255,255,0.68)", fontSize: 11 },
 		paperSheet: { backgroundColor: fe.paper, borderTopLeftRadius: 0, borderTopRightRadius: 0, paddingHorizontal: 20, paddingTop: 26, paddingBottom: 20, gap: 18, minHeight: 420 },
 		sectionCard: { backgroundColor: "transparent", borderWidth: 0, borderRadius: 0, padding: 0, gap: 12 },
+		attentionSection: { gap: 0, borderBottomWidth: 1, borderBottomColor: fe.line },
+		attentionRow: { flexDirection: "row", alignItems: "center", gap: 12, minHeight: 56, paddingVertical: 6 },
+		attentionCopy: { flex: 1, gap: 3 },
+		attentionTitle: { flexShrink: 1, color: fe.ink, fontSize: 13, fontWeight: theme.typography.fontWeight.semibold },
+		attentionAction: { minHeight: 44, justifyContent: "center", marginLeft: "auto", flexShrink: 0 },
 		sectionTopRow: {
 			flexDirection: "row",
 			justifyContent: "space-between",

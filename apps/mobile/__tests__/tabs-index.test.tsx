@@ -5,6 +5,10 @@ import type { StyleProp, TextStyle, ViewStyle } from "react-native";
 import { ThemeProvider } from "../src/theme/theme-context";
 import { I18nProvider } from "../src/i18n/i18n-context";
 import DashboardScreen from "../app/(tabs)/index";
+import { featureFlags } from "../src/config/features";
+import { buildReportPeriod, type ReportPeriod } from "../src/state/report-period";
+
+let mockActivePeriod: ReportPeriod | undefined;
 
 jest.setTimeout(15000);
 
@@ -96,7 +100,7 @@ jest.mock("../src/state/report-period", () => {
 	return {
 		...actual,
 		useReportPeriod: () => ({
-			activePeriod,
+			activePeriod: mockActivePeriod ?? activePeriod,
 			savedRules: [],
 			setActivePeriod: jest.fn(),
 			resetToCurrentMonth: jest.fn(),
@@ -203,6 +207,10 @@ const SOFT_GREEN_BORDERS = [
 
 describe("DashboardScreen dark luxury Home parity", () => {
 	beforeEach(() => {
+		jest.restoreAllMocks();
+		jest.spyOn(featureFlags, "simpleNavigation", "get").mockReturnValue(false);
+		mockActivePeriod = buildReportPeriod("month");
+		mockReviewSummary = null;
 		mockPush.mockClear();
 		jest.mocked(AsyncStorage.getItem).mockReset();
 		jest.mocked(AsyncStorage.getItem).mockResolvedValue(null);
@@ -245,6 +253,38 @@ describe("DashboardScreen dark luxury Home parity", () => {
 		];
 	});
 
+
+	it("simple Home removes wallet management but keeps the populated decorative wallet stack and context", async () => {
+		jest.spyOn(featureFlags, "simpleNavigation", "get").mockReturnValue(true);
+		mockWallets = [{ id: "wallet-1", name: "Cash", balance: 100000, is_active: true }];
+		const screen = renderDashboard();
+		await screen.findByText("1 dompet aktif");
+		expect(screen.getByText("KASWISE")).toBeTruthy();
+		expect(screen.getByTestId("finance-context-switcher")).toBeTruthy();
+		expect(screen.getByTestId("home-total-balance").props.children).toBe("Rp 100.000");
+		expect(screen.getByTestId("home-amount-visibility-toggle")).toBeTruthy();
+		expect(screen.queryByLabelText("Kelola dompet")).toBeNull();
+		fireEvent.press(screen.getByLabelText("Buka pengaturan"));
+		expect(mockPush).toHaveBeenLastCalledWith("/(tabs)/settings");
+	});
+
+	it("simple Home places one concise attention rail before Recent with review first and budget second", async () => {
+		jest.spyOn(featureFlags, "simpleNavigation", "get").mockReturnValue(true);
+		mockReviewSummary = { summary: { count: 2, reasons: {} } };
+		const screen = renderDashboard();
+		await screen.findByText("Kopi hampir habis");
+		expect(screen.getAllByTestId("home-attention-section")).toHaveLength(1);
+		const rail = screen.getByTestId("home-attention-section");
+		expect(rail.findByProps({ testID: "home-transaction-review-card" })).toBeTruthy();
+		expect(rail.findByProps({ testID: "home-envelope-alert" })).toBeTruthy();
+		expectTextOrder(getRenderedTextNodes(screen), ["Total saldo", "2 transaksi perlu dicek", "Kopi hampir habis", "Terakhir"]);
+		expect(screen.queryByText("Rapikan kategori agar laporan dan Insight AI lebih akurat.")).toBeNull();
+		expect(screen.queryByText("Dompet aktif yang perlu perhatian")).toBeNull();
+		fireEvent.press(screen.getByTestId("home-review-action"));
+		expect(mockPush).toHaveBeenLastCalledWith("/(tabs)/transactions?review=1");
+		fireEvent.press(screen.getByTestId("home-budget-action"));
+		expect(mockPush).toHaveBeenLastCalledWith("/(tabs)/budgets");
+	});
 
 	it("uses the saved Settings profile avatar instead of initials", async () => {
 		mockAuthUser = {
