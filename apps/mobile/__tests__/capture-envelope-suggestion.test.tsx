@@ -203,14 +203,18 @@ jest.mock("expo-router", () => ({
 	},
 }));
 
-function renderCapture() {
-	return render(
+function captureTree() {
+	return (
 		<I18nProvider>
 			<ThemeProvider>
 				<CaptureScreen />
 			</ThemeProvider>
-		</I18nProvider>,
+		</I18nProvider>
 	);
+}
+
+function renderCapture() {
+	return render(captureTree());
 }
 
 describe("Capture envelope suggestion", () => {
@@ -750,5 +754,59 @@ describe("Capture simple-mode action hub", () => {
 		expect(screen.getByTestId("capture-receipt-confirm")).toBeTruthy();
 		// Still no duplicate process action exposed anywhere in the tree.
 		expect(screen.queryByTestId("capture-receipt-process")).toBeNull();
+	});
+
+	it("does not fire a second unattended receipt attempt when the manual retry also fails", async () => {
+		mockGetReceiptAuthSession.mockResolvedValue(null);
+		renderCapture();
+
+		fireEvent.press(screen.getByTestId("capture-mode-Foto"));
+		fireEvent.press(screen.getByTestId("capture-receipt-pick"));
+
+		await waitFor(() =>
+			expect(screen.getByTestId("capture-error-retry")).toBeTruthy(),
+		);
+		// The auto-process effect made exactly one unattended attempt.
+		expect(mockGetReceiptAuthSession).toHaveBeenCalledTimes(1);
+
+		fireEvent.press(screen.getByTestId("capture-error-retry"));
+
+		// Let the manual retry run to completion (it fails as well).
+		await act(async () => {
+			await new Promise((resolve) => setTimeout(resolve, 50));
+		});
+
+		expect(screen.getByTestId("capture-error-retry")).toBeTruthy();
+		// Exactly one attempt for the manual retry — the failed retry must not
+		// hand a second unattended attempt back to the auto-process effect.
+		expect(mockGetReceiptAuthSession).toHaveBeenCalledTimes(2);
+	});
+
+	it("keeps the receipt confirm action when a mid-review plan change locks photo quota", async () => {
+		mockGetReceiptAuthSession.mockResolvedValue({
+			access_token: "token",
+			user: { id: "user-1" },
+		});
+		mockEntitlements = { chat_used: 0, chat_limit: 25, photo_limit: 5 };
+		const view = renderCapture();
+
+		fireEvent.press(screen.getByTestId("capture-mode-Foto"));
+		fireEvent.press(screen.getByTestId("capture-receipt-pick"));
+
+		await waitFor(() =>
+			expect(screen.getByTestId("capture-workspace-review")).toBeTruthy(),
+		);
+		expect(screen.getByTestId("capture-receipt-confirm")).toBeTruthy();
+
+		// The plan downgrades mid-session while a receipt review is mounted.
+		mockEntitlements = { chat_used: 0, chat_limit: 25, photo_limit: 0 };
+		await act(async () => {
+			view.rerender(captureTree());
+		});
+
+		// The already-mounted review must survive: its confirm action cannot
+		// vanish just because the quota demotion effect fired.
+		expect(screen.getByTestId("capture-workspace-review")).toBeTruthy();
+		expect(screen.getByTestId("capture-receipt-confirm")).toBeTruthy();
 	});
 });

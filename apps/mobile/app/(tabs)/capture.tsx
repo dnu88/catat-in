@@ -370,14 +370,6 @@ export default function CaptureScreen() {
 		),
 	);
 	const [textInput, setTextInput] = useState("");
-	// Entitlements resolve asynchronously, so a locked photo quota can arrive after
-	// the first render. Never keep the receipt panel selected while photo is locked,
-	// no matter how the mode was chosen (entry param or visible Foto action).
-	useEffect(() => {
-		if (activeMode === "Foto" && photoLocked(ent)) {
-			setActiveMode(getDefaultCaptureMode(featureFlags.voiceNote));
-		}
-	}, [activeMode, ent]);
 	const [voiceRecording, setVoiceRecording] = useState<Audio.Recording | null>(null);
 	const [voiceAsset, setVoiceAsset] = useState<VoiceAudioAsset | null>(null);
 	const [voiceDraft, setVoiceDraft] = useState<VoiceExtraction | null>(null);
@@ -393,6 +385,18 @@ export default function CaptureScreen() {
 	const [receiptAsset, setReceiptAsset] = useState<ReceiptImageAsset | null>(null);
 	const [receiptDrafts, setReceiptDrafts] = useState<ReceiptTransactionDraft[]>([]);
 	const receiptDraft = receiptDrafts[0] ?? null;
+	// Entitlements resolve asynchronously, so a locked photo quota can arrive after
+	// the first render. Never keep the receipt panel selected while photo is locked,
+	// no matter how the mode was chosen (entry param or visible Foto action). Guard
+	// the demotion to the idle workspace: a mid-session plan change must not pull a
+	// receipt review out from under the user (the review container renders nothing
+	// for other modes, and the idle workspace is hidden while a review is active).
+	useEffect(() => {
+		if (receiptDrafts.length > 0) return;
+		if (activeMode === "Foto" && photoLocked(ent)) {
+			setActiveMode(getDefaultCaptureMode(featureFlags.voiceNote));
+		}
+	}, [activeMode, ent, receiptDrafts.length]);
 	const autoProcessReceiptRef = useRef<string | null>(null);
 	const [receiptPath, setReceiptPath] = useState<string | null>(null);
 	const [receiptExtraction, setReceiptExtraction] = useState<ReceiptExtraction | null>(null);
@@ -997,6 +1001,11 @@ export default function CaptureScreen() {
 			simple && Boolean(receiptAsset) && receiptDrafts.length === 0;
 		resetCapture(false);
 		if (shouldReprocessReceipt) {
+			// Claim the auto-process ref before the manual retry, exactly like the
+			// auto-process flow does: if this retry fails too, its submitting
+			// transition must not hand a second unattended attempt (and an extra
+			// photo-quota unit) back to the auto-process effect.
+			autoProcessReceiptRef.current = receiptAsset?.uri ?? null;
 			void submitReceiptPhoto();
 		}
 	};
