@@ -114,14 +114,19 @@ export function getCaptureModes(voiceEnabled: boolean) {
 }
 
 // Optional `?mode=` entry param for quick actions. Unknown values fall back to
-// the same default the screen would pick on its own.
+// the same default the screen would pick on its own. The photo entry is gated by
+// entitlements exactly like the visible Foto action, so a locked photo quota
+// falls back to the default mode instead of opening the receipt panel.
 export function resolveCaptureModeParam(
 	value: unknown,
 	voiceEnabled: boolean,
+	photoEntryLocked = false,
 ): ModeId {
 	const raw = Array.isArray(value) ? value[0] : value;
 	if (raw === "text") return "Teks";
-	if (raw === "photo") return "Foto";
+	if (raw === "photo") {
+		return photoEntryLocked ? getDefaultCaptureMode(voiceEnabled) : "Foto";
+	}
 	if (raw === "voice" && voiceEnabled) return "Suara";
 	return getDefaultCaptureMode(voiceEnabled);
 }
@@ -358,9 +363,21 @@ export default function CaptureScreen() {
 		[],
 	);
 	const [activeMode, setActiveMode] = useState<ModeId>(() =>
-		resolveCaptureModeParam(searchParams.mode, featureFlags.voiceNote),
+		resolveCaptureModeParam(
+			searchParams.mode,
+			featureFlags.voiceNote,
+			photoLocked(ent),
+		),
 	);
 	const [textInput, setTextInput] = useState("");
+	// Entitlements resolve asynchronously, so a locked photo quota can arrive after
+	// the first render. Never keep the receipt panel selected while photo is locked,
+	// no matter how the mode was chosen (entry param or visible Foto action).
+	useEffect(() => {
+		if (activeMode === "Foto" && photoLocked(ent)) {
+			setActiveMode(getDefaultCaptureMode(featureFlags.voiceNote));
+		}
+	}, [activeMode, ent]);
 	const [voiceRecording, setVoiceRecording] = useState<Audio.Recording | null>(null);
 	const [voiceAsset, setVoiceAsset] = useState<VoiceAudioAsset | null>(null);
 	const [voiceDraft, setVoiceDraft] = useState<VoiceExtraction | null>(null);
@@ -971,6 +988,19 @@ export default function CaptureScreen() {
 		}
 	};
 
+	// The dedicated receipt process action is retired in simple mode, so the
+	// error-state retry has to actually resume processing: resetting state alone
+	// cannot re-fire the auto-process effect (its deps are unchanged), which used
+	// to leave the user stuck with a picked photo and no way to continue.
+	const retryCapture = () => {
+		const shouldReprocessReceipt =
+			simple && Boolean(receiptAsset) && receiptDrafts.length === 0;
+		resetCapture(false);
+		if (shouldReprocessReceipt) {
+			void submitReceiptPhoto();
+		}
+	};
+
 	const renderReceiptReview = () =>
 		receiptDraft ? (
 								<View testID="capture-receipt-preview" style={styles.receiptDraftCard}>
@@ -1225,6 +1255,7 @@ export default function CaptureScreen() {
 						<Pressable
 							testID="capture-secondary-manual"
 							accessibilityRole="button"
+							accessibilityLabel={tx.manualDetail}
 							style={styles.secondaryButton}
 							onPress={() => router.push("/(tabs)/transaction-new")}
 						>
@@ -1234,6 +1265,7 @@ export default function CaptureScreen() {
 							<Pressable
 								testID="capture-secondary-import"
 								accessibilityRole="button"
+								accessibilityLabel={tx.importAction}
 								style={styles.secondaryButton}
 								onPress={() => router.push("/(tabs)/imports")}
 							>
@@ -1351,7 +1383,7 @@ export default function CaptureScreen() {
 								tx.tryAgainLabel
 							}
 							style={styles.secondaryButton}
-							onPress={() => resetCapture(false)}
+							onPress={retryCapture}
 						>
 							<Text style={styles.secondaryButtonText}>{tx.tryAgain}</Text>
 						</Pressable>

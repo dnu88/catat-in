@@ -1,10 +1,12 @@
 import React from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
+	act,
 	fireEvent,
 	render,
 	screen,
 	waitFor,
+	within,
 } from "@testing-library/react-native";
 
 import CaptureScreen from "../app/(tabs)/capture";
@@ -80,6 +82,16 @@ let mockActiveContext:
 			householdId: string;
 			role: "admin" | "member" | "owner" | "viewer";
 	  } = { type: "personal" };
+let mockMemberships: Array<{
+	household_id: string;
+	role: string;
+	households?: { name: string };
+}> = [];
+let mockEntitlements: {
+	chat_used: number;
+	chat_limit: number;
+	photo_limit: number;
+} | null = null;
 let mockRealtimeEnabled = true;
 let mockEnvelopeSuggestion: null | {
 	id?: string;
@@ -159,7 +171,7 @@ jest.mock("../src/state/finance-context", () => ({
 	useFinanceContext: () => ({
 		activeContext: mockActiveContext,
 		canCreate: true,
-		memberships: [],
+		memberships: mockMemberships,
 		setPersonalContext: jest.fn(),
 		setActiveHousehold: jest.fn(),
 	}),
@@ -172,10 +184,19 @@ jest.mock("../src/lib/supabase", () => ({
 	}),
 }));
 
+jest.mock("../src/hooks/useEntitlements", () => ({
+	useEntitlements: () => ({
+		data: mockEntitlements,
+		loading: false,
+		refresh: jest.fn(async () => undefined),
+	}),
+}));
+
 const mockPush = jest.fn();
+let mockSearchParams: Record<string, string> = {};
 jest.mock("expo-router", () => ({
 	useRouter: () => ({ push: mockPush }),
-	useLocalSearchParams: () => ({}),
+	useLocalSearchParams: () => mockSearchParams,
 	useFocusEffect: (callback: () => void | (() => void)) => {
 		const React = require("react");
 		React.useEffect(() => callback(), [callback]);
@@ -215,6 +236,9 @@ describe("Capture envelope suggestion", () => {
 		}));
 		mockInvoke.mockResolvedValue({ data: null, error: null });
 		mockActiveContext = { type: "personal" };
+		mockMemberships = [];
+		mockEntitlements = null;
+		mockSearchParams = {};
 		mockRealtimeEnabled = true;
 		mockWallets = [];
 		mockPush.mockClear();
@@ -423,6 +447,21 @@ describe("Capture envelope suggestion", () => {
 			mockActiveContext,
 		);
 	});
+
+	it("falls back to the default mode when ?mode=photo is locked by entitlements", () => {
+		mockEntitlements = { chat_used: 3, chat_limit: 25, photo_limit: 0 };
+		mockSearchParams = { mode: "photo" };
+		renderCapture();
+
+		// The locked photo entry param must not select the Foto panel.
+		expect(screen.queryByTestId("capture-receipt-pick")).toBeNull();
+		expect(screen.getByLabelText("Input teks transaksi")).toBeTruthy();
+
+		// The visible Foto action keeps its own gating behaviour.
+		fireEvent.press(screen.getByTestId("capture-mode-Foto"));
+		expect(mockPush).toHaveBeenCalledWith("/upgrade");
+		expect(screen.queryByTestId("capture-receipt-pick")).toBeNull();
+	});
 });
 
 describe("Capture simple-mode action hub", () => {
@@ -435,11 +474,28 @@ describe("Capture simple-mode action hub", () => {
 		mockRealtimeEnabled = false;
 		mockEnvelopeSuggestion = null;
 		mockWallets = [{ id: "wallet-1", name: "BCA", is_active: true }];
+		mockMemberships = [];
+		mockEntitlements = null;
+		mockSearchParams = {};
+		mockCreateEnvelopeAllocation.mockClear();
+		mockCreateTransaction.mockClear();
+		mockGetUser.mockClear();
+		mockRequestMediaLibraryPermissionsAsync.mockClear();
+		mockLaunchImageLibraryAsync.mockClear();
+		mockGetReceiptAuthSession.mockClear();
+		mockUploadReceiptImage.mockClear();
+		mockAnalyzeReceiptImage.mockClear();
+		mockAnalyzeTransactionText.mockClear();
+		mockReceiptExtractionToDraft.mockClear();
+		mockPush.mockClear();
 	});
 	afterEach(() => {
 		delete (globalThis as any).__KASWISE_FEATURE_FLAGS__;
 		mockRealtimeEnabled = true;
 		mockWallets = [];
+		mockMemberships = [];
+		mockEntitlements = null;
+		mockSearchParams = {};
 	});
 
 	it("renders an action-first hub with one idle workspace and a destination row", async () => {
@@ -457,28 +513,53 @@ describe("Capture simple-mode action hub", () => {
 		expect(screen.getByTestId("capture-workspace-idle")).toBeTruthy();
 		expect(screen.getByTestId("capture-input")).toBeTruthy();
 		expect(screen.queryByTestId("capture-workspace-review")).toBeNull();
-		// Destination row shows the money space and the selected wallet.
-		expect(screen.getByTestId("capture-destination")).toBeTruthy();
+		// Destination row shows the money space (active finance context) and the
+		// selected wallet together.
+		const destination = screen.getByTestId("capture-destination");
+		expect(destination).toBeTruthy();
 		expect(screen.getByTestId("capture-wallet-selector")).toBeTruthy();
+		expect(within(destination).getByText("Ruang uang")).toBeTruthy();
+		expect(within(destination).getByText("Pribadi")).toBeTruthy();
 		await waitFor(() =>
-			expect(screen.getByTestId("capture-wallet-wallet-1")).toBeTruthy(),
+			expect(within(destination).getByText("BCA")).toBeTruthy(),
 		);
-		expect(screen.getByText("BCA")).toBeTruthy();
-		// Secondary actions.
+		// Secondary actions carry accessibility labels like the other controls.
 		expect(screen.getByTestId("capture-secondary-manual")).toBeTruthy();
+		expect(screen.getByLabelText("Isi detail manual")).toBeTruthy();
 		expect(screen.queryByTestId("capture-secondary-import")).toBeNull();
 		// No Moonveo/Monveo wording anywhere in product UI.
-		expect(screen.queryByText(/Monveo/i)).toBeNull();
+		expect(screen.queryByText(/Moonveo|Monveo/i)).toBeNull();
+	});
+
+	it("shows the active household money space next to the selected wallet", async () => {
+		mockActiveContext = {
+			type: "household",
+			householdId: "hh-1",
+			role: "admin",
+		};
+		mockMemberships = [
+			{ household_id: "hh-1", role: "admin", households: { name: "Keluarga Danu" } },
+		];
+		renderCapture();
+
+		const destination = screen.getByTestId("capture-destination");
+		expect(within(destination).getByText("Keluarga Danu")).toBeTruthy();
+		expect(within(destination).queryByText("Pribadi")).toBeNull();
+		await waitFor(() =>
+			expect(within(destination).getByText("BCA")).toBeTruthy(),
+		);
 	});
 
 	it("routes secondary actions to manual detail and import statement", () => {
 		(globalThis as any).__KASWISE_FEATURE_FLAGS__.importStatement = true;
 		renderCapture();
 
+		expect(screen.getByLabelText("Isi detail manual")).toBeTruthy();
 		fireEvent.press(screen.getByTestId("capture-secondary-manual"));
 		expect(mockPush).toHaveBeenCalledWith("/(tabs)/transaction-new");
 
-		fireEvent.press(screen.getByTestId("capture-secondary-import"));
+		expect(screen.getByLabelText("Impor rekening")).toBeTruthy();
+		fireEvent.press(screen.getByLabelText("Impor rekening"));
 		expect(mockPush).toHaveBeenCalledWith("/(tabs)/imports");
 	});
 
@@ -511,6 +592,21 @@ describe("Capture simple-mode action hub", () => {
 		expect(screen.queryByTestId("capture-receipt-process")).toBeNull();
 		expect(screen.queryByTestId("capture-input")).toBeNull();
 		expect(screen.queryByTestId("capture-workspace-idle")).toBeNull();
+	});
+
+	it("never exposes a duplicate receipt process action while the Foto panel is active", () => {
+		renderCapture();
+
+		expect(screen.queryByTestId("capture-receipt-process")).toBeNull();
+
+		fireEvent.press(screen.getByTestId("capture-mode-Foto"));
+
+		// The Foto panel is genuinely mounted (so the legacy branch would render
+		// here if it leaked back into the simple hub) and must stay process-free.
+		expect(screen.getByTestId("capture-receipt-pick")).toBeTruthy();
+		expect(screen.queryByTestId("capture-receipt-process")).toBeNull();
+		expect(screen.queryByTestId("capture-receipt-confirm")).toBeNull();
+		expect(screen.queryByTestId("capture-text-submit")).toBeNull();
 	});
 
 	it("offers 'Catat transaksi lain' on success and hides the input workspace", async () => {
@@ -546,5 +642,113 @@ describe("Capture simple-mode action hub", () => {
 		});
 		expect(screen.getByText(/Sesi login tidak ditemukan/)).toBeTruthy();
 		expect(screen.queryByTestId("capture-input")).toBeNull();
+	});
+
+	it("hides the idle input workspace while a submission is processing", async () => {
+		const resolvedAi = {
+			total_amount: 35000,
+			merchant: "Kopi Kenangan",
+			category: "Makan & Minum",
+			confidence: 0.96,
+			date: "2026-07-08",
+			transactions: [
+				{
+					amount: 35000,
+					type: "expense",
+					category: "Makan & Minum",
+					note: "Beli kopi",
+					merchant: "Kopi Kenangan",
+					confidence: 0.96,
+				},
+			],
+		};
+		let resolveAi!: (value: typeof resolvedAi) => void;
+		mockAnalyzeTransactionText.mockImplementationOnce(
+			() =>
+				new Promise<typeof resolvedAi>((resolve) => {
+					resolveAi = resolve;
+				}),
+		);
+		renderCapture();
+
+		fireEvent.changeText(
+			screen.getByLabelText("Input teks transaksi"),
+			"Beli kopi 35rb",
+		);
+		fireEvent.press(screen.getByTestId("capture-text-submit"));
+
+		await waitFor(() =>
+			expect(screen.getByTestId("capture-processing")).toBeTruthy(),
+		);
+		expect(screen.queryByTestId("capture-input")).toBeNull();
+		expect(screen.queryByTestId("capture-workspace-idle")).toBeNull();
+
+		await act(async () => {
+			resolveAi(resolvedAi);
+		});
+		await waitFor(
+			() => expect(screen.getByTestId("capture-success-new")).toBeTruthy(),
+			{ timeout: 4000 },
+		);
+	});
+
+	it("opens the Foto panel when the entry param is ?mode=photo", () => {
+		mockSearchParams = { mode: "photo" };
+		renderCapture();
+
+		expect(screen.getByTestId("capture-receipt-pick")).toBeTruthy();
+		expect(screen.getByText("Scan struk belanja dengan OCR")).toBeTruthy();
+		expect(screen.queryByLabelText("Input teks transaksi")).toBeNull();
+		expect(screen.queryByTestId("capture-voice-card")).toBeNull();
+	});
+
+	it("falls back to the default mode when ?mode=voice is requested while voiceNote is off", () => {
+		mockSearchParams = { mode: "voice" };
+		renderCapture();
+
+		expect(screen.getByLabelText("Input teks transaksi")).toBeTruthy();
+		expect(screen.getByText("Ketik transaksi dengan bahasa natural")).toBeTruthy();
+		expect(screen.queryByTestId("capture-voice-card")).toBeNull();
+		expect(screen.queryByTestId("capture-receipt-pick")).toBeNull();
+		expect(screen.queryByTestId("capture-mode-Suara")).toBeNull();
+	});
+
+	it("falls back to the default mode when ?mode=photo is locked by entitlements", () => {
+		mockEntitlements = { chat_used: 0, chat_limit: 25, photo_limit: 0 };
+		mockSearchParams = { mode: "photo" };
+		renderCapture();
+
+		expect(screen.getByTestId("capture-workspace-idle")).toBeTruthy();
+		expect(screen.getByLabelText("Input teks transaksi")).toBeTruthy();
+		expect(screen.queryByTestId("capture-receipt-pick")).toBeNull();
+	});
+
+	it("reprocesses the picked receipt photo when retrying after an error", async () => {
+		mockGetReceiptAuthSession.mockResolvedValueOnce(null);
+		renderCapture();
+
+		fireEvent.press(screen.getByTestId("capture-mode-Foto"));
+		fireEvent.press(screen.getByTestId("capture-receipt-pick"));
+
+		await waitFor(() =>
+			expect(screen.getByTestId("capture-error-retry")).toBeTruthy(),
+		);
+		expect(screen.getByText(/Sesi login tidak ditemukan/)).toBeTruthy();
+		// Nothing was processed yet and no duplicate manual action leaked in.
+		expect(mockAnalyzeReceiptImage).not.toHaveBeenCalled();
+		expect(screen.queryByTestId("capture-receipt-process")).toBeNull();
+		expect(screen.queryByTestId("capture-receipt-confirm")).toBeNull();
+
+		fireEvent.press(screen.getByTestId("capture-error-retry"));
+
+		// Retry must genuinely resume receipt processing (not just reset state).
+		await waitFor(() =>
+			expect(screen.getByTestId("capture-workspace-review")).toBeTruthy(),
+		);
+		expect(mockAnalyzeReceiptImage).toHaveBeenCalledTimes(1);
+		expect(screen.getByTestId("capture-receipt-preview")).toBeTruthy();
+		expect(screen.getByTestId("capture-receipt-confirm")).toBeTruthy();
+		// Still no duplicate process action exposed anywhere in the tree.
+		expect(screen.queryByTestId("capture-receipt-process")).toBeNull();
 	});
 });

@@ -88,3 +88,11 @@ test("unknown or invalid entry mode params fall back to the default mode", () =>
   // Voice is gated by the flag: without it the safe default is used.
   expect(resolveCaptureModeParam("voice", false)).toBe("Teks");
 });
+
+test("locked photo entry param falls back to the default mode", () => {
+  expect(resolveCaptureModeParam("photo", false, true)).toBe("Teks");
+  expect(resolveCaptureModeParam("photo", true, true)).toBe("Suara");
+  // Explicitly unlocked photo entry still opens the Foto mode.
+  expect(resolveCaptureModeParam("photo", false, false)).toBe("Foto");
+  expect(resolveCaptureModeParam("photo", true, false)).toBe("Foto");
+});
