@@ -20,7 +20,11 @@ const mockDeleteWallet = jest.fn();
 let mockCanCreate = true;
 let mockActiveContext:
 	| { type: "personal" }
-	| { type: "household"; householdId: string; role: "admin" } = {
+	| {
+			type: "household";
+			householdId: string;
+			role: "owner" | "admin" | "member" | "viewer";
+	  } = {
 	type: "personal",
 };
 
@@ -608,5 +612,105 @@ describe("WalletsScreen simple navigation", () => {
 		await screen.findByTestId("wallet-create-form");
 
 		expect(scrollSpy).not.toHaveBeenCalled();
+	});
+});
+
+// Household viewer role is read-only: the wallet cards must not offer
+// actionable Edit/Hapus affordances that would only fail on RLS.
+describe("WalletsScreen household viewer permissions", () => {
+	beforeEach(() => {
+		jest.clearAllMocks();
+		enableSimpleNavigation();
+		mockActiveContext = {
+			type: "household",
+			householdId: "hh-1",
+			role: "viewer",
+		};
+		mockCanCreate = false;
+		mockListWallets.mockImplementation(async (context) => {
+			if (context.type === "personal") {
+				return [
+					{
+						id: "wallet-personal",
+						name: "BCA Pribadi",
+						type: "bank",
+						balance: 1000000,
+						is_active: true,
+					},
+				];
+			}
+			return [
+				{
+					id: "wallet-family",
+					name: "Dompet Keluarga",
+					type: "cash",
+					balance: 2500000,
+					is_active: true,
+				},
+			];
+		});
+		mockCreateWallet.mockResolvedValue({ id: "wallet-new" });
+		mockUpdateWallet.mockResolvedValue({ id: "wallet-family" });
+		mockDeleteWallet.mockResolvedValue(undefined);
+	});
+
+	afterEach(() => {
+		jest.restoreAllMocks();
+		Object.defineProperty(Platform, "OS", { configurable: true, value: "ios" });
+		delete flagsGlobal.__KASWISE_FEATURE_FLAGS__;
+	});
+
+	it("renders the card edit and delete controls as disabled for a household viewer", async () => {
+		renderWallets();
+
+		const edit = await screen.findByTestId("wallet-edit-wallet-family");
+		const remove = screen.getByTestId("wallet-delete-wallet-family");
+
+		for (const control of [edit, remove]) {
+			expect(control.props.accessibilityState).toMatchObject({ disabled: true });
+			expect(getFlattenedStyle(control).opacity).toBe(0.5);
+		}
+	});
+
+	it("does not open the edit form when a household viewer presses card edit", async () => {
+		renderWallets();
+
+		const edit = await screen.findByTestId("wallet-edit-wallet-family");
+		fireEvent.press(edit);
+
+		expect(screen.queryByTestId("wallet-edit-form")).toBeNull();
+		expect(mockUpdateWallet).not.toHaveBeenCalled();
+	});
+
+	it("does not open the delete confirmation when a household viewer presses card delete", async () => {
+		const alertSpy = jest.spyOn(Alert, "alert").mockImplementation(() => undefined);
+		renderWallets();
+
+		await screen.findByTestId("wallet-delete-wallet-family");
+		fireEvent.press(screen.getByTestId("wallet-delete-wallet-family"));
+
+		expect(alertSpy).not.toHaveBeenCalled();
+		expect(mockDeleteWallet).not.toHaveBeenCalled();
+	});
+
+	it("keeps the card edit and delete controls actionable for a household member", async () => {
+		mockActiveContext = {
+			type: "household",
+			householdId: "hh-1",
+			role: "member",
+		};
+		mockCanCreate = true;
+		renderWallets();
+
+		const edit = await screen.findByTestId("wallet-edit-wallet-family");
+		const remove = screen.getByTestId("wallet-delete-wallet-family");
+
+		expect(edit.props.accessibilityState).toMatchObject({ disabled: false });
+		expect(remove.props.accessibilityState).toMatchObject({ disabled: false });
+		expect(getFlattenedStyle(edit).opacity ?? 1).toBe(1);
+		expect(getFlattenedStyle(remove).opacity ?? 1).toBe(1);
+
+		fireEvent.press(edit);
+		expect(screen.getByTestId("wallet-edit-form")).toBeTruthy();
 	});
 });

@@ -251,6 +251,7 @@ export default function WalletsScreen() {
 			: { type: "personal" as const };
 
 	const startEdit = (wallet: ScopedWallet) => {
+		if (!canCreate) return;
 		setEditingWallet(wallet);
 		setEditName(wallet.name);
 		setEditType(wallet.type as WalletType);
@@ -302,6 +303,7 @@ export default function WalletsScreen() {
 	};
 
 	const handleDelete = (wallet: ScopedWallet) => {
+		if (!canCreate) return;
 		const message = tx.deleteMessage(wallet.name);
 		if (Platform.OS === "web") {
 			if (typeof globalThis.confirm === "function" && globalThis.confirm(`${tx.deleteTitle}\n\n${message}`)) {
@@ -735,8 +737,10 @@ export default function WalletsScreen() {
 									testID={`wallet-edit-${wallet.id}`}
 									accessibilityRole="button"
 									accessibilityLabel={`${tx.edit} ${wallet.name}`}
-									style={styles.walletActionButton}
-									onPress={() => startEdit(wallet)}
+									accessibilityState={{ disabled: !canCreate }}
+									style={[styles.walletActionButton, !canCreate && styles.disabledButton]}
+									onPress={() => canCreate && startEdit(wallet)}
+									disabled={!canCreate}
 								>
 									<Text style={styles.walletActionText}>{tx.edit}</Text>
 								</Pressable>
@@ -744,8 +748,14 @@ export default function WalletsScreen() {
 									testID={`wallet-delete-${wallet.id}`}
 									accessibilityRole="button"
 									accessibilityLabel={`${tx.delete} ${wallet.name}`}
-									style={[styles.walletActionButton, styles.walletDeleteButton]}
-									onPress={() => handleDelete(wallet)}
+									accessibilityState={{ disabled: !canCreate }}
+									style={[
+										styles.walletActionButton,
+										styles.walletDeleteButton,
+										!canCreate && styles.disabledButton,
+									]}
+									onPress={() => canCreate && handleDelete(wallet)}
+									disabled={!canCreate}
 								>
 									<Text
 										style={[styles.walletActionText, styles.walletDeleteText]}
