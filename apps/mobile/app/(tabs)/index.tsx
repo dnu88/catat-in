@@ -11,7 +11,7 @@ import {
 	KaswiseIcon,
 	type KaswiseIconName,
 } from "../../src/components/icons/kaswise-icons";
-import { NotificationBell } from "../../src/components/notifications/NotificationBell";
+import { getUnreadNotificationCount } from "../../src/services/notifications";
 import { PROFILE_AVATARS, ProfileAvatarIllustration, readProfileVisualMetadata } from "../../src/components/profile/ProfileAvatar";
 
 import { useI18n } from "../../src/i18n/i18n-context";
@@ -196,6 +196,23 @@ export default function DashboardScreen() {
 
 	const [refreshing, setRefreshing] = useState(false);
 	const [isNominalHidden, setIsNominalHidden] = useState(false);
+	const [unreadCount, setUnreadCount] = useState(0);
+
+	const fetchUnreadCount = useCallback(async () => {
+		try {
+			setUnreadCount(await getUnreadNotificationCount(supabase));
+		} catch {
+			// Keep the last known count when the request fails.
+		}
+	}, [supabase]);
+
+	useEffect(() => {
+		void fetchUnreadCount();
+		const id = setInterval(() => {
+			void fetchUnreadCount();
+		}, 60000);
+		return () => clearInterval(id);
+	}, [fetchUnreadCount]);
 
 	useEffect(() => {
 		let active = true;
@@ -453,26 +470,49 @@ export default function DashboardScreen() {
 						<Text style={styles.dateText}>{dateText}</Text>
 					</View>
 					<View style={styles.headerActions}>
-						<NotificationBell pollIntervalMs={60000} tint={fe.white} />
 						<Pressable
-							testID="home-avatar"
+							testID="notification-bell"
+							accessibilityRole="button"
+							accessibilityLabel={`Notifikasi, ${unreadCount} belum dibaca`}
+							onPress={() => router.push("/notifications" as never)}
+							style={({ pressed }) => [styles.headerControlTarget, pressed && styles.headerControlPressed]}
+						>
+							<View style={styles.bellInner}>
+								<KaswiseIcon
+									name="insight"
+									size={22}
+									color={fe.white}
+									weight="bold"
+								/>
+								{unreadCount > 0 ? (
+									<View testID="notification-bell-badge" style={styles.bellBadge}>
+										<Text style={styles.bellBadgeText}>
+											{unreadCount > 9 ? "9+" : String(unreadCount)}
+										</Text>
+									</View>
+								) : null}
+							</View>
+						</Pressable>
+						<Pressable
+							testID="home-avatar-target"
 							accessibilityRole="button"
 							accessibilityLabel={tx.openSettings}
-							hitSlop={12}
-							style={styles.avatarWrap}
+							style={styles.headerControlTarget}
 							onPress={() => router.push("/(tabs)/settings" as never)}
 						>
-							{profilePhotoUrl ? (
-								<Image
-									testID="home-avatar-image"
-									source={{ uri: profilePhotoUrl }}
-									style={styles.avatarImage}
-								/>
-							) : selectedProfileAvatar ? (
-								<ProfileAvatarIllustration preset={selectedProfileAvatar} theme={theme} size={34} />
-							) : (
-								<Text style={styles.avatarText}>{avatarInitials}</Text>
-							)}
+							<View testID="home-avatar" style={styles.avatarWrap}>
+								{profilePhotoUrl ? (
+									<Image
+										testID="home-avatar-image"
+										source={{ uri: profilePhotoUrl }}
+										style={styles.avatarImage}
+									/>
+								) : selectedProfileAvatar ? (
+									<ProfileAvatarIllustration preset={selectedProfileAvatar} theme={theme} size={34} />
+								) : (
+									<Text style={styles.avatarText}>{avatarInitials}</Text>
+								)}
+							</View>
 						</Pressable>
 					</View>
 				</View>
@@ -497,15 +537,17 @@ export default function DashboardScreen() {
 									accessibilityRole="button"
 									accessibilityLabel={isNominalHidden ? tx.showAmountsA11y : tx.hideAmountsA11y}
 									accessibilityState={{ selected: isNominalHidden }}
-									style={styles.privacyToggle}
+									style={styles.heroControlTarget}
 									onPress={toggleNominalVisibility}
 								>
-									<KaswiseIcon
-										name={isNominalHidden ? "eyeSlash" : "eye"}
-										size={17}
-										weight="bold"
-										color={theme.colors.textSecondary}
-									/>
+									<View style={styles.privacyToggle}>
+										<KaswiseIcon
+											name={isNominalHidden ? "eyeSlash" : "eye"}
+											size={17}
+											weight="bold"
+											color={theme.colors.textSecondary}
+										/>
+									</View>
 								</Pressable>
 								{!simpleNavigation ? <Pressable
 									accessibilityRole="button"
@@ -621,9 +663,10 @@ export default function DashboardScreen() {
 						<View style={styles.sectionTopRow}>
 							<Text style={styles.sectionTitle}>{tx.recentTitle}</Text>
 						<Pressable
+							testID="home-recent-all-target"
 							accessibilityRole="button"
 							accessibilityLabel={tx.allTransactionsA11y}
-							hitSlop={12}
+							style={styles.sectionActionTarget}
 							onPress={() => router.push("/(tabs)/transactions" as never)}
 						>
 							<Text style={styles.sectionAction}>{tx.allTransactions}</Text>
@@ -807,6 +850,31 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			borderRadius: 17,
 		},
 		avatarText: { color: fe.white, fontSize: 12, fontWeight: theme.typography.fontWeight.bold },
+		headerControlTarget: {
+			width: 44,
+			height: 44,
+			alignItems: "center",
+			justifyContent: "center",
+		},
+		headerControlPressed: { opacity: 0.7 },
+		bellInner: { padding: 6, position: "relative" },
+		bellBadge: {
+			position: "absolute",
+			top: 2,
+			right: 2,
+			backgroundColor: theme.colors.danger,
+			borderRadius: 9,
+			minWidth: 18,
+			height: 18,
+			alignItems: "center",
+			justifyContent: "center",
+			paddingHorizontal: 4,
+		},
+		bellBadgeText: {
+			color: "#FFFFFF",
+			fontSize: 10,
+			fontWeight: "bold",
+		},
 		heroStage: { backgroundColor: fe.paper },
 		heroCard: {
 			backgroundColor: fe.blue, borderRadius: 0, paddingHorizontal: 20, paddingTop: 18,
@@ -842,6 +910,12 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			backgroundColor: fe.glass,
 			borderColor: fe.glassStrong,
 			borderWidth: 1,
+			alignItems: "center",
+			justifyContent: "center",
+		},
+		heroControlTarget: {
+			width: 44,
+			height: 44,
 			alignItems: "center",
 			justifyContent: "center",
 		},
@@ -930,6 +1004,12 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 		},
 		sectionTitle: { color: fe.ink, fontSize: 20, fontWeight: theme.typography.fontWeight.semibold, letterSpacing: -0.35 },
 		sectionAction: { color: fe.muted, fontSize: 12, fontWeight: theme.typography.fontWeight.semibold },
+		sectionActionTarget: {
+			minWidth: 44,
+			minHeight: 44,
+			alignItems: "flex-end",
+			justifyContent: "center",
+		},
 		emptyInline: {
 			flexDirection: "row",
 			alignItems: "center",

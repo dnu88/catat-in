@@ -11,6 +11,7 @@ import {
 	formatReportPeriodLabel,
 	type ReportPeriod,
 } from "../src/state/report-period";
+import { KaswiseIcon } from "../src/components/icons/kaswise-icons";
 
 let mockActivePeriod: ReportPeriod | undefined;
 
@@ -708,5 +709,28 @@ describe("DashboardScreen dark luxury Home parity", () => {
 		expect(screen.getByTestId("home-recent-amount-tx-3")).toBeTruthy();
 		expect(screen.queryByTestId("home-recent-amount-tx-4")).toBeNull();
 		expect(screen.queryByTestId("home-recent-amount-tx-5")).toBeNull();
+	});
+
+	it("keeps every Home quick control at a 44px touch target without changing icon size", async () => {
+		const screen = renderDashboard();
+
+		await waitFor(() => expect(screen.getByText("Halo")).toBeTruthy());
+
+		const bell = screen.getByTestId("notification-bell");
+		const avatarTarget = screen.getByTestId("home-avatar-target");
+		const hideAmounts = screen.getByTestId("home-amount-visibility-toggle");
+		const allTransactions = screen.getByTestId("home-recent-all-target");
+
+		[bell, avatarTarget, hideAmounts, allTransactions].forEach((target) => {
+			const style = getFlattenedStyle(target);
+			expect(Number(style.width ?? style.minWidth ?? 0)).toBeGreaterThanOrEqual(44);
+			expect(Number(style.height ?? style.minHeight ?? 0)).toBeGreaterThanOrEqual(44);
+		});
+
+		// Icons and the avatar visual keep their existing sizes.
+		expect(bell.findByType(KaswiseIcon).props.size).toBe(22);
+		expect(hideAmounts.findByType(KaswiseIcon).props.size).toBe(17);
+		expect(getFlattenedStyle(screen.getByTestId("home-avatar")).width).toBe(40);
+		expect(screen.getByText("Semua →")).toBeTruthy();
 	});
 });
