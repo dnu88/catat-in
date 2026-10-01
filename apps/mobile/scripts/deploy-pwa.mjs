@@ -1,7 +1,13 @@
 import { cpSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { createRequire } from 'node:module'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { execSync } from 'node:child_process'
+
+// This script is ESM; the roll-out flag helper is plain CommonJS so both Node
+// and Jest can load it directly.
+const require = createRequire(import.meta.url)
+const { stripRolloutFlagsFromEnv } = require('./rollout-flags.cjs')
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const appDir = resolve(__dirname, '..')
@@ -81,7 +87,10 @@ function runLiveQualityGate() {
   }
 
   console.log('🛡️  Running live quality gate before deploy...')
-  run('pnpm quality:live')
+  // The gate validates SOURCE, not the rolled-out flag state. Rollout flags are a
+  // deployment concern (injected into the deployed HTML below), so they must not
+  // leak into the gate's env and flip the app into the rolled-out mode mid-gate.
+  run('pnpm quality:live', { env: stripRolloutFlagsFromEnv(process.env) })
 }
 
 function verifyTargetBundleMarkers() {
