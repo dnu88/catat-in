@@ -6,6 +6,7 @@ import { AuthBackButton, AuthButton, AuthFormCard, AuthHeroPanel, AuthLink, Auth
 import { InputField, StateMessage } from '../../src/components/ui'
 import { useI18n } from '../../src/i18n/i18n-context'
 import { getPasswordResetRedirectTo } from '../../src/lib/auth-redirects'
+import { goBackSafely } from '../../src/lib/safe-back'
 import { useSupabase } from '../../src/lib/supabase'
 
 export default function ForgotPasswordScreen() {
@@ -39,7 +40,7 @@ export default function ForgotPasswordScreen() {
   return (
     <AuthScreenLayout>
       <StaggeredStack testIDPrefix="forgot-password-entrance">
-      <AuthBackButton key="forgot-password-back" onPress={() => router.back()} label={t('back')} />
+      <AuthBackButton key="forgot-password-back" onPress={() => goBackSafely(router, '/(auth)/login')} label={t('back')} />
 
       <AuthHeroPanel key="forgot-password-hero" icon="email" iconTone="warning" eyebrow={language === 'id' ? 'Reset password' : 'Reset password'} title={t('forgotPasswordHeroTitle')} />
 

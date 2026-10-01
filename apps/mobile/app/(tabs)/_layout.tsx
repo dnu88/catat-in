@@ -21,7 +21,7 @@ const BASE_PRIMARY_TAB_ROUTES = ["index", "transactions", "capture", "reports"] 
 
 // Cold deep links into a hidden route have no history, so the shared back
 // control needs an explicit primary destination per route.
-const HIDDEN_ROUTE_BACK_FALLBACKS: Record<string, string> = {
+export const HIDDEN_ROUTE_BACK_FALLBACKS: Record<string, string> = {
 	settings: "/(tabs)",
 	wallets: "/(tabs)",
 	budgets: "/(tabs)/settings",

@@ -18,8 +18,15 @@ jest.mock("expo-web-browser", () => ({
 }));
 
 const mockBack = jest.fn();
+const mockReplace = jest.fn();
+let mockCanGoBack = true;
 jest.mock("expo-router", () => ({
-  router: { back: () => mockBack(), push: jest.fn() },
+  router: {
+    back: () => mockBack(),
+    replace: (href: string) => mockReplace(href),
+    canGoBack: () => mockCanGoBack,
+    push: jest.fn(),
+  },
 }));
 
 const mockCreate = jest.fn(async (_supabase: unknown, _plan: string) => ({
@@ -120,6 +127,7 @@ jest.mock("../src/i18n/i18n-context", () => ({
 beforeEach(() => {
   jest.clearAllMocks();
   jest.useFakeTimers();
+  mockCanGoBack = true;
   mockGetStoreReleaseConfig.mockReturnValue({
     isNativeStoreBuildCandidate: false,
     allowNativePremiumPurchase: true,
@@ -210,4 +218,52 @@ test("shows retry button during polling", async () => {
   });
 
   expect(getByText("Saya sudah bayar")).toBeTruthy();
+});
+
+test("falls back to settings when upgrade opens cold without history", async () => {
+  mockCanGoBack = false;
+  mockGetStatus.mockResolvedValue({ order_id: "kw-test-123", status: "paid" });
+
+  const { getByText, getByTestId } = render(<UpgradeScreen />);
+  await waitFor(() => getByText(/29.000/));
+
+  fireEvent.press(getByTestId("upgrade-monthly"));
+  await waitFor(() => expect(mockOpen).toHaveBeenCalled());
+
+  await act(async () => {
+    jest.advanceTimersByTime(2100);
+  });
+
+  await waitFor(() => expect(getByTestId("upgrade-success")).toBeTruthy());
+
+  await act(async () => {
+    jest.advanceTimersByTime(1600);
+  });
+
+  expect(mockReplace).toHaveBeenCalledWith("/(tabs)/settings");
+  expect(mockBack).not.toHaveBeenCalled();
+});
+
+test("uses history back for upgrade when history exists", async () => {
+  mockCanGoBack = true;
+  mockGetStatus.mockResolvedValue({ order_id: "kw-test-123", status: "paid" });
+
+  const { getByText, getByTestId } = render(<UpgradeScreen />);
+  await waitFor(() => getByText(/29.000/));
+
+  fireEvent.press(getByTestId("upgrade-monthly"));
+  await waitFor(() => expect(mockOpen).toHaveBeenCalled());
+
+  await act(async () => {
+    jest.advanceTimersByTime(2100);
+  });
+
+  await waitFor(() => expect(getByTestId("upgrade-success")).toBeTruthy());
+
+  await act(async () => {
+    jest.advanceTimersByTime(1600);
+  });
+
+  expect(mockBack).toHaveBeenCalledTimes(1);
+  expect(mockReplace).not.toHaveBeenCalled();
 });

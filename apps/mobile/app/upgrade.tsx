@@ -24,6 +24,7 @@ import { useTheme } from "../src/theme/theme-context";
 import { financeEditorial as fe } from "../src/theme/finance-editorial";
 import { useI18n } from "../src/i18n/i18n-context";
 import { getStoreReleaseConfig } from "../src/config/store-release";
+import { goBackSafely } from "../src/lib/safe-back";
 
 const rp = (n: number) => `Rp${n.toLocaleString("id-ID")}`;
 
@@ -63,7 +64,7 @@ export default function UpgradeScreen() {
       if (result.status === "paid" || result.status === "settlement") {
         stopPolling();
         setPhase("paid");
-        setTimeout(() => router.back(), 1500);
+        setTimeout(() => goBackSafely(router, "/(tabs)/settings"), 1500);
       } else if (pollCountRef.current >= MAX_POLLS) {
         stopPolling();
         setPhase("error");
@@ -94,7 +95,7 @@ export default function UpgradeScreen() {
             if (result.status === "paid" || result.status === "settlement") {
               stopPolling();
               setPhase("paid");
-              setTimeout(() => router.back(), 1500);
+              setTimeout(() => goBackSafely(router, "/(tabs)/settings"), 1500);
             } else if (pollCountRef.current >= MAX_POLLS) {
               stopPolling();
               setPhase("error");

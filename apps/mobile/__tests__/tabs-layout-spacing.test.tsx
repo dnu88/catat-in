@@ -1,7 +1,9 @@
 import { fireEvent, render, waitFor } from "@testing-library/react-native";
 import { View } from "react-native";
 
-import TabsLayout from "../app/(tabs)/_layout";
+import TabsLayout, {
+	HIDDEN_ROUTE_BACK_FALLBACKS,
+} from "../app/(tabs)/_layout";
 import { goBackSafely } from "../src/lib/safe-back";
 
 declare const __dirname: string;
@@ -46,18 +48,9 @@ const ALL_TAB_ROUTE_NAMES = [
 ];
 
 // Primary destination each hidden route falls back to when a cold deep link
-// leaves it without navigation history. Mirrors `HIDDEN_ROUTE_BACK_FALLBACKS`
-// in `app/(tabs)/_layout.tsx`.
-const HIDDEN_ROUTE_BACK_FALLBACKS: Record<string, string> = {
-	settings: "/(tabs)",
-	wallets: "/(tabs)",
-	budgets: "/(tabs)/settings",
-	bills: "/(tabs)/settings",
-	groups: "/(tabs)/settings",
-	imports: "/(tabs)/settings",
-	"transaction-new": "/(tabs)/capture",
-};
-
+// leaves it without navigation history. Sourced from the real map exported by
+// `app/(tabs)/_layout.tsx` so this suite cannot drift from the wiring under
+// test — a route added or renamed in the layout is asserted against here.
 const EXPECTED_PUBLIC_PWA_PATHS = [
 	"login",
 	"register",
@@ -417,6 +410,38 @@ describe("tabs layout spacing", () => {
 		}
 		expect(ALL_TAB_ROUTE_NAMES).toContain("budgets");
 		expect(ALL_TAB_ROUTE_NAMES).toContain("capture");
+	});
+
+	it("covers every hidden route with an explicit back fallback", async () => {
+		const hiddenRoutesByMode: Record<string, string[]> = {};
+
+		for (const simple of [false, true]) {
+			jest.clearAllMocks();
+			mockSegments = ["(tabs)", "index"];
+			mockSimpleNavigation = simple;
+			hiddenRoutesByMode[simple ? "on" : "off"] = (
+				await registeredScreens()
+			)
+				.filter((props) => props.options.href === null)
+				.map((props) => props.name);
+		}
+
+		// A hidden route (href: null) recovered from either navigation mode must
+		// have its own fallback entry; otherwise a new hidden route could ship
+		// with only the silent DEFAULT_HIDDEN_BACK_FALLBACK covering it.
+		const hiddenRoutes = [
+			...new Set([
+				...hiddenRoutesByMode.on,
+				...hiddenRoutesByMode.off,
+			]),
+		].sort();
+		expect(hiddenRoutes.length).toBeGreaterThan(0);
+		expect(hiddenRoutes).toEqual(
+			Object.keys(HIDDEN_ROUTE_BACK_FALLBACKS).sort(),
+		);
+		for (const route of hiddenRoutes) {
+			expect(HIDDEN_ROUTE_BACK_FALLBACKS[route]).toBeTruthy();
+		}
 	});
 
 	it("routes notifications and manual-entry back exits through the safe back helper", () => {
