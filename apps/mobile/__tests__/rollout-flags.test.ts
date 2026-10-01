@@ -1,4 +1,10 @@
 declare const __dirname: string;
+// This package type-checks without @types/node, so Node globals are declared
+// locally — same pattern as the other suites that touch `process`.
+declare const process: {
+	env: Record<string, string | undefined>;
+	execPath: string;
+};
 
 // `fs`/`path` are read through jest so the file needs no @types/node, matching
 // the source-assertion style already used in this package.
@@ -17,6 +23,18 @@ const path = jest.requireActual<{
 const os = jest.requireActual<{
 	tmpdir: () => string;
 }>("os");
+const { execFileSync } = jest.requireActual<{
+	execFileSync: (
+		file: string,
+		args: string[],
+		options: {
+			cwd: string;
+			encoding: "utf8";
+			env: Record<string, string | undefined>;
+			timeout: number;
+		},
+	) => string;
+}>("node:child_process");
 
 type RolloutSourceValue = string | boolean | undefined | null;
 type ResolveRolloutFlagOptions = {
@@ -50,6 +68,100 @@ const {
 
 const mobileRoot = path.join(__dirname, "..");
 const deployScriptPath = path.join(mobileRoot, "scripts", "deploy-pwa.mjs");
+const rolloutConfigPath = path.join(mobileRoot, "rollout-flags.json");
+
+const INJECTED_EXPO_CONFIG = {
+	name: "Kaswise",
+	slug: "kaswise",
+	version: "1.0.0",
+	orientation: "portrait",
+	extra: {},
+};
+
+// Hermetic Supabase inputs, so the emitted block never depends on the
+// developer's real apps/mobile/.env.
+const INJECTED_ENV_FILE = {
+	EXPO_PUBLIC_SUPABASE_URL: "https://example.supabase.co",
+	EXPO_PUBLIC_SUPABASE_ANON_KEY: "test-anon-key",
+};
+
+type ProbeResult = {
+	imported: boolean;
+	deployStarted: boolean;
+	block?: string;
+};
+
+// scripts/deploy-pwa.mjs is ESM while this package runs Jest in CommonJS mode,
+// so the block builder is exercised through a real child Node process. Importing
+// the module there doubles as the import-safety check: it must not fire the
+// deploy sequence.
+function probeDeployModule(extraProgram: string): ProbeResult {
+	const program = [
+		`const mod = await import(${JSON.stringify("./scripts/deploy-pwa.mjs")});`,
+		"const out = { imported: true, deployStarted: mod.isDeployStarted() };",
+		extraProgram,
+		"console.log(JSON.stringify(out));",
+	].join("\n");
+
+	const stdout = execFileSync(
+		process.execPath,
+		["--input-type=module", "-e", program],
+		{
+			cwd: mobileRoot,
+			encoding: "utf8",
+			// Blank every deploy escape hatch: a broken guard must fail loudly here
+			// instead of running the live gate against a real target.
+			env: {
+				...process.env,
+				KASWISE_DEPLOY_PWA_TEST: "1",
+				KASWISE_PWA_TARGET: path.join(os.tmpdir(), "kaswise-probe-target"),
+				ALLOW_NON_PROD_BRANCH: "",
+				SKIP_LIVE_QUALITY: "",
+				SKIP_LIVE_URL_VERIFY: "",
+			},
+			timeout: 120000,
+		},
+	);
+
+	const lines = stdout.trim().split("\n");
+	return JSON.parse(lines[lines.length - 1]) as ProbeResult;
+}
+
+// Emit the runtime config block for an injected {env, envFile, config} triple, so
+// assertions can inspect the RESOLVED values instead of grepping the source.
+function emitRuntimeConfigBlock(injected: Record<string, unknown>): string {
+	const probe = probeDeployModule(
+		`out.block = mod.publicRuntimeConfigBlock(${JSON.stringify({
+			expoConfig: INJECTED_EXPO_CONFIG,
+			envFile: INJECTED_ENV_FILE,
+			...injected,
+		})});`,
+	);
+
+	if (typeof probe.block !== "string") {
+		throw new Error("publicRuntimeConfigBlock did not return a string");
+	}
+	return probe.block;
+}
+
+function rolloutEnvLine(key: string, value: string): string {
+	return `process.env.${key} = ${JSON.stringify(value)};`;
+}
+
+// Fixtures live in the OS temp dir — never write rollout configs in the repo.
+function withRolloutConfigFile(
+	contents: string,
+	run: (filePath: string) => void,
+): void {
+	const dir = fs.mkdtempSync(path.join(os.tmpdir(), "kaswise-rollout-"));
+	try {
+		const file = path.join(dir, "rollout-flags.json");
+		fs.writeFileSync(file, contents);
+		run(file);
+	} finally {
+		fs.rmSync(dir, { recursive: true, force: true });
+	}
+}
 
 const DOCUMENTED_ROLLOUT_FLAG_KEYS = [
 	"EXPO_PUBLIC_FEATURE_SIMPLE_NAVIGATION",
@@ -163,28 +275,100 @@ describe("deploy-pwa pre-deploy gate wiring", () => {
 		expect(gateBody).toContain("stripRolloutFlagsFromEnv(process.env)");
 	});
 
-	it("still reads the raw flag for the injected runtime config", () => {
-		const configBody = extractFunctionBody(source, "publicRuntimeConfigBlock");
+});
 
-		expect(configBody).toContain(
-			"process.env.EXPO_PUBLIC_FEATURE_SIMPLE_NAVIGATION",
+describe("deploy-pwa runtime config emission", () => {
+	it("does not trigger the deploy sequence when the module is imported", () => {
+		const probe = probeDeployModule("");
+
+		expect(probe.imported).toBe(true);
+		expect(probe.deployStarted).toBe(false);
+	});
+
+	it("emits the resolved rollout value for every flag, not a literal", () => {
+		const block = emitRuntimeConfigBlock({
+			env: {},
+			envFile: INJECTED_ENV_FILE,
+			config: {
+				simpleNavigation: true,
+				voiceNote: false,
+				importStatement: true,
+			},
+		});
+
+		expect(block).toContain(
+			rolloutEnvLine("EXPO_PUBLIC_FEATURE_SIMPLE_NAVIGATION", "true"),
+		);
+		expect(block).toContain(
+			rolloutEnvLine("EXPO_PUBLIC_FEATURE_VOICE_NOTE", "false"),
+		);
+		expect(block).toContain(
+			rolloutEnvLine("EXPO_PUBLIC_FEATURE_IMPORT_STATEMENT", "true"),
 		);
 	});
 
-	it("resolves every rollout flag through the shared resolver", () => {
-		const configBody = extractFunctionBody(source, "publicRuntimeConfigBlock");
+	it("emits the precedence-resolved value of each source", () => {
+		const block = emitRuntimeConfigBlock({
+			env: {
+				EXPO_PUBLIC_FEATURE_SIMPLE_NAVIGATION: "from-env",
+				EXPO_PUBLIC_FEATURE_VOICE_NOTE: "",
+			},
+			envFile: {
+				...INJECTED_ENV_FILE,
+				EXPO_PUBLIC_FEATURE_VOICE_NOTE: "from-env-file",
+			},
+			config: {
+				simpleNavigation: false,
+				voiceNote: false,
+				importStatement: true,
+			},
+		});
 
-		expect(configBody).toContain("resolveRolloutFlagValue");
+		expect(block).toContain(
+			rolloutEnvLine("EXPO_PUBLIC_FEATURE_SIMPLE_NAVIGATION", "from-env"),
+		);
+		expect(block).toContain(
+			rolloutEnvLine("EXPO_PUBLIC_FEATURE_VOICE_NOTE", "from-env-file"),
+		);
+		expect(block).toContain(
+			rolloutEnvLine("EXPO_PUBLIC_FEATURE_IMPORT_STATEMENT", "true"),
+		);
+	});
+
+	it("emits '' when no source defines the flag", () => {
+		const block = emitRuntimeConfigBlock({
+			env: {},
+			envFile: INJECTED_ENV_FILE,
+			config: {},
+		});
 
 		for (const key of DOCUMENTED_ROLLOUT_FLAG_KEYS) {
-			expect(configBody).toContain(key);
+			expect(block).toContain(rolloutEnvLine(key, ""));
 		}
 	});
 
-	it("reads the committed rollout config once per deploy run", () => {
-		const configBody = extractFunctionBody(source, "publicRuntimeConfigBlock");
+	it("falls back to the committed rollout config on a real deploy", () => {
+		const committed = JSON.parse(
+			fs.readFileSync(rolloutConfigPath, "utf8"),
+		) as Record<string, RolloutSourceValue>;
+		expect(Object.keys(committed).length).toBeGreaterThan(0);
 
-		expect(configBody).toContain("readRolloutConfig(");
+		// No `config` injected: the block must read apps/mobile/rollout-flags.json.
+		const block = emitRuntimeConfigBlock({
+			env: {},
+			supabaseUrl: INJECTED_ENV_FILE.EXPO_PUBLIC_SUPABASE_URL,
+			supabaseAnonKey: INJECTED_ENV_FILE.EXPO_PUBLIC_SUPABASE_ANON_KEY,
+		});
+
+		for (const key of DOCUMENTED_ROLLOUT_FLAG_KEYS) {
+			const expected = resolveRolloutFlagValue({
+				envKey: key,
+				env: {},
+				envFile: {},
+				config: committed,
+			});
+			expect(block).toContain(rolloutEnvLine(key, expected));
+		}
 	});
 });
 
@@ -334,5 +518,42 @@ describe("readRolloutConfig", () => {
 		expect(readRolloutConfig(file)).toEqual({ simpleNavigation: true });
 
 		fs.rmSync(dir, { recursive: true, force: true });
+	});
+
+	it("returns {} for a JSON array instead of the raw array", () => {
+		withRolloutConfigFile("[1, 2, 3]", (file) => {
+			expect(() => readRolloutConfig(file)).not.toThrow();
+			expect(readRolloutConfig(file)).toEqual({});
+			expect(Array.isArray(readRolloutConfig(file))).toBe(false);
+		});
+	});
+
+	it("returns {} for JSON scalars (string, number, boolean, null)", () => {
+		for (const scalar of ['"kaswise"', "42", "0", "true", "false", "null"]) {
+			withRolloutConfigFile(scalar, (file) => {
+				expect(() => readRolloutConfig(file)).not.toThrow();
+				expect(readRolloutConfig(file)).toEqual({});
+			});
+		}
+	});
+
+	it("returns {} for an empty or whitespace-only file", () => {
+		for (const contents of ["", "\n", "   \n	"]) {
+			withRolloutConfigFile(contents, (file) => {
+				expect(() => readRolloutConfig(file)).not.toThrow();
+				expect(readRolloutConfig(file)).toEqual({});
+			});
+		}
+	});
+
+	it("returns {} when the path is a directory", () => {
+		const dir = fs.mkdtempSync(path.join(os.tmpdir(), "kaswise-rollout-"));
+
+		try {
+			expect(() => readRolloutConfig(dir)).not.toThrow();
+			expect(readRolloutConfig(dir)).toEqual({});
+		} finally {
+			fs.rmSync(dir, { recursive: true, force: true });
+		}
 	});
 });

@@ -185,15 +185,36 @@ function withViewportLock(indexHtml) {
 	)
 }
 
-function publicRuntimeConfigBlock() {
-  const env = readEnvFile(join(appDir, '.env'))
-  const extra = readExpoConfig().extra ?? {}
+/**
+ * Build the runtime config `<script>` injected into the deployed `index.html`.
+ *
+ * Every input is injectable (`{ env, envFile, config, expoConfig }` mirroring the
+ * operator env, the local `.env`, the committed rollout config and the Expo
+ * config) so the emitted block can be asserted without running a real deploy.
+ * The defaults read the real sources, so the CLI path is unchanged.
+ *
+ * @param {{
+ *   env?: Record<string, unknown>,
+ *   envFile?: Record<string, unknown>,
+ *   config?: Record<string, unknown>,
+ *   expoConfig?: Record<string, unknown>,
+ *   supabaseUrl?: string,
+ *   supabaseAnonKey?: string,
+ * }} [injected]
+ * @returns {string}
+ */
+export function publicRuntimeConfigBlock(injected = {}) {
+  const expoConfig = injected.expoConfig ?? readExpoConfig()
+  const env = injected.envFile ?? readEnvFile(join(appDir, '.env'))
+  const extra = expoConfig.extra ?? {}
   const supabaseUrl =
+    injected.supabaseUrl ||
     process.env.EXPO_PUBLIC_SUPABASE_URL ||
     extra.supabaseUrl ||
     extra.EXPO_PUBLIC_SUPABASE_URL ||
     env.EXPO_PUBLIC_SUPABASE_URL
   const supabaseAnonKey =
+    injected.supabaseAnonKey ||
     process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ||
     extra.supabaseAnonKey ||
     extra.EXPO_PUBLIC_SUPABASE_ANON_KEY ||
@@ -202,12 +223,12 @@ function publicRuntimeConfigBlock() {
   // precedence: operator env var → local .env file → committed rollout config
   // (apps/mobile/rollout-flags.json) → ''. The final '' keeps the code-level
   // default in src/config/features.ts authoritative for dev/test.
-  const rolloutEnv = {
+  const rolloutEnv = injected.env ?? {
     EXPO_PUBLIC_FEATURE_VOICE_NOTE: process.env.EXPO_PUBLIC_FEATURE_VOICE_NOTE,
     EXPO_PUBLIC_FEATURE_SIMPLE_NAVIGATION: process.env.EXPO_PUBLIC_FEATURE_SIMPLE_NAVIGATION,
     EXPO_PUBLIC_FEATURE_IMPORT_STATEMENT: process.env.EXPO_PUBLIC_FEATURE_IMPORT_STATEMENT,
   }
-  const rolloutConfig = readRolloutConfig()
+  const rolloutConfig = injected.config ?? readRolloutConfig()
   const voiceNoteFeature = resolveRolloutFlagValue({
     envKey: 'EXPO_PUBLIC_FEATURE_VOICE_NOTE',
     configKey: 'voiceNote',
@@ -234,11 +255,10 @@ function publicRuntimeConfigBlock() {
     throw new Error('Missing public Supabase config for PWA deploy')
   }
 
-  const runtimeExpoConfig = readExpoConfig()
   const manifest = {
-    name: runtimeExpoConfig.name,
-    slug: runtimeExpoConfig.slug,
-    version: runtimeExpoConfig.version,
+    name: expoConfig.name,
+    slug: expoConfig.slug,
+    version: expoConfig.version,
     extra: {
       supabaseUrl,
       supabaseAnonKey,
@@ -292,18 +312,41 @@ function deployDistToTarget() {
   console.log(`Deployed mobile PWA dist to ${targetDir}`)
 }
 
-assertAllowedBranch()
-runLiveQualityGate()
-assertDistExists()
-deployDistToTarget()
-verifyTargetBundleMarkers()
+let deployStarted = false
 
-try {
-  console.log('📊 Generating marker diff report (non-blocking)...')
-  run('node scripts/marker-diff-report.mjs')
-} catch {
-  console.warn('⚠️  Marker diff report failed (non-blocking) — review before merging')
+// The full deploy sequence, in order. Exported so the rollout-config tests can
+// prove that importing this module never starts it.
+export function runDeploy() {
+  deployStarted = true
+  assertAllowedBranch()
+  runLiveQualityGate()
+  assertDistExists()
+  deployDistToTarget()
+  verifyTargetBundleMarkers()
+
+  try {
+    console.log('📊 Generating marker diff report (non-blocking)...')
+    run('node scripts/marker-diff-report.mjs')
+  } catch {
+    console.warn('⚠️  Marker diff report failed (non-blocking) — review before merging')
+  }
+  verifyLiveUrl()
+  run('node scripts/generate-release-report.mjs')
+  console.log('✅  Deploy completed with live regression guards')
 }
-verifyLiveUrl()
-run('node scripts/generate-release-report.mjs')
-console.log('✅  Deploy completed with live regression guards')
+
+export function isDeployStarted() {
+  return deployStarted
+}
+
+// Only the real CLI entry point (`node scripts/deploy-pwa.mjs`) deploys.
+// Importing this module — from tests or from other tooling — must have no side
+// effects: `assertAllowedBranch()` would exit the importing process and
+// `runLiveQualityGate()` would run the whole pre-deploy gate inside it.
+const isEntryPoint =
+  typeof process.argv[1] === 'string' &&
+  resolve(process.argv[1]) === fileURLToPath(import.meta.url)
+
+if (isEntryPoint && process.env.KASWISE_DEPLOY_PWA_TEST !== '1') {
+  runDeploy()
+}
