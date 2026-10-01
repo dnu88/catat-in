@@ -587,8 +587,8 @@ describe("ReportsScreen visual parity", () => {
 		fireEvent.press(screen.getByText("Kustom"));
 		expect(screen.getByTestId("reports-start-date-wheel-picker")).toBeTruthy();
 		expect(screen.getByTestId("reports-end-date-wheel-picker")).toBeTruthy();
-		fireEvent.press(await screen.findByTestId("reports-start-date-wheel-picker-date-item-15"));
-		fireEvent.press(await screen.findByTestId("reports-end-date-wheel-picker-date-item-20"));
+		fireEvent.press(screen.UNSAFE_getByProps({ testID: "reports-start-date-wheel-picker-date-item-15" }));
+		fireEvent.press(screen.UNSAFE_getByProps({ testID: "reports-end-date-wheel-picker-date-item-20" }));
 
 		await waitFor(() => {
 			expect((globalThis as any).__reportsQueryChain.then).toHaveBeenCalled();

@@ -364,8 +364,8 @@ describe("transaction swipe actions", () => {
 
 		expect(periodCard.backgroundColor).toBe("#FFFFFF");
 		expect(periodCard.borderWidth).toBe(0);
-		expect(activePeriod.backgroundColor).toBe("#060A1C");
-		expect(fab.backgroundColor).toBe("#060A1C");
+		expect(activePeriod.backgroundColor).toBe("#090D18");
+		expect(fab.backgroundColor).toBe("#090D18");
 	});
 
 	it("uses tonal-blue category icons while keeping income semantically green", async () => {

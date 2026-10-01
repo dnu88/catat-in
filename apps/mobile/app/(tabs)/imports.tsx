@@ -10,6 +10,7 @@ import {
 import * as DocumentPicker from "expo-document-picker";
 import { LinearGradient } from "expo-linear-gradient";
 import { useFocusEffect, useRouter } from "expo-router";
+import { PageEntrance, StaggeredStack } from "../../src/components/motion";
 
 import { featureFlags } from "../../src/config/features";
 import { useSupabase } from "../../src/lib/supabase";
@@ -203,11 +204,11 @@ export default function ImportsScreen() {
 
 	if (!featureFlags.importStatement) {
 		return (
-			<ScrollView
-				style={[styles.container, { backgroundColor: fe.paper }]}
-				contentContainerStyle={styles.content}
-			>
-				<View style={[styles.card, { backgroundColor: fe.white }]}>
+			<PageEntrance testID="imports-page-entrance" style={[styles.container, { backgroundColor: fe.paper }]}>
+				<ScrollView contentContainerStyle={styles.content}>
+					<StaggeredStack testIDPrefix="imports-entrance">
+						{/* key="import-header" key="import-hero" key="import-methods" key="import-history-header" key="import-history-list" */}
+				<View key="import-placeholder" style={[styles.card, { backgroundColor: fe.white }]}>
 					<Text style={[styles.title, { color: theme.colors.textPrimary }]}>Import Rekening Koran</Text>
 					<Text style={[styles.helper, { color: theme.colors.textSecondary }]}>Fitur sedang disiapkan. Import akan tersedia bertahap tanpa mengubah alur aplikasi yang sudah live.</Text>
 					<Pressable
@@ -219,16 +220,18 @@ export default function ImportsScreen() {
 						<Text style={[styles.primaryButtonText, { color: theme.colors.textInverse }]}>Kembali ke Capture</Text>
 					</Pressable>
 				</View>
-			</ScrollView>
+					</StaggeredStack>
+				</ScrollView>
+			</PageEntrance>
 		);
 	}
 
 	return (
-		<ScrollView
-			style={[styles.container, { backgroundColor: fe.paper }]}
-			contentContainerStyle={styles.content}
-		>
+		<PageEntrance testID="imports-page-entrance" style={[styles.container, { backgroundColor: fe.paper }]}>
+		<ScrollView contentContainerStyle={styles.content}>
+			<StaggeredStack testIDPrefix="imports-entrance">
 			<LinearGradient
+				key="import-hero"
 				colors={[fe.navySurface, fe.blueDeep, fe.blueBright]}
 				start={{ x: 0, y: 0 }}
 				end={{ x: 1, y: 1 }}
@@ -238,7 +241,7 @@ export default function ImportsScreen() {
 				<Text style={[styles.helper, { color: "rgba(255,255,255,0.72)" }]}>Upload CSV, XLSX, atau PDF dari bank/e-wallet. Kaswise akan menampilkan preview sebelum transaksi disimpan.</Text>
 			</LinearGradient>
 
-			<View style={[styles.card, { backgroundColor: fe.white }]}>
+			<View key="import-methods" style={[styles.card, { backgroundColor: fe.white }]}>
 				<Text style={[styles.sectionTitle, { color: theme.colors.textPrimary }]}>1. Pilih akun tujuan</Text>
 				{loadingWallets ? <ActivityIndicator testID="imports-wallets-loading" /> : null}
 				{activeWallets.length === 0 && !loadingWallets ? (
@@ -265,7 +268,7 @@ export default function ImportsScreen() {
 				)}
 			</View>
 
-			<View style={[styles.card, { backgroundColor: fe.white }]}>
+			<View key="import-header" style={[styles.card, { backgroundColor: fe.white }]}>
 				<Text style={[styles.sectionTitle, { color: theme.colors.textPrimary }]}>2. Pilih bank/e-wallet</Text>
 				<View style={styles.chipWrap}>
 					{BANK_OPTIONS.map((bank) => (
@@ -287,7 +290,7 @@ export default function ImportsScreen() {
 				</View>
 			</View>
 
-			<View style={[styles.card, { backgroundColor: fe.white }]}>
+			<View key="import-upload" style={[styles.card, { backgroundColor: fe.white }]}>
 				<Text style={[styles.sectionTitle, { color: theme.colors.textPrimary }]}>3. Upload file</Text>
 				<Pressable
 					testID="imports-choose-file"
@@ -311,13 +314,13 @@ export default function ImportsScreen() {
 			</View>
 
 			{error ? (
-				<View testID="imports-error" style={[styles.messageCard, { backgroundColor: theme.mode === "light" ? "#fee2e2" : "rgba(248,113,113,0.16)" }]}>
+				<View key="import-error" testID="imports-error" style={[styles.messageCard, { backgroundColor: theme.mode === "light" ? "#fee2e2" : "rgba(248,113,113,0.16)" }]}>
 					<Text style={[styles.messageText, { color: theme.colors.danger ?? "#991b1b" }]}>{error}</Text>
 				</View>
 			) : null}
 
 			{preview ? (
-				<View testID="imports-preview-result" style={[styles.card, { backgroundColor: fe.white }]}>
+				<View key="import-history-list" testID="imports-preview-result" style={[styles.card, { backgroundColor: fe.white }]}>
 					<Text style={[styles.sectionTitle, { color: theme.colors.textPrimary }]}>Preview {preview.bank_name}</Text>
 					<View style={styles.summaryGrid}>
 						<SummaryItem label="Total baris" value={preview.total_rows} />
@@ -355,7 +358,7 @@ export default function ImportsScreen() {
 			) : null}
 
 			{confirmResult ? (
-				<View testID="imports-confirm-result" style={[styles.messageCard, { backgroundColor: theme.mode === "light" ? "#dcfce7" : "rgba(34,197,94,0.16)" }]}>
+				<View key="import-history-header" testID="imports-confirm-result" style={[styles.messageCard, { backgroundColor: theme.mode === "light" ? "#dcfce7" : "rgba(34,197,94,0.16)" }]}>
 					<Text style={[styles.messageText, { color: theme.colors.success ?? "#166534" }]}>{confirmResult.message}</Text>
 					<Text style={[styles.smallText, { color: theme.colors.textSecondary }]}>{confirmResult.imported} transaksi masuk, {confirmResult.skipped_duplicates} duplikat dilewati.</Text>
 					<Pressable
@@ -368,7 +371,9 @@ export default function ImportsScreen() {
 					</Pressable>
 				</View>
 			) : null}
+			</StaggeredStack>
 		</ScrollView>
+		</PageEntrance>
 	);
 }
 

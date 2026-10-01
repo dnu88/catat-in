@@ -1171,14 +1171,42 @@ export default function BudgetsScreen() {
 
 			<Text style={styles.sectionTitle}>{tx.archiveSection}</Text>
 			{archivedSummaries.length > 0 ? (
-				archivedSummaries.map((item) => (
-					<View key={item.envelope.id} style={styles.archiveCard}>
-						<Text style={styles.reviewTitle}>{item.envelope.name}</Text>
-						<Text style={styles.budgetMeta}>
-							{item.envelope.start_date}–{item.envelope.end_date}
-						</Text>
-					</View>
-				))
+				archivedSummaries.map((item) => {
+					const categoryVisual = resolveCategoryVisual({
+						categoryId: item.envelope.parent_category_id,
+						categoryName: item.envelope.parent_category_name,
+						categories: categoryOptions,
+						mode: theme.mode,
+						fallbackIcon: item.envelope.icon,
+						fallbackColor: item.envelope.color,
+					});
+					const categoryDisplayName = item.envelope.parent_category_name
+						? getLocalizedCategoryName(item.envelope.parent_category_name, isEn ? "en" : "id")
+						: tx.noCategory;
+					const categoryHelper = item.envelope.parent_category_name
+						? getLocalizedCategoryHelper(item.envelope.parent_category_name, isEn ? "en" : "id")
+						: null;
+					return (
+						<View key={item.envelope.id} style={styles.archiveCard}>
+							<View style={styles.budgetLeft}>
+								<IconBubble
+									name={resolveBudgetIconName(categoryVisual.icon)}
+									tone="primary"
+									color={resolveEnvelopeAccentColor(categoryVisual.color, fe.blueBright)}
+									size={44}
+								/>
+								<View style={styles.budgetTextWrap}>
+									<Text style={styles.reviewTitle}>{categoryDisplayName}</Text>
+									{categoryHelper ? <Text style={styles.budgetHelper}>{categoryHelper}</Text> : null}
+									<Text style={styles.budgetMeta}>{item.envelope.name}</Text>
+									<Text style={styles.budgetMeta}>
+										{item.envelope.start_date}–{item.envelope.end_date}
+									</Text>
+								</View>
+							</View>
+						</View>
+					);
+				})
 			) : (
 				<Text style={styles.emptyInlineText}>{tx.noArchive}</Text>
 			)}

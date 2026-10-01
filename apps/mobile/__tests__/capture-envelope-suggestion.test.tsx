@@ -319,7 +319,7 @@ describe("Capture envelope suggestion", () => {
 
 		renderCapture();
 
-		expect(await screen.findByText("Voice, text, or receipt—choose the fastest input.")).toBeTruthy();
+		expect(await screen.findByText("Text or receipt—choose the fastest input.")).toBeTruthy();
 		expect(screen.getByText("Text")).toBeTruthy();
 		expect(screen.getByText("Photo")).toBeTruthy();
 		expect(screen.getByText("Save transaction")).toBeTruthy();

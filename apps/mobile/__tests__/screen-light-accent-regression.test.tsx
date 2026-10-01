@@ -129,12 +129,12 @@ describe("light accent regressions", () => {
 		const monthStyle = StyleSheet.flatten(
 			monthChip.props.style as object,
 		) as ViewStyle;
-		expect(monthStyle.backgroundColor).toBe("#060A1C");
+		expect(monthStyle.backgroundColor).toBe("#090D18");
 		expect(monthStyle.backgroundColor).not.toBe("#A3FF12");
 
 		const fab = screen.getByTestId("transactions-fab");
 		const fabStyle = StyleSheet.flatten(fab.props.style as object) as ViewStyle;
-		expect(fabStyle.backgroundColor).toBe("#060A1C");
+		expect(fabStyle.backgroundColor).toBe("#090D18");
 		expect(fabStyle.backgroundColor).not.toBe("#A3FF12");
 	});
 });

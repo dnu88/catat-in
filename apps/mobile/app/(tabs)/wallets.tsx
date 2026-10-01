@@ -382,7 +382,7 @@ export default function WalletsScreen() {
 						</Text>
 					</Pressable>
 				</View>
-				<View testID="wallets-total-hero" style={styles.totalCard}>
+				<View key="wallets-total-hero" testID="wallets-total-hero" style={styles.totalCard}>
 					<Text style={styles.totalLabel}>{tx.total}</Text>
 					<Text style={styles.totalValue}>{formatCurrency(totalBalance)}</Text>
 					<View style={styles.totalRow}>
