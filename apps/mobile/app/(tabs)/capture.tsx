@@ -1064,20 +1064,24 @@ export default function CaptureScreen() {
 								accessibilityRole="button"
 								accessibilityLabel={`${tx.walletLabel}: ${wallet.name}`}
 								accessibilityState={{ selected: walletId === wallet.id }}
-								style={[
-									styles.walletChip,
-									walletId === wallet.id && styles.walletChipActive,
-								]}
+								style={styles.walletChipTouch}
 								onPress={() => setWalletId(wallet.id)}
 							>
-								<Text
+								<View
 									style={[
-										styles.walletChipText,
-										walletId === wallet.id && styles.walletChipTextActive,
+										styles.walletChip,
+										walletId === wallet.id && styles.walletChipActive,
 									]}
 								>
-									{wallet.name}
-								</Text>
+									<Text
+										style={[
+											styles.walletChipText,
+											walletId === wallet.id && styles.walletChipTextActive,
+										]}
+									>
+										{wallet.name}
+									</Text>
+								</View>
 							</Pressable>
 						))}
 					</View>
@@ -1475,6 +1479,12 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 		walletSelector: { gap: 8 },
 		walletSelectorLabel: { color: fe.muted, fontSize: 12, fontWeight: "600" },
 		walletChipRow: { flexDirection: "row", gap: 8, paddingVertical: 2 },
+		walletChipTouch: {
+			minHeight: 44,
+			minWidth: 44,
+			alignItems: "center",
+			justifyContent: "center",
+		},
 		walletChip: {
 			minHeight: 42, justifyContent: "center", borderRadius: 14, borderWidth: 0,
 			backgroundColor: fe.white, paddingHorizontal: 14,

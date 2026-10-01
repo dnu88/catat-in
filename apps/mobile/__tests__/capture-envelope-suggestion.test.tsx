@@ -1,5 +1,7 @@
 import React from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { StyleSheet } from "react-native";
+import type { StyleProp, ViewStyle } from "react-native";
 import {
 	act,
 	fireEvent,
@@ -215,6 +217,10 @@ function captureTree() {
 
 function renderCapture() {
 	return render(captureTree());
+}
+
+function getFlattenedStyle(node: { props: { style?: StyleProp<ViewStyle> } }): ViewStyle {
+	return StyleSheet.flatten(node.props.style) ?? {};
 }
 
 describe("Capture envelope suggestion", () => {
@@ -533,6 +539,15 @@ describe("Capture simple-mode action hub", () => {
 		expect(screen.queryByTestId("capture-secondary-import")).toBeNull();
 		// No Moonveo/Monveo wording anywhere in product UI.
 		expect(screen.queryByText(/Moonveo|Monveo/i)).toBeNull();
+	});
+
+	it("gives the wallet destination chip a real 44x44 touch box", async () => {
+		renderCapture();
+
+		const chip = await screen.findByTestId("capture-wallet-wallet-1");
+		const style = getFlattenedStyle(chip);
+		expect(Number(style.minHeight)).toBeGreaterThanOrEqual(44);
+		expect(Number(style.minWidth)).toBeGreaterThanOrEqual(44);
 	});
 
 	it("shows the active household money space next to the selected wallet", async () => {
