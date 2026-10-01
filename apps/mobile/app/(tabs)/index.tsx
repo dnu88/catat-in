@@ -110,6 +110,7 @@ export default function DashboardScreen() {
 						showAmountsA11y: "Show dashboard amounts",
 						switchToLightTheme: "Switch to light mode",
 						switchToDarkTheme: "Switch to dark mode",
+						openSettings: "Open settings",
 						manageWallets: "Manage wallets",
 						manage: "Manage",
 						quickActionA11y: (label: string) => `Quick action ${label}`,
@@ -149,6 +150,7 @@ export default function DashboardScreen() {
 						showAmountsA11y: "Tampilkan nominal dashboard",
 						switchToLightTheme: "Ganti ke mode terang",
 						switchToDarkTheme: "Ganti ke mode gelap",
+						openSettings: "Buka pengaturan",
 						manageWallets: "Kelola dompet",
 						manage: "Kelola",
 						quickActionA11y: (label: string) => `Aksi cepat ${label}`,
@@ -446,7 +448,14 @@ export default function DashboardScreen() {
 					</View>
 					<View style={styles.headerActions}>
 						<NotificationBell pollIntervalMs={60000} tint={fe.white} />
-						<View testID="home-avatar" style={styles.avatarWrap}>
+						<Pressable
+							testID="home-avatar"
+							accessibilityRole="button"
+							accessibilityLabel={tx.openSettings}
+							hitSlop={12}
+							style={styles.avatarWrap}
+							onPress={() => router.push("/(tabs)/settings" as never)}
+						>
 							{profilePhotoUrl ? (
 								<Image
 									testID="home-avatar-image"
@@ -458,7 +467,7 @@ export default function DashboardScreen() {
 							) : (
 								<Text style={styles.avatarText}>{avatarInitials}</Text>
 							)}
-						</View>
+						</Pressable>
 					</View>
 				</View>
 

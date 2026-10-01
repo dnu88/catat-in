@@ -293,6 +293,15 @@ describe("DashboardScreen dark luxury Home parity", () => {
 		expect(screen.queryByText("DB")).toBeNull();
 	});
 
+	it("opens Settings from the dashboard profile control", async () => {
+		const screen = renderDashboard();
+
+		await waitFor(() => expect(screen.getByText("Halo")).toBeTruthy());
+		fireEvent.press(screen.getByLabelText("Buka pengaturan"));
+
+		expect(mockPush).toHaveBeenCalledWith("/(tabs)/settings");
+	});
+
 	it("renders the honest Home section order and labels", async () => {
 		const screen = renderDashboard();
 
