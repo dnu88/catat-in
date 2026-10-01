@@ -4,6 +4,7 @@ const processEnv = (
 
 type FeatureOverride = {
 	importStatement?: boolean;
+	simpleNavigation?: boolean;
 	voiceNote?: boolean;
 };
 
@@ -21,6 +22,9 @@ export function flagEnabled(value: string | undefined) {
 export const featureFlags = {
 	get importStatement() {
 		return featureOverrides()?.importStatement ?? flagEnabled(processEnv?.EXPO_PUBLIC_FEATURE_IMPORT_STATEMENT);
+	},
+	get simpleNavigation() {
+		return featureOverrides()?.simpleNavigation ?? flagEnabled(processEnv?.EXPO_PUBLIC_FEATURE_SIMPLE_NAVIGATION);
 	},
 	get voiceNote() {
 		return featureOverrides()?.voiceNote ?? flagEnabled(processEnv?.EXPO_PUBLIC_FEATURE_VOICE_NOTE);
