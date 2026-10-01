@@ -38,7 +38,13 @@ export default function TabsLayout() {
 	const { t } = useI18n();
 	const router = useRouter();
 	const segments = useSegments();
-	const activeRoute = segments[segments.length - 1] ?? "index";
+	// `useSegments()` reports the route group itself (e.g. `["(tabs)"]`) when the
+	// user is on the group's index route — i.e. Home at `/`. Treat a trailing
+	// group segment (or no segment at all) as the index route so Home is still
+	// recognised as a primary tab destination.
+	const lastSegment = segments[segments.length - 1];
+	const activeRoute =
+		!lastSegment || /^\(.*\)$/.test(lastSegment) ? "index" : lastSegment;
 	const simpleNavigation = featureFlags.simpleNavigation;
 	const primaryTabRoutes = new Set([
 		...BASE_PRIMARY_TAB_ROUTES,

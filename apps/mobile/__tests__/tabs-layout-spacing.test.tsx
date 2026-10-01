@@ -256,6 +256,82 @@ describe("tabs layout spacing", () => {
 		expect(transactionScreen.options.headerShown).toBe(false);
 	});
 
+	async function tabBarStyleForSegments(segments: string[], simple: boolean) {
+		jest.clearAllMocks();
+		mockSegments = segments;
+		mockSimpleNavigation = simple;
+		render(<TabsLayout />);
+		await waitFor(() => expect(mockTabs).toHaveBeenCalled());
+		return (mockTabs.mock.calls[0][0] as any).screenOptions.tabBarStyle;
+	}
+
+	function visibleTabNames() {
+		return mockTabsScreen.mock.calls
+			.map(([props]) => props as any)
+			.filter((screen) => screen.options.href !== null)
+			.map((screen) => screen.name);
+	}
+
+	// On the Home (index) route Expo Router reports the group segment itself
+	// (`["(tabs)"]`) rather than `["(tabs)", "index"]`, which used to make the
+	// route look non-primary and hide the whole tab bar on the landing screen.
+	it("keeps the floating tab bar visible on the home route in both navigation modes", async () => {
+		for (const simple of [false, true]) {
+			const style = await tabBarStyleForSegments(["(tabs)"], simple);
+			expect(style.display).not.toBe("none");
+			expect(style.height).toBe(64);
+			expect(style.bottom).toBe(24);
+			expect(visibleTabNames()).toEqual([
+				"index",
+				"transactions",
+				"capture",
+				"reports",
+				simple ? "wallets" : "settings",
+			]);
+		}
+	});
+
+	it("also keeps the floating tab bar visible for an empty segment list", async () => {
+		for (const simple of [false, true]) {
+			const style = await tabBarStyleForSegments([], simple);
+			expect(style.display).not.toBe("none");
+			expect(style.height).toBe(64);
+		}
+	});
+
+	it.each(["transactions", "capture", "reports"])(
+		"keeps the floating tab bar visible on the %s route in both navigation modes",
+		async (route) => {
+			for (const simple of [false, true]) {
+				const style = await tabBarStyleForSegments(["(tabs)", route], simple);
+				expect(style.display).not.toBe("none");
+				expect(style.height).toBe(64);
+			}
+		},
+	);
+
+	it.each(["budgets", "bills", "groups", "imports", "transaction-new"])(
+		"keeps the floating tab bar hidden on the %s route in both navigation modes",
+		async (route) => {
+			for (const simple of [false, true]) {
+				const style = await tabBarStyleForSegments(["(tabs)", route], simple);
+				expect(style).toEqual({ display: "none" });
+			}
+		},
+	);
+
+	it("keeps wallets visible in simple mode only, and settings in legacy mode only", async () => {
+		const walletsLegacy = await tabBarStyleForSegments(["(tabs)", "wallets"], false);
+		expect(walletsLegacy).toEqual({ display: "none" });
+		const walletsSimple = await tabBarStyleForSegments(["(tabs)", "wallets"], true);
+		expect(walletsSimple.display).not.toBe("none");
+
+		const settingsSimple = await tabBarStyleForSegments(["(tabs)", "settings"], true);
+		expect(settingsSimple).toEqual({ display: "none" });
+		const settingsLegacy = await tabBarStyleForSegments(["(tabs)", "settings"], false);
+		expect(settingsLegacy.display).not.toBe("none");
+	});
+
 	async function registeredScreens() {
 		render(<TabsLayout />);
 		await waitFor(() => expect(mockTabs).toHaveBeenCalled());
