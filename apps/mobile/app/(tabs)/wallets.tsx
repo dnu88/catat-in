@@ -638,9 +638,9 @@ export default function WalletsScreen() {
 
 				{!simple ? filterControls : null}
 
-				{simple ? loadingBlock : null}
-				{simple ? errorBlock : null}
-				{simple ? emptyBlock : null}
+				{loadingBlock}
+				{errorBlock}
+				{emptyBlock}
 
 				{filtered.map((wallet) => (
 					<View

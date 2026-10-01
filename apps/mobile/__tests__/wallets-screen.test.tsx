@@ -313,6 +313,33 @@ describe("WalletsScreen", () => {
 		expect(screen.getByText("Personal")).toBeTruthy();
 		expect(screen.queryByText("Dompet")).toBeNull();
 	});
+
+	it("shows the legacy loading indicator while wallets are loading", async () => {
+		disableSimpleNavigation();
+		renderWallets();
+
+		expect(screen.getByTestId("wallets-loading")).toBeTruthy();
+
+		await screen.findByTestId("wallet-card-wallet-personal");
+	});
+
+	it("shows the legacy load error when loading fails", async () => {
+		disableSimpleNavigation();
+		mockListWallets.mockRejectedValue(new Error("network down"));
+		renderWallets();
+
+		const error = await screen.findByTestId("wallets-error");
+		expect(within(error).getByText("Gagal memuat dompet")).toBeTruthy();
+	});
+
+	it("shows the legacy empty state when there are no wallets", async () => {
+		disableSimpleNavigation();
+		mockListWallets.mockResolvedValue([]);
+		renderWallets();
+
+		const empty = await screen.findByTestId("wallets-empty");
+		expect(within(empty).getByText("Belum ada dompet untuk dikelola.")).toBeTruthy();
+	});
 });
 
 describe("WalletsScreen simple navigation", () => {
@@ -477,5 +504,39 @@ describe("WalletsScreen simple navigation", () => {
 		expect(
 			screen.getByTestId("wallets-create-toggle").props.accessibilityState,
 		).toMatchObject({ disabled: true });
+	});
+
+	it("wraps the demoted filters in the secondary filter section", async () => {
+		renderWallets();
+
+		await screen.findByTestId("wallet-card-wallet-personal");
+
+		const secondary = screen.getByTestId("wallets-filter-secondary");
+		expect(within(secondary).getByTestId("wallets-filter")).toBeTruthy();
+		expect(within(secondary).getByText("Filter dompet")).toBeTruthy();
+	});
+
+	it("shows the loading indicator while wallets are loading in simple mode", async () => {
+		renderWallets();
+
+		expect(screen.getByTestId("wallets-loading")).toBeTruthy();
+
+		await screen.findByTestId("wallet-card-wallet-personal");
+	});
+
+	it("shows the load error in simple mode", async () => {
+		mockListWallets.mockRejectedValue(new Error("network down"));
+		renderWallets();
+
+		const error = await screen.findByTestId("wallets-error");
+		expect(within(error).getByText("Gagal memuat dompet")).toBeTruthy();
+	});
+
+	it("shows the empty state in simple mode", async () => {
+		mockListWallets.mockResolvedValue([]);
+		renderWallets();
+
+		const empty = await screen.findByTestId("wallets-empty");
+		expect(within(empty).getByText("Belum ada dompet untuk dikelola.")).toBeTruthy();
 	});
 });
