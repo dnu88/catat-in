@@ -267,3 +267,117 @@ test("uses history back for upgrade when history exists", async () => {
   expect(mockBack).toHaveBeenCalledTimes(1);
   expect(mockReplace).not.toHaveBeenCalled();
 });
+
+test("retry-check drives the poll path to paid and falls back to settings without history", async () => {
+  mockCanGoBack = false;
+  mockGetStatus.mockResolvedValue({ order_id: "kw-test-123", status: "paid" });
+
+  const { getByText, getByTestId } = render(<UpgradeScreen />);
+  await waitFor(() => getByText(/29.000/));
+
+  fireEvent.press(getByTestId("upgrade-monthly"));
+  await waitFor(() => expect(mockOpen).toHaveBeenCalled());
+
+  // The polling interval has not ticked yet, so whatever reports "paid" below
+  // has to come from pressing the retry check itself.
+  await act(async () => {
+    jest.advanceTimersByTime(100);
+  });
+  expect(mockGetStatus).not.toHaveBeenCalled();
+
+  fireEvent.press(getByTestId("upgrade-retry-check"));
+  await waitFor(() => expect(getByTestId("upgrade-success")).toBeTruthy());
+
+  await act(async () => {
+    jest.advanceTimersByTime(1600);
+  });
+
+  expect(mockReplace).toHaveBeenCalledWith("/(tabs)/settings");
+  expect(mockBack).not.toHaveBeenCalled();
+});
+
+test("retry-check drives the poll path to paid and uses history back when it exists", async () => {
+  mockCanGoBack = true;
+  mockGetStatus.mockResolvedValue({ order_id: "kw-test-123", status: "paid" });
+
+  const { getByText, getByTestId } = render(<UpgradeScreen />);
+  await waitFor(() => getByText(/29.000/));
+
+  fireEvent.press(getByTestId("upgrade-monthly"));
+  await waitFor(() => expect(mockOpen).toHaveBeenCalled());
+
+  await act(async () => {
+    jest.advanceTimersByTime(100);
+  });
+  expect(mockGetStatus).not.toHaveBeenCalled();
+
+  fireEvent.press(getByTestId("upgrade-retry-check"));
+  await waitFor(() => expect(getByTestId("upgrade-success")).toBeTruthy());
+
+  await act(async () => {
+    jest.advanceTimersByTime(1600);
+  });
+
+  expect(mockBack).toHaveBeenCalledTimes(1);
+  expect(mockReplace).not.toHaveBeenCalled();
+});
+
+// Leaving during the 1500 ms paid-exit delay must not navigate afterwards:
+// with history the stale timer pops an extra level, and without history the
+// replace branch would teleport the user to /(tabs)/settings.
+test.each([true, false])(
+  "performs no navigation when the screen unmounts during the paid exit delay (canGoBack: %s)",
+  async (canGoBack) => {
+    mockCanGoBack = canGoBack;
+    mockGetStatus.mockResolvedValue({ order_id: "kw-test-123", status: "paid" });
+
+    const { getByText, getByTestId, unmount } = render(<UpgradeScreen />);
+    await waitFor(() => getByText(/29.000/));
+
+    fireEvent.press(getByTestId("upgrade-monthly"));
+    await waitFor(() => expect(mockOpen).toHaveBeenCalled());
+
+    await act(async () => {
+      jest.advanceTimersByTime(2100);
+    });
+    await waitFor(() => expect(getByTestId("upgrade-success")).toBeTruthy());
+
+    unmount();
+
+    await act(async () => {
+      jest.advanceTimersByTime(1600);
+    });
+
+    expect(mockBack).not.toHaveBeenCalled();
+    expect(mockReplace).not.toHaveBeenCalled();
+  },
+);
+
+test("performs exactly one navigation when the user stays on the paid screen", async () => {
+  mockCanGoBack = true;
+  mockGetStatus.mockResolvedValue({ order_id: "kw-test-123", status: "paid" });
+
+  const { getByText, getByTestId } = render(<UpgradeScreen />);
+  await waitFor(() => getByText(/29.000/));
+
+  fireEvent.press(getByTestId("upgrade-monthly"));
+  await waitFor(() => expect(mockOpen).toHaveBeenCalled());
+
+  await act(async () => {
+    jest.advanceTimersByTime(2100);
+  });
+  await waitFor(() => expect(getByTestId("upgrade-success")).toBeTruthy());
+
+  await act(async () => {
+    jest.advanceTimersByTime(1600);
+  });
+
+  expect(mockBack).toHaveBeenCalledTimes(1);
+  expect(mockReplace).not.toHaveBeenCalled();
+
+  // The exit timer must not stay armed behind the paid screen.
+  await act(async () => {
+    jest.advanceTimersByTime(60000);
+  });
+  expect(mockBack).toHaveBeenCalledTimes(1);
+});

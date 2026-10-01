@@ -30,6 +30,8 @@ const rp = (n: number) => `Rp${n.toLocaleString("id-ID")}`;
 
 const POLL_INTERVAL = 2000;
 const MAX_POLLS = 30;
+// How long the success phase stays on screen before returning the user.
+const PAID_EXIT_DELAY = 1500;
 
 export default function UpgradeScreen() {
   const { theme } = useTheme();
@@ -46,6 +48,8 @@ export default function UpgradeScreen() {
   const [orderId, setOrderId] = useState<string | null>(null);
   const [pollError, setPollError] = useState<string | null>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const exitTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const mountedRef = useRef(true);
   const pollCountRef = useRef(0);
 
   const stopPolling = useCallback(() => {
@@ -54,6 +58,26 @@ export default function UpgradeScreen() {
       intervalRef.current = null;
     }
   }, []);
+
+  const clearPaidExit = useCallback(() => {
+    if (exitTimeoutRef.current) {
+      clearTimeout(exitTimeoutRef.current);
+      exitTimeoutRef.current = null;
+    }
+  }, []);
+
+  // Schedule the return to settings once the success phase has been shown. The
+  // timer is tracked so unmount can cancel it, and the callback re-checks that
+  // the screen is still mounted, so a timer left behind while the user moves on
+  // can never navigate the screen they landed on.
+  const schedulePaidExit = useCallback(() => {
+    clearPaidExit();
+    exitTimeoutRef.current = setTimeout(() => {
+      exitTimeoutRef.current = null;
+      if (!mountedRef.current) return;
+      goBackSafely(router, "/(tabs)/settings");
+    }, PAID_EXIT_DELAY);
+  }, [clearPaidExit]);
 
   const pollStatusImpl = useCallback(async () => {
     const currentId = orderId;
@@ -64,7 +88,7 @@ export default function UpgradeScreen() {
       if (result.status === "paid" || result.status === "settlement") {
         stopPolling();
         setPhase("paid");
-        setTimeout(() => goBackSafely(router, "/(tabs)/settings"), 1500);
+        schedulePaidExit();
       } else if (pollCountRef.current >= MAX_POLLS) {
         stopPolling();
         setPhase("error");
@@ -77,7 +101,7 @@ export default function UpgradeScreen() {
         setPollError(isEn ? "Failed to check payment status. Please try again." : "Gagal memeriksa status. Coba lagi nanti.");
       }
     }
-  }, [orderId, stopPolling]);
+  }, [orderId, stopPolling, schedulePaidExit]);
 
   const startPolling = useCallback(
     (id: string) => {
@@ -95,7 +119,7 @@ export default function UpgradeScreen() {
             if (result.status === "paid" || result.status === "settlement") {
               stopPolling();
               setPhase("paid");
-              setTimeout(() => goBackSafely(router, "/(tabs)/settings"), 1500);
+              schedulePaidExit();
             } else if (pollCountRef.current >= MAX_POLLS) {
               stopPolling();
               setPhase("error");
@@ -113,7 +137,7 @@ export default function UpgradeScreen() {
           });
       }, POLL_INTERVAL);
     },
-    [stopPolling]
+    [stopPolling, schedulePaidExit]
   );
 
   const fetchPricing = useCallback(() => {
@@ -124,9 +148,14 @@ export default function UpgradeScreen() {
   }, []);
 
   useEffect(() => {
+    mountedRef.current = true;
     fetchPricing();
-    return stopPolling;
-  }, [fetchPricing, stopPolling]);
+    return () => {
+      mountedRef.current = false;
+      stopPolling();
+      clearPaidExit();
+    };
+  }, [fetchPricing, stopPolling, clearPaidExit]);
 
   async function buy(plan: "monthly" | "yearly") {
     if (!allowNativePremiumPurchase) {

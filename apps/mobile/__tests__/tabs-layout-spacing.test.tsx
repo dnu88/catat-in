@@ -48,9 +48,20 @@ const ALL_TAB_ROUTE_NAMES = [
 ];
 
 // Primary destination each hidden route falls back to when a cold deep link
-// leaves it without navigation history. Sourced from the real map exported by
-// `app/(tabs)/_layout.tsx` so this suite cannot drift from the wiring under
-// test — a route added or renamed in the layout is asserted against here.
+// leaves it without navigation history. Written as an explicit literal — NOT
+// derived from the exported `HIDDEN_ROUTE_BACK_FALLBACKS` — so a
+// wrong-but-registered value (e.g. `bills: "/(tabs)/budgets"`) fails here
+// instead of passing. The behavioral tests below still drive the real map.
+const EXPECTED_HIDDEN_ROUTE_BACK_FALLBACKS: Record<string, string> = {
+	settings: "/(tabs)",
+	wallets: "/(tabs)",
+	budgets: "/(tabs)/settings",
+	bills: "/(tabs)/settings",
+	groups: "/(tabs)/settings",
+	imports: "/(tabs)/settings",
+	"transaction-new": "/(tabs)/capture",
+};
+
 const EXPECTED_PUBLIC_PWA_PATHS = [
 	"login",
 	"register",
@@ -442,6 +453,12 @@ describe("tabs layout spacing", () => {
 		expect(legacyRouter.replace).toHaveBeenCalledWith("/(tabs)");
 	});
 
+	it("pins the exact back fallback for every hidden route", () => {
+		expect(HIDDEN_ROUTE_BACK_FALLBACKS).toEqual(
+			EXPECTED_HIDDEN_ROUTE_BACK_FALLBACKS,
+		);
+	});
+
 	it.each(Object.entries(HIDDEN_ROUTE_BACK_FALLBACKS))(
 		"falls back to %s's primary route when the hidden route opens cold",
 		async (route, fallback) => {
@@ -527,6 +544,25 @@ describe("tabs layout spacing", () => {
 
 		const transactionNew = readMobileFile("app", "(tabs)", "transaction-new.tsx");
 		expect(transactionNew).toContain('goBackSafely(router, "/(tabs)/capture")');
+
+		// Symmetric to the notifications assertion above: no route exit in
+		// transaction-new may bypass the safe-back helper either. The one
+		// sanctioned bare `router.back()` is the in-form edit-mode Cancel button
+		// (testID "transaction-form-cancel"), which resets the form on the screen
+		// the user is already on — that is not a route exit, so it keeps the
+		// plain back call instead of `goBackSafely`.
+		const lines = transactionNew.split("\n");
+		const bareBackIndexes = lines
+			.map((line, index) => ({ line, index }))
+			.filter(({ line }) => line.includes("router.back()"))
+			.map(({ index }) => index);
+		expect(bareBackIndexes).toHaveLength(1);
+
+		const owningTestId = lines
+			.slice(0, bareBackIndexes[0])
+			.reverse()
+			.find((line) => line.includes("testID="));
+		expect(owningTestId).toContain("transaction-form-cancel");
 	});
 
 	it("keeps the public PWA path list valid and backed by real routes", () => {
