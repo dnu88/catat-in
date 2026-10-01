@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage'
-import { Linking } from 'react-native'
+import { Linking, StyleSheet } from 'react-native'
+import type { StyleProp, ViewStyle } from 'react-native'
 import { fireEvent, render, waitFor } from '@testing-library/react-native'
 
 jest.mock('../src/components/motion', () => ({
@@ -105,6 +106,10 @@ async function renderSettings() {
   )
 
   return screen
+}
+
+function getFlattenedStyle(node: { props: { style?: StyleProp<ViewStyle> } }): ViewStyle {
+  return StyleSheet.flatten(node.props.style) ?? {}
 }
 
 describe.each([false, true])('SettingsScreen honest controls (simpleNavigation=%s)', simpleMode => {
@@ -264,6 +269,17 @@ describe.each([false, true])('SettingsScreen honest controls (simpleNavigation=%
     const allowed = await renderSettings()
     fireEvent.press(allowed.getByTestId(`settings-${action}-button`))
     expect(mockPush).toHaveBeenCalledWith('/upgrade')
+  })
+
+  it('gives the plan upgrade and profile photo controls a real 44x44 touch box', async () => {
+    mockAllowNativePremiumPurchase = true
+    const screen = await renderSettings()
+
+    for (const testID of ['settings-upgrade-button', 'settings-change-profile-photo']) {
+      const control = getFlattenedStyle(screen.getByTestId(testID))
+      expect(Number(control.minHeight)).toBeGreaterThanOrEqual(44)
+      expect(Number(control.minWidth)).toBeGreaterThanOrEqual(44)
+    }
   })
 
   it('preserves profile avatar saving and logout behavior', async () => {

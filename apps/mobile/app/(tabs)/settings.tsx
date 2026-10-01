@@ -1949,7 +1949,16 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 		profileInfo: { flex: 1 },
 		profileName: { color: fe.white, fontSize: 17, fontWeight: theme.typography.fontWeight.semibold },
 		profileEmail: { color: "rgba(255,255,255,0.68)", fontSize: 12, marginTop: 2 },
-		profilePhotoButton: { alignSelf: "flex-start", marginTop: 8 },
+		// Bare text link: give it a real 44x44 interaction box without moving the
+		// label or growing the row. The 15px ring is cancelled by negative margins.
+		profilePhotoButton: {
+			alignSelf: "flex-start",
+			marginTop: -7,
+			marginBottom: -15,
+			minHeight: 44,
+			minWidth: 44,
+			justifyContent: "center",
+		},
 		profilePhotoButtonText: { color: fe.white, fontSize: 12, fontWeight: "600" },
 		inlineMessage: {
 			color: theme.colors.success,
@@ -2008,7 +2017,7 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 		buttonDisabled: { opacity: 0.68 },
 		primaryButtonText: { color: theme.colors.textInverse, fontSize: 14, fontWeight: "700" },
 		planAction: {
-			alignSelf: "flex-start", minHeight: 42, justifyContent: "center",
+			alignSelf: "flex-start", minHeight: 44, minWidth: 44, justifyContent: "center",
 			paddingHorizontal: 16, borderRadius: 12, backgroundColor: fe.paper,
 		},
 		planActionText: { color: fe.blue, fontSize: 13, fontWeight: "700" },
