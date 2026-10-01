@@ -9,6 +9,7 @@ const mockTabs = jest.fn((props: any) => (
 ));
 const mockTabsScreen = jest.fn((_props: any) => null);
 let mockSegments = ["(tabs)", "index"];
+let mockSimpleNavigation = false;
 
 jest.mock("expo-router", () => {
 	const { View } = require("react-native");
@@ -27,6 +28,14 @@ jest.mock("expo-router", () => {
 
 jest.mock("react-native-safe-area-context", () => ({
 	useSafeAreaInsets: () => ({ top: 0, right: 0, bottom: 24, left: 0 }),
+}));
+
+jest.mock("../src/config/features", () => ({
+	featureFlags: {
+		get simpleNavigation() {
+			return mockSimpleNavigation;
+		},
+	},
 }));
 
 jest.mock("../src/lib/supabase", () => {
@@ -73,6 +82,7 @@ describe("tabs layout spacing", () => {
 	beforeEach(() => {
 		jest.clearAllMocks();
 		mockSegments = ["(tabs)", "index"];
+		mockSimpleNavigation = false;
 	});
 
 	it("renders the compact floating navigation above the safe-area inset", async () => {
@@ -112,6 +122,26 @@ describe("tabs layout spacing", () => {
 		for (const screen of visibleScreens) {
 			expect(screen.options.tabBarAccessibilityLabel).toBe(screen.options.title);
 		}
+	});
+
+	it("uses Wallets as the fifth primary destination in simple navigation mode", async () => {
+		mockSimpleNavigation = true;
+		render(<TabsLayout />);
+		await waitFor(() => expect(mockTabs).toHaveBeenCalled());
+
+		const screens = mockTabsScreen.mock.calls.map(([props]) => props as any);
+		const visibleScreens = screens.filter(
+			(screen) => screen.options.href !== null,
+		);
+		expect(visibleScreens.map((screen) => screen.name)).toEqual([
+			"index",
+			"transactions",
+			"capture",
+			"reports",
+			"wallets",
+		]);
+		expect(screens.find((screen) => screen.name === "settings")?.options.href).toBeNull();
+		expect(screens.find((screen) => screen.name === "wallets")?.options.title).toBe("tabWallets");
 	});
 
 	it("removes the floating tab bar and duplicate native header on task routes", async () => {

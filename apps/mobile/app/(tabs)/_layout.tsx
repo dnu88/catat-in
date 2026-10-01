@@ -14,14 +14,9 @@ import { useI18n } from "../../src/i18n/i18n-context";
 import { useSupabase } from "../../src/lib/supabase";
 import { useTheme } from "../../src/theme/theme-context";
 import { financeEditorial as fe } from "../../src/theme/finance-editorial";
+import { featureFlags } from "../../src/config/features";
 
-const PRIMARY_TAB_ROUTES = new Set([
-	"index",
-	"transactions",
-	"capture",
-	"reports",
-	"settings",
-]);
+const BASE_PRIMARY_TAB_ROUTES = ["index", "transactions", "capture", "reports"] as const;
 
 export default function TabsLayout() {
 	const { supabase } = useSupabase();
@@ -30,7 +25,12 @@ export default function TabsLayout() {
 	const router = useRouter();
 	const segments = useSegments();
 	const activeRoute = segments[segments.length - 1] ?? "index";
-	const isPrimaryTabRoute = PRIMARY_TAB_ROUTES.has(activeRoute);
+	const simpleNavigation = featureFlags.simpleNavigation;
+	const primaryTabRoutes = new Set([
+		...BASE_PRIMARY_TAB_ROUTES,
+		simpleNavigation ? "wallets" : "settings",
+	]);
+	const isPrimaryTabRoute = primaryTabRoutes.has(activeRoute);
 	const insets = useSafeAreaInsets();
 	const tabBottomOffset = Math.max(10, insets.bottom);
 	const [session, setSession] = useState<unknown>(null);
@@ -219,9 +219,10 @@ export default function TabsLayout() {
 			<Tabs.Screen
 				name="settings"
 				options={{
+					...(simpleNavigation ? hiddenScreenOptions : {}),
 					title: t("tabSettings"),
 					tabBarAccessibilityLabel: t("tabSettings"),
-					headerShown: false,
+					headerShown: simpleNavigation ? undefined : false,
 					tabBarIcon: ({ color, focused }) => (
 						<View style={[styles.tabIconWrap, focused && styles.tabIconActive]}>
 							<KaswiseIcon name="settings" color={color} size={20} weight={focused ? "fill" : "regular"} />
@@ -233,9 +234,16 @@ export default function TabsLayout() {
 			<Tabs.Screen
 				name="wallets"
 				options={{
-					...hiddenScreenOptions,
-					title: "Wallets",
+					...(simpleNavigation ? {} : hiddenScreenOptions),
+					title: t("tabWallets"),
+					tabBarAccessibilityLabel: t("tabWallets"),
+					headerShown: simpleNavigation ? false : undefined,
 					headerTitle: t("headerWallets"),
+					tabBarIcon: ({ color, focused }) => (
+						<View style={[styles.tabIconWrap, focused && styles.tabIconActive]}>
+							<KaswiseIcon name="wallets" color={color} size={20} weight={focused ? "fill" : "regular"} />
+						</View>
+					),
 				}}
 			/>
 			<Tabs.Screen
