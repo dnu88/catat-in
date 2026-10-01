@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
 	ActivityIndicator,
 	Alert,
@@ -361,6 +361,28 @@ export default function WalletsScreen() {
 	// viewport. Legacy mode keeps the exact previous order and density.
 	const simple = featureFlags.simpleNavigation;
 
+	// Simple mode mounts the create/edit forms after the whole wallet list, so on
+	// a long list an opened form can sit below the fold and the tap looks like a
+	// no-op. Scroll the newly opened form into view once it is laid out. The forms
+	// render at the tail of the simple layout, so scrollToEnd reveals them without
+	// measuring layout offsets, and it is implemented by both the native and the
+	// react-native-web ScrollView. Legacy mode is untouched (openForm stays null).
+	const walletScrollRef = useRef<ScrollView>(null);
+	const openForm = simple
+		? showCreate
+			? "create"
+			: editingWallet
+				? `edit:${editingWallet.id}`
+				: null
+		: null;
+	useEffect(() => {
+		if (!openForm) return;
+		const frame = requestAnimationFrame(() => {
+			walletScrollRef.current?.scrollToEnd({ animated: true });
+		});
+		return () => cancelAnimationFrame(frame);
+	}, [openForm]);
+
 	const editForm = editingWallet ? (
 		<View key="wallet-edit-form" testID="wallet-edit-form" style={styles.formCard}>
 			<Text style={styles.formTitle}>
@@ -571,6 +593,7 @@ export default function WalletsScreen() {
 	return (
 		<PageEntrance testID="wallets-page-entrance" style={styles.screen}>
 			<ScrollView
+				ref={walletScrollRef}
 				contentContainerStyle={styles.content}
 				showsVerticalScrollIndicator={false}
 				refreshControl={

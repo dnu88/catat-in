@@ -6,7 +6,7 @@ import {
 	within,
 	waitFor,
 } from "@testing-library/react-native";
-import { Alert, Platform, StyleSheet } from "react-native";
+import { Alert, Platform, ScrollView, StyleSheet } from "react-native";
 import type { StyleProp, ViewStyle } from "react-native";
 
 import WalletsScreen from "../app/(tabs)/wallets";
@@ -340,6 +340,36 @@ describe("WalletsScreen", () => {
 		const empty = await screen.findByTestId("wallets-empty");
 		expect(within(empty).getByText("Belum ada dompet untuk dikelola.")).toBeTruthy();
 	});
+
+	it("locks the legacy order from hero to filter to the wallet list", async () => {
+		disableSimpleNavigation();
+		renderWallets();
+
+		// The loading block mounts where the list will, i.e. after the filter.
+		expectBefore("wallets-filter", "wallets-loading");
+
+		await screen.findByTestId("wallet-card-wallet-personal");
+		expectBefore("wallets-hero", "wallets-filter");
+		expectBefore("wallets-filter", "wallet-card-wallet-personal");
+	});
+
+	it("keeps the legacy load error behind the filter", async () => {
+		disableSimpleNavigation();
+		mockListWallets.mockRejectedValue(new Error("network down"));
+		renderWallets();
+
+		await screen.findByTestId("wallets-error");
+		expectBefore("wallets-filter", "wallets-error");
+	});
+
+	it("keeps the legacy empty state behind the filter", async () => {
+		disableSimpleNavigation();
+		mockListWallets.mockResolvedValue([]);
+		renderWallets();
+
+		await screen.findByTestId("wallets-empty");
+		expectBefore("wallets-filter", "wallets-empty");
+	});
 });
 
 describe("WalletsScreen simple navigation", () => {
@@ -538,5 +568,45 @@ describe("WalletsScreen simple navigation", () => {
 
 		const empty = await screen.findByTestId("wallets-empty");
 		expect(within(empty).getByText("Belum ada dompet untuk dikelola.")).toBeTruthy();
+	});
+
+	it("scrolls the create form into view when it opens in simple mode", async () => {
+		const scrollSpy = jest.spyOn(ScrollView.prototype, "scrollToEnd");
+		renderWallets();
+
+		await screen.findByTestId("wallet-card-wallet-personal");
+		expect(scrollSpy).not.toHaveBeenCalled();
+
+		fireEvent.press(screen.getByTestId("wallets-add-cta"));
+
+		await waitFor(() =>
+			expect(scrollSpy).toHaveBeenCalledWith({ animated: true }),
+		);
+	});
+
+	it("scrolls the edit form into view when a card edit opens in simple mode", async () => {
+		const scrollSpy = jest.spyOn(ScrollView.prototype, "scrollToEnd");
+		renderWallets();
+
+		await screen.findByTestId("wallet-card-wallet-family");
+		expect(scrollSpy).not.toHaveBeenCalled();
+
+		fireEvent.press(screen.getByTestId("wallet-edit-wallet-family"));
+
+		await waitFor(() =>
+			expect(scrollSpy).toHaveBeenCalledWith({ animated: true }),
+		);
+	});
+
+	it("does not scroll when a wallet form opens outside simple mode", async () => {
+		disableSimpleNavigation();
+		const scrollSpy = jest.spyOn(ScrollView.prototype, "scrollToEnd");
+		renderWallets();
+
+		await screen.findByTestId("wallet-card-wallet-personal");
+		fireEvent.press(screen.getByTestId("wallets-create-toggle"));
+		await screen.findByTestId("wallet-create-form");
+
+		expect(scrollSpy).not.toHaveBeenCalled();
 	});
 });
