@@ -4,16 +4,48 @@ declare const __dirname: string;
 // the source-assertion style already used in this package.
 const fs = jest.requireActual<{
 	readFileSync: (filePath: string, encoding: string) => string;
+	writeFileSync: (filePath: string, data: string) => void;
+	mkdtempSync: (prefix: string) => string;
+	rmSync: (
+		filePath: string,
+		options?: { recursive?: boolean; force?: boolean },
+	) => void;
 }>("fs");
 const path = jest.requireActual<{
 	join: (...segments: string[]) => string;
 }>("path");
+const os = jest.requireActual<{
+	tmpdir: () => string;
+}>("os");
 
-const { ROLLOUT_FLAG_ENV_KEYS, stripRolloutFlagsFromEnv } = jest.requireActual<{
+type RolloutSourceValue = string | boolean | undefined | null;
+type ResolveRolloutFlagOptions = {
+	envKey?: string;
+	configKey?: string;
+	env?: Record<string, RolloutSourceValue>;
+	envFile?: Record<string, RolloutSourceValue>;
+	config?: Record<string, RolloutSourceValue>;
+};
+
+const {
+	ROLLOUT_FLAG_ENV_KEYS,
+	ROLLOUT_CONFIG_PATH,
+	stripRolloutFlagsFromEnv,
+	readRolloutConfig,
+	resolveRolloutFlagValue,
+} = jest.requireActual<{
 	ROLLOUT_FLAG_ENV_KEYS: string[];
+	ROLLOUT_CONFIG_PATH: string;
 	stripRolloutFlagsFromEnv: (
 		env: Record<string, string | undefined> | undefined,
 	) => Record<string, string | undefined>;
+	readRolloutConfig: (
+		filePath?: string,
+	) => Record<string, RolloutSourceValue>;
+	resolveRolloutFlagValue: (
+		flagOrOptions: string | ResolveRolloutFlagOptions,
+		overrides?: ResolveRolloutFlagOptions,
+	) => string;
 }>("../scripts/rollout-flags.cjs");
 
 const mobileRoot = path.join(__dirname, "..");
@@ -137,5 +169,170 @@ describe("deploy-pwa pre-deploy gate wiring", () => {
 		expect(configBody).toContain(
 			"process.env.EXPO_PUBLIC_FEATURE_SIMPLE_NAVIGATION",
 		);
+	});
+
+	it("resolves every rollout flag through the shared resolver", () => {
+		const configBody = extractFunctionBody(source, "publicRuntimeConfigBlock");
+
+		expect(configBody).toContain("resolveRolloutFlagValue");
+
+		for (const key of DOCUMENTED_ROLLOUT_FLAG_KEYS) {
+			expect(configBody).toContain(key);
+		}
+	});
+
+	it("reads the committed rollout config once per deploy run", () => {
+		const configBody = extractFunctionBody(source, "publicRuntimeConfigBlock");
+
+		expect(configBody).toContain("readRolloutConfig(");
+	});
+});
+
+const RESOLVE_ENV_KEY = "EXPO_PUBLIC_FEATURE_SIMPLE_NAVIGATION";
+const RESOLVE_CONFIG_KEY = "simpleNavigation";
+
+describe("resolveRolloutFlagValue precedence", () => {
+	it("resolves process.env over .env over rollout config over ''", () => {
+		expect(
+			resolveRolloutFlagValue({
+				envKey: RESOLVE_ENV_KEY,
+				configKey: RESOLVE_CONFIG_KEY,
+				env: { [RESOLVE_ENV_KEY]: "from-env" },
+				envFile: { [RESOLVE_ENV_KEY]: "from-env-file" },
+				config: { [RESOLVE_CONFIG_KEY]: "from-config" },
+			}),
+		).toBe("from-env");
+
+		expect(
+			resolveRolloutFlagValue({
+				envKey: RESOLVE_ENV_KEY,
+				configKey: RESOLVE_CONFIG_KEY,
+				env: {},
+				envFile: { [RESOLVE_ENV_KEY]: "from-env-file" },
+				config: { [RESOLVE_CONFIG_KEY]: "from-config" },
+			}),
+		).toBe("from-env-file");
+
+		expect(
+			resolveRolloutFlagValue({
+				envKey: RESOLVE_ENV_KEY,
+				configKey: RESOLVE_CONFIG_KEY,
+				env: {},
+				envFile: {},
+				config: { [RESOLVE_CONFIG_KEY]: "from-config" },
+			}),
+		).toBe("from-config");
+
+		expect(
+			resolveRolloutFlagValue({
+				envKey: RESOLVE_ENV_KEY,
+				configKey: RESOLVE_CONFIG_KEY,
+				env: {},
+				envFile: {},
+				config: {},
+			}),
+		).toBe("");
+	});
+
+	it("keeps looking down the chain when a higher source is empty", () => {
+		expect(
+			resolveRolloutFlagValue({
+				envKey: RESOLVE_ENV_KEY,
+				configKey: RESOLVE_CONFIG_KEY,
+				env: { [RESOLVE_ENV_KEY]: "" },
+				envFile: { [RESOLVE_ENV_KEY]: "from-env-file" },
+				config: { [RESOLVE_CONFIG_KEY]: "from-config" },
+			}),
+		).toBe("from-env-file");
+	});
+
+	it("accepts the camelCase flag name and derives the env key", () => {
+		expect(
+			resolveRolloutFlagValue("simpleNavigation", {
+				config: { simpleNavigation: true },
+			}),
+		).toBe("true");
+	});
+});
+
+describe("resolveRolloutFlagValue coercion", () => {
+	it("coerces boolean rollout-config values to 'true'/'false' strings", () => {
+		expect(
+			resolveRolloutFlagValue({
+				envKey: RESOLVE_ENV_KEY,
+				configKey: RESOLVE_CONFIG_KEY,
+				config: { [RESOLVE_CONFIG_KEY]: true },
+			}),
+		).toBe("true");
+		expect(
+			resolveRolloutFlagValue({
+				envKey: RESOLVE_ENV_KEY,
+				configKey: RESOLVE_CONFIG_KEY,
+				config: { [RESOLVE_CONFIG_KEY]: false },
+			}),
+		).toBe("false");
+	});
+
+	it("returns '' for undefined/null and never 'undefined'/'null'", () => {
+		const fromUndefined = resolveRolloutFlagValue({
+			envKey: RESOLVE_ENV_KEY,
+			configKey: RESOLVE_CONFIG_KEY,
+			config: { [RESOLVE_CONFIG_KEY]: undefined },
+		});
+		const fromNull = resolveRolloutFlagValue({
+			envKey: RESOLVE_ENV_KEY,
+			configKey: RESOLVE_CONFIG_KEY,
+			config: { [RESOLVE_CONFIG_KEY]: null },
+		});
+
+		expect(fromUndefined).toBe("");
+		expect(fromNull).toBe("");
+		expect(fromUndefined).not.toBe("undefined");
+		expect(fromNull).not.toBe("null");
+	});
+
+	it("coerces boolean env values to strings as well", () => {
+		expect(
+			resolveRolloutFlagValue({
+				envKey: RESOLVE_ENV_KEY,
+				configKey: RESOLVE_CONFIG_KEY,
+				env: { [RESOLVE_ENV_KEY]: true },
+			}),
+		).toBe("true");
+	});
+});
+
+describe("readRolloutConfig", () => {
+	it("points at the committed apps/mobile rollout config", () => {
+		expect(ROLLOUT_CONFIG_PATH.replace(/\\/g, "/")).toMatch(
+			/apps\/mobile\/rollout-flags\.json$/,
+		);
+	});
+
+	it("returns {} when the config file is missing", () => {
+		const missing = path.join(os.tmpdir(), "kaswise-missing-rollout-flags.json");
+
+		expect(readRolloutConfig(missing)).toEqual({});
+	});
+
+	it("returns {} for invalid JSON and never throws", () => {
+		const dir = fs.mkdtempSync(path.join(os.tmpdir(), "kaswise-rollout-"));
+		const file = path.join(dir, "rollout-flags.json");
+		fs.writeFileSync(file, "{ not: valid json");
+
+		expect(() => readRolloutConfig(file)).not.toThrow();
+		expect(readRolloutConfig(file)).toEqual({});
+
+		fs.rmSync(dir, { recursive: true, force: true });
+	});
+
+	it("parses a valid config file into a plain object", () => {
+		const dir = fs.mkdtempSync(path.join(os.tmpdir(), "kaswise-rollout-"));
+		const file = path.join(dir, "rollout-flags.json");
+		fs.writeFileSync(file, '{"simpleNavigation": true}');
+
+		expect(readRolloutConfig(file)).toEqual({ simpleNavigation: true });
+
+		fs.rmSync(dir, { recursive: true, force: true });
 	});
 });

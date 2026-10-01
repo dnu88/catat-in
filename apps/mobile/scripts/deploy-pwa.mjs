@@ -7,7 +7,11 @@ import { execSync } from 'node:child_process'
 // This script is ESM; the roll-out flag helper is plain CommonJS so both Node
 // and Jest can load it directly.
 const require = createRequire(import.meta.url)
-const { stripRolloutFlagsFromEnv } = require('./rollout-flags.cjs')
+const {
+  stripRolloutFlagsFromEnv,
+  readRolloutConfig,
+  resolveRolloutFlagValue,
+} = require('./rollout-flags.cjs')
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const appDir = resolve(__dirname, '..')
@@ -194,14 +198,37 @@ function publicRuntimeConfigBlock() {
     extra.supabaseAnonKey ||
     extra.EXPO_PUBLIC_SUPABASE_ANON_KEY ||
     env.EXPO_PUBLIC_SUPABASE_ANON_KEY
-  const voiceNoteFeature =
-    process.env.EXPO_PUBLIC_FEATURE_VOICE_NOTE ||
-    env.EXPO_PUBLIC_FEATURE_VOICE_NOTE ||
-    ''
-  const simpleNavigationFeature =
-    process.env.EXPO_PUBLIC_FEATURE_SIMPLE_NAVIGATION ||
-    env.EXPO_PUBLIC_FEATURE_SIMPLE_NAVIGATION ||
-    ''
+  // Rollout flags are a DEPLOYMENT concern. Each one resolves with the
+  // precedence: operator env var → local .env file → committed rollout config
+  // (apps/mobile/rollout-flags.json) → ''. The final '' keeps the code-level
+  // default in src/config/features.ts authoritative for dev/test.
+  const rolloutEnv = {
+    EXPO_PUBLIC_FEATURE_VOICE_NOTE: process.env.EXPO_PUBLIC_FEATURE_VOICE_NOTE,
+    EXPO_PUBLIC_FEATURE_SIMPLE_NAVIGATION: process.env.EXPO_PUBLIC_FEATURE_SIMPLE_NAVIGATION,
+    EXPO_PUBLIC_FEATURE_IMPORT_STATEMENT: process.env.EXPO_PUBLIC_FEATURE_IMPORT_STATEMENT,
+  }
+  const rolloutConfig = readRolloutConfig()
+  const voiceNoteFeature = resolveRolloutFlagValue({
+    envKey: 'EXPO_PUBLIC_FEATURE_VOICE_NOTE',
+    configKey: 'voiceNote',
+    env: rolloutEnv,
+    envFile: env,
+    config: rolloutConfig,
+  })
+  const simpleNavigationFeature = resolveRolloutFlagValue({
+    envKey: 'EXPO_PUBLIC_FEATURE_SIMPLE_NAVIGATION',
+    configKey: 'simpleNavigation',
+    env: rolloutEnv,
+    envFile: env,
+    config: rolloutConfig,
+  })
+  const importStatementFeature = resolveRolloutFlagValue({
+    envKey: 'EXPO_PUBLIC_FEATURE_IMPORT_STATEMENT',
+    configKey: 'importStatement',
+    env: rolloutEnv,
+    envFile: env,
+    config: rolloutConfig,
+  })
 
   if (!supabaseUrl || !supabaseAnonKey) {
     throw new Error('Missing public Supabase config for PWA deploy')
@@ -218,7 +245,7 @@ function publicRuntimeConfigBlock() {
     },
   }
 
-  return `${marker}\n    <script>\n      var process = window.process = window.process || {};\n      process.env = process.env || {};\n      process.env.NODE_ENV = "production";\n      process.env.EXPO_PUBLIC_SUPABASE_URL = ${JSON.stringify(supabaseUrl)};\n      process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY = ${JSON.stringify(supabaseAnonKey)};\n      process.env.EXPO_PUBLIC_FEATURE_VOICE_NOTE = ${JSON.stringify(voiceNoteFeature)};\n      process.env.EXPO_PUBLIC_FEATURE_SIMPLE_NAVIGATION = ${JSON.stringify(simpleNavigationFeature)};\n      process.env.APP_MANIFEST = ${JSON.stringify(JSON.stringify(manifest))};\n    </script>\n`
+  return `${marker}\n    <script>\n      var process = window.process = window.process || {};\n      process.env = process.env || {};\n      process.env.NODE_ENV = "production";\n      process.env.EXPO_PUBLIC_SUPABASE_URL = ${JSON.stringify(supabaseUrl)};\n      process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY = ${JSON.stringify(supabaseAnonKey)};\n      process.env.EXPO_PUBLIC_FEATURE_VOICE_NOTE = ${JSON.stringify(voiceNoteFeature)};\n      process.env.EXPO_PUBLIC_FEATURE_SIMPLE_NAVIGATION = ${JSON.stringify(simpleNavigationFeature)};\n      process.env.EXPO_PUBLIC_FEATURE_IMPORT_STATEMENT = ${JSON.stringify(importStatementFeature)};\n      process.env.APP_MANIFEST = ${JSON.stringify(JSON.stringify(manifest))};\n    </script>\n`
 }
 
 function deployDistToTarget() {
