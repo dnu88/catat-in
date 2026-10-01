@@ -3,6 +3,9 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { ActivityIndicator, Animated, Image, Linking, Modal, Pressable, RefreshControl, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { PageEntrance, StaggeredStack } from "../../src/components/motion";
 import { AccountDeletionSection } from "../../src/components/settings/AccountDeletionSection";
+import { FinanceContextSwitcher } from "../../src/components/FinanceContextSwitcher";
+import { SettingsNavigationRow } from "../../src/components/settings/SettingsNavigationRow";
+import { SettingsSection } from "../../src/components/settings/SettingsSection";
 import { LegalSupportSection } from "../../src/components/settings/LegalSupportSection";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as ImagePicker from "expo-image-picker";
@@ -1049,6 +1052,483 @@ export default function SettingsScreen() {
 		await Linking.openURL(url);
 	};
 
+	const profileSection = (
+		<LinearGradient
+			key="settings-profile"
+			testID="settings-profile"
+			colors={[fe.navySurface, fe.blueDeep, fe.blueBright]}
+			start={{ x: 0, y: 0 }}
+			end={{ x: 1, y: 1 }}
+			style={styles.profileCard}
+		>
+			<View style={styles.profileAvatar}>
+				{profilePhotoUrl ? (
+					<Image source={{ uri: profilePhotoUrl }} style={styles.profileAvatarImage} />
+				) : selectedAvatar ? (
+					<ProfileAvatarIllustration preset={selectedAvatar} theme={theme} size={68} />
+				) : (
+					<Text style={styles.profileAvatarText}>{avatarInitials}</Text>
+				)}
+			</View>
+			<View style={styles.profileInfo}>
+				<Text style={styles.profileName}>{displayName}</Text>
+				{displayEmail ? (
+					<Text style={styles.profileEmail}>{displayEmail}</Text>
+				) : null}
+				<Pressable
+					testID="settings-change-profile-photo"
+					accessibilityRole="button"
+					accessibilityLabel={language === "id" ? "Ubah foto profil" : "Change profile photo"}
+					onPress={openProfileSheet}
+					style={styles.profilePhotoButton}
+				>
+					<Text style={styles.profilePhotoButtonText}>
+						{language === "id" ? "Ubah Foto Profil" : "Change Profile Photo"}
+					</Text>
+				</Pressable>
+				{profileMessage ? (
+					<Text style={[styles.inlineMessage, profileMessage.type === "error" && styles.inlineMessageError]}>
+						{profileMessage.message}
+					</Text>
+				) : null}
+			</View>
+		</LinearGradient>
+	);
+
+	const appearanceSection = (
+		<View key="settings-appearance" testID="settings-appearance" style={styles.sectionCard}>
+			<Text style={styles.sectionTitle}>{language === "id" ? "Tampilan" : "Appearance"}</Text>
+			<View style={styles.themeGrid}>
+				{THEME_OPTIONS.map((option) => {
+					const active = preference === option.id;
+					return (
+						<Pressable
+							key={option.id}
+							testID={option.testID}
+							accessibilityRole="button"
+							accessibilityLabel={language === "id" ? option.idLabel : option.enLabel}
+							accessibilityState={{ selected: active }}
+							onPress={() => setPreference(option.id)}
+							style={[styles.themeChip, active && styles.themeChipActive]}
+						>
+							<Text style={[styles.themeChipText, active && styles.themeChipTextActive]}>
+								{language === "id" ? option.idLabel : option.enLabel}
+							</Text>
+						</Pressable>
+					);
+				})}
+			</View>
+		</View>
+	);
+
+	const securitySection = (
+		<View key="settings-account-security" testID="settings-account-security" style={styles.sectionCard}>
+			<Text style={styles.sectionTitle}>
+				{language === "id" ? "Akun & Keamanan" : "Account & Security"}
+			</Text>
+			<Text style={styles.sectionSub}>
+				{language === "id"
+					? "Kelola akses akun dan password login."
+					: "Manage account access and login password."}
+			</Text>
+			<Pressable
+				testID="settings-password-toggle"
+				accessibilityRole="button"
+				accessibilityLabel={language === "id" ? "Ubah password" : "Change password"}
+				style={styles.navigationRow}
+				onPress={() => setPasswordExpanded((value) => !value)}
+			>
+				<View style={styles.navigationCopy}>
+					<KaswiseIcon name="lock" size={20} color={theme.colors.textMuted} />
+					<View style={styles.navigationTextBlock}>
+						<Text style={styles.navigationTitle}>{language === "id" ? "Ubah Password" : "Change Password"}</Text>
+						<Text style={styles.navigationHelper}>
+							{language === "id" ? "Gunakan minimal 8 karakter." : "Use at least 8 characters."}
+						</Text>
+					</View>
+				</View>
+				<Text style={styles.navigationChevron}>{passwordExpanded ? "⌃" : "›"}</Text>
+			</Pressable>
+			{passwordExpanded ? (
+				<View style={styles.passwordForm}>
+					<TextInput
+						testID="settings-new-password"
+						value={newPassword}
+						onChangeText={setNewPassword}
+						placeholder={language === "id" ? "Password baru" : "New password"}
+						placeholderTextColor={theme.colors.textDim}
+						secureTextEntry
+						style={styles.textInput}
+					/>
+					<TextInput
+						testID="settings-confirm-password"
+						value={confirmPassword}
+						onChangeText={setConfirmPassword}
+						placeholder={language === "id" ? "Konfirmasi password" : "Confirm password"}
+						placeholderTextColor={theme.colors.textDim}
+						secureTextEntry
+						style={styles.textInput}
+					/>
+					{passwordMessage ? (
+						<Text style={[styles.inlineMessage, passwordMessage.type === "error" && styles.inlineMessageError]}>
+							{passwordMessage.message}
+						</Text>
+					) : null}
+					<Pressable
+						testID="settings-save-password"
+						accessibilityRole="button"
+						accessibilityState={{ busy: passwordSaving, disabled: passwordSaving }}
+						disabled={passwordSaving}
+						style={[styles.primaryButton, passwordSaving && styles.buttonDisabled]}
+						onPress={onChangePassword}
+					>
+						{passwordSaving ? (
+							<ActivityIndicator color={theme.colors.buttonPrimaryText} />
+						) : (
+							<Text style={styles.primaryButtonText}>{language === "id" ? "Simpan Password" : "Save Password"}</Text>
+						)}
+					</Pressable>
+				</View>
+			) : passwordMessage ? (
+				<Text style={[styles.inlineMessage, passwordMessage.type === "error" && styles.inlineMessageError]}>
+					{passwordMessage.message}
+				</Text>
+			) : null}
+		</View>
+	);
+
+	const planSection = (
+		<View key="settings-plan" testID="settings-plan" style={styles.sectionCard}>
+			<Text style={styles.sectionTitle}>
+				{language === "id" ? "Paket" : "Plan"}
+			</Text>
+			<Text style={styles.sectionSub}>
+				{!allowNativePremiumPurchase
+					? (language === "id"
+						? "Status paket aktif. Upgrade Premium sementara tersedia lewat Kaswise web/PWA."
+						: "Current plan status. Premium upgrade is temporarily available on Kaswise web/PWA.")
+					: (language === "id"
+						? "Status langganan dan upgrade ke Premium."
+						: "Subscription status and premium upgrade.")}
+			</Text>
+			{entitlementsLoading ? (
+				<ActivityIndicator style={{ marginTop: 6 }} />
+			) : (
+				<>
+					<View style={styles.navigationRow}>
+						<View style={styles.navigationCopy}>
+							<KaswiseIcon name="card" size={20} color={theme.colors.textMuted} />
+							<View style={styles.navigationTextBlock}>
+								<Text style={styles.navigationTitle}>
+									{planStatusLabel(entitlements)}
+								</Text>
+								{entitlements?.plan === "premium" && entitlements.plan_expires_at ? (
+									<Text style={styles.navigationHelper}>
+										{language === "id" ? "Berlaku sampai " : "Valid until "}
+										{new Date(entitlements.plan_expires_at).toLocaleDateString(
+											language === "id" ? "id-ID" : "en-US",
+											{ year: "numeric", month: "long", day: "numeric" }
+										)}
+									</Text>
+								) : (
+									<Text style={styles.navigationHelper}>
+										{language === "id" ? "Akses dasar dengan batasan." : "Basic access with limits."}
+									</Text>
+								)}
+							</View>
+						</View>
+					</View>
+					{entitlements?.plan !== "premium" ? (
+						allowNativePremiumPurchase ? (
+							<Pressable
+								testID="settings-upgrade-button"
+								accessibilityRole="button"
+								style={styles.planAction}
+								onPress={() => router.push("/upgrade")}
+							>
+								<Text style={styles.planActionText}>
+									{language === "id" ? "Upgrade ke Premium" : "Upgrade to Premium"}
+								</Text>
+							</Pressable>
+						) : (
+							<Text testID="settings-upgrade-unavailable" style={styles.navigationHelper}>
+								{language === "id"
+									? "Upgrade Premium sementara hanya tersedia lewat Kaswise web/PWA."
+									: "Premium upgrade is temporarily available only on Kaswise web/PWA."}
+							</Text>
+						)
+					) : allowNativePremiumPurchase ? (
+						<Pressable
+							testID="settings-extend-button"
+							accessibilityRole="button"
+							style={styles.planAction}
+							onPress={() => router.push("/upgrade")}
+						>
+							<Text style={styles.planActionText}>
+								{language === "id" ? "Perpanjang" : "Extend"}
+							</Text>
+						</Pressable>
+					) : (
+						<Text testID="settings-extend-unavailable" style={styles.navigationHelper}>
+							{language === "id"
+								? "Perpanjangan paket sementara dikelola lewat Kaswise web/PWA."
+								: "Plan renewal is temporarily handled on Kaswise web/PWA."}
+						</Text>
+					)}
+				</>
+			)}
+		</View>
+	);
+
+	const familySection = (
+		<View key="settings-family" testID="settings-family" style={styles.sectionCard}>
+			<Text style={styles.sectionTitle}>
+				{language === "id" ? "Keluarga" : "Family"}
+			</Text>
+			<Text style={styles.sectionSub}>
+				{language === "id"
+					? "Kelola akses keluarga, undangan, dan mode keuangan bersama."
+					: "Manage household access, invites, and shared finance mode."}
+			</Text>
+			<Pressable
+				testID="settings-family-center"
+				accessibilityRole="button"
+				accessibilityLabel={
+					language === "id" ? "Buka pusat keluarga" : "Open family center"
+				}
+				style={styles.navigationRow}
+				onPress={() => router.push("/(tabs)/groups")}
+			>
+				<View style={styles.navigationCopy}>
+					<KaswiseIcon name="groups" size={20} color={theme.colors.textMuted} />
+					<View style={styles.navigationTextBlock}>
+						<Text style={styles.navigationTitle}>
+							{language === "id" ? "Pusat Keluarga" : "Family Center"}
+						</Text>
+						<Text style={styles.navigationHelper}>
+							{language === "id"
+								? "Buat keluarga atau gabung dengan kode undangan."
+								: "Create a family or join with an invite code."}
+						</Text>
+					</View>
+				</View>
+				<Text style={styles.navigationChevron}>›</Text>
+			</Pressable>
+		</View>
+	);
+
+	const importSection = (
+		featureFlags.importStatement ? (
+			<View key="settings-import-statement" testID="settings-import-statement" style={styles.sectionCard}>
+				<Text style={styles.sectionTitle}>
+					{language === "id" ? "Import Rekening Koran" : "Bank Statement Import"}
+				</Text>
+				<Text style={styles.sectionSub}>
+					{language === "id"
+						? "Upload CSV/XLSX/PDF bank atau e-wallet dan review transaksi sebelum disimpan."
+						: "Upload bank or e-wallet CSV/XLSX/PDF files and review transactions before saving."}
+				</Text>
+				<Pressable
+					testID="settings-import-statement-link"
+					accessibilityRole="button"
+					accessibilityLabel={language === "id" ? "Buka import rekening koran" : "Open bank statement import"}
+					style={styles.navigationRow}
+					onPress={() => router.push("/(tabs)/imports")}
+				>
+					<View style={styles.navigationCopy}>
+						<KaswiseIcon name="upload" size={20} color={theme.colors.textMuted} />
+						<View style={styles.navigationTextBlock}>
+							<Text style={styles.navigationTitle}>
+								{language === "id" ? "Import CSV/XLSX/PDF" : "Import CSV/XLSX/PDF"}
+							</Text>
+							<Text style={styles.navigationHelper}>
+								{language === "id"
+									? "Preview duplikat dan error sebelum konfirmasi."
+									: "Preview duplicates and errors before confirming."}
+							</Text>
+						</View>
+					</View>
+					<Text style={styles.navigationChevron}>›</Text>
+				</Pressable>
+			</View>
+		) : null
+	);
+
+	const languageSection = (
+		<View key="settings-language" testID="settings-language" style={styles.sectionCard}>
+			<Text style={styles.sectionTitle}>{t("languageSection")}</Text>
+			<Text style={styles.sectionSub}>{t("languageSectionHelper")}</Text>
+
+			<View style={styles.themeGrid}>
+				{(["id", "en"] as const).map((lang) => (
+					<Pressable
+						key={lang}
+						testID={`settings-language-${lang}`}
+						accessibilityRole="button"
+						accessibilityLabel={`${language === "id" ? "Pilih bahasa" : "Choose language"} ${lang === "id" ? t("indonesian") : t("english")}`}
+						accessibilityState={{ selected: language === lang }}
+						onPress={() => setLanguage(lang)}
+						style={[
+							styles.themeChip,
+							language === lang && {
+								backgroundColor: fe.blueDeep,
+								borderColor: fe.blueDeep,
+							},
+						]}
+					>
+						<Text
+							style={[
+								styles.themeChipText,
+								language === lang && { color: theme.colors.textInverse },
+							]}
+						>
+							{lang === "id" ? t("indonesian") : t("english")}
+						</Text>
+					</Pressable>
+				))}
+			</View>
+		</View>
+	);
+
+	const notificationsSection = (
+		<View key="settings-notifications" testID="settings-notifications" style={styles.sectionCard}>
+			<Text style={styles.sectionTitle}>
+				{featureFlags.simpleNavigation
+					? (language === "id" ? "Preferensi notifikasi" : "Notification preferences")
+					: (language === "id" ? "Notifikasi" : "Notifications")}
+			</Text>
+			<Text style={styles.sectionSub}>
+				{language === "id"
+					? "Kelola pengingat penting."
+					: "Manage important reminders."}
+			</Text>
+
+			{notifPrefs != null ? (
+				<ToggleRow
+					icon="notification"
+					tone="primary"
+					title={language === "id" ? "Notifikasi Aktif" : "Notifications On"}
+					helper={
+						language === "id"
+							? "Matikan semua notifikasi sekaligus"
+							: "Turn off all notifications at once"
+					}
+					value={notifPrefs.enabled}
+					onToggle={toggleNotifEnabled}
+					theme={theme}
+				/>
+			) : notifPrefsLoading ? (
+				<ActivityIndicator style={{ marginTop: 6 }} />
+			) : null}
+
+			<ToggleRow
+				icon="chart"
+				tone="info"
+				title={language === "id" ? "Pengingat Harian" : "Daily Summary"}
+				helper={
+					language === "id"
+						? "Notifikasi kondisi keuangan setiap malam"
+						: "Nightly financial condition notification"
+				}
+				value={dailyReminder}
+				onToggle={toggleDailyReminder}
+				theme={theme}
+			/>
+			<ToggleRow
+				icon="bills"
+				tone="warning"
+				title={language === "id" ? "Pengingat Tagihan" : "Bill Reminder"}
+				helper={
+					language === "id"
+						? "Notifikasi sebelum jatuh tempo"
+						: "Notification before due date"
+				}
+				value={billReminder}
+				onToggle={toggleBillReminder}
+				theme={theme}
+			/>
+			<ToggleRow
+				icon="budgets"
+				tone="primary"
+				title={language === "id" ? "Alert Anggaran" : "Budget Alert"}
+				helper={
+					language === "id"
+						? "Notifikasi saat budget hampir habis"
+						: "Notification when budget is nearly depleted"
+				}
+				value={budgetAlert}
+				onToggle={toggleBudgetAlert}
+				theme={theme}
+			/>
+		</View>
+	);
+
+	const legalSection = (
+		<LegalSupportSection key="settings-legal-support" language={language} styles={styles} onOpenUrl={openLegalUrl} />
+	);
+
+	const deletionSection = (
+		<AccountDeletionSection key="settings-account-deletion"
+			language={language}
+			styles={styles}
+			profileEmail={profileEmail}
+			expanded={accountDeletionExpanded}
+			onToggleExpanded={() => {
+				setAccountDeletionExpanded((current) => !current);
+				setAccountDeletionMessage(null);
+			}}
+			request={accountDeletionRequest}
+			reason={accountDeletionReason}
+			details={accountDeletionDetails}
+			onChangeReason={setAccountDeletionReason}
+			onChangeDetails={setAccountDeletionDetails}
+			onSubmit={onSubmitAccountDeletionRequest}
+			loading={accountDeletionLoading}
+			loadingStatus={accountDeletionStatusLoading}
+			message={accountDeletionMessage}
+		/>
+	);
+
+	const appInfoSection = (
+		<View key="settings-app-info" testID="settings-app-info" style={styles.appInfo}>
+			<Text style={styles.appName}>Kaswise v1.0.0</Text>
+			<Text style={styles.appTagline}>
+				{language === "id"
+					? "Catat Keuangan, Bijak Setiap Hari"
+					: "Track Finances, Wise Every Day"}
+			</Text>
+		</View>
+	);
+
+	const logoutSection = (
+		<AnimatedPressable
+			key="settings-logout"
+			testID="settings-logout"
+			accessibilityRole="button"
+			accessibilityLabel={
+				language === "id" ? "Keluar dari akun" : "Sign out"
+			}
+			accessibilityState={{ busy: logoutLoading, disabled: logoutLoading }}
+			disabled={logoutLoading}
+			hitSlop={12}
+			onPressIn={() => animateLogoutButton(0.97)}
+			onPressOut={() => animateLogoutButton(1)}
+			style={[
+				styles.logoutBtn,
+				{ transform: [{ scale: logoutScale }], opacity: logoutLoading ? 0.72 : 1 },
+			]}
+			onPress={onLogout}
+		>
+			{logoutLoading ? (
+				<ActivityIndicator color={theme.colors.danger} />
+			) : (
+				<Text style={styles.logoutText}>
+					{language === "id" ? "Keluar dari Akun" : "Sign Out"}
+				</Text>
+			)}
+		</AnimatedPressable>
+	);
+
 	return (
 		<PageEntrance testID="settings-page-entrance" style={styles.screen}>
 			<ScrollView
@@ -1063,466 +1543,66 @@ export default function SettingsScreen() {
 				}
 			>
 				<StaggeredStack testIDPrefix="settings-entrance">
-				{/* Profile Card */}
-				<LinearGradient
-					key="settings-profile"
-					testID="settings-profile"
-					colors={[fe.navySurface, fe.blueDeep, fe.blueBright]}
-					start={{ x: 0, y: 0 }}
-					end={{ x: 1, y: 1 }}
-					style={styles.profileCard}
-				>
-					<View style={styles.profileAvatar}>
-						{profilePhotoUrl ? (
-							<Image source={{ uri: profilePhotoUrl }} style={styles.profileAvatarImage} />
-						) : selectedAvatar ? (
-							<ProfileAvatarIllustration preset={selectedAvatar} theme={theme} size={68} />
-						) : (
-							<Text style={styles.profileAvatarText}>{avatarInitials}</Text>
-						)}
-					</View>
-					<View style={styles.profileInfo}>
-						<Text style={styles.profileName}>{displayName}</Text>
-						{displayEmail ? (
-							<Text style={styles.profileEmail}>{displayEmail}</Text>
+				{featureFlags.simpleNavigation ? [
+					<SettingsSection key="settings-finance" title={language === "id" ? "Keuangan" : "Finance"}>
+						<FinanceContextSwitcher variant="compact" />
+						<SettingsNavigationRow testID="settings-wallets" icon="wallets"
+							title={language === "id" ? "Dompet & akun" : "Wallets & accounts"}
+							onPress={() => router.push("/(tabs)/wallets")} />
+						<SettingsNavigationRow testID="settings-budgets" icon="budgets"
+							title={language === "id" ? "Kategori & anggaran" : "Categories & budgets"}
+							onPress={() => router.push("/(tabs)/budgets")} />
+						<SettingsNavigationRow testID="settings-bills" icon="bills"
+							title={language === "id" ? "Tagihan & pengingat" : "Bills & reminders"}
+							onPress={() => router.push("/(tabs)/bills")} />
+						{featureFlags.importStatement ? (
+							<View testID="settings-import-statement">
+								<SettingsNavigationRow testID="settings-import-statement-link" icon="upload"
+									title={language === "id" ? "Import rekening koran" : "Bank statement import"}
+									onPress={() => router.push("/(tabs)/imports")} />
+							</View>
 						) : null}
-						<Pressable
-							testID="settings-change-profile-photo"
-							accessibilityRole="button"
-							accessibilityLabel={language === "id" ? "Ubah foto profil" : "Change profile photo"}
-							onPress={openProfileSheet}
-							style={styles.profilePhotoButton}
-						>
-							<Text style={styles.profilePhotoButtonText}>
-								{language === "id" ? "Ubah Foto Profil" : "Change Profile Photo"}
-							</Text>
-						</Pressable>
-						{profileMessage ? (
-							<Text style={[styles.inlineMessage, profileMessage.type === "error" && styles.inlineMessageError]}>
-								{profileMessage.message}
-							</Text>
-						) : null}
-					</View>
-				</LinearGradient>
-
-				{/* Appearance Section */}
-				<View key="settings-appearance" testID="settings-appearance" style={styles.sectionCard}>
-					<Text style={styles.sectionTitle}>{language === "id" ? "Tampilan" : "Appearance"}</Text>
-					<View style={styles.themeGrid}>
-						{THEME_OPTIONS.map((option) => {
-							const active = preference === option.id;
-							return (
-								<Pressable
-									key={option.id}
-									testID={option.testID}
-									accessibilityRole="button"
-									accessibilityLabel={language === "id" ? option.idLabel : option.enLabel}
-									accessibilityState={{ selected: active }}
-									onPress={() => setPreference(option.id)}
-									style={[styles.themeChip, active && styles.themeChipActive]}
-								>
-									<Text style={[styles.themeChipText, active && styles.themeChipTextActive]}>
-										{language === "id" ? option.idLabel : option.enLabel}
-									</Text>
-								</Pressable>
-							);
-						})}
-					</View>
-				</View>
-
-				{/* Account Security */}
-				<View key="settings-account-security" testID="settings-account-security" style={styles.sectionCard}>
-					<Text style={styles.sectionTitle}>
-						{language === "id" ? "Akun & Keamanan" : "Account & Security"}
-					</Text>
-					<Text style={styles.sectionSub}>
-						{language === "id"
-							? "Kelola akses akun dan password login."
-							: "Manage account access and login password."}
-					</Text>
-					<Pressable
-						testID="settings-password-toggle"
-						accessibilityRole="button"
-						accessibilityLabel={language === "id" ? "Ubah password" : "Change password"}
-						style={styles.navigationRow}
-						onPress={() => setPasswordExpanded((value) => !value)}
-					>
-						<View style={styles.navigationCopy}>
-							<KaswiseIcon name="lock" size={20} color={theme.colors.textMuted} />
-							<View style={styles.navigationTextBlock}>
-								<Text style={styles.navigationTitle}>{language === "id" ? "Ubah Password" : "Change Password"}</Text>
-								<Text style={styles.navigationHelper}>
-									{language === "id" ? "Gunakan minimal 8 karakter." : "Use at least 8 characters."}
-								</Text>
-							</View>
+					</SettingsSection>,
+					<SettingsSection key="settings-family" title={language === "id" ? "Keluarga" : "Family"}>
+						<View testID="settings-family">
+							<SettingsNavigationRow testID="settings-family-center" icon="groups"
+								title={language === "id" ? "Pusat Keluarga" : "Family Center"}
+								description={language === "id" ? "Kelola akses dan undangan keluarga." : "Manage household access and invites."}
+								onPress={() => router.push("/(tabs)/groups")} />
 						</View>
-						<Text style={styles.navigationChevron}>{passwordExpanded ? "⌃" : "›"}</Text>
-					</Pressable>
-					{passwordExpanded ? (
-						<View style={styles.passwordForm}>
-							<TextInput
-								testID="settings-new-password"
-								value={newPassword}
-								onChangeText={setNewPassword}
-								placeholder={language === "id" ? "Password baru" : "New password"}
-								placeholderTextColor={theme.colors.textDim}
-								secureTextEntry
-								style={styles.textInput}
-							/>
-							<TextInput
-								testID="settings-confirm-password"
-								value={confirmPassword}
-								onChangeText={setConfirmPassword}
-								placeholder={language === "id" ? "Konfirmasi password" : "Confirm password"}
-								placeholderTextColor={theme.colors.textDim}
-								secureTextEntry
-								style={styles.textInput}
-							/>
-							{passwordMessage ? (
-								<Text style={[styles.inlineMessage, passwordMessage.type === "error" && styles.inlineMessageError]}>
-									{passwordMessage.message}
-								</Text>
-							) : null}
-							<Pressable
-								testID="settings-save-password"
-								accessibilityRole="button"
-								accessibilityState={{ busy: passwordSaving, disabled: passwordSaving }}
-								disabled={passwordSaving}
-								style={[styles.primaryButton, passwordSaving && styles.buttonDisabled]}
-								onPress={onChangePassword}
-							>
-								{passwordSaving ? (
-									<ActivityIndicator color={theme.colors.buttonPrimaryText} />
-								) : (
-									<Text style={styles.primaryButtonText}>{language === "id" ? "Simpan Password" : "Save Password"}</Text>
-								)}
-							</Pressable>
-						</View>
-					) : passwordMessage ? (
-						<Text style={[styles.inlineMessage, passwordMessage.type === "error" && styles.inlineMessageError]}>
-							{passwordMessage.message}
-						</Text>
-					) : null}
-				</View>
-
-				{/* Plan / Paket Section */}
-				<View key="settings-plan" testID="settings-plan" style={styles.sectionCard}>
-					<Text style={styles.sectionTitle}>
-						{language === "id" ? "Paket" : "Plan"}
-					</Text>
-					<Text style={styles.sectionSub}>
-						{!allowNativePremiumPurchase
-							? (language === "id"
-								? "Status paket aktif. Upgrade Premium sementara tersedia lewat Kaswise web/PWA."
-								: "Current plan status. Premium upgrade is temporarily available on Kaswise web/PWA.")
-							: (language === "id"
-								? "Status langganan dan upgrade ke Premium."
-								: "Subscription status and premium upgrade.")}
-					</Text>
-					{entitlementsLoading ? (
-						<ActivityIndicator style={{ marginTop: 6 }} />
-					) : (
-						<>
-							<View style={styles.navigationRow}>
-								<View style={styles.navigationCopy}>
-									<KaswiseIcon name="card" size={20} color={theme.colors.textMuted} />
-									<View style={styles.navigationTextBlock}>
-										<Text style={styles.navigationTitle}>
-											{planStatusLabel(entitlements)}
-										</Text>
-										{entitlements?.plan === "premium" && entitlements.plan_expires_at ? (
-											<Text style={styles.navigationHelper}>
-												{language === "id" ? "Berlaku sampai " : "Valid until "}
-												{new Date(entitlements.plan_expires_at).toLocaleDateString(
-													language === "id" ? "id-ID" : "en-US",
-													{ year: "numeric", month: "long", day: "numeric" }
-												)}
-											</Text>
-										) : (
-											<Text style={styles.navigationHelper}>
-												{language === "id" ? "Akses dasar dengan batasan." : "Basic access with limits."}
-											</Text>
-										)}
-									</View>
-								</View>
-							</View>
-							{entitlements?.plan !== "premium" ? (
-								allowNativePremiumPurchase ? (
-									<Pressable
-										testID="settings-upgrade-button"
-										accessibilityRole="button"
-										style={styles.planAction}
-										onPress={() => router.push("/upgrade")}
-									>
-										<Text style={styles.planActionText}>
-											{language === "id" ? "Upgrade ke Premium" : "Upgrade to Premium"}
-										</Text>
-									</Pressable>
-								) : (
-									<Text testID="settings-upgrade-unavailable" style={styles.navigationHelper}>
-										{language === "id"
-											? "Upgrade Premium sementara hanya tersedia lewat Kaswise web/PWA."
-											: "Premium upgrade is temporarily available only on Kaswise web/PWA."}
-									</Text>
-								)
-							) : allowNativePremiumPurchase ? (
-								<Pressable
-									testID="settings-extend-button"
-									accessibilityRole="button"
-									style={styles.planAction}
-									onPress={() => router.push("/upgrade")}
-								>
-									<Text style={styles.planActionText}>
-										{language === "id" ? "Perpanjang" : "Extend"}
-									</Text>
-								</Pressable>
-							) : (
-								<Text testID="settings-extend-unavailable" style={styles.navigationHelper}>
-									{language === "id"
-										? "Perpanjangan paket sementara dikelola lewat Kaswise web/PWA."
-										: "Plan renewal is temporarily handled on Kaswise web/PWA."}
-								</Text>
-							)}
-						</>
-					)}
-				</View>
-
-				{/* Family Section */}
-				<View key="settings-family" testID="settings-family" style={styles.sectionCard}>
-					<Text style={styles.sectionTitle}>
-						{language === "id" ? "Keluarga" : "Family"}
-					</Text>
-					<Text style={styles.sectionSub}>
-						{language === "id"
-							? "Kelola akses keluarga, undangan, dan mode keuangan bersama."
-							: "Manage household access, invites, and shared finance mode."}
-					</Text>
-					<Pressable
-						testID="settings-family-center"
-						accessibilityRole="button"
-						accessibilityLabel={
-							language === "id" ? "Buka pusat keluarga" : "Open family center"
-						}
-						style={styles.navigationRow}
-						onPress={() => router.push("/(tabs)/groups")}
-					>
-						<View style={styles.navigationCopy}>
-							<KaswiseIcon name="groups" size={20} color={theme.colors.textMuted} />
-							<View style={styles.navigationTextBlock}>
-								<Text style={styles.navigationTitle}>
-									{language === "id" ? "Pusat Keluarga" : "Family Center"}
-								</Text>
-								<Text style={styles.navigationHelper}>
-									{language === "id"
-										? "Buat keluarga atau gabung dengan kode undangan."
-										: "Create a family or join with an invite code."}
-								</Text>
-							</View>
-						</View>
-						<Text style={styles.navigationChevron}>›</Text>
-					</Pressable>
-				</View>
-
-				{featureFlags.importStatement ? (
-					<View key="settings-import-statement" testID="settings-import-statement" style={styles.sectionCard}>
-						<Text style={styles.sectionTitle}>
-							{language === "id" ? "Import Rekening Koran" : "Bank Statement Import"}
-						</Text>
-						<Text style={styles.sectionSub}>
-							{language === "id"
-								? "Upload CSV/XLSX/PDF bank atau e-wallet dan review transaksi sebelum disimpan."
-								: "Upload bank or e-wallet CSV/XLSX/PDF files and review transactions before saving."}
-						</Text>
-						<Pressable
-							testID="settings-import-statement-link"
-							accessibilityRole="button"
-							accessibilityLabel={language === "id" ? "Buka import rekening koran" : "Open bank statement import"}
-							style={styles.navigationRow}
-							onPress={() => router.push("/(tabs)/imports")}
-						>
-							<View style={styles.navigationCopy}>
-								<KaswiseIcon name="upload" size={20} color={theme.colors.textMuted} />
-								<View style={styles.navigationTextBlock}>
-									<Text style={styles.navigationTitle}>
-										{language === "id" ? "Import CSV/XLSX/PDF" : "Import CSV/XLSX/PDF"}
-									</Text>
-									<Text style={styles.navigationHelper}>
-										{language === "id"
-											? "Preview duplikat dan error sebelum konfirmasi."
-											: "Preview duplicates and errors before confirming."}
-									</Text>
-								</View>
-							</View>
-							<Text style={styles.navigationChevron}>›</Text>
-						</Pressable>
-					</View>
-				) : null}
-
-				{/* Language Section */}
-				<View key="settings-language" testID="settings-language" style={styles.sectionCard}>
-					<Text style={styles.sectionTitle}>{t("languageSection")}</Text>
-					<Text style={styles.sectionSub}>{t("languageSectionHelper")}</Text>
-
-					<View style={styles.themeGrid}>
-						{(["id", "en"] as const).map((lang) => (
-							<Pressable
-								key={lang}
-								testID={`settings-language-${lang}`}
-								accessibilityRole="button"
-								accessibilityLabel={`${language === "id" ? "Pilih bahasa" : "Choose language"} ${lang === "id" ? t("indonesian") : t("english")}`}
-								accessibilityState={{ selected: language === lang }}
-								onPress={() => setLanguage(lang)}
-								style={[
-									styles.themeChip,
-									language === lang && {
-										backgroundColor: fe.blueDeep,
-										borderColor: fe.blueDeep,
-									},
-								]}
-							>
-								<Text
-									style={[
-										styles.themeChipText,
-										language === lang && { color: theme.colors.textInverse },
-									]}
-								>
-									{lang === "id" ? t("indonesian") : t("english")}
-								</Text>
-							</Pressable>
-						))}
-					</View>
-				</View>
-
-				{/* Notifications Section */}
-				<View key="settings-notifications" testID="settings-notifications" style={styles.sectionCard}>
-					<Text style={styles.sectionTitle}>
-						{language === "id" ? "Notifikasi" : "Notifications"}
-					</Text>
-					<Text style={styles.sectionSub}>
-						{language === "id"
-							? "Kelola pengingat penting."
-							: "Manage important reminders."}
-					</Text>
-
-					{notifPrefs != null ? (
-						<ToggleRow
-							icon="notification"
-							tone="primary"
-							title={language === "id" ? "Notifikasi Aktif" : "Notifications On"}
-							helper={
-								language === "id"
-									? "Matikan semua notifikasi sekaligus"
-									: "Turn off all notifications at once"
-							}
-							value={notifPrefs.enabled}
-							onToggle={toggleNotifEnabled}
-							theme={theme}
-						/>
-					) : notifPrefsLoading ? (
-						<ActivityIndicator style={{ marginTop: 6 }} />
-					) : null}
-
-					<ToggleRow
-						icon="chart"
-						tone="info"
-						title={language === "id" ? "Pengingat Harian" : "Daily Summary"}
-						helper={
-							language === "id"
-								? "Notifikasi kondisi keuangan setiap malam"
-								: "Nightly financial condition notification"
-						}
-						value={dailyReminder}
-						onToggle={toggleDailyReminder}
-						theme={theme}
-					/>
-					<ToggleRow
-						icon="bills"
-						tone="warning"
-						title={language === "id" ? "Pengingat Tagihan" : "Bill Reminder"}
-						helper={
-							language === "id"
-								? "Notifikasi sebelum jatuh tempo"
-								: "Notification before due date"
-						}
-						value={billReminder}
-						onToggle={toggleBillReminder}
-						theme={theme}
-					/>
-					<ToggleRow
-						icon="budgets"
-						tone="primary"
-						title={language === "id" ? "Alert Anggaran" : "Budget Alert"}
-						helper={
-							language === "id"
-								? "Notifikasi saat budget hampir habis"
-								: "Notification when budget is nearly depleted"
-						}
-						value={budgetAlert}
-						onToggle={toggleBudgetAlert}
-						theme={theme}
-					/>
-				</View>
-
-				{/* Legal Section */}
-				<LegalSupportSection key="settings-legal-support" language={language} styles={styles} onOpenUrl={openLegalUrl} />
-				<AccountDeletionSection key="settings-account-deletion" 
-					language={language}
-					styles={styles}
-					profileEmail={profileEmail}
-					expanded={accountDeletionExpanded}
-					onToggleExpanded={() => {
-						setAccountDeletionExpanded((current) => !current);
-						setAccountDeletionMessage(null);
-					}}
-					request={accountDeletionRequest}
-					reason={accountDeletionReason}
-					details={accountDeletionDetails}
-					onChangeReason={setAccountDeletionReason}
-					onChangeDetails={setAccountDeletionDetails}
-					onSubmit={onSubmitAccountDeletionRequest}
-					loading={accountDeletionLoading}
-					loadingStatus={accountDeletionStatusLoading}
-					message={accountDeletionMessage}
-				/>
-
-				{/* App Info */}
-				<View key="settings-app-info" testID="settings-app-info" style={styles.appInfo}>
-					<Text style={styles.appName}>Kaswise v1.0.0</Text>
-					<Text style={styles.appTagline}>
-						{language === "id"
-							? "Catat Keuangan, Bijak Setiap Hari"
-							: "Track Finances, Wise Every Day"}
-					</Text>
-				</View>
-
-
-				{/* Logout */}
-				<AnimatedPressable
-					key="settings-logout"
-					testID="settings-logout"
-					accessibilityRole="button"
-					accessibilityLabel={
-						language === "id" ? "Keluar dari akun" : "Sign out"
-					}
-					accessibilityState={{ busy: logoutLoading, disabled: logoutLoading }}
-					disabled={logoutLoading}
-					hitSlop={12}
-					onPressIn={() => animateLogoutButton(0.97)}
-					onPressOut={() => animateLogoutButton(1)}
-					style={[
-						styles.logoutBtn,
-						{ transform: [{ scale: logoutScale }], opacity: logoutLoading ? 0.72 : 1 },
-					]}
-					onPress={onLogout}
-				>
-					{logoutLoading ? (
-						<ActivityIndicator color={theme.colors.danger} />
-					) : (
-						<Text style={styles.logoutText}>
-							{language === "id" ? "Keluar dari Akun" : "Sign Out"}
-						</Text>
-					)}
-				</AnimatedPressable>
+					</SettingsSection>,
+					<SettingsSection key="settings-app" title={language === "id" ? "Aplikasi" : "App"}>
+						<SettingsNavigationRow testID="settings-notification-inbox" icon="notification"
+							title={language === "id" ? "Kotak masuk notifikasi" : "Notification inbox"}
+							description={language === "id" ? "Lihat notifikasi yang sudah diterima." : "View notifications you have received."}
+							onPress={() => router.push("/notifications")} />
+						{notificationsSection}
+						{languageSection}
+						{appearanceSection}
+						{planSection}
+					</SettingsSection>,
+					<SettingsSection key="settings-account-support" title={language === "id" ? "Akun & bantuan" : "Account & support"}>
+						{profileSection}
+						{securitySection}
+						{legalSection}
+						{deletionSection}
+						{logoutSection}
+						{appInfoSection}
+					</SettingsSection>,
+				] : [
+					profileSection,
+					appearanceSection,
+					securitySection,
+					planSection,
+					familySection,
+					importSection,
+					languageSection,
+					notificationsSection,
+					legalSection,
+					deletionSection,
+					appInfoSection,
+					logoutSection,
+				]}
 				</StaggeredStack>
 
 
