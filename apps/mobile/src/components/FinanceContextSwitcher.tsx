@@ -12,7 +12,7 @@ export function FinanceContextSwitcher({
 	variant?: "compact" | "hero";
 }) {
 	const { theme } = useTheme();
-	const { language } = useI18n();
+	const { language, t } = useI18n();
 	const isEn = language === "en";
 	const { activeContext, memberships, setPersonalContext, setActiveHousehold } =
 		useFinanceContext();
@@ -54,7 +54,7 @@ export function FinanceContextSwitcher({
 					</Text>
 				</View>
 				<View style={styles.labelBlock}>
-					<Text style={styles.caption}>Profile</Text>
+					<Text style={styles.caption}>{t("moneySpace")}</Text>
 					<Text style={styles.label} numberOfLines={1}>
 						{activeLabel}
 					</Text>

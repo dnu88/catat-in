@@ -108,6 +108,7 @@ const translations = {
     planValidUntil: 'Berlaku sampai ',
     planUpgrade: 'Upgrade ke Premium',
     planExtend: 'Perpanjang',
+    moneySpace: 'Ruang uang',
   },
   en: {
     back: 'Back',
@@ -206,6 +207,7 @@ const translations = {
     planValidUntil: 'Valid until ',
     planUpgrade: 'Upgrade to Premium',
     planExtend: 'Extend',
+    moneySpace: 'Money space',
   },
 } as const
 

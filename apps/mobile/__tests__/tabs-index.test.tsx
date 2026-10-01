@@ -6,7 +6,11 @@ import { ThemeProvider } from "../src/theme/theme-context";
 import { I18nProvider } from "../src/i18n/i18n-context";
 import DashboardScreen from "../app/(tabs)/index";
 import { featureFlags } from "../src/config/features";
-import { buildReportPeriod, type ReportPeriod } from "../src/state/report-period";
+import {
+	buildReportPeriod,
+	formatReportPeriodLabel,
+	type ReportPeriod,
+} from "../src/state/report-period";
 
 let mockActivePeriod: ReportPeriod | undefined;
 
@@ -629,5 +633,80 @@ describe("DashboardScreen dark luxury Home parity", () => {
 			expect(screen.getByText("Halo")).toBeTruthy(),
 		);
 		expect(screen.queryByTestId("home-transaction-review-card")).toBeNull();
+	});
+
+	it("shows the localized money space caption in Indonesian", async () => {
+		const screen = renderDashboard();
+
+		await waitFor(() => expect(screen.getByText("Halo")).toBeTruthy());
+		expect(screen.getByText("Ruang uang")).toBeTruthy();
+	});
+
+	it("shows the localized money space caption in English", async () => {
+		jest.mocked(AsyncStorage.getItem).mockImplementation(async (key) =>
+			key === "kaswise:language-preference" ? "en" : null,
+		);
+
+		const screen = renderDashboard();
+
+		expect(await screen.findByText("Money space")).toBeTruthy();
+	});
+
+	it("labels the expense caption for a custom period and keeps both hero cards period-aware", async () => {
+		const customPeriod: ReportPeriod = {
+			type: "custom",
+			startDate: "2026-05-25",
+			endDate: "2026-06-24",
+		};
+		mockActivePeriod = customPeriod;
+		const periodLabel = formatReportPeriodLabel(customPeriod, "id");
+
+		const screen = renderDashboard();
+
+		await waitFor(() => expect(screen.getByText("Halo")).toBeTruthy());
+		expect(screen.getByText("Pengeluaran periode ini")).toBeTruthy();
+		expect(screen.queryByText("Pengeluaran bulan ini")).toBeNull();
+		// Both hero cards stay consistent with the active period label: the
+		// remaining-card sub and the hero period chip both reference it.
+		expect(
+			screen.getAllByText(
+				new RegExp(periodLabel.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")),
+			).length,
+		).toBeGreaterThanOrEqual(2);
+	});
+
+	it("simple Home hides the attention rail when no review or budget alert exists", async () => {
+		jest.spyOn(featureFlags, "simpleNavigation", "get").mockReturnValue(true);
+		mockReviewSummary = null;
+		mockAllocations = [];
+
+		const screen = renderDashboard();
+
+		await waitFor(() => expect(screen.getByText("Halo")).toBeTruthy());
+		expect(screen.queryByTestId("home-attention-section")).toBeNull();
+		expect(screen.queryByTestId("home-transaction-review-card")).toBeNull();
+		expect(screen.queryByTestId("home-envelope-alert")).toBeNull();
+	});
+
+	it("simple Home lists at most three recent transactions", async () => {
+		jest.spyOn(featureFlags, "simpleNavigation", "get").mockReturnValue(true);
+		mockTransactions = Array.from({ length: 5 }, (_, index) => ({
+			id: `tx-${index + 1}`,
+			merchant: `Merchant ${index + 1}`,
+			description: "Test transaction",
+			category: "Groceries",
+			amount: 1000 * (index + 1),
+			transaction_type: "expense",
+			date: "2026-06-15",
+		}));
+
+		const screen = renderDashboard();
+
+		await screen.findByText("Merchant 1");
+		expect(screen.getByTestId("home-recent-amount-tx-1")).toBeTruthy();
+		expect(screen.getByTestId("home-recent-amount-tx-2")).toBeTruthy();
+		expect(screen.getByTestId("home-recent-amount-tx-3")).toBeTruthy();
+		expect(screen.queryByTestId("home-recent-amount-tx-4")).toBeNull();
+		expect(screen.queryByTestId("home-recent-amount-tx-5")).toBeNull();
 	});
 });

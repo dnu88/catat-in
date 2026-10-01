@@ -125,7 +125,8 @@ export default function DashboardScreen() {
 						totalBalance: "Total balance",
 						totalBalanceSub: "All active wallets",
 						monthlyExpense: "Spending",
-						monthlyExpenseSub: "This month",
+						monthlyExpenseSub: "Expense this month",
+						monthlyExpensePeriodSub: "Expense this period",
 						over: "over budget",
 						near: "almost used up",
 						overUntil: (amount: number, day: string, month: string) =>
@@ -165,7 +166,8 @@ export default function DashboardScreen() {
 						totalBalance: "Total saldo",
 						totalBalanceSub: "Semua dompet aktif",
 						monthlyExpense: "Pengeluaran",
-						monthlyExpenseSub: "Bulan ini",
+						monthlyExpenseSub: "Pengeluaran bulan ini",
+						monthlyExpensePeriodSub: "Pengeluaran periode ini",
 						over: "lewat budget",
 						near: "hampir habis",
 						overUntil: (amount: number, day: string, month: string) =>
@@ -558,7 +560,7 @@ export default function DashboardScreen() {
 								<Text testID="home-monthly-expense" style={styles.heroMetricValue}>
 									{displayAmount(formatCurrency(monthlyExpense))}
 								</Text>
-								<Text style={styles.heroMetricSub}>{tx.monthlyExpenseSub}</Text>
+								<Text style={styles.heroMetricSub}>{isCurrentMonth ? tx.monthlyExpenseSub : tx.monthlyExpensePeriodSub}</Text>
 							</View>
 						</View>
 						{wallets.length > 0 ? (
