@@ -1,6 +1,6 @@
 // Mock all native/router deps so capture.tsx module can be imported for its
 // exported helpers without triggering RN/expo-router transforms.
-jest.mock("expo-router", () => ({ useRouter: () => ({ push: jest.fn() }) }));
+jest.mock("expo-router", () => ({ useRouter: () => ({ push: jest.fn() }), useLocalSearchParams: () => ({}) }));
 jest.mock("../src/lib/supabase", () => ({ supabase: {}, useSupabase: () => ({ supabase: {} }) }));
 jest.mock("../src/hooks/useTransactionRealtime", () => ({ useTransactionRealtime: () => ({ loading: false, transaction: null }) }));
 jest.mock("../src/i18n/i18n-context", () => ({ useI18n: () => ({ language: "id" }) }));
@@ -37,6 +37,7 @@ import {
   getDefaultCaptureMode,
   photoLocked,
   quotaLabel,
+  resolveCaptureModeParam,
 } from "../app/(tabs)/capture";
 
 test("photo locked when limit 0 (free)", () => {
@@ -70,4 +71,20 @@ test("subtitle reflects the voice feature flag", () => {
   expect(getCaptureSubtitle(false, true)).toBe("Text or receipt—choose the fastest input.");
   expect(getCaptureSubtitle(false, false)).toBe("Teks atau struk—pilih input tercepat.");
   expect(getCaptureSubtitle(false, true)).not.toContain("Voice");
+});
+
+test("capture entry mode param maps to a known mode", () => {
+  expect(resolveCaptureModeParam("text", false)).toBe("Teks");
+  expect(resolveCaptureModeParam("photo", false)).toBe("Foto");
+  expect(resolveCaptureModeParam("voice", true)).toBe("Suara");
+  expect(resolveCaptureModeParam(["photo"], true)).toBe("Foto");
+});
+
+test("unknown or invalid entry mode params fall back to the default mode", () => {
+  expect(resolveCaptureModeParam("video", true)).toBe("Suara");
+  expect(resolveCaptureModeParam("video", false)).toBe("Teks");
+  expect(resolveCaptureModeParam(undefined, true)).toBe("Suara");
+  expect(resolveCaptureModeParam("", false)).toBe("Teks");
+  // Voice is gated by the flag: without it the safe default is used.
+  expect(resolveCaptureModeParam("voice", false)).toBe("Teks");
 });

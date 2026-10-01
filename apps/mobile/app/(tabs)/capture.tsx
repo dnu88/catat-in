@@ -14,7 +14,7 @@ import { Audio } from "expo-av";
 import * as ImagePicker from "expo-image-picker";
 import { LinearGradient } from "expo-linear-gradient";
 import { PageEntrance, StaggeredStack } from "../../src/components/motion";
-import { useFocusEffect, useRouter } from "expo-router";
+import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 
 import { useTransactionRealtime } from "../../src/hooks/useTransactionRealtime";
 import { useI18n } from "../../src/i18n/i18n-context";
@@ -23,6 +23,7 @@ import { Sentry } from "../../src/lib/sentry";
 import { useTheme } from "../../src/theme/theme-context";
 import { financeEditorial as fe } from "../../src/theme/finance-editorial";
 import { IconBubble } from "../../src/components/ui";
+import { FinanceContextSwitcher } from "../../src/components/FinanceContextSwitcher";
 import {
 	KaswiseIcon,
 	type KaswiseIconName,
@@ -112,6 +113,19 @@ export function getCaptureModes(voiceEnabled: boolean) {
 	return voiceEnabled ? [voiceMode, ...enabledModes] : enabledModes;
 }
 
+// Optional `?mode=` entry param for quick actions. Unknown values fall back to
+// the same default the screen would pick on its own.
+export function resolveCaptureModeParam(
+	value: unknown,
+	voiceEnabled: boolean,
+): ModeId {
+	const raw = Array.isArray(value) ? value[0] : value;
+	if (raw === "text") return "Teks";
+	if (raw === "photo") return "Foto";
+	if (raw === "voice" && voiceEnabled) return "Suara";
+	return getDefaultCaptureMode(voiceEnabled);
+}
+
 type AiTextTransaction = {
 	type?: unknown;
 	amount?: unknown;
@@ -195,6 +209,12 @@ export default function CaptureScreen() {
 				? {
 						title: "Record a transaction",
 						subtitle: getCaptureSubtitle(featureFlags.voiceNote, true),
+						simpleTitle: "Add transaction",
+						simplePromise: "Pick the fastest route. Kaswise tidies up the rest.",
+						destinationLabel: "Destination",
+						manualDetail: "Enter details manually",
+						importAction: "Import statement",
+						captureAnother: "Record another transaction",
 						modeLabels: {
 							Teks: "Text",
 							Foto: "Photo",
@@ -258,6 +278,12 @@ export default function CaptureScreen() {
 				: {
 						title: "Catat transaksi",
 						subtitle: getCaptureSubtitle(featureFlags.voiceNote, false),
+						simpleTitle: "Catat transaksi",
+						simplePromise: "Pilih cara tercepat. Kaswise rapikan sisanya.",
+						destinationLabel: "Tujuan transaksi",
+						manualDetail: "Isi detail manual",
+						importAction: "Impor rekening",
+						captureAnother: "Catat transaksi lain",
 						modeLabels: {
 							Teks: "Teks",
 							Foto: "Foto",
@@ -322,12 +348,17 @@ export default function CaptureScreen() {
 	);
 	const styles = useMemo(() => createStyles(theme), [theme]);
 
+	const simple = featureFlags.simpleNavigation;
+	const searchParams = useLocalSearchParams() as Record<
+		string,
+		string | string[] | undefined
+	>;
 	const captureModes = useMemo(
 		() => getCaptureModes(featureFlags.voiceNote),
 		[],
 	);
 	const [activeMode, setActiveMode] = useState<ModeId>(() =>
-		getDefaultCaptureMode(featureFlags.voiceNote),
+		resolveCaptureModeParam(searchParams.mode, featureFlags.voiceNote),
 	);
 	const [textInput, setTextInput] = useState("");
 	const [voiceRecording, setVoiceRecording] = useState<Audio.Recording | null>(null);
@@ -850,6 +881,23 @@ export default function CaptureScreen() {
 		completedRef.current;
 	const isError = Boolean(error) || displayedTransaction?.status === "error";
 	const isProcessing = Boolean(transactionId) && !isSuccess && !isError;
+	// Simple mode renders exactly one workspace state at a time.
+	const isReview =
+		!isSuccess &&
+		!isError &&
+		!submitting &&
+		(Boolean(voiceDraft) || receiptDrafts.length > 0);
+	const workspace: "idle" | "processing" | "review" | "success" | "error" =
+		isError
+			? "error"
+			: isSuccess
+				? "success"
+				: submitting || isProcessing
+					? "processing"
+					: isReview
+						? "review"
+						: "idle";
+	const showWorkspaceIdle = !simple || workspace === "idle";
 
 	// Auto-dismiss success state after 10 seconds so user can immediately record another transaction.
 	useEffect(() => {
@@ -923,8 +971,49 @@ export default function CaptureScreen() {
 		}
 	};
 
+	const renderReceiptReview = () =>
+		receiptDraft ? (
+								<View testID="capture-receipt-preview" style={styles.receiptDraftCard}>
+									<Text style={styles.suggestionLabel}>{tx.receiptPreviewTitle}</Text>
+									{receiptDrafts.map((draft, index) => (
+										<View key={`${draft.description}-${index}`} style={styles.receiptItemRow}>
+											<Text style={styles.suggestionTitle}>{draft.description}</Text>
+											<Text style={styles.suggestionMeta}>
+												Rp {draft.amount.toLocaleString("id-ID")} · {draft.category} · {draft.date}
+												{draft.quantity && draft.quantity > 1 ? ` · Qty ${draft.quantity}` : ""}
+											</Text>
+											{draft.reviewRequired ? <Text style={styles.suggestionWarning}>{tx.needsReview}</Text> : null}
+										</View>
+									))}
+									<Pressable testID="capture-receipt-confirm" accessibilityRole="button" style={styles.submitButton} onPress={confirmReceiptDraft} disabled={submitting}>
+										<Text style={styles.submitButtonText}>{tx.saveReceiptTransaction}</Text>
+									</Pressable>
+								</View>
+		) : null;
+
+	const renderVoiceReview = () =>
+		voiceDraft ? (
+								<View testID="capture-voice-preview" style={styles.receiptDraftCard}>
+									<Text style={styles.suggestionLabel}>{isEn ? "Voice transcript" : "Transkrip suara"}</Text>
+									<Text style={styles.suggestionMeta}>{voiceDraft.transcript}</Text>
+									<Text style={styles.suggestionTitle}>
+										{voiceDraft.fields.catatan ?? (isEn ? "Voice transaction" : "Transaksi suara")}
+									</Text>
+									<Text style={styles.suggestionMeta}>
+										Rp {(voiceDraft.fields.nominal ?? 0).toLocaleString("id-ID")} · {voiceDraft.fields.kategori ?? (isEn ? "Other expenses" : "Lainnya")}
+									</Text>
+									{voiceDraft.review_required ? <Text style={styles.suggestionWarning}>{tx.needsReview}</Text> : null}
+									<Pressable testID="capture-voice-confirm" accessibilityRole="button" style={styles.submitButton} onPress={confirmVoiceDraft} disabled={submitting}>
+										{submitting ? <ActivityIndicator color={fe.white} /> : <Text style={styles.submitButtonText}>{isEn ? "Save transaction" : "Simpan transaksi"}</Text>}
+									</Pressable>
+									<Pressable testID="capture-voice-preview-reset" accessibilityRole="button" style={styles.secondaryButton} onPress={() => setVoiceDraft(null)} disabled={submitting}>
+										<Text style={styles.secondaryButtonText}>{tx.voiceReset}</Text>
+									</Pressable>
+								</View>
+		) : null;
+
 	const renderWalletSelector = () => (
-		<View style={styles.walletSelector}>
+		<View testID="capture-wallet-selector" style={styles.walletSelector}>
 			<Text style={styles.walletSelectorLabel}>{tx.walletLabel}</Text>
 			{wallets.length > 0 ? (
 				<ScrollView horizontal showsHorizontalScrollIndicator={false}>
@@ -932,6 +1021,7 @@ export default function CaptureScreen() {
 						{wallets.map((wallet) => (
 							<Pressable
 								key={wallet.id}
+								testID={`capture-wallet-${wallet.id}`}
 								accessibilityRole="button"
 								accessibilityLabel={`${tx.walletLabel}: ${wallet.name}`}
 								accessibilityState={{ selected: walletId === wallet.id }}
@@ -982,15 +1072,26 @@ export default function CaptureScreen() {
 					style={styles.headerRow}
 				>
 					<View>
-						<Text style={styles.title}>{tx.title}</Text>
-						<Text style={styles.subtitle}>{tx.subtitle}</Text>
+						<Text style={styles.title}>{simple ? tx.simpleTitle : tx.title}</Text>
+						<Text style={styles.subtitle}>{simple ? tx.simplePromise : tx.subtitle}</Text>
 						{quotaLabel(ent) ? <Text testID="capture-quota-label" style={styles.heroHelper}>{quotaLabel(ent)}</Text> : null}
 					</View>
 				</LinearGradient>
 
+				{simple && workspace !== "success" && workspace !== "error" ? (
+					<View key="capture-destination" testID="capture-destination" style={styles.destinationRow}>
+						<Text style={styles.destinationLabel}>{tx.destinationLabel}</Text>
+						<View style={styles.destinationControls}>
+							<FinanceContextSwitcher />
+							{renderWalletSelector()}
+						</View>
+					</View>
+				) : null}
+
+				{showWorkspaceIdle ? (
 				<View key="capture-input" testID="capture-input" style={styles.inputArea}>
 
-					<View style={styles.modeGrid}>
+					<View testID={simple ? "capture-workspace-idle" : undefined} style={styles.modeGrid}>
 						{captureModes.map((mode) => (
 							<Pressable
 								key={mode.id}
@@ -1027,8 +1128,9 @@ export default function CaptureScreen() {
 								placeholder={tx.textPlaceholder}
 								placeholderTextColor={theme.colors.textMuted}
 							/>
-							{renderWalletSelector()}
+							{simple ? null : renderWalletSelector()}
 							<Pressable
+								testID="capture-text-submit"
 								accessibilityRole="button"
 								accessibilityLabel={tx.processTextLabel}
 								accessibilityState={{ disabled: submitting, busy: submitting }}
@@ -1046,31 +1148,16 @@ export default function CaptureScreen() {
 							<View style={styles.receiptPickerCard}>
 								{receiptAsset ? <Image source={{ uri: receiptAsset.uri }} style={styles.receiptPreviewImage} /> : <Text style={styles.receiptPlaceholderText}>{tx.receiptPlaceholder}</Text>}
 							</View>
-							{renderWalletSelector()}
+							{simple ? null : renderWalletSelector()}
 							<Pressable testID="capture-receipt-pick" accessibilityRole="button" style={styles.secondaryButton} onPress={pickReceiptImage}>
 								<Text style={styles.secondaryButtonText}>{receiptAsset ? tx.changeReceiptPhoto : tx.chooseReceiptPhoto}</Text>
 							</Pressable>
-							<Pressable testID="capture-receipt-process" accessibilityRole="button" accessibilityState={{ disabled: !receiptAsset || submitting, busy: submitting }} style={[styles.submitButton, (!receiptAsset || submitting) && { opacity: 0.7 }]} onPress={submitReceiptPhoto} disabled={!receiptAsset || submitting}>
-								{submitting ? <ActivityIndicator color={fe.white} /> : <Text style={styles.submitButtonText}>{tx.processReceipt}</Text>}
-							</Pressable>
-							{receiptDraft ? (
-								<View testID="capture-receipt-preview" style={styles.receiptDraftCard}>
-									<Text style={styles.suggestionLabel}>{tx.receiptPreviewTitle}</Text>
-									{receiptDrafts.map((draft, index) => (
-										<View key={`${draft.description}-${index}`} style={styles.receiptItemRow}>
-											<Text style={styles.suggestionTitle}>{draft.description}</Text>
-											<Text style={styles.suggestionMeta}>
-												Rp {draft.amount.toLocaleString("id-ID")} · {draft.category} · {draft.date}
-												{draft.quantity && draft.quantity > 1 ? ` · Qty ${draft.quantity}` : ""}
-											</Text>
-											{draft.reviewRequired ? <Text style={styles.suggestionWarning}>{tx.needsReview}</Text> : null}
-										</View>
-									))}
-									<Pressable testID="capture-receipt-confirm" accessibilityRole="button" style={styles.submitButton} onPress={confirmReceiptDraft} disabled={submitting}>
-										<Text style={styles.submitButtonText}>{tx.saveReceiptTransaction}</Text>
-									</Pressable>
-								</View>
-							) : null}
+							{simple ? null : (
+								<Pressable testID="capture-receipt-process" accessibilityRole="button" accessibilityState={{ disabled: !receiptAsset || submitting, busy: submitting }} style={[styles.submitButton, (!receiptAsset || submitting) && { opacity: 0.7 }]} onPress={submitReceiptPhoto} disabled={!receiptAsset || submitting}>
+									{submitting ? <ActivityIndicator color={fe.white} /> : <Text style={styles.submitButtonText}>{tx.processReceipt}</Text>}
+								</Pressable>
+							)}
+							{receiptDraft ? renderReceiptReview() : null}
 						</View>
 					) : null}
 
@@ -1091,7 +1178,7 @@ export default function CaptureScreen() {
 											: voiceAsset ? tx.voiceReady : tx.voiceEmpty}
 								</Text>
 							</View>
-							{renderWalletSelector()}
+							{simple ? null : renderWalletSelector()}
 							<Pressable
 								testID="capture-voice-record"
 								accessibilityRole="button"
@@ -1120,30 +1207,43 @@ export default function CaptureScreen() {
 									</Pressable>
 								</>
 							) : null}
-							{voiceDraft ? (
-								<View testID="capture-voice-preview" style={styles.receiptDraftCard}>
-									<Text style={styles.suggestionLabel}>{isEn ? "Voice transcript" : "Transkrip suara"}</Text>
-									<Text style={styles.suggestionMeta}>{voiceDraft.transcript}</Text>
-									<Text style={styles.suggestionTitle}>
-										{voiceDraft.fields.catatan ?? (isEn ? "Voice transaction" : "Transaksi suara")}
-									</Text>
-									<Text style={styles.suggestionMeta}>
-										Rp {(voiceDraft.fields.nominal ?? 0).toLocaleString("id-ID")} · {voiceDraft.fields.kategori ?? (isEn ? "Other expenses" : "Lainnya")}
-									</Text>
-									{voiceDraft.review_required ? <Text style={styles.suggestionWarning}>{tx.needsReview}</Text> : null}
-									<Pressable testID="capture-voice-confirm" accessibilityRole="button" style={styles.submitButton} onPress={confirmVoiceDraft} disabled={submitting}>
-										{submitting ? <ActivityIndicator color={fe.white} /> : <Text style={styles.submitButtonText}>{isEn ? "Save transaction" : "Simpan transaksi"}</Text>}
-									</Pressable>
-									<Pressable testID="capture-voice-preview-reset" accessibilityRole="button" style={styles.secondaryButton} onPress={() => setVoiceDraft(null)} disabled={submitting}>
-										<Text style={styles.secondaryButtonText}>{tx.voiceReset}</Text>
-									</Pressable>
-								</View>
-							) : null}
+							{voiceDraft ? renderVoiceReview() : null}
 						</View>
 					) : null}
 				</View>
+				) : null}
 
-				{isProcessing && (
+				{simple && workspace === "review" ? (
+					<View key="capture-workspace-review" testID="capture-workspace-review" style={styles.inputArea}>
+						{activeMode === "Foto" ? renderReceiptReview() : null}
+						{activeMode === "Suara" ? renderVoiceReview() : null}
+					</View>
+				) : null}
+
+				{simple && workspace === "idle" ? (
+					<View key="capture-secondary-actions" testID="capture-secondary-actions" style={styles.secondaryActions}>
+						<Pressable
+							testID="capture-secondary-manual"
+							accessibilityRole="button"
+							style={styles.secondaryButton}
+							onPress={() => router.push("/(tabs)/transaction-new")}
+						>
+							<Text style={styles.secondaryButtonText}>{tx.manualDetail}</Text>
+						</Pressable>
+						{featureFlags.importStatement ? (
+							<Pressable
+								testID="capture-secondary-import"
+								accessibilityRole="button"
+								style={styles.secondaryButton}
+								onPress={() => router.push("/(tabs)/imports")}
+							>
+								<Text style={styles.secondaryButtonText}>{tx.importAction}</Text>
+							</Pressable>
+						) : null}
+					</View>
+				) : null}
+
+				{(isProcessing || (simple && submitting && !isSuccess && !isError)) && (
 					<View key="capture-processing" testID="capture-processing" style={styles.feedbackCard}>
 						<View style={styles.feedbackIconWrap}>
 							<KaswiseIcon
@@ -1206,6 +1306,7 @@ export default function CaptureScreen() {
 							</View>
 						) : null}
 						<Pressable
+							testID="capture-success-review"
 							accessibilityRole="button"
 							accessibilityLabel={
 								tx.viewReviewLabel
@@ -1216,14 +1317,15 @@ export default function CaptureScreen() {
 							<Text style={styles.secondaryButtonText}>{tx.viewReview}</Text>
 						</Pressable>
 						<Pressable
+							testID={simple ? "capture-success-new" : undefined}
 							accessibilityRole="button"
 							accessibilityLabel={
-								tx.keepSavedLabel
+								simple ? tx.captureAnother : tx.keepSavedLabel
 							}
 							style={styles.textLinkButton}
 							onPress={() => resetCapture(true)}
 						>
-							<Text style={styles.textLink}>{tx.keepSaved}</Text>
+							<Text style={styles.textLink}>{simple ? tx.captureAnother : tx.keepSaved}</Text>
 						</Pressable>
 					</View>
 				)}
@@ -1243,6 +1345,7 @@ export default function CaptureScreen() {
 							{error || tx.errorFallback}
 						</Text>
 						<Pressable
+							testID="capture-error-retry"
 							accessibilityRole="button"
 							accessibilityLabel={
 								tx.tryAgainLabel
@@ -1339,6 +1442,14 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 		walletChipText: { color: fe.slate, fontSize: 13, fontWeight: "500" },
 		walletChipTextActive: { color: fe.white },
 		walletEmptyText: { color: fe.muted, fontSize: 12, lineHeight: 18 },
+		destinationRow: {
+			backgroundColor: fe.white, borderRadius: 18, padding: 12, gap: 8,
+		},
+		destinationLabel: {
+			color: fe.muted, fontSize: 11, fontWeight: "700", textTransform: "uppercase", letterSpacing: 0.4,
+		},
+		destinationControls: { gap: 8 },
+		secondaryActions: { gap: 8 },
 		comingSoonText: { color: fe.muted, fontSize: 12, textAlign: "center", marginTop: 8 },
 		feedbackCard: {
 			backgroundColor: fe.white, borderRadius: 18, borderWidth: 0, padding: 20,

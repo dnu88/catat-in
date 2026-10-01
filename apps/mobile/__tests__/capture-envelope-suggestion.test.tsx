@@ -80,6 +80,7 @@ let mockActiveContext:
 			householdId: string;
 			role: "admin" | "member" | "owner" | "viewer";
 	  } = { type: "personal" };
+let mockRealtimeEnabled = true;
 let mockEnvelopeSuggestion: null | {
 	id?: string;
 	envelope_id?: string;
@@ -100,14 +101,16 @@ let mockEnvelopeSuggestion: null | {
 jest.mock("../src/hooks/useTransactionRealtime", () => ({
 	useTransactionRealtime: () => ({
 		loading: false,
-		transaction: {
-			id: "tx-1",
-			status: "done",
-			confidence: 0.9,
-			category: "Makan & Minum",
-			description: "Kopi Kenangan",
-			envelope_suggestion: mockEnvelopeSuggestion,
-		},
+		transaction: mockRealtimeEnabled
+			? {
+					id: "tx-1",
+					status: "done",
+					confidence: 0.9,
+					category: "Makan & Minum",
+					description: "Kopi Kenangan",
+					envelope_suggestion: mockEnvelopeSuggestion,
+			  }
+			: null,
 	}),
 }));
 
@@ -134,6 +137,10 @@ jest.mock("../src/services/receipt-intake", () => ({
 	analyzeTransactionText: (...args: unknown[]) => mockAnalyzeTransactionText(...args),
 	receiptExtractionToDraft: (...args: unknown[]) => mockReceiptExtractionToDraft(...args),
 	receiptExtractionToDrafts: (...args: unknown[]) => [mockReceiptExtractionToDraft(...args)].filter(Boolean),
+	normalizeReceiptDate: (value: unknown) =>
+		typeof value === "string" && value.trim()
+			? value
+			: new Date().toISOString().slice(0, 10),
 }));
 
 jest.mock("../src/services/categories", () => ({
@@ -143,14 +150,18 @@ jest.mock("../src/services/categories", () => ({
 	]),
 }));
 
+let mockWallets: Array<{ id: string; name: string; is_active: boolean }> = [];
 jest.mock("../src/services/wallets", () => ({
-	listWallets: jest.fn(async () => []),
+	listWallets: jest.fn(async () => mockWallets),
 }));
 
 jest.mock("../src/state/finance-context", () => ({
 	useFinanceContext: () => ({
 		activeContext: mockActiveContext,
 		canCreate: true,
+		memberships: [],
+		setPersonalContext: jest.fn(),
+		setActiveHousehold: jest.fn(),
 	}),
 }));
 
@@ -161,8 +172,10 @@ jest.mock("../src/lib/supabase", () => ({
 	}),
 }));
 
+const mockPush = jest.fn();
 jest.mock("expo-router", () => ({
-	useRouter: () => ({ push: jest.fn() }),
+	useRouter: () => ({ push: mockPush }),
+	useLocalSearchParams: () => ({}),
 	useFocusEffect: (callback: () => void | (() => void)) => {
 		const React = require("react");
 		React.useEffect(() => callback(), [callback]);
@@ -202,6 +215,9 @@ describe("Capture envelope suggestion", () => {
 		}));
 		mockInvoke.mockResolvedValue({ data: null, error: null });
 		mockActiveContext = { type: "personal" };
+		mockRealtimeEnabled = true;
+		mockWallets = [];
+		mockPush.mockClear();
 		mockEnvelopeSuggestion = {
 			envelope_id: "env-kopi",
 			name: "Kopi",
@@ -406,5 +422,129 @@ describe("Capture envelope suggestion", () => {
 			}),
 			mockActiveContext,
 		);
+	});
+});
+
+describe("Capture simple-mode action hub", () => {
+	beforeEach(() => {
+		(globalThis as any).__KASWISE_FEATURE_FLAGS__ = {
+			simpleNavigation: true,
+			voiceNote: false,
+			importStatement: false,
+		};
+		mockRealtimeEnabled = false;
+		mockEnvelopeSuggestion = null;
+		mockWallets = [{ id: "wallet-1", name: "BCA", is_active: true }];
+	});
+	afterEach(() => {
+		delete (globalThis as any).__KASWISE_FEATURE_FLAGS__;
+		mockRealtimeEnabled = true;
+		mockWallets = [];
+	});
+
+	it("renders an action-first hub with one idle workspace and a destination row", async () => {
+		renderCapture();
+
+		expect(screen.getByText("Catat transaksi")).toBeTruthy();
+		expect(
+			screen.getByText("Pilih cara tercepat. Kaswise rapikan sisanya."),
+		).toBeTruthy();
+		// Primary options: text + receipt only while voiceNote is off.
+		expect(screen.getByTestId("capture-mode-Teks")).toBeTruthy();
+		expect(screen.getByTestId("capture-mode-Foto")).toBeTruthy();
+		expect(screen.queryByTestId("capture-mode-Suara")).toBeNull();
+		// Exactly one workspace state at a time.
+		expect(screen.getByTestId("capture-workspace-idle")).toBeTruthy();
+		expect(screen.getByTestId("capture-input")).toBeTruthy();
+		expect(screen.queryByTestId("capture-workspace-review")).toBeNull();
+		// Destination row shows the money space and the selected wallet.
+		expect(screen.getByTestId("capture-destination")).toBeTruthy();
+		expect(screen.getByTestId("capture-wallet-selector")).toBeTruthy();
+		await waitFor(() =>
+			expect(screen.getByTestId("capture-wallet-wallet-1")).toBeTruthy(),
+		);
+		expect(screen.getByText("BCA")).toBeTruthy();
+		// Secondary actions.
+		expect(screen.getByTestId("capture-secondary-manual")).toBeTruthy();
+		expect(screen.queryByTestId("capture-secondary-import")).toBeNull();
+		// No Moonveo/Monveo wording anywhere in product UI.
+		expect(screen.queryByText(/Monveo/i)).toBeNull();
+	});
+
+	it("routes secondary actions to manual detail and import statement", () => {
+		(globalThis as any).__KASWISE_FEATURE_FLAGS__.importStatement = true;
+		renderCapture();
+
+		fireEvent.press(screen.getByTestId("capture-secondary-manual"));
+		expect(mockPush).toHaveBeenCalledWith("/(tabs)/transaction-new");
+
+		fireEvent.press(screen.getByTestId("capture-secondary-import"));
+		expect(mockPush).toHaveBeenCalledWith("/(tabs)/imports");
+	});
+
+	it("renders only the selected mode panel", () => {
+		renderCapture();
+
+		expect(screen.getByLabelText("Input teks transaksi")).toBeTruthy();
+		expect(screen.queryByTestId("capture-voice-card")).toBeNull();
+		expect(screen.queryByTestId("capture-receipt-pick")).toBeNull();
+
+		fireEvent.press(screen.getByTestId("capture-mode-Foto"));
+
+		expect(screen.getByTestId("capture-receipt-pick")).toBeTruthy();
+		expect(screen.queryByLabelText("Input teks transaksi")).toBeNull();
+	});
+
+	it("runs receipt photo through automatic processing into a single review workspace", async () => {
+		renderCapture();
+
+		fireEvent.press(screen.getByTestId("capture-mode-Foto"));
+		fireEvent.press(screen.getByTestId("capture-receipt-pick"));
+		await waitFor(() => expect(mockLaunchImageLibraryAsync).toHaveBeenCalled());
+		await waitFor(() =>
+			expect(screen.getByTestId("capture-workspace-review")).toBeTruthy(),
+		);
+
+		expect(screen.getByTestId("capture-receipt-preview")).toBeTruthy();
+		expect(screen.getByTestId("capture-receipt-confirm")).toBeTruthy();
+		// Retired duplicate manual process action; retry lives in the error state.
+		expect(screen.queryByTestId("capture-receipt-process")).toBeNull();
+		expect(screen.queryByTestId("capture-input")).toBeNull();
+		expect(screen.queryByTestId("capture-workspace-idle")).toBeNull();
+	});
+
+	it("offers 'Catat transaksi lain' on success and hides the input workspace", async () => {
+		renderCapture();
+
+		fireEvent.changeText(
+			screen.getByLabelText("Input teks transaksi"),
+			"Beli kopi 35rb",
+		);
+		fireEvent.press(screen.getByTestId("capture-text-submit"));
+
+		await waitFor(() => expect(screen.getByTestId("capture-success-new")).toBeTruthy(), {
+			timeout: 4000,
+		});
+		expect(screen.getByText("Catat transaksi lain")).toBeTruthy();
+		expect(screen.queryByText("Langsung simpan")).toBeNull();
+		expect(screen.getByTestId("capture-success-review")).toBeTruthy();
+		expect(screen.queryByTestId("capture-input")).toBeNull();
+	});
+
+	it("keeps retry in the error workspace when the session is missing", async () => {
+		mockGetUser.mockResolvedValueOnce({ data: { user: null } } as any);
+		renderCapture();
+
+		fireEvent.changeText(
+			screen.getByLabelText("Input teks transaksi"),
+			"Beli kopi 35rb",
+		);
+		fireEvent.press(screen.getByTestId("capture-text-submit"));
+
+		await waitFor(() => expect(screen.getByTestId("capture-error-retry")).toBeTruthy(), {
+			timeout: 4000,
+		});
+		expect(screen.getByText(/Sesi login tidak ditemukan/)).toBeTruthy();
+		expect(screen.queryByTestId("capture-input")).toBeNull();
 	});
 });
