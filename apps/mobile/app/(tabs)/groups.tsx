@@ -209,20 +209,22 @@ export default function GroupsScreen() {
 								accessibilityRole="button"
 								accessibilityLabel={tx.createLabel}
 								accessibilityHint={tx.createHint}
-								style={[styles.addButton, submitting && styles.disabledButton]}
+								style={[styles.touchTarget, submitting && styles.disabledButton]}
 								onPress={() =>
 									setActiveForm(activeForm === "create" ? null : "create")
 								}
 								disabled={submitting}
 							>
-								<Text style={styles.addButtonText}>{tx.create}</Text>
+								<View style={styles.addButton}>
+									<Text style={styles.addButtonText}>{tx.create}</Text>
+								</View>
 							</Pressable>
 							<Pressable
 								accessibilityRole="button"
 								accessibilityLabel={tx.joinLabel}
 								accessibilityHint={tx.joinHint}
 								style={[
-									styles.secondaryButton,
+									styles.touchTarget,
 									submitting && styles.disabledButton,
 								]}
 								onPress={() =>
@@ -230,7 +232,9 @@ export default function GroupsScreen() {
 								}
 								disabled={submitting}
 							>
-								<Text style={styles.secondaryButtonText}>{tx.join}</Text>
+								<View style={styles.secondaryButton}>
+									<Text style={styles.secondaryButtonText}>{tx.join}</Text>
+								</View>
 							</Pressable>
 						</View>
 					}
@@ -371,6 +375,12 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 		screen: { flex: 1, backgroundColor: fe.paper },
 		content: { padding: 20, gap: 12, paddingBottom: 26 },
 		headerActions: { flexDirection: "row", gap: 8 },
+		touchTarget: {
+			minHeight: 44,
+			minWidth: 44,
+			alignItems: "center",
+			justifyContent: "center",
+		},
 		addButton: {
 			backgroundColor: fe.glassStrong,
 			borderWidth: 1,
