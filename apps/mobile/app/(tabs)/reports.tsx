@@ -1343,10 +1343,12 @@ export default function ReportsScreen() {
 						<Pressable
 							accessibilityRole="button"
 							accessibilityLabel={tx.shareA11y}
-							style={({ pressed }) => [styles.shareButton, pressed && { opacity: 0.7 }]}
+							style={({ pressed }) => [styles.touchTarget, pressed && { opacity: 0.7 }]}
 							onPress={handleShare}
 						>
-							<Text style={styles.shareButtonText}>{tx.share}</Text>
+							<View style={styles.shareButton}>
+								<Text style={styles.shareButtonText}>{tx.share}</Text>
+							</View>
 						</Pressable>
 					</View>
 				</View>
@@ -1460,58 +1462,70 @@ export default function ReportsScreen() {
 						accessibilityRole="button"
 						accessibilityLabel={tx.showOverviewA11y}
 						accessibilityState={{ selected: activeTab === "overview" }}
-						style={[
-							styles.tabChip,
-							activeTab === "overview" && styles.tabChipActive,
-						]}
+						style={styles.touchTarget}
 						onPress={() => setActiveTab("overview")}
 					>
-						<Text
+						<View
 							style={[
-								styles.tabChipText,
-								activeTab === "overview" && styles.tabChipTextActive,
+								styles.tabChip,
+								activeTab === "overview" && styles.tabChipActive,
 							]}
 						>
-							{tx.overview}
-						</Text>
+							<Text
+								style={[
+									styles.tabChipText,
+									activeTab === "overview" && styles.tabChipTextActive,
+								]}
+							>
+								{tx.overview}
+							</Text>
+						</View>
 					</Pressable>
 					<Pressable
 						accessibilityRole="button"
 						accessibilityLabel={tx.showCategoryA11y}
 						accessibilityState={{ selected: activeTab === "category" }}
-						style={[
-							styles.tabChip,
-							activeTab === "category" && styles.tabChipActive,
-						]}
+						style={styles.touchTarget}
 						onPress={() => setActiveTab("category")}
 					>
-						<Text
+						<View
 							style={[
-								styles.tabChipText,
-								activeTab === "category" && styles.tabChipTextActive,
+								styles.tabChip,
+								activeTab === "category" && styles.tabChipActive,
 							]}
 						>
-							{tx.category}
-						</Text>
+							<Text
+								style={[
+									styles.tabChipText,
+									activeTab === "category" && styles.tabChipTextActive,
+								]}
+							>
+								{tx.category}
+							</Text>
+						</View>
 					</Pressable>
 					<Pressable
 						accessibilityRole="button"
 						accessibilityLabel={tx.showCompareA11y}
 						accessibilityState={{ selected: activeTab === "compare" }}
-						style={[
-							styles.tabChip,
-							activeTab === "compare" && styles.tabChipActive,
-						]}
+						style={styles.touchTarget}
 						onPress={() => setActiveTab("compare")}
 					>
-						<Text
+						<View
 							style={[
-								styles.tabChipText,
-								activeTab === "compare" && styles.tabChipTextActive,
+								styles.tabChip,
+								activeTab === "compare" && styles.tabChipActive,
 							]}
 						>
-							{tx.compare}
-						</Text>
+							<Text
+								style={[
+									styles.tabChipText,
+									activeTab === "compare" && styles.tabChipTextActive,
+								]}
+							>
+								{tx.compare}
+							</Text>
+						</View>
 					</Pressable>
 				</ScrollView>
 
@@ -1523,10 +1537,7 @@ export default function ReportsScreen() {
 							accessibilityRole="button"
 							accessibilityLabel={tx.choosePeriodA11y(periodLabels[key])}
 							accessibilityState={{ selected: periodFilter === key }}
-							style={[
-								styles.periodChip,
-								periodFilter === key && styles.periodChipActive,
-							]}
+							style={styles.touchTarget}
 							onPress={() => {
 								setPeriodFilter(key);
 								if (key === "custom") {
@@ -1537,14 +1548,21 @@ export default function ReportsScreen() {
 								}
 							}}
 						>
-							<Text
+							<View
 								style={[
-									styles.periodChipText,
-									periodFilter === key && styles.periodChipTextActive,
+									styles.periodChip,
+									periodFilter === key && styles.periodChipActive,
 								]}
 							>
-								{periodLabels[key]}
-							</Text>
+								<Text
+									style={[
+										styles.periodChipText,
+										periodFilter === key && styles.periodChipTextActive,
+									]}
+								>
+									{periodLabels[key]}
+								</Text>
+							</View>
 						</Pressable>
 					))}
 				</View>
@@ -2490,6 +2508,12 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			fontWeight: theme.typography.fontWeight.bold,
 		},
 		headerRight: { alignItems: "flex-end", gap: 8 },
+		touchTarget: {
+			minHeight: 44,
+			minWidth: 44,
+			alignItems: "center",
+			justifyContent: "center",
+		},
 		shareButton: {
 			backgroundColor: "rgba(255,255,255,0.16)",
 			borderWidth: 1,

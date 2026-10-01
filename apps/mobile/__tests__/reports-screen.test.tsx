@@ -581,6 +581,30 @@ describe("ReportsScreen visual parity", () => {
 		expect(foodSegment.props.d).toMatch(/^M 100 100 /);
 	});
 
+	it("gives every reported sub-44 control a real 44x44 touch box", async () => {
+		const screen = renderReports();
+
+		await waitFor(() => expect(screen.getByText(/Dompet/i)).toBeTruthy());
+
+		const labels = [
+			"Bagikan laporan",
+			"Tampilkan ringkasan laporan",
+			"Tampilkan kategori laporan",
+			"Tampilkan perbandingan laporan",
+			"Pilih periode 1 Bulan",
+			"Pilih periode 3 Bulan",
+			"Pilih periode 6 Bulan",
+			"Pilih periode 1 Tahun",
+			"Pilih periode Kustom",
+		];
+
+		for (const label of labels) {
+			const control = getFlattenedStyle(screen.getByLabelText(label));
+			expect(Number(control.minHeight)).toBeGreaterThanOrEqual(44);
+			expect(Number(control.minWidth)).toBeGreaterThanOrEqual(44);
+		}
+	});
+
 	it("lets custom period choose exact start and end dates for client-side report filtering", async () => {
 		const screen = renderReports();
 
