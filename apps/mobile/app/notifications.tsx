@@ -15,6 +15,7 @@ import { financeEditorial as fe } from "../src/theme/finance-editorial";
 import { useI18n } from "../src/i18n/i18n-context";
 import { useSupabase } from "../src/lib/supabase";
 import { KaswiseIcon } from "../src/components/icons/kaswise-icons";
+import { goBackSafely } from "../src/lib/safe-back";
 import {
   listNotifications,
   markNotificationRead,
@@ -125,7 +126,7 @@ export default function NotificationsScreen() {
           testID="notifications-back"
           accessibilityRole="button"
           accessibilityLabel={isEn ? "Back" : "Kembali"}
-          onPress={() => router.back()}
+          onPress={() => goBackSafely(router, "/(tabs)")}
           style={s.backBtn}
         >
           <KaswiseIcon

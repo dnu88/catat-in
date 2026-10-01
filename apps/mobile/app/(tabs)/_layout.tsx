@@ -15,8 +15,22 @@ import { useSupabase } from "../../src/lib/supabase";
 import { useTheme } from "../../src/theme/theme-context";
 import { financeEditorial as fe } from "../../src/theme/finance-editorial";
 import { featureFlags } from "../../src/config/features";
+import { goBackSafely } from "../../src/lib/safe-back";
 
 const BASE_PRIMARY_TAB_ROUTES = ["index", "transactions", "capture", "reports"] as const;
+
+// Cold deep links into a hidden route have no history, so the shared back
+// control needs an explicit primary destination per route.
+const HIDDEN_ROUTE_BACK_FALLBACKS: Record<string, string> = {
+	settings: "/(tabs)",
+	wallets: "/(tabs)",
+	budgets: "/(tabs)/settings",
+	bills: "/(tabs)/settings",
+	groups: "/(tabs)/settings",
+	imports: "/(tabs)/settings",
+	"transaction-new": "/(tabs)/capture",
+};
+const DEFAULT_HIDDEN_BACK_FALLBACK = "/(tabs)";
 
 export default function TabsLayout() {
 	const { supabase } = useSupabase();
@@ -85,7 +99,13 @@ export default function TabsLayout() {
 			<Pressable
 				accessibilityRole="button"
 				accessibilityLabel={t("back")}
-				onPress={() => router.back()}
+				onPress={() =>
+					goBackSafely(
+						router,
+						HIDDEN_ROUTE_BACK_FALLBACKS[activeRoute] ??
+							DEFAULT_HIDDEN_BACK_FALLBACK,
+					)
+				}
 				style={styles.headerBackButton}
 			>
 				<KaswiseIcon

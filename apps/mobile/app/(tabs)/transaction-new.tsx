@@ -12,6 +12,8 @@ import { PageEntrance, StaggeredStack } from "../../src/components/motion";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
 
+import { goBackSafely } from "../../src/lib/safe-back";
+
 import { IOSWheelDatePicker } from "../../src/components/date/IOSWheelDatePicker";
 import { KaswiseIcon } from "../../src/components/icons/kaswise-icons";
 import type { KaswiseIconName } from "../../src/components/icons/kaswise-icons";
@@ -501,7 +503,7 @@ export default function TransactionNewScreen() {
 					<Pressable
 						accessibilityRole="button"
 						accessibilityLabel={tx.backLabel}
-						onPress={() => router.back()}
+						onPress={() => goBackSafely(router, "/(tabs)/capture")}
 						style={styles.closeBtn}
 					>
 						<KaswiseIcon
