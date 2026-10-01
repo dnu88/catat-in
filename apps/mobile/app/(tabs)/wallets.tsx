@@ -27,6 +27,7 @@ import { useFinanceContext } from "../../src/state/finance-context";
 import { useTheme } from "../../src/theme/theme-context";
 import { financeEditorial as fe } from "../../src/theme/finance-editorial";
 import { subscribeWalletChanges } from "../../src/services/wallet-events";
+import { featureFlags } from "../../src/config/features";
 
 type WalletType = "bank" | "ewallet" | "cash" | "investment";
 type FilterType = "all" | WalletType;
@@ -51,6 +52,9 @@ const copy = {
 		save: "Simpan dompet",
 		total: "Total Saldo Semua Akun",
 		active: "akun aktif",
+		context: "Konteks",
+		filters: "Filter dompet",
+		add: "Tambah dompet",
 		all: "Semua",
 		personal: "Pribadi",
 		family: "Keluarga",
@@ -84,6 +88,9 @@ const copy = {
 		save: "Save wallet",
 		total: "Total Balance Across Accounts",
 		active: "active accounts",
+		context: "Context",
+		filters: "Filter wallets",
+		add: "Add wallet",
 		all: "All",
 		personal: "Personal",
 		family: "Family",
@@ -348,6 +355,219 @@ export default function WalletsScreen() {
 		0,
 	);
 
+	// Simple mode promotes wallets as a primary destination: balance hero, finance
+	// context, active count, account list, then the add action. Filters are demoted
+	// to secondary controls below the list so they no longer fill the first
+	// viewport. Legacy mode keeps the exact previous order and density.
+	const simple = featureFlags.simpleNavigation;
+
+	const editForm = editingWallet ? (
+		<View key="wallet-edit-form" testID="wallet-edit-form" style={styles.formCard}>
+			<Text style={styles.formTitle}>
+				{tx.edit} · {editingWallet.scopeLabel}
+			</Text>
+			<TextInput
+				accessibilityLabel={tx.name}
+				placeholder={tx.name}
+				placeholderTextColor={theme.colors.textMuted}
+				value={editName}
+				onChangeText={setEditName}
+				style={styles.input}
+			/>
+			{/* Balance is transaction-managed (database trigger) — display only */}
+			<View style={[styles.input, { justifyContent: "center" }]}>
+				<Text style={{ color: theme.colors.textSecondary, fontSize: 12, fontWeight: "700" }}>
+					{tx.editBalance}
+				</Text>
+				<Text style={{ color: theme.colors.textPrimary, fontSize: 16, marginTop: 4 }}>
+					{formatCurrency(Number(editingWallet.balance ?? 0))}
+				</Text>
+			</View>
+			<View style={styles.typeGrid}>
+				{walletTypes.map((walletType) => (
+					<Pressable
+						key={walletType}
+						testID={`wallet-edit-type-${walletType}`}
+						accessibilityRole="button"
+						accessibilityLabel={`${tx.edit} ${tx.types[walletType]}`}
+						accessibilityState={{ selected: editType === walletType }}
+						style={[
+							styles.typeChoice,
+							editType === walletType && styles.typeChoiceActive,
+						]}
+						onPress={() => setEditType(walletType)}
+					>
+						<Text
+							style={[
+								styles.typeChoiceText,
+								editType === walletType && styles.typeChoiceTextActive,
+							]}
+						>
+							{tx.types[walletType]}
+						</Text>
+					</Pressable>
+				))}
+			</View>
+			<View style={styles.editActionRow}>
+				<Pressable
+					testID="wallet-update-cancel"
+					accessibilityRole="button"
+					accessibilityLabel={tx.cancel}
+					style={styles.cancelButton}
+					onPress={cancelEdit}
+					disabled={submitting}
+				>
+					<Text style={styles.cancelButtonText}>{tx.cancel}</Text>
+				</Pressable>
+				<Pressable
+					testID="wallet-update-submit"
+					accessibilityRole="button"
+					accessibilityLabel={tx.update}
+					style={[styles.submitButton, styles.editSubmitButton, submitting && styles.disabledButton]}
+					onPress={handleUpdate}
+					disabled={submitting}
+				>
+					<Text style={styles.submitButtonText}>{tx.update}</Text>
+				</Pressable>
+			</View>
+		</View>
+	) : null;
+
+	const createForm = showCreate ? (
+		<View key="wallet-create-form" testID="wallet-create-form" style={styles.formCard}>
+			<Text style={styles.formTitle}>
+				{tx.formTitle} · {activeScopeLabel}
+			</Text>
+			<TextInput
+				accessibilityLabel={tx.name}
+				placeholder={tx.name}
+				placeholderTextColor={theme.colors.textMuted}
+				value={name}
+				onChangeText={setName}
+				style={styles.input}
+			/>
+			<TextInput
+				accessibilityLabel={tx.balance}
+				placeholder={tx.balance}
+				placeholderTextColor={theme.colors.textMuted}
+				value={balance}
+				onChangeText={setBalance}
+				keyboardType="numeric"
+				style={styles.input}
+			/>
+			<View style={styles.typeGrid}>
+				{walletTypes.map((walletType) => (
+					<Pressable
+						key={walletType}
+						testID={`wallet-type-${walletType}`}
+						accessibilityRole="button"
+						accessibilityLabel={`${tx.new} ${tx.types[walletType]}`}
+						accessibilityState={{ selected: type === walletType }}
+						style={[
+							styles.typeChoice,
+							type === walletType && styles.typeChoiceActive,
+						]}
+						onPress={() => setType(walletType)}
+					>
+						<Text
+							style={[
+								styles.typeChoiceText,
+								type === walletType && styles.typeChoiceTextActive,
+							]}
+						>
+							{tx.types[walletType]}
+						</Text>
+					</Pressable>
+				))}
+			</View>
+			<Pressable
+				testID="wallet-create-submit"
+				accessibilityRole="button"
+				accessibilityLabel={tx.save}
+				style={[styles.submitButton, submitting && styles.disabledButton]}
+				onPress={handleCreate}
+				disabled={submitting}
+			>
+				<Text style={styles.submitButtonText}>{tx.save}</Text>
+			</Pressable>
+		</View>
+	) : null;
+
+	const filterControls = (
+		<ScrollView
+			key="wallets-filter"
+			testID="wallets-filter"
+			horizontal
+			showsHorizontalScrollIndicator={false}
+			contentContainerStyle={styles.filterRow}
+		>
+			{(["all", ...walletTypes] as FilterType[]).map((filterValue) => (
+				<Pressable
+					key={filterValue}
+					accessibilityRole="button"
+					accessibilityLabel={`${tx.all}: ${filterValue === "all" ? tx.all : tx.types[filterValue]}`}
+					accessibilityState={{ selected: filter === filterValue }}
+					onPress={() => setFilter(filterValue)}
+					style={[
+						styles.filterChip,
+						filter === filterValue && styles.filterChipActive,
+					]}
+				>
+					<Text
+						style={[
+							styles.filterChipText,
+							filter === filterValue && styles.filterChipTextActive,
+						]}
+					>
+						{filterValue === "all" ? tx.all : tx.types[filterValue]}
+					</Text>
+				</Pressable>
+			))}
+		</ScrollView>
+	);
+
+	const loadingBlock = loading ? (
+		<View key="wallets-loading" testID="wallets-loading" style={styles.loadingInline}>
+			<ActivityIndicator color={fe.ink} />
+			<Text style={styles.loadingText}>{tx.loading}</Text>
+		</View>
+	) : null;
+
+	const errorBlock = error ? (
+		<Text key="wallets-error" testID="wallets-error" style={styles.errorText}>{error}</Text>
+	) : null;
+
+	const emptyBlock =
+		!loading && filtered.length === 0 ? (
+			<Text key="wallets-empty" testID="wallets-empty" style={styles.emptyText}>{tx.empty}</Text>
+		) : null;
+
+	const addWalletCta = simple ? (
+		<Pressable
+			key="wallets-add-cta"
+			testID="wallets-add-cta"
+			accessibilityRole="button"
+			accessibilityLabel={tx.add}
+			accessibilityState={{ disabled: !canCreate, expanded: showCreate }}
+			style={[styles.addCta, !canCreate && styles.disabledButton]}
+			onPress={() => canCreate && setShowCreate((value) => !value)}
+			disabled={!canCreate}
+		>
+			<Text style={styles.addCtaText}>{tx.add}</Text>
+		</Pressable>
+	) : null;
+
+	const filterSection = simple ? (
+		<View
+			key="wallets-filter-secondary"
+			testID="wallets-filter-secondary"
+			style={styles.filterSecondary}
+		>
+			<Text style={styles.filterSecondaryLabel}>{tx.filters}</Text>
+			{filterControls}
+		</View>
+	) : null;
+
 	return (
 		<PageEntrance testID="wallets-page-entrance" style={styles.screen}>
 			<ScrollView
@@ -385,8 +605,15 @@ export default function WalletsScreen() {
 				<View key="wallets-total-hero" testID="wallets-total-hero" style={styles.totalCard}>
 					<Text style={styles.totalLabel}>{tx.total}</Text>
 					<Text style={styles.totalValue}>{formatCurrency(totalBalance)}</Text>
+					{simple ? (
+						<View testID="wallets-context-label" style={styles.contextPill}>
+							<Text style={styles.contextPillText}>
+								{`${tx.context}: ${activeScopeLabel}`}
+							</Text>
+						</View>
+					) : null}
 					<View style={styles.totalRow}>
-						<View style={styles.totalChip}>
+						<View testID="wallets-active-count" style={styles.totalChip}>
 							<Text style={styles.totalChipText}>{wallets.length} {tx.active}</Text>
 						</View>
 					</View>
@@ -404,180 +631,16 @@ export default function WalletsScreen() {
 				</View>
 				</LinearGradient>
 
-				{editingWallet ? (
-					<View key="wallet-edit-form" testID="wallet-edit-form" style={styles.formCard}>
-						<Text style={styles.formTitle}>
-							{tx.edit} · {editingWallet.scopeLabel}
-						</Text>
-						<TextInput
-							accessibilityLabel={tx.name}
-							placeholder={tx.name}
-							placeholderTextColor={theme.colors.textMuted}
-							value={editName}
-							onChangeText={setEditName}
-							style={styles.input}
-						/>
-						{/* Balance is transaction-managed (database trigger) — display only */}
-						<View style={[styles.input, { justifyContent: "center" }]}>
-							<Text style={{ color: theme.colors.textSecondary, fontSize: 12, fontWeight: "700" }}>
-								{tx.editBalance}
-							</Text>
-							<Text style={{ color: theme.colors.textPrimary, fontSize: 16, marginTop: 4 }}>
-								{formatCurrency(Number(editingWallet.balance ?? 0))}
-							</Text>
-						</View>
-						<View style={styles.typeGrid}>
-							{walletTypes.map((walletType) => (
-								<Pressable
-									key={walletType}
-									testID={`wallet-edit-type-${walletType}`}
-									accessibilityRole="button"
-									accessibilityLabel={`${tx.edit} ${tx.types[walletType]}`}
-									accessibilityState={{ selected: editType === walletType }}
-									style={[
-										styles.typeChoice,
-										editType === walletType && styles.typeChoiceActive,
-									]}
-									onPress={() => setEditType(walletType)}
-								>
-									<Text
-										style={[
-											styles.typeChoiceText,
-											editType === walletType && styles.typeChoiceTextActive,
-										]}
-									>
-										{tx.types[walletType]}
-									</Text>
-								</Pressable>
-							))}
-						</View>
-						<View style={styles.editActionRow}>
-							<Pressable
-								testID="wallet-update-cancel"
-								accessibilityRole="button"
-								accessibilityLabel={tx.cancel}
-								style={styles.cancelButton}
-								onPress={cancelEdit}
-								disabled={submitting}
-							>
-								<Text style={styles.cancelButtonText}>{tx.cancel}</Text>
-							</Pressable>
-							<Pressable
-								testID="wallet-update-submit"
-								accessibilityRole="button"
-								accessibilityLabel={tx.update}
-								style={[styles.submitButton, styles.editSubmitButton, submitting && styles.disabledButton]}
-								onPress={handleUpdate}
-								disabled={submitting}
-							>
-								<Text style={styles.submitButtonText}>{tx.update}</Text>
-							</Pressable>
-						</View>
-					</View>
-				) : null}
+				{!simple ? editForm : null}
 
-				{showCreate ? (
-					<View key="wallet-create-form" testID="wallet-create-form" style={styles.formCard}>
-						<Text style={styles.formTitle}>
-							{tx.formTitle} · {activeScopeLabel}
-						</Text>
-						<TextInput
-							accessibilityLabel={tx.name}
-							placeholder={tx.name}
-							placeholderTextColor={theme.colors.textMuted}
-							value={name}
-							onChangeText={setName}
-							style={styles.input}
-						/>
-						<TextInput
-							accessibilityLabel={tx.balance}
-							placeholder={tx.balance}
-							placeholderTextColor={theme.colors.textMuted}
-							value={balance}
-							onChangeText={setBalance}
-							keyboardType="numeric"
-							style={styles.input}
-						/>
-						<View style={styles.typeGrid}>
-							{walletTypes.map((walletType) => (
-								<Pressable
-									key={walletType}
-									testID={`wallet-type-${walletType}`}
-									accessibilityRole="button"
-									accessibilityLabel={`${tx.new} ${tx.types[walletType]}`}
-									accessibilityState={{ selected: type === walletType }}
-									style={[
-										styles.typeChoice,
-										type === walletType && styles.typeChoiceActive,
-									]}
-									onPress={() => setType(walletType)}
-								>
-									<Text
-										style={[
-											styles.typeChoiceText,
-											type === walletType && styles.typeChoiceTextActive,
-										]}
-									>
-										{tx.types[walletType]}
-									</Text>
-								</Pressable>
-							))}
-						</View>
-						<Pressable
-							testID="wallet-create-submit"
-							accessibilityRole="button"
-							accessibilityLabel={tx.save}
-							style={[styles.submitButton, submitting && styles.disabledButton]}
-							onPress={handleCreate}
-							disabled={submitting}
-						>
-							<Text style={styles.submitButtonText}>{tx.save}</Text>
-						</Pressable>
-					</View>
-				) : null}
+				{!simple ? createForm : null}
 
 
-				<ScrollView
-					key="wallets-filter"
-					testID="wallets-filter"
-					horizontal
-					showsHorizontalScrollIndicator={false}
-					contentContainerStyle={styles.filterRow}
-				>
-					{(["all", ...walletTypes] as FilterType[]).map((filterValue) => (
-						<Pressable
-							key={filterValue}
-							accessibilityRole="button"
-							accessibilityLabel={`${tx.all}: ${filterValue === "all" ? tx.all : tx.types[filterValue]}`}
-							accessibilityState={{ selected: filter === filterValue }}
-							onPress={() => setFilter(filterValue)}
-							style={[
-								styles.filterChip,
-								filter === filterValue && styles.filterChipActive,
-							]}
-						>
-							<Text
-								style={[
-									styles.filterChipText,
-									filter === filterValue && styles.filterChipTextActive,
-								]}
-							>
-								{filterValue === "all" ? tx.all : tx.types[filterValue]}
-							</Text>
-						</Pressable>
-					))}
-				</ScrollView>
+				{!simple ? filterControls : null}
 
-				{loading ? (
-					<View key="wallets-loading" testID="wallets-loading" style={styles.loadingInline}>
-						<ActivityIndicator color={fe.ink} />
-						<Text style={styles.loadingText}>{tx.loading}</Text>
-					</View>
-				) : null}
-				{error ? <Text key="wallets-error" testID="wallets-error" style={styles.errorText}>{error}</Text> : null}
-				{!loading && filtered.length === 0 ? (
-					<Text key="wallets-empty" testID="wallets-empty" style={styles.emptyText}>{tx.empty}</Text>
-				) : null}
+				{simple ? loadingBlock : null}
+				{simple ? errorBlock : null}
+				{simple ? emptyBlock : null}
 
 				{filtered.map((wallet) => (
 					<View
@@ -671,7 +734,12 @@ export default function WalletsScreen() {
 						</View>
 					</View>
 				))}
-				</StaggeredStack>
+
+				{simple ? addWalletCta : null}
+				{simple ? createForm : null}
+				{simple ? editForm : null}
+				{simple ? filterSection : null}
+			</StaggeredStack>
 
 
 				<View style={{ height: 100 }} />
@@ -777,6 +845,20 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			fontSize: 14,
 			fontWeight: "800",
 		},
+		addCta: {
+			marginHorizontal: 20,
+			minHeight: 52,
+			borderRadius: theme.radius.pill,
+			backgroundColor: fe.ink,
+			alignItems: "center",
+			justifyContent: "center",
+			paddingHorizontal: 18,
+		},
+		addCtaText: {
+			color: fe.white,
+			fontSize: 15,
+			fontWeight: "800",
+		},
 		editActionRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
 		editSubmitButton: { flexGrow: 1, paddingHorizontal: 14 },
 		cancelButton: {
@@ -828,6 +910,21 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			fontSize: theme.typography.fontSize.sm,
 			fontWeight: theme.typography.fontWeight.semibold,
 		},
+		contextPill: {
+			marginTop: 6,
+			alignSelf: "flex-start",
+			backgroundColor: "rgba(255,255,255,0.10)",
+			borderWidth: 1,
+			borderColor: "rgba(255,255,255,0.18)",
+			borderRadius: 999,
+			paddingHorizontal: 12,
+			paddingVertical: 5,
+		},
+		contextPillText: {
+			color: "rgba(255,255,255,0.86)",
+			fontSize: theme.typography.fontSize.sm,
+			fontWeight: theme.typography.fontWeight.bold,
+		},
 		loadingInline: {
 			minHeight: 44,
 			flexDirection: "row",
@@ -848,6 +945,13 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 		walletStackMeta: { color: "rgba(255,255,255,0.64)", fontSize: 11, marginTop: 3 },
 		walletStackBalance: { color: fe.white, fontSize: 14, fontWeight: "800" },
 		filterRow: { gap: 8, paddingVertical: 2, paddingHorizontal: 20 },
+		filterSecondary: { gap: 8, paddingVertical: 4, marginTop: 4 },
+		filterSecondaryLabel: {
+			color: theme.colors.textMuted,
+			fontSize: 11,
+			fontWeight: "800",
+			paddingHorizontal: 20,
+		},
 		filterChip: {
 			minHeight: 44,
 			justifyContent: "center",
