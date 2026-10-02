@@ -93,9 +93,14 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 15
     REFRESH_TOKEN_EXPIRE_DAYS: int = 30
 
-    # Anthropic
+    # Anthropic (cadangan)
     ANTHROPIC_API_KEY: str | None = None
     ANTHROPIC_MODEL: str = "claude-sonnet-4-6"
+
+    # DeepSeek (provider AI utama — jauh lebih murah untuk ekstraksi)
+    DEEPSEEK_API_KEY: str | None = None
+    DEEPSEEK_MODEL: str = "deepseek-flash"
+    DEEPSEEK_BASE_URL: str = "https://api.deepseek.com"
 
     # Midtrans
     MIDTRANS_SERVER_KEY: str | None = None
