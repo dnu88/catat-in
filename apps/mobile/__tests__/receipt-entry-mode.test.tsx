@@ -22,10 +22,16 @@ import type { ReceiptExtraction } from "../src/services/receipt-intake";
 // The flag object is read through getters so individual tests can flip the
 // review-first flow on or off without re-importing the screen.
 const mockTransactionEntryV2 = true;
+// Text auto-save is ON for every test in this file on purpose: the receipt path
+// must ignore it completely and always stop at the confirmation screen.
+const mockAiAutosaveText = true;
 jest.mock("../src/config/features", () => ({
 	featureFlags: {
 		get transactionEntryV2() {
 			return mockTransactionEntryV2;
+		},
+		get aiAutosaveText() {
+			return mockAiAutosaveText;
 		},
 		get simpleNavigation() {
 			return true;
@@ -370,6 +376,45 @@ describe("capture receipt recording modes", () => {
 		expect(payload.drafts.map((draft) => draft.amount)).toEqual([50000, 75000]);
 		// One atomic batch, never a loop of per-item inserts.
 		expect(mockCreateTransaction).not.toHaveBeenCalled();
+	});
+
+	it("(g) never auto-saves a receipt, even while text auto-save is switched on", async () => {
+		// A receipt that looks perfectly clear and single-transaction: exactly the
+		// shape text auto-save would accept. It must still stop at confirmation.
+		mockAnalyzeReceiptImage.mockResolvedValue({
+			total_amount: 125000,
+			merchant: "RM Sederhana",
+			confidence: 0.92,
+			date: "2026-10-02",
+			items: [
+				{ name: "Kopi", price: 50000 },
+				{ name: "Roti", price: 75000 },
+			],
+		} satisfies ReceiptExtraction);
+		mockSaveEntry.mockResolvedValue({
+			transactions: [{ ...SAVED_ROW }],
+			budgetSyncWarning: false,
+		});
+
+		renderCapture();
+		await reachReceiptReview();
+
+		// The confirmation screen owns the decision: nothing is written yet.
+		// (reachReceiptReview waits until the review is mounted, which is the same
+		// effect flush that would have fired an automatic save.)
+		expect(screen.getByTestId("capture-receipt-preview")).toBeTruthy();
+		expect(screen.queryByTestId("auto-save-toast")).toBeNull();
+		expect(mockSaveEntry).not.toHaveBeenCalled();
+
+		// The block reason belongs to the text path only: a receipt shows no
+		// auto-save explanation carry-over.
+		expect(screen.queryByTestId("auto-save-reason")).toBeNull();
+
+		// Only the explicit confirmation writes, and it never shows the undo notice.
+		fireEvent.press(screen.getByTestId("capture-receipt-confirm"));
+		await waitFor(() => expect(mockSaveEntry).toHaveBeenCalledTimes(1));
+		expect(screen.queryByTestId("auto-save-toast")).toBeNull();
+		expect(screen.queryByTestId("auto-save-undo")).toBeNull();
 	});
 });
 
