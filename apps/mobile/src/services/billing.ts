@@ -28,6 +28,21 @@ export type PaymentStatus = {
   midtrans_status?: string | null;
 };
 
+/**
+ * Checkout failures carry the HTTP status so the paywall can explain itself
+ * (403 = the payment method is not open for that account yet, 502 = provider
+ * problem). Never let a failed checkout look like a dead button.
+ */
+export class PaymentError extends Error {
+  status: number;
+
+  constructor(status: number) {
+    super(`pembayaran gagal (${status})`);
+    this.name = "PaymentError";
+    this.status = status;
+  }
+}
+
 export async function getEntitlements(supabase: SupabaseClient): Promise<Entitlements> {
   const res = await fetch(`${getApiBaseUrl()}/api/v1/me/entitlements`, {
     headers: { ...(await authHeader(supabase)) },
@@ -52,7 +67,7 @@ export async function createPayment(
     headers: { "Content-Type": "application/json", ...(await authHeader(supabase)) },
     body: JSON.stringify({ plan }),
   });
-  if (!res.ok) throw new Error(`pembayaran gagal (${res.status})`);
+  if (!res.ok) throw new PaymentError(res.status);
   return res.json();
 }
 

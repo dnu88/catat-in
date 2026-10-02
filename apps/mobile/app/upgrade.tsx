@@ -44,6 +44,7 @@ export default function UpgradeScreen() {
   const [pricing, setPricing] = useState<Pricing | null>(null);
   const [pricingError, setPricingError] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
+  const [purchaseError, setPurchaseError] = useState<string | null>(null);
   const [phase, setPhase] = useState<"idle" | "polling" | "paid" | "error">("idle");
   const [orderId, setOrderId] = useState<string | null>(null);
   const [pollError, setPollError] = useState<string | null>(null);
@@ -163,12 +164,28 @@ export default function UpgradeScreen() {
     }
 
     setBusy(plan);
+    setPurchaseError(null);
     try {
       const res = await createPayment(supabase, plan);
       await WebBrowser.openBrowserAsync(res.redirect_url);
       startPolling(res.order_id);
-    } catch {
-      // createPayment throws on failure — stay idle
+    } catch (error) {
+      // Never fail silently: a checkout that cannot open must say why, otherwise
+      // the plan cards look like a dead button. 403 = the provider is not open
+      // for this account (activation allowlist), anything else = provider/network.
+      const status =
+        typeof (error as { status?: unknown } | null)?.status === "number"
+          ? (error as { status: number }).status
+          : null;
+      setPurchaseError(
+        status === 403
+          ? isEn
+            ? "This payment method is not available for your account yet. Use another method or contact support."
+            : "Metode pembayaran ini belum tersedia untuk akun Anda. Hubungi dukungan atau pakai metode lain."
+          : isEn
+            ? "We could not open the payment page. Please try again."
+            : "Halaman pembayaran gagal dibuka. Coba lagi sebentar lagi.",
+      );
     } finally {
       setBusy(null);
     }
@@ -254,6 +271,11 @@ export default function UpgradeScreen() {
         {/* Plan cards — idle phase */}
         {phase === "idle" && allowNativePremiumPurchase ? (
           <>
+            {purchaseError ? (
+              <View testID="upgrade-purchase-error" style={styles.purchaseErrorCard}>
+                <Text style={styles.purchaseErrorText}>{purchaseError}</Text>
+              </View>
+            ) : null}
             <Pressable
               testID="upgrade-monthly"
               disabled={busy !== null}
@@ -505,6 +527,21 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
       fontSize: 48,
     },
     // Error & retry
+    purchaseErrorCard: {
+      backgroundColor: theme.colors.surface,
+      borderRadius: theme.radius.lg,
+      borderWidth: 1,
+      borderColor: theme.colors.danger,
+      paddingVertical: theme.spacing.md,
+      paddingHorizontal: theme.spacing.lg,
+      marginBottom: theme.spacing.lg,
+    },
+    purchaseErrorText: {
+      fontSize: 14,
+      color: theme.colors.danger,
+      textAlign: "center",
+      lineHeight: 20,
+    },
     errorTitle: {
       fontSize: 16,
       fontWeight: "700",

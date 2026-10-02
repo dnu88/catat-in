@@ -322,6 +322,53 @@ test("retry-check drives the poll path to paid and uses history back when it exi
   expect(mockReplace).not.toHaveBeenCalled();
 });
 
+test("shows the reason when checkout is refused for this account (403)", async () => {
+  mockCreate.mockRejectedValueOnce(Object.assign(new Error("pembayaran gagal (403)"), { status: 403 }));
+
+  const { getByText, getByTestId } = render(<UpgradeScreen />);
+  await waitFor(() => getByText(/29.000/));
+
+  fireEvent.press(getByTestId("upgrade-monthly"));
+
+  await waitFor(() => expect(getByTestId("upgrade-purchase-error")).toBeTruthy());
+  expect(
+    getByText(
+      "Metode pembayaran ini belum tersedia untuk akun Anda. Hubungi dukungan atau pakai metode lain.",
+    ),
+  ).toBeTruthy();
+  expect(mockOpen).not.toHaveBeenCalled();
+});
+
+test("shows a retry message when checkout fails for any other reason", async () => {
+  mockCreate.mockRejectedValueOnce(Object.assign(new Error("pembayaran gagal (502)"), { status: 502 }));
+
+  const { getByText, getByTestId } = render(<UpgradeScreen />);
+  await waitFor(() => getByText(/29.000/));
+
+  fireEvent.press(getByTestId("upgrade-monthly"));
+
+  await waitFor(() =>
+    expect(
+      getByText("Halaman pembayaran gagal dibuka. Coba lagi sebentar lagi."),
+    ).toBeTruthy(),
+  );
+  expect(mockOpen).not.toHaveBeenCalled();
+});
+
+test("clears the checkout error on the next attempt", async () => {
+  mockCreate.mockRejectedValueOnce(Object.assign(new Error("pembayaran gagal (502)"), { status: 502 }));
+
+  const { getByText, getByTestId, queryByTestId } = render(<UpgradeScreen />);
+  await waitFor(() => getByText(/29.000/));
+
+  fireEvent.press(getByTestId("upgrade-monthly"));
+  await waitFor(() => expect(getByTestId("upgrade-purchase-error")).toBeTruthy());
+
+  fireEvent.press(getByTestId("upgrade-monthly"));
+  await waitFor(() => expect(mockOpen).toHaveBeenCalled());
+  expect(queryByTestId("upgrade-purchase-error")).toBeNull();
+});
+
 // Leaving during the 1500 ms paid-exit delay must not navigate afterwards:
 // with history the stale timer pops an extra level, and without history the
 // replace branch would teleport the user to /(tabs)/settings.
