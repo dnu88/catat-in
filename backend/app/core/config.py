@@ -105,7 +105,10 @@ class Settings(BaseSettings):
     # Gemini (pembaca gambar/struk — DeepSeek hanya menerima teks).
     # Endpoint-nya kompatibel-OpenAI, jadi bentuk panggilannya sama seperti DeepSeek.
     GEMINI_API_KEY: str | None = None
-    GEMINI_MODEL: str = "gemini-2.5-flash"
+    GEMINI_MODEL: str = "gemini-3.8-flash"
+    # Model cadangan bila model utama sudah dipensiunkan untuk kunci baru
+    # (pernah terjadi: gemini-2.5-flash -> "no longer available to new users").
+    GEMINI_FALLBACK_MODEL: str = "gemini-flash-latest"
     GEMINI_BASE_URL: str = "https://generativelanguage.googleapis.com/v1beta/openai"
 
     # Midtrans

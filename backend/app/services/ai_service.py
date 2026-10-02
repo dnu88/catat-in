@@ -229,18 +229,28 @@ def _unreadable_receipt(confidence: float = 0.2) -> dict:
     }
 
 
-async def _gemini_receipt_json(image_b64: str, media_type: str) -> str:
-    """Baca struk lewat Gemini (endpoint kompatibel-OpenAI Google AI Studio).
+class _GeminiModelUnavailable(RuntimeError):
+    """Model Gemini yang dipakai sudah tidak tersedia untuk kunci ini.
 
-    DeepSeek tidak menerima gambar, jadi jalur struk memakai Gemini sebagai
-    provider utama dengan Claude sebagai cadangan. Model bisa diganti lewat
-    GEMINI_MODEL (mis. `gemini-2.0-flash` kalau kuota harian 2.5 sedang habis).
+    Google memensiunkan model untuk akun baru (mis. gemini-2.5-flash →
+    "no longer available to new users"), jadi model cadangan dicoba otomatis
+    sebelum menyerah ke provider berikutnya.
     """
-    if not settings.GEMINI_API_KEY:
-        raise RuntimeError("GEMINI_API_KEY belum dikonfigurasi di server.")
 
+
+def gemini_models_to_try() -> list[str]:
+    """Model utama dulu, lalu model cadangan bila berbeda."""
+    models = [settings.GEMINI_MODEL]
+    fallback = (settings.GEMINI_FALLBACK_MODEL or "").strip()
+    if fallback and fallback not in models:
+        models.append(fallback)
+    return models
+
+
+async def _gemini_chat_once(model: str, image_b64: str, media_type: str) -> str:
+    """Satu panggilan ke endpoint kompatibel-OpenAI milik Google."""
     payload = {
-        "model": settings.GEMINI_MODEL,
+        "model": model,
         "max_tokens": 2048,
         "temperature": 0,
         "messages": [
@@ -270,15 +280,40 @@ async def _gemini_receipt_json(image_b64: str, media_type: str) -> str:
         )
 
     if response.status_code >= 400:
-        raise RuntimeError(
-            f"Gemini error {response.status_code}: {response.text[:200]}"
-        )
+        body = response.text[:200]
+        if response.status_code == 404 and (
+            "no longer available" in body.lower() or "not found" in body.lower()
+        ):
+            raise _GeminiModelUnavailable(body)
+        raise RuntimeError(f"Gemini error {response.status_code}: {body}")
 
     data = response.json()
     choices = data.get("choices") or []
     if not choices:
         raise RuntimeError("Gemini tidak mengembalikan pilihan jawaban.")
     return choices[0].get("message", {}).get("content") or ""
+
+
+async def _gemini_receipt_json(image_b64: str, media_type: str) -> str:
+    """Baca struk lewat Gemini (endpoint kompatibel-OpenAI Google AI Studio).
+
+    DeepSeek tidak menerima gambar, jadi jalur struk memakai Gemini sebagai
+    provider utama dengan Claude sebagai cadangan. Model diatur lewat
+    GEMINI_MODEL, dan bila model itu sudah dipensiunkan untuk kunci baru,
+    GEMINI_FALLBACK_MODEL dicoba otomatis sebelum menyerah.
+    """
+    if not settings.GEMINI_API_KEY:
+        raise RuntimeError("GEMINI_API_KEY belum dikonfigurasi di server.")
+
+    last_error: Exception | None = None
+    for model in gemini_models_to_try():
+        try:
+            return await _gemini_chat_once(model, image_b64, media_type)
+        except _GeminiModelUnavailable as exc:
+            last_error = exc
+            continue
+
+    raise RuntimeError(f"Model Gemini tidak tersedia: {last_error}") from last_error
 
 
 async def _anthropic_receipt_json(image_b64: str, media_type: str) -> str:

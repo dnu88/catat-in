@@ -52,7 +52,8 @@ services:
       - DEEPSEEK_MODEL=${DEEPSEEK_MODEL:-deepseek-flash}
       # ── Pembaca gambar/struk (DeepSeek tidak menerima gambar) ──
       - GEMINI_API_KEY=${GEMINI_API_KEY:-}
-      - GEMINI_MODEL=${GEMINI_MODEL:-gemini-2.5-flash}
+      - GEMINI_MODEL=${GEMINI_MODEL:-gemini-3.8-flash}
+      - GEMINI_FALLBACK_MODEL=${GEMINI_FALLBACK_MODEL:-gemini-flash-latest}
       - GEMINI_BASE_URL=${GEMINI_BASE_URL:-https://generativelanguage.googleapis.com/v1beta/openai}
       # ── Midtrans ──────────────────────────────────────
       - MIDTRANS_SERVER_KEY=${MIDTRANS_SERVER_KEY:-}
