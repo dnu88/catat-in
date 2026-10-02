@@ -6,6 +6,8 @@
 apps/mobile/.env.golive
 # Monitoring stack secrets (redundant dengan .env di atas, eksplisit untuk kejelasan)
 ops/monitoring/.env
+# Env runtime container produksi (hasil ekstraksi dari container live — JANGAN di-commit)
+.env.production-runtime
 .tmp/
 tmp/
 .claude/
