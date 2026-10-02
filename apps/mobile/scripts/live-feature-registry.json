@@ -127,5 +127,23 @@
       "apps/mobile/__tests__/transactions-swipe-actions.test.tsx"
     ],
     "verification": "Dashboard must render review CTA when count>0, transactions must show 'Perlu dicek' filter chip, and the review filter must hide clean transactions."
+  },
+  {
+    "id": "capture.text_autosave",
+    "description": "A single clear text note is saved without review, with a 10s undo/edit notice; anything uncertain still stops at review with a readable reason. Receipts and photos always keep the confirmation step.",
+    "critical": true,
+    "markers": [
+      "auto-save-toast",
+      "auto-save-undo",
+      "auto-save-edit",
+      "auto-save-reason"
+    ],
+    "tests": [
+      "apps/mobile/src/features/transaction-entry/auto-save.test.ts",
+      "apps/mobile/src/services/auto-save-metrics.test.ts",
+      "apps/mobile/src/components/transaction-entry/AutoSaveToast.test.tsx",
+      "apps/mobile/__tests__/capture-autosave.test.tsx"
+    ],
+    "verification": "Input 'beli kopi 35rb' must be written immediately and show the undo notice; 'bayar listrik' (no amount) or a two-transaction sentence must stop at review with a reason; a receipt scan must never auto-save."
   }
 ]

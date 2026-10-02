@@ -33,5 +33,9 @@
   "transactions-period-row",
   "home-transaction-review-card",
   "home-review-action",
-  "transactions-review-chip"
+  "transactions-review-chip",
+  "auto-save-toast",
+  "auto-save-undo",
+  "auto-save-edit",
+  "auto-save-reason"
 ]
