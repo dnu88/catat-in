@@ -18,6 +18,7 @@ python3 "$HERE/buat-struk-uji.py"
 
 docker run --rm \
   --env-file .env.production-runtime \
+  -e PYTHONPATH=/app \
   -v "$DIR/backend:/app" \
   -v "$HERE/verifikasi-struk.py:/tmp/verifikasi-struk.py:ro" \
   -v "$IMG:/tmp/struk-uji.png:ro" \

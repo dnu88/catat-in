@@ -57,11 +57,17 @@ Catatan insiden & riwayat: `~/apps/kaswise/.hermes/plans/2026-10-02_070744-kaswi
 
 - Provider teks (DeepSeek) **tidak menerima gambar**, jadi jalur struk punya rantai sendiri:
   **Gemini (utama) → Claude (cadangan)**. Lihat `active_vision_provider()` di `app/services/ai_service.py`.
-- Kunci: `GEMINI_API_KEY` + `GEMINI_MODEL` (default `gemini-2.5-flash`) di `.env.production-runtime`,
-  diteruskan compose. Gemini dipilih karena gratis (Google AI Studio) tanpa kartu kredit.
+- Kunci: `GEMINI_API_KEY` + `GEMINI_MODEL` (default `gemini-3.8-flash`) + `GEMINI_FALLBACK_MODEL`
+  (`gemini-flash-latest`) di `.env.production-runtime`, diteruskan compose. Gemini dipilih karena
+  gratis (Google AI Studio) tanpa kartu kredit.
+- **Pelajaran model (pernah kejadian):** Google memensiunkan model untuk kunci **baru** —
+  `gemini-2.5-flash` menjawab `404 "no longer available to new users"` padahal kuncinya valid.
+  Karena itu model utama + model cadangan dicoba berurutan (`gemini_models_to_try()`), baru menyerah
+  ke Claude. Kalau struk gagal dengan pesan OCR, cek dulu nama model yang masih hidup di
+  `GET /v1beta/openai/models`, lalu ubah `GEMINI_MODEL` di file runtime (tanpa rebuild).
 - Isi/ganti kunci **tanpa menempel di chat**: `bash ~/simpan-kunci-gemini.sh` (input tersembunyi,
   mencetak hanya panjang + awalan kunci).
-- Kalau kuota harian Gemini sedang habis, ganti sementara: `GEMINI_MODEL=gemini-2.0-flash` di file runtime.
+- Kalau kuota harian Gemini sedang habis, ganti sementara `GEMINI_MODEL` di file runtime.
 - Tanpa satu pun kunci gambar, struk dianggap **tidak terbaca** (bukan error) supaya app tetap jalan;
   kalau kunci ada tapi semua provider gagal, endpoint membalas `502 Layanan OCR sedang tidak tersedia`.
 
