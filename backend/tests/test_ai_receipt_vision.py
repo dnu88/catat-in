@@ -153,3 +153,49 @@ def test_code_fenced_json_is_accepted(monkeypatch):
 
     out = _run(ai_service.analyze_receipt_image(b"fake-bytes", "image/jpeg"))
     assert out["total_amount"] == 125000
+
+
+def test_retired_model_falls_through_to_the_fallback_model(monkeypatch):
+    """Pelajaran produksi: gemini-2.5-flash dipensiunkan untuk kunci baru.
+
+    404 "no longer available" harus beralih ke model cadangan, bukan mematikan
+    fitur scan struk.
+    """
+    monkeypatch.setattr(settings, "GEMINI_API_KEY", "gemini-key", raising=False)
+    monkeypatch.setattr(settings, "GEMINI_MODEL", "gemini-2.5-flash", raising=False)
+    monkeypatch.setattr(
+        settings, "GEMINI_FALLBACK_MODEL", "gemini-flash-latest", raising=False
+    )
+
+    tried: list[str] = []
+
+    async def chat_once(model, image_b64, media_type):
+        tried.append(model)
+        if model == "gemini-2.5-flash":
+            raise ai_service._GeminiModelUnavailable(
+                "This model is no longer available to new users"
+            )
+        return RECEIPT_JSON
+
+    monkeypatch.setattr(ai_service, "_gemini_chat_once", chat_once)
+
+    out = _run(ai_service.analyze_receipt_image(b"fake-bytes", "image/jpeg"))
+
+    assert ai_service.gemini_models_to_try() == [
+        "gemini-2.5-flash",
+        "gemini-flash-latest",
+    ]
+    assert tried == ["gemini-2.5-flash", "gemini-flash-latest"]
+    assert out["total_amount"] == 125000
+
+
+def test_all_gemini_models_retired_raises_for_the_next_provider(monkeypatch):
+    monkeypatch.setattr(settings, "GEMINI_API_KEY", "gemini-key", raising=False)
+
+    async def chat_once(model, image_b64, media_type):
+        raise ai_service._GeminiModelUnavailable("no longer available")
+
+    monkeypatch.setattr(ai_service, "_gemini_chat_once", chat_once)
+
+    with pytest.raises(RuntimeError):
+        _run(ai_service.analyze_receipt_image(b"fake-bytes", "image/jpeg"))
