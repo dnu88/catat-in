@@ -133,6 +133,26 @@ describe("validateDraft", () => {
 		);
 	});
 
+	// Production shape: the draft carries the label in the active language
+	// (e.g. "Makan & Minum") while the stored category row is English
+	// ("Food & Beverage"). A literal match rejected every localised draft and
+	// silently disabled auto-save for Indonesian users.
+	test("accepts a localised label for a category stored under its English name", () => {
+		const stored: DraftValidationContext = {
+			...ctx,
+			categories: [{ name: "Food & Beverage" }, { name: "Transport" }],
+		};
+
+		expect(validateDraft(draft({ category: "Makan & Minum" }), stored)).toEqual({});
+		expect(validateDraft(draft({ category: "Transportasi" }), stored)).toEqual({});
+		expect(validateDraft(draft({ category: "food & beverage" }), stored)).toEqual(
+			{},
+		);
+		expect(validateDraft(draft({ category: "Kategori Ngawur" }), stored).category).toBe(
+			"UNKNOWN_CATEGORY",
+		);
+	});
+
 	test("allows any category when the context has no category options yet", () => {
 		expect(
 			validateDraft(draft({ category: "Kategori Baru" }), { ...ctx, categories: [] }),

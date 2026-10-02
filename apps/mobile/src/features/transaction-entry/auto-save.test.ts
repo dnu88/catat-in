@@ -37,6 +37,31 @@ describe("shouldAutoSaveEntry", () => {
 		expect(decide([draft()])).toEqual({ auto: true, reason: null });
 	});
 
+	it("auto-saves a draft whose category is labelled in the active language", () => {
+		// Live bug guard: drafts built by the text extractor carry the label in
+		// the active language, while the wallet/category list stores the English
+		// name. Both must be treated as the same category.
+		const storedCategories: DraftValidationContext = {
+			...validation,
+			categories: [{ name: "Food & Beverage" }, { name: "Salary" }],
+		};
+
+		expect(
+			shouldAutoSaveEntry({
+				source: "text",
+				drafts: [draft({ category: "Makan & Minum" })],
+				validation: storedCategories,
+			}),
+		).toEqual({ auto: true, reason: null });
+		expect(
+			shouldAutoSaveEntry({
+				source: "text",
+				drafts: [draft({ transactionType: "income", category: "Gaji" })],
+				validation: storedCategories,
+			}),
+		).toEqual({ auto: true, reason: null });
+	});
+
 	it("accepts income", () => {
 		expect(
 			decide([draft({ transactionType: "income", category: "Gaji" })]),

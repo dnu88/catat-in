@@ -1,4 +1,5 @@
 import type { TransactionType } from "../../services/transactions";
+import { areCategoryNamesEquivalent } from "../../services/category-taxonomy";
 
 /**
  * Transaction entry draft contract.
@@ -106,12 +107,6 @@ function activeWalletIds(wallets: WalletOption[]): Set<string> {
 	);
 }
 
-function categoryNames(categories: CategoryOption[]): Set<string> {
-	return new Set(
-		categories.map((category) => category.name?.trim().toLowerCase()).filter(Boolean),
-	);
-}
-
 /**
  * Fields still carrying extractor uncertainty that the user has not accepted.
  * Saving is blocked while this is non-empty, so a doubtful AI read cannot be
@@ -169,7 +164,16 @@ export function validateDraft(
 	const name = draft.category?.trim();
 	if (!name) {
 		errors.category = "MISSING_CATEGORY";
-	} else if (context.categories.length > 0 && !categoryNames(context.categories).has(name.toLowerCase())) {
+	} else if (
+		context.categories.length > 0 &&
+		// Categories are compared by canonical identity, not by literal string:
+		// the extractor stores the label in the active language while the wallet
+		// list carries the stored (often English) name, and both describe the
+		// same category. A literal match would reject every localised draft.
+		!context.categories.some((category) =>
+			areCategoryNamesEquivalent(category.name, name),
+		)
+	) {
 		errors.category = "UNKNOWN_CATEGORY";
 	}
 
