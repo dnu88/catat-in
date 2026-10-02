@@ -7,6 +7,7 @@ type FeatureOverride = {
 	simpleNavigation?: boolean;
 	voiceNote?: boolean;
 	transactionEntryV2?: boolean;
+	aiAutoSaveText?: boolean;
 };
 
 function featureOverrides() {
@@ -39,6 +40,17 @@ export const featureFlags = {
 		return (
 			featureOverrides()?.transactionEntryV2 ??
 			flagEnabled(processEnv?.EXPO_PUBLIC_FEATURE_TRANSACTION_ENTRY_V2)
+		);
+	},
+	/**
+	 * Gates text auto-save: one clear sentence is written without review, with a
+	 * 10s undo notice. Kept independent from `transactionEntryV2` so automatic
+	 * saving can be rolled back on its own without reverting the entry flow.
+	 */
+	get aiAutoSaveText() {
+		return (
+			featureOverrides()?.aiAutoSaveText ??
+			flagEnabled(processEnv?.EXPO_PUBLIC_FEATURE_AI_AUTOSAVE_TEXT)
 		);
 	},
 };

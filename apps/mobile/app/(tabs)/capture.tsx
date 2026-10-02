@@ -84,7 +84,14 @@ import {
 	textDraftsToDrafts,
 	voiceExtractionToDraft,
 } from "../../src/features/transaction-entry/adapters";
+import { AutoSaveToast } from "../../src/components/transaction-entry/AutoSaveToast";
 import { TransactionReview } from "../../src/components/transaction-entry/TransactionReview";
+import {
+	shouldAutoSaveEntry,
+	type AutoSaveBlockReason,
+} from "../../src/features/transaction-entry/auto-save";
+import { recordAutoSaveOutcome } from "../../src/services/auto-save-metrics";
+import { deleteTransaction } from "../../src/services/transactions";
 import { TransactionSuccess } from "../../src/components/transaction-entry/TransactionSuccess";
 import { EntrySheet } from "../../src/components/transaction-entry/EntrySheet";
 import { TransactionDatePickerSheet } from "../../src/components/transaction-entry/TransactionDatePickerSheet";
@@ -209,6 +216,41 @@ function resolveAiCategoryName(
 	);
 	if (existing) return getLocalizedCategoryName(existing.name, language);
 	return getLocalizedCategoryName(rawName, language) || (language === "en" ? "Other expenses" : "Lainnya");
+}
+
+function extractionUnclearOf(extraction: unknown): string | null {
+	if (!extraction || typeof extraction !== "object") return null;
+	const unclear = (extraction as { unclear?: unknown }).unclear;
+	return typeof unclear === "string" && unclear.trim() ? unclear : null;
+}
+
+/** Short, actionable reason shown above review when auto-save is refused. */
+function autoSaveReasonText(reason: AutoSaveBlockReason, isEn: boolean) {
+	const id: Record<AutoSaveBlockReason, string> = {
+		no_drafts: "Tidak ada transaksi yang terbaca. Coba tulis ulang.",
+		source_not_text: "Struk dan foto selalu perlu dikonfirmasi dulu.",
+		multi_transaction: "Ada lebih dari satu transaksi. Periksa dulu.",
+		missing_amount: "Nominal belum disebutkan. Isi dulu.",
+		low_confidence: "AI kurang yakin. Periksa dulu.",
+		generic_category: "Kategori belum jelas. Pilih kategorinya.",
+		transfer_requires_target: "Transfer perlu dompet tujuan.",
+		extractor_unsure: "Ada bagian yang belum jelas. Periksa dulu.",
+		unresolved_fields: "Ada isian yang belum pasti. Periksa dulu.",
+		invalid_draft: "Ada isian yang belum lengkap. Periksa dulu.",
+	};
+	const en: Record<AutoSaveBlockReason, string> = {
+		no_drafts: "No transaction could be read. Try wording it again.",
+		source_not_text: "Receipts and photos always need confirmation.",
+		multi_transaction: "More than one transaction. Check them first.",
+		missing_amount: "No amount was mentioned. Fill it in.",
+		low_confidence: "The AI is not sure. Check this first.",
+		generic_category: "The category is unclear. Pick one.",
+		transfer_requires_target: "A transfer needs a destination wallet.",
+		extractor_unsure: "Something was unclear. Check this first.",
+		unresolved_fields: "Some fields are uncertain. Check this first.",
+		invalid_draft: "Some fields are incomplete. Check this first.",
+	};
+	return isEn ? en[reason] : id[reason];
 }
 
 function aiExtractionToDrafts(
@@ -441,6 +483,7 @@ export default function CaptureScreen() {
 	// Review-first entry flow. Off by default so every legacy branch below stays
 	// exactly as it was until the flag is rolled forward.
 	const entryV2 = featureFlags.transactionEntryV2;
+	const aiAutoSaveText = featureFlags.aiAutoSaveText;
 	const searchParams = useLocalSearchParams() as Record<
 		string,
 		string | string[] | undefined
@@ -530,6 +573,13 @@ export default function CaptureScreen() {
 		Record<string, DraftFieldErrors>
 	>({});
 	const [entrySaved, setEntrySaved] = useState<SaveEntryResult | null>(null);
+	// Auto-save (text only): the decision, the reason shown when it is refused,
+	// and the undo window that follows a successful automatic write.
+	const [autoSavePending, setAutoSavePending] = useState(false);
+	const [autoSaveReason, setAutoSaveReason] =
+		useState<AutoSaveBlockReason | null>(null);
+	const [autoSaveToastVisible, setAutoSaveToastVisible] = useState(false);
+	const autoSavePendingRef = useRef(false);
 	const [entryPicker, setEntryPicker] = useState<{
 		key: string;
 		kind: EntryPickerKind;
@@ -1464,15 +1514,41 @@ export default function CaptureScreen() {
 				localDrafts.length >= aiDrafts.length ? localDrafts : aiDrafts;
 			if (quickDrafts.length === 0) throw new Error(tx.amountRequired);
 
+			const readyDrafts = textDraftsToDrafts({
+				classified: quickDrafts,
+				fallbackInput: value,
+			}).map(attachWallet);
+			// One clear sentence may be written without asking; anything else
+			// stops at review with a reason the user can act on.
+			const autoSaveDecision = shouldAutoSaveEntry({
+				source: "text",
+				drafts: readyDrafts,
+				extractionUnclear: extractionUnclearOf(aiExtraction),
+				validation: {
+					wallets: wallets.map((wallet) => ({
+						id: wallet.id,
+						name: wallet.name,
+						is_active: wallet.is_active,
+					})),
+					categories: categoryOptions.map((category) => ({
+						name: category.name,
+					})),
+					canCreate,
+				},
+			});
+			setAutoSaveReason(autoSaveDecision.reason);
+
 			entryDispatch({
 				type: "drafts-ready",
 				generation,
 				source: "text",
-				drafts: textDraftsToDrafts({
-					classified: quickDrafts,
-					fallbackInput: value,
-				}).map(attachWallet),
+				drafts: readyDrafts,
 			});
+
+			if (autoSaveDecision.auto && aiAutoSaveText) {
+				autoSavePendingRef.current = true;
+				setAutoSavePending(true);
+			}
 		} catch (submitError) {
 			Sentry.captureException(submitError);
 			entryDispatch({ type: "processing-cancelled" });
@@ -1487,7 +1563,7 @@ export default function CaptureScreen() {
 	// Single save path for every reviewed source. requestId is minted once per
 	// attempt and only reused for a retry of the identical payload;
 	// draftFingerprint is the payload identity the server checks for conflicts.
-	const saveReviewedDrafts = async () => {
+	const saveReviewedDrafts = async (options?: { auto?: boolean }) => {
 		if (!canCreate) {
 			setError(tx.viewerNoticeV2);
 			return;
@@ -1549,6 +1625,12 @@ export default function CaptureScreen() {
 					savedKeys: drafts.map((draft) => draft.key),
 				});
 				void loadWalletOptions();
+				if (options?.auto) {
+					// Identical guarded write as a manual save; the notice only opens
+					// the 10s window in which the user can undo or edit it.
+					setAutoSaveToastVisible(true);
+					void recordAutoSaveOutcome("saved");
+				}
 			} catch (saveError) {
 				Sentry.captureException(saveError);
 				const persistenceError =
@@ -1599,10 +1681,47 @@ export default function CaptureScreen() {
 		});
 	};
 
-	const entryReviewVisible = entryV2 && entryState.phase === "review";
+	// Auto-save goes through the same review gate as a manual save: the drafts
+	// must land in the reducer first, so the guarded path sees a real phase.
+	useEffect(() => {
+		if (!entryV2) return;
+		if (!autoSavePendingRef.current) return;
+		if (entryState.phase !== "review") return;
+		autoSavePendingRef.current = false;
+		setAutoSavePending(false);
+		void saveReviewedDrafts({ auto: true });
+		// saveReviewedDrafts is recreated every render; the phase is the trigger.
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [entryV2, entryState.phase]);
+
+	const undoAutoSavedEntry = async () => {
+		const savedForUndo = entrySaved?.transactions ?? [];
+		setAutoSaveToastVisible(false);
+		void recordAutoSaveOutcome("undone");
+		entryDispatch({ type: "reset" });
+		for (const savedTransaction of savedForUndo) {
+			try {
+				await deleteTransaction(savedTransaction.id, activeContext);
+			} catch (undoError) {
+				Sentry.captureException(undoError);
+			}
+		}
+		void loadWalletOptions();
+	};
+
+	const editAutoSavedEntry = () => {
+		setAutoSaveToastVisible(false);
+		void recordAutoSaveOutcome("edited");
+		entryDispatch({ type: "review-again" });
+	};
+
+	const entryReviewVisible =
+		entryV2 && entryState.phase === "review" && !autoSavePending;
 	const entryBusy =
 		entryV2 &&
-		(entryState.phase === "processing" || entryState.phase === "saving");
+		(entryState.phase === "processing" ||
+			entryState.phase === "saving" ||
+			autoSavePending);
 	const entrySuccessVisible =
 		entryV2 && (entryState.phase === "success" || reconcileState === "found");
 	const entryErrorVisible =
@@ -1838,6 +1957,11 @@ export default function CaptureScreen() {
 
 				{entryReviewVisible ? (
 					<View key="capture-entry-review" testID="capture-entry-review" style={styles.inputArea}>
+						{autoSaveReason && entryState.source === "text" ? (
+							<Text testID="auto-save-reason" style={styles.feedbackSub}>
+								{autoSaveReasonText(autoSaveReason, isEn)}
+							</Text>
+						) : null}
 						{entryState.source === "image" ? (
 							<View testID="capture-receipt-preview" style={styles.receiptDraftCard}>
 								<Text style={styles.suggestionLabel}>{tx.receiptPreviewTitle}</Text>
@@ -1958,7 +2082,7 @@ export default function CaptureScreen() {
 									styles.submitButton,
 									(entryState.phase === "saving" || receiptDiscrepancyBlocked) && { opacity: 0.7 },
 								]}
-								onPress={saveReviewedDrafts}
+								onPress={() => void saveReviewedDrafts()}
 								disabled={entryState.phase === "saving" || receiptDiscrepancyBlocked}
 							>
 								<Text style={styles.submitButtonText}>{tx.saveReceiptTransaction}</Text>
@@ -2243,6 +2367,16 @@ export default function CaptureScreen() {
 
 				<View style={{ height: 100 }} />
 			</ScrollView>
+			{entryV2 && autoSaveToastVisible && entryState.phase === "success" ? (
+				<AutoSaveToast
+					title={`${isEn ? "Saved" : "Tersimpan"}: ${successDrafts[0]?.category ?? ""} · Rp${(successAmount ?? 0).toLocaleString("id-ID")}`}
+					actionLabel={isEn ? "Undo" : "Batalkan"}
+					editLabel={isEn ? "Edit" : "Ubah"}
+					onUndo={() => void undoAutoSavedEntry()}
+					onEdit={editAutoSavedEntry}
+					onExpire={() => setAutoSaveToastVisible(false)}
+				/>
+			) : null}
 		</PageEntrance>
 	);
 }

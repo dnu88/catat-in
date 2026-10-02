@@ -59,6 +59,7 @@ export type EntryAction =
 	| { type: "save-failed"; generation: number; kind: SaveFailureKind; message: string }
 	| { type: "retry" }
 	| { type: "context-changed"; context: ContextSnapshot }
+	| { type: "review-again" }
 	| { type: "reset" };
 
 export function createInitialEntryState(context: ContextSnapshot): EntryState {
@@ -129,6 +130,12 @@ export function entryReducer(state: EntryState, action: EntryAction): EntryState
 		case "recording-cancelled":
 			if (state.phase !== "recording") return state;
 			return { ...state, phase: "idle" };
+
+		case "review-again":
+			// Tapping an auto-saved notice hands the very same drafts back to the
+			// review screen, so correcting them never means retyping the sentence.
+			if (state.phase !== "success") return state;
+			return { ...state, phase: "review", savedKeys: [], error: null };
 
 		case "processing-started":
 			// A new request invalidates any in-flight result from the previous one.
