@@ -706,3 +706,42 @@ Rantai sebab (dibuktikan berurutan, bukan dugaan):
 **Keputusan rilis:** dibiarkan V2 ON karena (a) jalur manual sudah terbukti di produksi, (b) mematikan V2 tidak memulihkan AI sama sekali. Rollback tetap tersedia instan bila user memilih lebih hati-hati.
 
 **Catatan pengamatan (belum dikonfirmasi):** pada tangkapan layar user, blok "TUJUAN TRANSAKSI / Simpan ke …" tidak terlihat, padahal pada verifikasi saya tampil. Perlu dicek ulang setelah AI pulih.
+
+## 23. Tindak lanjut pasca-auto-save (2026-10-03)
+
+Tiga pekerjaan yang tersisa setelah auto-save live, semuanya selesai/diuji:
+
+### (a) Folder deploy pindah dari `/tmp` — SELESAI
+`git worktree move /tmp/kaswise-finance-editorial-deploy → ~/services/kaswise-finance-editorial-deploy`
+(nama folder dipertahankan supaya nama project compose tidak berubah). Bukti aman: `docker compose ps`
+di folder baru mengenali container `kaswise-backend` yang sama (Up, healthy), `app.kaswise.com` 200,
+tidak ada container dibuat ulang. Isi working tree yang tadinya hanya hidup di sana (compose hardening
++ kode backend live) kini ter-commit di branch `prod/kaswise-backend-live`, dan `.env.production-runtime`
+diblokir dari git. Cara rebuild + wajib-restart-proxy terdokumentasi di `README-DEPLOY.md`.
+
+### (b) Penjaga test jalur struk — SELESAI
+Harness struk ternyata sudah ada (`receipt-entry-mode.test.tsx`, 4 test) — yang hilang hanya flag-nya.
+Flag `aiAutosaveText` dinyalakan di berkas itu + test baru: struk "jelas & satu transaksi" tetap berhenti
+di konfirmasi, tidak ada bar auto-save, tidak ada baris alasan terbawa dari jalur teks, `saveEntry` baru
+terpanggil setelah konfirmasi. Hasil: 9/9 hijau; suite penuh **88/88, 768 lulus, 0 gagal**; `tsc` bersih.
+Catatan: menambahkan `act()` di antara mount layar dan query berikutnya membuat test menggantung —
+pakai pola `waitFor` yang sudah ada.
+
+### (c) Scan struk/foto hidup kembali (Gemini) — SELESAI
+Claude masih jadi jalur struk padahal kreditnya habis → fitur mati. Sekarang: **Gemini (utama) → Claude (cadangan)**,
+karena DeepSeek tidak menerima gambar. Kunci Gemini (gratis, Google AI Studio) disimpan lewat
+`bash ~/simpan-kunci-gemini.sh` (input tersembunyi, tidak pernah masuk chat), diteruskan compose.
+
+- **Pelajaran model:** percobaan pertama gagal `HTTP 404 — "gemini-2.5-flash is no longer available to
+  new users"` padahal kuncinya valid (terbukti: `GET /v1beta/openai/models` → 200, daftar model tampil).
+  Default kini `gemini-3.8-flash` + `GEMINI_FALLBACK_MODEL=gemini-flash-latest`, dan kode otomatis
+  mencoba model berikutnya saat model utama ditolak sebagai tidak tersedia.
+- **Verifikasi:** 16 test backend hijau (payload gambar sebagai data-URI, fallback provider, peralihan
+  model, JSON rusak, code fence); uji HTTP sungguhan ke mock → `path=/v1beta/openai/chat/completions`;
+  lalu uji gambar sungguhan di dalam image produksi (`tools/uji-struk.sh`, struk sintetis total Rp 88.000)
+  → `provider gemini · gemini-3.8-flash · total 88000 · 4 item · confidence 0.98 · HASIL: LOLOS`.
+- **Rilis:** image backend dibangun ulang + container diganti + `nginx-proxy-manager` direstart;
+  `app.kaswise.com` 200, container healthy, jalur teks DeepSeek masih benar (`beli kopi 35rb` → 35000).
+  Kedua endpoint AI membalas `401 Token tidak ditemukan` dari luar (Cloudflare → nginx → container baru),
+  jadi routing benar dan tidak ada lagi trafik nyangkut ke container lama.
+- **Sisa:** uji scan struk asli dari HP oleh user (struk/foto tetap wajib konfirmasi sebelum tersimpan).
