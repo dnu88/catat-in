@@ -23,6 +23,7 @@ const ROLLOUT_FLAG_ENV_KEYS = [
   'EXPO_PUBLIC_FEATURE_SIMPLE_NAVIGATION',
   'EXPO_PUBLIC_FEATURE_VOICE_NOTE',
   'EXPO_PUBLIC_FEATURE_IMPORT_STATEMENT',
+  'EXPO_PUBLIC_FEATURE_TRANSACTION_ENTRY_V2',
 ]
 
 // Committed, reviewable rollout state — one file, so a rollout change is a

@@ -39,6 +39,22 @@ import {
 	getLocalizedCategoryName,
 } from "../../src/services/category-taxonomy";
 import { resolveCategoryVisual } from "../../src/theme/category-visuals";
+import {
+	canSaveDraft,
+	createDraft,
+	localToday,
+	validateDraft,
+	type CategoryOption as DraftCategoryOption,
+	type TransactionDraft,
+	type WalletOption as DraftWalletOption,
+} from "../../src/features/transaction-entry/draft";
+import {
+	TransactionFields,
+	type EntryPickerKind,
+} from "../../src/components/transaction-entry/TransactionFields";
+import { EntrySheet } from "../../src/components/transaction-entry/EntrySheet";
+import { entryCopy } from "../../src/components/transaction-entry/copy";
+import { featureFlags } from "../../src/config/features";
 
 type CategoryOption = {
 	name: string;
@@ -240,6 +256,18 @@ export default function TransactionNewScreen() {
 	const [merchant, setMerchant] = useState("");
 	const [note, setNote] = useState("");
 
+	// Compact (review-first) manual entry, flag-gated by
+	// featureFlags.transactionEntryV2. The draft lives alongside the legacy
+	// field state so the classic form keeps working untouched when the flag is
+	// off, while the compact branch reuses the shared TransactionFields/draft
+	// contract that the AI review flow already ships.
+	const compactMode = featureFlags.transactionEntryV2;
+	const [draft, setDraft] = useState<TransactionDraft>(() =>
+		createDraft({ source: "manual" }),
+	);
+	const [compactDate, setCompactDate] = useState<string>(() => localToday());
+	const [picker, setPicker] = useState<EntryPickerKind | null>(null);
+
 	const loadRequestRef = useRef(0);
 
 	const loadInitialData = useCallback(async () => {
@@ -291,6 +319,14 @@ export default function TransactionNewScreen() {
 					setWallets(activeWallets);
 					setWalletId(activeWallets[0]?.id ?? null);
 					setCategories(categoryOptions);
+					setDraft(
+						createDraft({
+							source: "manual",
+							date: localToday(),
+							walletId: activeWallets[0]?.id ?? null,
+						}),
+					);
+					setCompactDate(localToday());
 					setError(tx.notFound);
 					return;
 				}
@@ -330,6 +366,26 @@ export default function TransactionNewScreen() {
 				setDraftDate(nextDate);
 				setMerchant(transaction.merchant || "");
 				setNote(transaction.note || "");
+				// Hydrate the compact draft from every saved field so an edit
+				// starts from the real row and never loses merchant/description.
+				setDraft(
+					createDraft({
+						source: "manual",
+						transactionType:
+							transaction.transaction_type || transaction.type || "expense",
+						amount:
+							Number(transaction.amount ?? transaction.nominal ?? 0) > 0
+								? Number(transaction.amount ?? transaction.nominal ?? 0)
+								: null,
+						category: nextCategory,
+						description: transaction.description || transaction.catatan || "",
+						walletId: nextWalletId,
+						targetWalletId: transaction.target_wallet_id ?? null,
+						date: nextDate,
+						merchant: transaction.merchant || null,
+					}),
+				);
+				setCompactDate(nextDate);
 			} else {
 				// When this route is reused after leaving edit mode, clear any stale
 				// transaction values so Manual Entry always starts from a blank form.
@@ -344,6 +400,14 @@ export default function TransactionNewScreen() {
 				setDraftDate(nextDate);
 				setMerchant("");
 				setNote("");
+				setDraft(
+					createDraft({
+						source: "manual",
+						date: localToday(),
+						walletId: activeWallets[0]?.id ?? null,
+					}),
+				);
+				setCompactDate(localToday());
 			}
 		} catch (e) {
 			if (!isCurrentRequest()) return;
@@ -401,6 +465,101 @@ export default function TransactionNewScreen() {
 		setMerchant("");
 		setNote("");
 	}, [wallets]);
+
+	const resetCompactForm = useCallback(() => {
+		setDraft(
+			createDraft({
+				source: "manual",
+				date: localToday(),
+				walletId: wallets[0]?.id ?? null,
+			}),
+		);
+		setCompactDate(localToday());
+		setPicker(null);
+		setNote("");
+	}, [wallets]);
+
+	const handleDraftChange = useCallback((patch: Partial<TransactionDraft>) => {
+		setDraft((previous) => {
+			const next = { ...previous, ...patch };
+			// A transfer may never point at its own source wallet.
+			if (patch.walletId !== undefined && next.targetWalletId === next.walletId) {
+				next.targetWalletId = null;
+			}
+			return next;
+		});
+	}, []);
+
+	const openCompactPicker = useCallback(
+		(kind: EntryPickerKind) => {
+			if (kind === "date") setCompactDate(draft.date);
+			setPicker(kind);
+		},
+		[draft.date],
+	);
+
+	const closeCompactPicker = useCallback(() => setPicker(null), []);
+
+	const cancelCompactDate = useCallback(() => {
+		// Backdrop/close means "discard": keep the saved draft date untouched.
+		setCompactDate(draft.date);
+		setPicker(null);
+	}, [draft.date]);
+
+	const confirmCompactDate = useCallback(() => {
+		handleDraftChange({ date: compactDate });
+		setPicker(null);
+	}, [compactDate, handleDraftChange]);
+
+	const draftWallets = useMemo<DraftWalletOption[]>(
+		() => wallets.map(({ id, name, is_active }) => ({ id, name, is_active })),
+		[wallets],
+	);
+
+	const draftCategories = useMemo<DraftCategoryOption[]>(() => {
+		const base = categories.map(({ name }) => ({ name }));
+		if (
+			draft.category &&
+			!base.some((option) => areCategoryNamesEquivalent(option.name, draft.category))
+		) {
+			// Keep a hydrated custom category valid so an edit can be re-saved.
+			return [{ name: draft.category }, ...base];
+		}
+		return base;
+	}, [categories, draft.category]);
+
+	const draftValidationContext = useMemo(
+		() => ({ wallets: draftWallets, categories: draftCategories, canCreate }),
+		[draftWallets, draftCategories, canCreate],
+	);
+
+	const draftErrors = useMemo(
+		() => (compactMode ? validateDraft(draft, draftValidationContext) : {}),
+		[compactMode, draft, draftValidationContext],
+	);
+
+	const compactCanSubmit =
+		compactMode &&
+		canCreate &&
+		canSaveDraft(draft, draftValidationContext) &&
+		!submitting;
+
+	const compactCategoryOptions = useMemo(() => {
+		const names = categories
+			.filter(
+				(option) =>
+					option.type === draft.transactionType &&
+					(isEditMode ? option.isDefault : true),
+			)
+			.map((option) => option.name);
+		if (
+			draft.category &&
+			!names.some((name) => areCategoryNamesEquivalent(name, draft.category))
+		) {
+			return [draft.category, ...names];
+		}
+		return names;
+	}, [categories, draft.transactionType, draft.category, isEditMode]);
 
 	const onSubmit = async () => {
 		if (!canCreate) {
@@ -468,6 +627,76 @@ export default function TransactionNewScreen() {
 		}
 	};
 
+	const onSubmitCompact = async () => {
+		if (!canCreate) {
+			setError(tx.readonlyError);
+			return;
+		}
+		const errors = validateDraft(draft, draftValidationContext);
+		if (Object.keys(errors).length > 0) {
+			setError(
+				draft.transactionType === "transfer"
+					? tx.transferIncomplete
+					: tx.incompleteError,
+			);
+			return;
+		}
+		const sourceName =
+			wallets.find((wallet) => wallet.id === draft.walletId)?.name ?? "Sumber";
+		const targetName =
+			wallets.find((wallet) => wallet.id === draft.targetWalletId)?.name ?? "Tujuan";
+		setSubmitting(true);
+		setError(null);
+		setSuccessMessage(null);
+		const payload = {
+			wallet_id: draft.walletId,
+			target_wallet_id:
+				draft.transactionType === "transfer" ? draft.targetWalletId : undefined,
+			transaction_type: draft.transactionType,
+			amount: draft.amount ?? 0,
+			category:
+				draft.transactionType === "transfer" ? "Transfer" : draft.category.trim(),
+			description:
+				draft.transactionType === "transfer"
+					? `${sourceName} → ${targetName}`
+					: draft.description.trim(),
+			merchant: draft.merchant?.trim() || null,
+			date: draft.date,
+			note: note.trim() || null,
+			is_verified: true,
+		};
+		try {
+			if (isEditMode) {
+				await updateTransaction(transactionId, payload, activeContext);
+				resetCompactForm();
+				setSuccessMessage(
+					tx.updateSuccess + (draft.walletId ? "" : " (" + tx.noWallet + ")"),
+				);
+				setSubmitting(false);
+				return;
+			}
+
+			await createTransaction(payload, activeContext);
+			resetCompactForm();
+			setSuccessMessage(
+				tx.createSuccess + (draft.walletId ? "" : " (" + tx.noWallet + ")"),
+			);
+			setSubmitting(false);
+		} catch (e) {
+			const message =
+				e instanceof Error
+					? e.message
+					: isEditMode
+						? tx.updateFailed
+						: tx.createFailed;
+			setError(message);
+			setSubmitting(false);
+		}
+	};
+
+	const submitHandler = compactMode ? onSubmitCompact : onSubmit;
+	const submitDisabled = compactMode ? !compactCanSubmit : !canSubmit;
+
 	if (loading) {
 		return (
 			<View style={styles.screen}>
@@ -524,6 +753,7 @@ export default function TransactionNewScreen() {
 				)}
 
 				{/* Type Toggle */}
+				{!compactMode && (
 				<View key="transaction-form-type" testID="transaction-form-type" style={styles.typeRow}>
 					{(["expense", "income", "transfer"] as TransactionType[]).map((t) => (
 						<Pressable
@@ -560,7 +790,9 @@ export default function TransactionNewScreen() {
 					))}
 				</View>
 
+				)}
 				{/* Amount */}
+				{!compactMode && (
 				<View key="transaction-form-amount" testID="transaction-form-amount" style={styles.field}>
 					<Text style={styles.label}>{tx.amount}</Text>
 					<View style={styles.amountRow}>
@@ -577,8 +809,9 @@ export default function TransactionNewScreen() {
 					</View>
 				</View>
 
+				)}
 				{/* Description (auto-generated for transfer) */}
-				{txType !== "transfer" && (
+				{!compactMode && txType !== "transfer" && (
 				<View key="transaction-form-description" testID="transaction-form-description" style={styles.field}>
 					<Text style={styles.label}>{tx.description}</Text>
 					<TextInput
@@ -593,6 +826,7 @@ export default function TransactionNewScreen() {
 				)}
 
 				{/* Wallet */}
+				{!compactMode && (
 				<View key="transaction-form-wallet" testID="transaction-form-wallet" style={styles.field}>
 					<Text style={styles.label}>{txType === "transfer" ? (isEn ? "From Wallet" : "Dari Dompet") : tx.wallet}</Text>
 					{wallets.length === 0 ? (
@@ -632,8 +866,9 @@ export default function TransactionNewScreen() {
 					)}
 				</View>
 
+				)}
 				{/* Target Wallet (transfer only) */}
-				{txType === "transfer" && (
+				{!compactMode && txType === "transfer" && (
 					<View key="transaction-form-target-wallet" testID="transaction-form-target-wallet" style={styles.field}>
 						<Text style={styles.label}>{tx.targetWallet}</Text>
 						{wallets.length === 0 ? (
@@ -678,7 +913,7 @@ export default function TransactionNewScreen() {
 				)}
 
 				{/* Category (hidden for transfer) */}
-				{txType !== "transfer" && (
+				{!compactMode && txType !== "transfer" && (
 				<View key="transaction-form-category" testID="transaction-form-category" style={styles.field}>
 					<Text style={styles.label}>{tx.category}</Text>
 					<View style={styles.chipRow}>
@@ -759,6 +994,7 @@ export default function TransactionNewScreen() {
 			)}
 
 				{/* Date */}
+				{!compactMode && (
 				<View key="transaction-form-date" testID="transaction-form-date" style={styles.field}>
 					<Text style={styles.label}>{tx.date}</Text>
 					<IOSWheelDatePicker
@@ -788,7 +1024,9 @@ export default function TransactionNewScreen() {
 					</View>
 				</View>
 
+				)}
 				{/* Merchant */}
+				{!compactMode && (
 				<View key="transaction-form-merchant" testID="transaction-form-merchant" style={styles.field}>
 					<Text style={styles.label}>{tx.merchant}</Text>
 					<TextInput
@@ -801,7 +1039,9 @@ export default function TransactionNewScreen() {
 					/>
 				</View>
 
+				)}
 				{/* Note */}
+				{!compactMode && (
 				<View key="transaction-form-note" testID="transaction-form-note" style={styles.field}>
 					<Text style={styles.label}>{tx.note}</Text>
 					<TextInput
@@ -818,6 +1058,173 @@ export default function TransactionNewScreen() {
 					/>
 				</View>
 
+				)}
+
+				{compactMode && (
+					<View
+						key="transaction-form-compact"
+						testID="transaction-form-compact"
+						style={styles.compactFields}
+					>
+						{wallets.length === 0 ? (
+							<View style={styles.warningCard}>
+								<Text style={styles.warningText}>{tx.noWallet}</Text>
+							</View>
+						) : null}
+						<TransactionFields
+							draft={draft}
+							onChange={handleDraftChange}
+							wallets={draftWallets}
+							categories={draftCategories}
+							canCreate={canCreate}
+							onOpenPicker={openCompactPicker}
+							errors={draftErrors}
+						/>
+
+						<EntrySheet
+							visible={picker === "category"}
+							title={entryCopy(language).categoryLabel}
+							onClose={closeCompactPicker}
+							testID="transaction-category-sheet"
+						>
+							{compactCategoryOptions.map((name) => {
+								const selected = Boolean(
+									draft.category &&
+										areCategoryNamesEquivalent(name, draft.category),
+								);
+								return (
+									<Pressable
+										key={name}
+										testID={`transaction-category-option-${name}`}
+										accessibilityRole="button"
+										accessibilityLabel={tx.pickCategory(name)}
+										accessibilityState={{ selected }}
+										onPress={() => {
+											handleDraftChange({ category: name });
+											closeCompactPicker();
+										}}
+										style={[
+											styles.sheetOption,
+											selected && styles.sheetOptionSelected,
+										]}
+									>
+										<Text
+											style={[
+												styles.sheetOptionText,
+												selected && styles.sheetOptionTextSelected,
+											]}
+										>
+											{name}
+										</Text>
+									</Pressable>
+								);
+							})}
+						</EntrySheet>
+
+						<EntrySheet
+							visible={picker === "wallet"}
+							title={entryCopy(language).walletLabel}
+							onClose={closeCompactPicker}
+							testID="transaction-wallet-sheet"
+						>
+							{wallets.map((wallet) => {
+								const selected = draft.walletId === wallet.id;
+								return (
+									<Pressable
+										key={wallet.id}
+										testID={`transaction-wallet-option-${wallet.id}`}
+										accessibilityRole="button"
+										accessibilityLabel={tx.pickWallet(wallet.name)}
+										accessibilityState={{ selected }}
+										onPress={() => {
+											handleDraftChange({ walletId: wallet.id });
+											closeCompactPicker();
+										}}
+										style={[
+											styles.sheetOption,
+											selected && styles.sheetOptionSelected,
+										]}
+									>
+										<Text
+											style={[
+												styles.sheetOptionText,
+												selected && styles.sheetOptionTextSelected,
+											]}
+										>
+											{wallet.name}
+										</Text>
+									</Pressable>
+								);
+							})}
+						</EntrySheet>
+
+						<EntrySheet
+							visible={picker === "targetWallet"}
+							title={entryCopy(language).targetWalletLabel}
+							onClose={closeCompactPicker}
+							testID="transaction-target-wallet-sheet"
+						>
+							{wallets
+								.filter((wallet) => wallet.id !== draft.walletId)
+								.map((wallet) => {
+									const selected = draft.targetWalletId === wallet.id;
+									return (
+										<Pressable
+											key={wallet.id}
+											testID={`transaction-target-wallet-option-${wallet.id}`}
+											accessibilityRole="button"
+											accessibilityLabel={tx.pickTargetWallet(wallet.name)}
+											accessibilityState={{ selected }}
+											onPress={() => {
+												handleDraftChange({ targetWalletId: wallet.id });
+												closeCompactPicker();
+											}}
+											style={[
+												styles.sheetOption,
+												selected && styles.sheetOptionSelected,
+											]}
+										>
+											<Text
+												style={[
+													styles.sheetOptionText,
+													selected && styles.sheetOptionTextSelected,
+												]}
+											>
+												{wallet.name}
+											</Text>
+										</Pressable>
+									);
+								})}
+						</EntrySheet>
+
+						<EntrySheet
+							visible={picker === "date"}
+							title={entryCopy(language).datePickerTitle}
+							onClose={cancelCompactDate}
+							testID="transaction-date-sheet"
+						>
+							<IOSWheelDatePicker
+								value={compactDate}
+								onChange={setCompactDate}
+								locale={isEn ? "en" : "id"}
+								testID="transaction-date-wheel-picker"
+								showValueLabel={false}
+							/>
+							<Pressable
+								accessibilityRole="button"
+								accessibilityLabel={tx.confirmDate}
+								testID="transaction-date-confirm"
+								onPress={confirmCompactDate}
+								style={styles.dateConfirmButton}
+							>
+								<Text style={styles.dateConfirmButtonText}>
+									{tx.confirmDate}
+								</Text>
+							</Pressable>
+						</EntrySheet>
+					</View>
+				)}
+
 				{error && <Text key="transaction-form-error" testID="transaction-form-error" style={styles.errorText}>{error}</Text>}
 				{successMessage && <Text key="transaction-form-success" testID="transaction-form-success" style={styles.successText}>{successMessage}</Text>}
 
@@ -829,6 +1236,7 @@ export default function TransactionNewScreen() {
 							accessibilityLabel={tx.cancelLabel}
 							onPress={() => {
 								resetForm();
+								resetCompactForm();
 								router.back();
 							}}
 							style={styles.cancelButton}
@@ -840,10 +1248,10 @@ export default function TransactionNewScreen() {
 						testID="transaction-form-submit"
 						accessibilityRole="button"
 						accessibilityLabel={isEditMode ? tx.saveEditLabel : tx.saveCreateLabel}
-						accessibilityState={{ disabled: !canSubmit, busy: submitting }}
-						onPress={onSubmit}
-						disabled={!canSubmit}
-						style={[styles.submitButton, styles.actionButton, !canSubmit && { opacity: 0.4 }]}
+						accessibilityState={{ disabled: submitDisabled, busy: submitting }}
+						onPress={submitHandler}
+						disabled={submitDisabled}
+						style={[styles.submitButton, styles.actionButton, submitDisabled && { opacity: 0.4 }]}
 					>
 						{submitting ? (
 							<ActivityIndicator color={theme.colors.textInverse} />
@@ -1036,6 +1444,28 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 		},
 		actionRow: { flexDirection: "row", gap: 10, alignItems: "center" },
 		actionButton: { flex: 1 },
+		compactFields: { gap: 14 },
+		sheetOption: {
+			minHeight: 52,
+			borderRadius: 14,
+			borderWidth: 1,
+			borderColor: fe.line,
+			backgroundColor: fe.white,
+			paddingHorizontal: 14,
+			justifyContent: "center",
+		},
+		sheetOptionSelected: {
+			backgroundColor: fe.blueDeep,
+			borderColor: fe.blueDeep,
+		},
+		sheetOptionText: {
+			color: fe.ink,
+			fontSize: 15,
+			fontWeight: "700",
+		},
+		sheetOptionTextSelected: {
+			color: fe.white,
+		},
 		cancelButton: {
 			flex: 1,
 			borderRadius: 999,

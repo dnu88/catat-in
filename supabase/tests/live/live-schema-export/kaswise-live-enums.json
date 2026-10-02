@@ -1,0 +1,90 @@
+[
+  {
+    "enum_name": "bill_recurrence",
+    "label": "monthly"
+  },
+  {
+    "enum_name": "bill_recurrence",
+    "label": "once"
+  },
+  {
+    "enum_name": "bill_recurrence",
+    "label": "yearly"
+  },
+  {
+    "enum_name": "group_role",
+    "label": "admin"
+  },
+  {
+    "enum_name": "group_role",
+    "label": "editor"
+  },
+  {
+    "enum_name": "group_role",
+    "label": "viewer"
+  },
+  {
+    "enum_name": "member_status",
+    "label": "active"
+  },
+  {
+    "enum_name": "member_status",
+    "label": "left"
+  },
+  {
+    "enum_name": "member_status",
+    "label": "pending"
+  },
+  {
+    "enum_name": "member_status",
+    "label": "removed"
+  },
+  {
+    "enum_name": "plan_type",
+    "label": "free"
+  },
+  {
+    "enum_name": "plan_type",
+    "label": "premium"
+  },
+  {
+    "enum_name": "transaction_type",
+    "label": "expense"
+  },
+  {
+    "enum_name": "transaction_type",
+    "label": "income"
+  },
+  {
+    "enum_name": "transaction_type",
+    "label": "transfer"
+  },
+  {
+    "enum_name": "transaction_visibility",
+    "label": "admin_only"
+  },
+  {
+    "enum_name": "transaction_visibility",
+    "label": "group"
+  },
+  {
+    "enum_name": "transaction_visibility",
+    "label": "private"
+  },
+  {
+    "enum_name": "wallet_type",
+    "label": "bank"
+  },
+  {
+    "enum_name": "wallet_type",
+    "label": "cash"
+  },
+  {
+    "enum_name": "wallet_type",
+    "label": "ewallet"
+  },
+  {
+    "enum_name": "wallet_type",
+    "label": "investment"
+  }
+]

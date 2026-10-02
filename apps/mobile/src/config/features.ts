@@ -6,6 +6,7 @@ type FeatureOverride = {
 	importStatement?: boolean;
 	simpleNavigation?: boolean;
 	voiceNote?: boolean;
+	transactionEntryV2?: boolean;
 };
 
 function featureOverrides() {
@@ -28,5 +29,16 @@ export const featureFlags = {
 	},
 	get voiceNote() {
 		return featureOverrides()?.voiceNote ?? flagEnabled(processEnv?.EXPO_PUBLIC_FEATURE_VOICE_NOTE);
+	},
+	/**
+	 * Gates the review-first transaction entry flow (editable draft review before
+	 * saving). Kept independent from `simpleNavigation` so the entry UI can be
+	 * rolled back on its own without reverting navigation.
+	 */
+	get transactionEntryV2() {
+		return (
+			featureOverrides()?.transactionEntryV2 ??
+			flagEnabled(processEnv?.EXPO_PUBLIC_FEATURE_TRANSACTION_ENTRY_V2)
+		);
 	},
 };
