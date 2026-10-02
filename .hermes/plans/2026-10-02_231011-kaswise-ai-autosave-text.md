@@ -147,4 +147,22 @@ Di luar lingkup (dicatat, tidak dikerjakan di plan ini):
 1. `required-markers.json` TIDAK boleh disunting manual. Tambahkan marker ke `scripts/live-feature-registry.json`, lalu jalankan `pnpm --filter mobile sync:required-markers`. Gerbang mutu akan menolak kalau tidak sinkron.
 2. Cacat asli yang ditemukan & diperbaiki selama pengerjaan: baris alasan bisa "terbawa" dari input teks sebelumnya ke layar konfirmasi struk. Sekarang dibatasi `entryState.source === "text"`.
 3. Test layar jalur struk penuh (pilih foto → review) tidak dapat dijalankan di harness jest yang ada (komponen crash karena mock image-picker/receipt belum lengkap), **bukan bug produk** — seluruh suite struk yang ada hijau dan jaminan "hanya teks" kini ditegakkan di fungsi murni + diuji unit.
-4. Flag baru `aiAutoSaveText`: getter di `src/config/features.ts`, default OFF di `rollout-flags.json`, bisa dinyalakan/dimatikan tanpa build ulang lewat blok runtime di `index.html` (pola yang sama dengan flag V2).
+4. Flag baru `aiAutosaveText`: getter di `src/config/features.ts`, default OFF di `rollout-flags.json`, bisa dinyalakan/dimatikan tanpa build ulang lewat blok runtime di `index.html` (pola yang sama dengan flag V2).
+
+## 11. Catatan rilis canary (2026-10-02 malam)
+
+**Urutan yang dijalankan:**
+1. `feat/kaswise-ai-autosave-text` digabung ke `release/v2-transaction-entry` (merge commit).
+2. Snapshot keadaan live: `/home/Danu88/services/nginx-proxy-manager/rollback-<ts>-canary-state/` (berisi `index.html.prev`, `flag-state.txt`, `entry-bundle.txt`).
+3. Deploy PWA dengan `transactionEntryV2: true` (V2 jangan sampai mati) dan `aiAutosaveText: false` → bundle `entry-ee6da22ede17d6b7965848a8c0592890.js`, 39 marker terverifikasi di target + URL live.
+4. Flag dinyalakan tanpa build ulang (`node /tmp/kw-flip-flag2.mjs EXPO_PUBLIC_FEATURE_AI_AUTOSAVE_TEXT on`) → halaman live menyajikan `EXPO_PUBLIC_FEATURE_AI_AUTOSAVE_TEXT = "true"`.
+5. `rollout-flags.json` diset `aiAutosaveText: true` dan di-commit, supaya deploy berikutnya TIDAK mematikan fitur ini tanpa sengaja.
+
+**Cacat proses yang ditemukan & ditutup saat rilis:**
+- Blok runtime di `scripts/deploy-pwa.mjs` memakai daftar flag yang dipatok tetap, sehingga flag baru **tidak** ikut tersuntik. Akibatnya (a) flag tidak bisa dibalik lewat `index.html`, dan (b) deploy berikutnya akan menghapus suntikan manual dan mematikan auto-save tanpa suara. Diperbaiki: flag terdaftar di `ROLLOUT_FLAG_ENV_KEYS` (`scripts/rollout-flags.cjs`), disuntik di blok runtime, dan nama kunci config disamakan dengan hasil turunan env (`aiAutosaveText` ← `EXPO_PUBLIC_FEATURE_AI_AUTOSAVE_TEXT`) karena gerbang mutu menurunkan nama secara mekanis. Test `rollout-flags.test.ts` menjaga keduanya tetap sinkron.
+
+**Cara membalik (rollback):**
+- Cepat (tanpa build): `node /tmp/kw-flip-flag2.mjs EXPO_PUBLIC_FEATURE_AI_AUTOSAVE_TEXT off`
+- Penuh: kembalikan `index.html` dari snapshot `rollback-<ts>-canary-state/index.html.prev` (pola lama), atau set `rollout-flags.json` lalu deploy ulang.
+
+**Belum diverifikasi:** perilaku di HP secara nyata (Safari iOS) — menunggu uji pengguna. Draf pengujian: (a) `beli kopi 35rb` harus langsung tersimpan + muncul bar Tersimpan dengan Batalkan/Ubah; (b) `bayar listrik` (tanpa nominal) harus berhenti di review dengan alasan; (c) foto/struk harus selalu konfirmasi; (d) saldo dompet hanya berubah sekali; (e) Batalkan mengembalikan saldo.
