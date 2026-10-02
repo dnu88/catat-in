@@ -193,68 +193,168 @@ async def extract_transaction_from_text(user_text: str) -> dict:
     raise RuntimeError(f"Semua provider AI gagal: {last_error}") from last_error
 
 
+RECEIPT_ANALYSIS_USER_TEXT = (
+    "Tolong analisis struk belanja ini dan ekstrak informasi transaksinya."
+)
+
+
+def active_vision_provider() -> str:
+    """Provider gambar yang dicoba lebih dulu: Gemini, lalu Claude."""
+    if settings.GEMINI_API_KEY:
+        return "gemini"
+    if settings.ANTHROPIC_API_KEY:
+        return "anthropic"
+    return "none"
+
+
+def _vision_providers() -> list[str]:
+    providers: list[str] = []
+    if settings.GEMINI_API_KEY:
+        providers.append("gemini")
+    if settings.ANTHROPIC_API_KEY:
+        providers.append("anthropic")
+    return providers
+
+
+def _unreadable_receipt(confidence: float = 0.2) -> dict:
+    """Bentuk balasan yang sama seperti sebelumnya saat struk tidak terbaca."""
+    return {
+        "total_amount": None,
+        "merchant": None,
+        "date": datetime.now(timezone.utc).date().isoformat(),
+        "category": "other",
+        "items": [],
+        "confidence": confidence,
+        "readable": False,
+    }
+
+
+async def _gemini_receipt_json(image_b64: str, media_type: str) -> str:
+    """Baca struk lewat Gemini (endpoint kompatibel-OpenAI Google AI Studio).
+
+    DeepSeek tidak menerima gambar, jadi jalur struk memakai Gemini sebagai
+    provider utama dengan Claude sebagai cadangan. Model bisa diganti lewat
+    GEMINI_MODEL (mis. `gemini-2.0-flash` kalau kuota harian 2.5 sedang habis).
+    """
+    if not settings.GEMINI_API_KEY:
+        raise RuntimeError("GEMINI_API_KEY belum dikonfigurasi di server.")
+
+    payload = {
+        "model": settings.GEMINI_MODEL,
+        "max_tokens": 2048,
+        "temperature": 0,
+        "messages": [
+            {"role": "system", "content": RECEIPT_ANALYSIS_PROMPT},
+            {
+                "role": "user",
+                "content": [
+                    {
+                        "type": "image_url",
+                        "image_url": {
+                            "url": f"data:{media_type};base64,{image_b64}",
+                        },
+                    },
+                    {"type": "text", "text": RECEIPT_ANALYSIS_USER_TEXT},
+                ],
+            },
+        ],
+    }
+    async with httpx.AsyncClient(timeout=90) as client:
+        response = await client.post(
+            f"{settings.GEMINI_BASE_URL.rstrip('/')}/chat/completions",
+            headers={
+                "Authorization": f"Bearer {settings.GEMINI_API_KEY}",
+                "Content-Type": "application/json",
+            },
+            json=payload,
+        )
+
+    if response.status_code >= 400:
+        raise RuntimeError(
+            f"Gemini error {response.status_code}: {response.text[:200]}"
+        )
+
+    data = response.json()
+    choices = data.get("choices") or []
+    if not choices:
+        raise RuntimeError("Gemini tidak mengembalikan pilihan jawaban.")
+    return choices[0].get("message", {}).get("content") or ""
+
+
+async def _anthropic_receipt_json(image_b64: str, media_type: str) -> str:
+    """Baca struk lewat Claude (cadangan bila Gemini tidak tersedia)."""
+    client = _get_async_anthropic_client()
+    response = await client.messages.create(
+        model=settings.ANTHROPIC_MODEL_EXTRACT,
+        max_tokens=800,
+        system=[
+            {
+                "type": "text",
+                "text": RECEIPT_ANALYSIS_PROMPT,
+                "cache_control": {"type": "ephemeral"},
+            }
+        ],
+        messages=[
+            {
+                "role": "user",
+                "content": [
+                    {
+                        "type": "image",
+                        "source": {
+                            "type": "base64",
+                            "media_type": media_type,
+                            "data": image_b64,
+                        },
+                    },
+                    {"type": "text", "text": RECEIPT_ANALYSIS_USER_TEXT},
+                ],
+            }
+        ],
+    )
+    return response.content[0].text
+
+
 async def analyze_receipt_image(
     image_data: bytes, media_type: str = "image/jpeg"
 ) -> dict:
-    if not settings.ANTHROPIC_API_KEY:
-        return {
-            "total_amount": None,
-            "merchant": None,
-            "date": datetime.now(timezone.utc).date().isoformat(),
-            "category": "other",
-            "items": [],
-            "confidence": 0.2,
-            "readable": False,
-        }
+    """Baca struk dari gambar.
 
-    try:
-        image_b64 = base64.standard_b64encode(image_data).decode("utf-8")
-        client = _get_async_anthropic_client()
-        response = await client.messages.create(
-            model=settings.ANTHROPIC_MODEL_EXTRACT,
-            max_tokens=800,
-            system=[
-                {
-                    "type": "text",
-                    "text": RECEIPT_ANALYSIS_PROMPT,
-                    "cache_control": {"type": "ephemeral"},
-                }
-            ],
-            messages=[
-                {
-                    "role": "user",
-                    "content": [
-                        {
-                            "type": "image",
-                            "source": {
-                                "type": "base64",
-                                "media_type": media_type,
-                                "data": image_b64,
-                            },
-                        },
-                        {
-                            "type": "text",
-                            "text": "Tolong analisis struk belanja ini dan ekstrak informasi transaksinya.",
-                        },
-                    ],
-                }
-            ],
-        )
+    Urutan provider: Gemini (utama) -> Claude (cadangan). Satu akun yang
+    bermasalah tidak boleh mematikan seluruh fitur scan struk. Kalau tidak ada
+    provider gambar sama sekali, balasannya sama seperti sebelumnya: struk
+    dianggap tidak terbaca (bukan error) supaya aplikasi tetap jalan.
+    """
+    providers = _vision_providers()
+    if not providers:
+        return _unreadable_receipt()
 
-        raw = _strip_json_code_block(response.content[0].text)
-        return json.loads(raw)
-    except json.JSONDecodeError:
-        return {
-            "total_amount": None,
-            "merchant": None,
-            "date": None,
-            "category": "other",
-            "items": [],
-            "confidence": 0.0,
-            "readable": False,
-        }
-    except anthropic.APIError as exc:
-        raise RuntimeError(f"Claude API error: {exc}") from exc
+    image_b64 = base64.standard_b64encode(image_data).decode("utf-8")
+    malformed_json = False
+    last_error: Exception | None = None
+
+    for provider in providers:
+        try:
+            if provider == "gemini":
+                raw = await _gemini_receipt_json(image_b64, media_type)
+            else:
+                raw = await _anthropic_receipt_json(image_b64, media_type)
+        except Exception as exc:  # provider bermasalah -> coba berikutnya
+            last_error = exc
+            continue
+
+        try:
+            return json.loads(_strip_json_code_block(raw))
+        except json.JSONDecodeError:
+            # Jawaban provider tidak berbentuk JSON: coba provider berikutnya,
+            # dan kalau semuanya begitu, balas "tidak terbaca" (bukan 500).
+            malformed_json = True
+            continue
+
+    if malformed_json and last_error is None:
+        return _unreadable_receipt(0.0)
+    if last_error is not None:
+        raise RuntimeError(f"Semua provider gambar gagal: {last_error}") from last_error
+    return _unreadable_receipt()
 
 
 async def generate_financial_insight(user_data: dict, period: str = "monthly") -> dict:
