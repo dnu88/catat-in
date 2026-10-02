@@ -14,6 +14,7 @@ from functools import lru_cache
 from datetime import datetime, timedelta, timezone
 
 import anthropic
+import httpx
 
 from app.core.config import settings
 
@@ -83,8 +84,71 @@ def _get_async_anthropic_client() -> anthropic.AsyncAnthropic:
 
 
 def ensure_ai_configured():
-    if not settings.ANTHROPIC_API_KEY:
+    """Fitur AI dianggap siap bila minimal satu provider punya kunci."""
+    if not (settings.DEEPSEEK_API_KEY or settings.ANTHROPIC_API_KEY):
         raise RuntimeError("Fitur AI belum dikonfigurasi di server.")
+
+
+def active_ai_provider() -> str:
+    """Provider utama yang akan dicoba lebih dulu."""
+    if settings.DEEPSEEK_API_KEY:
+        return "deepseek"
+    if settings.ANTHROPIC_API_KEY:
+        return "anthropic"
+    return "none"
+
+
+async def _deepseek_extract_json(system_prompt: str, user_text: str) -> str:
+    """Ekstraksi JSON lewat DeepSeek (murah). Thinking dimatikan agar output
+    singkat, cepat, dan biayanya tidak membengkak untuk tugas ekstraksi."""
+    if not settings.DEEPSEEK_API_KEY:
+        raise RuntimeError("DEEPSEEK_API_KEY belum dikonfigurasi di server.")
+
+    payload = {
+        "model": settings.DEEPSEEK_MODEL,
+        "max_tokens": 900,
+        "response_format": {"type": "json_object"},
+        "thinking": {"type": "disabled"},
+        "messages": [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_text},
+        ],
+    }
+    async with httpx.AsyncClient(timeout=60) as client:
+        response = await client.post(
+            f"{settings.DEEPSEEK_BASE_URL.rstrip('/')}/chat/completions",
+            headers={
+                "Authorization": f"Bearer {settings.DEEPSEEK_API_KEY}",
+                "Content-Type": "application/json",
+            },
+            json=payload,
+        )
+
+    if response.status_code >= 400:
+        raise RuntimeError(f"DeepSeek error {response.status_code}: {response.text[:200]}")
+
+    data = response.json()
+    choices = data.get("choices") or []
+    if not choices:
+        raise RuntimeError("DeepSeek tidak mengembalikan pilihan jawaban.")
+    return choices[0].get("message", {}).get("content") or ""
+
+
+async def _anthropic_extract_json(system_prompt: str, user_text: str) -> str:
+    client = _get_async_anthropic_client()
+    response = await client.messages.create(
+        model=settings.ANTHROPIC_MODEL_EXTRACT,
+        max_tokens=2048,
+        system=[
+            {
+                "type": "text",
+                "text": system_prompt,
+                "cache_control": {"type": "ephemeral"},
+            }
+        ],
+        messages=[{"role": "user", "content": user_text}],
+    )
+    return response.content[0].text
 
 
 def _strip_json_code_block(raw: str) -> str:
@@ -97,33 +161,36 @@ def _strip_json_code_block(raw: str) -> str:
 
 
 async def extract_transaction_from_text(user_text: str) -> dict:
-    if not settings.ANTHROPIC_API_KEY:
+    """Ekstraksi transaksi dari teks bebas.
+
+    Urutan: DeepSeek (murah) -> Anthropic (cadangan) -> parser lokal.
+    Bila provider utama gagal, provider berikutnya dicoba otomatis supaya satu
+    akun yang bermasalah tidak mematikan seluruh fitur pencatatan.
+    """
+    if not (settings.DEEPSEEK_API_KEY or settings.ANTHROPIC_API_KEY):
         return _extract_transaction_locally(user_text)
 
-    try:
-        client = _get_async_anthropic_client()
-        response = await client.messages.create(
-            model=settings.ANTHROPIC_MODEL_EXTRACT,
-            max_tokens=2048,
-            system=[
-                {
-                    "type": "text",
-                    "text": TRANSACTION_EXTRACT_PROMPT,
-                    "cache_control": {"type": "ephemeral"},
-                }
-            ],
-            messages=[{"role": "user", "content": user_text}],
-        )
+    providers = []
+    if settings.DEEPSEEK_API_KEY:
+        providers.append(("deepseek", _deepseek_extract_json))
+    if settings.ANTHROPIC_API_KEY:
+        providers.append(("anthropic", _anthropic_extract_json))
 
-        raw = _strip_json_code_block(response.content[0].text)
-        return json.loads(raw)
-    except json.JSONDecodeError:
-        return {
-            "transactions": [],
-            "unclear": "Maaf, saya tidak bisa memproses input ini. Coba lebih spesifik.",
-        }
-    except anthropic.APIError as exc:
-        raise RuntimeError(f"Claude API error: {exc}") from exc
+    last_error: Exception | None = None
+    for name, call in providers:
+        try:
+            raw = _strip_json_code_block(await call(TRANSACTION_EXTRACT_PROMPT, user_text))
+            return json.loads(raw)
+        except json.JSONDecodeError:
+            return {
+                "transactions": [],
+                "unclear": "Maaf, saya tidak bisa memproses input ini. Coba lebih spesifik.",
+            }
+        except Exception as exc:  # provider bermasalah -> coba berikutnya
+            last_error = exc
+            continue
+
+    raise RuntimeError(f"Semua provider AI gagal: {last_error}") from last_error
 
 
 async def analyze_receipt_image(

@@ -665,4 +665,44 @@ Inventaris yang wajib dicatat sebelum release:
 
 **Keputusan yang dibutuhkan sebelum eksekusi:** (1) mode canary, (2) izin + metode migrasi, (3) strategi branch.
 
-**Menunggu izin user:** deploy canary V2 ON/OFF, readback live URL + flag runtime + bundle, authenticated review-edit-save-readback, saldo/row count, viewer, no-wallet, entitlement, navigasi sukses, dan release summary.
+## 21. Ringkasan rilis V2 (DIEKSEKUSI 2026-10-02, izin user)
+
+**Keputusan user:** canary = langsung produksi (deploy OFF dulu → ON); migrasi = saya jalankan via Management API; branch = buat `release/`.
+
+| Fase | Status | Bukti |
+|---|---|---|
+| 1 Snapshot rollback | ✅ | `rollback-20261002-200746-canary-state/` (sebelum deploy) + `rollback-20261002-201647-canary-state/` (keadaan OFF setelah deploy) |
+| 2 Migrasi produksi | ✅ | sebelum: tabel `None`, RPC `[]`, `transactions` 39 kolom → sesudah: tabel `transaction_entry_operations`, RPC `create_transaction_entry_v2(p_request_id uuid, p_fingerprint text, p_context_type text, p_household_id uuid, p_drafts jsonb)`, 4 policy RLS, kolom tetap **39** (murni additive) |
+| 3 Gate mutu | ✅ | `quality:live` exit 0 (registry 12 fitur/35 marker, type-check, regresi, export, check:bundle) |
+| 4 Deploy flag OFF | ✅ | commit `f51b0d5` di `release/v2-transaction-entry`; bundle `entry-80860722b7a87f32cde0a10d624317a4.js`; 35 marker di target & live; `DEPLOY_EXIT=0` |
+| 5 Flag ON | ✅ | 23 `index.html` diubah; readback `https://app.kaswise.com` → `EXPO_PUBLIC_FEATURE_TRANSACTION_ENTRY_V2 = "true"` |
+| 6 Verifikasi live | ✅ | login akun uji; flag runtime `true`; layar V2 tampil; geometri capture 12 & manual 9 kontrol → min 44px, 0 kecil/0 dicuri; guard benar (tombol `aria-disabled=true`, pesan spesifik per field); **simpan berhasil → 1 baris "Tagihan • 2 Okt 2026 - Rp 12.000", saldo 250.000 → 238.000 (terdebit tepat sekali)** |
+| 7 Rollback | tersedia | `node /tmp/kw-flip-flag.mjs off` (instan) atau `restore <snapshot>`; migrasi dibiarkan (additive) |
+
+**Belum terverifikasi / sisa:**
+- Alur berbasis AI (teks & struk → review editable, mode total vs split) **tidak** bisa diuji browser otomatis: Cloudflare menolak signature non-browser (`403 error code 1010`). Harus diuji manusia di HP.
+- Safari/iOS: **unverified** (tanpa perangkat).
+- 1 transaksi uji (Rp 12.000) masih ada di akun smoke — tombol hapus baris tidak punya testid sehingga tidak bisa diotomatiskan; terisolasi di akun uji disposable.
+- Risiko yang diterima user: V2 aktif untuk **semua** pengguna; jalur yang sudah terbukti = input manual, jalur AI belum.
+
+**Rollback tersedia kapan saja** (instan, tanpa build).
+
+## 22. Insiden produksi ditemukan saat verifikasi AI (2026-10-02)
+
+Saat user menguji alur AI di HP, app menampilkan **"Gagal memproses — Terjadi kesalahan sistem"**.
+
+Rantai sebab (dibuktikan berurutan, bukan dugaan):
+1. Log `kaswise-backend`: `GET /api/v1/me/entitlements` 200, `OPTIONS /api/v1/ai/chat` 200, tetapi **`POST /api/v1/ai/chat` → 502 Bad Gateway** (dua kali, dari percobaan user).
+2. `backend/app/api/v1/ai.py`: handler menangkap `RuntimeError` dari `extract_transaction_from_text()` lalu mengembalikan **502 "Layanan AI sedang tidak tersedia"**.
+3. Env container: `ANTHROPIC_API_KEY` **terisi** (108 char), `OPENAI_API_KEY` kosong.
+4. Uji langsung dari dalam container ke `api.anthropic.com`:
+   - `claude-haiku-4-5` → **HTTP 400 “Your credit balance is too low to access the Anthropic API.”**
+   - `claude-3-5-haiku-latest` → pesan identik.
+
+**Kesimpulan:** kredit akun Anthropic habis. Dampaknya **semua fitur AI gagal untuk semua pengguna** (capture teks, OCR struk, insight AI) — dan ini **tidak berhubungan dengan rilis V2**: V1 dan V2 memanggil endpoint yang sama. Tidak ada perubahan backend/deploy yang menyebabkannya (container backend up 2 hari tanpa restart; deploy hanya mengganti berkas statis PWA).
+
+**Tindakan:** isi ulang kredit di console.anthropic.com → Plans & Billing (atau ganti kunci/provider). Setelah itu alur AI bisa diuji dan Task 16 dapat ditutup.
+
+**Keputusan rilis:** dibiarkan V2 ON karena (a) jalur manual sudah terbukti di produksi, (b) mematikan V2 tidak memulihkan AI sama sekali. Rollback tetap tersedia instan bila user memilih lebih hati-hati.
+
+**Catatan pengamatan (belum dikonfirmasi):** pada tangkapan layar user, blok "TUJUAN TRANSAKSI / Simpan ke …" tidak terlihat, padahal pada verifikasi saya tampil. Perlu dicek ulang setelah AI pulih.
