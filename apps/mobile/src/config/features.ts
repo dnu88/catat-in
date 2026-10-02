@@ -7,7 +7,7 @@ type FeatureOverride = {
 	simpleNavigation?: boolean;
 	voiceNote?: boolean;
 	transactionEntryV2?: boolean;
-	aiAutoSaveText?: boolean;
+	aiAutosaveText?: boolean;
 };
 
 function featureOverrides() {
@@ -47,9 +47,9 @@ export const featureFlags = {
 	 * 10s undo notice. Kept independent from `transactionEntryV2` so automatic
 	 * saving can be rolled back on its own without reverting the entry flow.
 	 */
-	get aiAutoSaveText() {
+	get aiAutosaveText() {
 		return (
-			featureOverrides()?.aiAutoSaveText ??
+			featureOverrides()?.aiAutosaveText ??
 			flagEnabled(processEnv?.EXPO_PUBLIC_FEATURE_AI_AUTOSAVE_TEXT)
 		);
 	},

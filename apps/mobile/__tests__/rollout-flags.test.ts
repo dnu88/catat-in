@@ -168,6 +168,7 @@ const DOCUMENTED_ROLLOUT_FLAG_KEYS = [
 	"EXPO_PUBLIC_FEATURE_VOICE_NOTE",
 	"EXPO_PUBLIC_FEATURE_IMPORT_STATEMENT",
 	"EXPO_PUBLIC_FEATURE_TRANSACTION_ENTRY_V2",
+	"EXPO_PUBLIC_FEATURE_AI_AUTOSAVE_TEXT",
 ];
 
 // Slice a top-level `function name(...) { ... }` body out of a source file so
@@ -188,7 +189,7 @@ function extractFunctionBody(source: string, name: string): string {
 }
 
 describe("rollout-flags helper", () => {
-	it("documents exactly the three rollout flag keys", () => {
+	it("documents exactly the rollout flag keys the deploy injects", () => {
 		expect([...ROLLOUT_FLAG_ENV_KEYS].sort()).toEqual(
 			[...DOCUMENTED_ROLLOUT_FLAG_KEYS].sort(),
 		);

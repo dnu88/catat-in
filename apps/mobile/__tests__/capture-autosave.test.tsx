@@ -14,7 +14,7 @@ import { ThemeProvider } from "../src/theme/theme-context";
 
 // Unlike capture-entry-v2.test.tsx we do NOT mock src/config/features. The real
 // module reads feature flags through getters that honour the runtime override
-// object, so each test flips aiAutoSaveText on/off via globalThis without a
+// object, so each test flips aiAutosaveText on/off via globalThis without a
 // re-import. This mirrors exactly how the flag is meant to be toggled at runtime.
 
 jest.mock("expo-av", () => ({
@@ -235,7 +235,7 @@ function safeExtraction() {
 function setFlags(overrides: Record<string, boolean>) {
 	(globalThis as any).__KASWISE_FEATURE_FLAGS__ = {
 		transactionEntryV2: true,
-		aiAutoSaveText: true,
+		aiAutosaveText: true,
 		simpleNavigation: true,
 		voiceNote: false,
 		importStatement: false,
@@ -305,7 +305,7 @@ beforeEach(() => {
 	jest.mocked(AsyncStorage.getItem).mockResolvedValue(null);
 });
 
-describe("Capture text auto-save (aiAutoSaveText)", () => {
+describe("Capture text auto-save (aiAutosaveText)", () => {
 	it("auto-saves a clear sentence without opening review and shows the undo notice", async () => {
 		mockAnalyzeTransactionText.mockResolvedValue(safeExtraction());
 		await renderReady();
@@ -423,7 +423,7 @@ describe("Capture text auto-save (aiAutoSaveText)", () => {
 	});
 
 	it("stays in review for a clear sentence when the flag is off", async () => {
-		setFlags({ aiAutoSaveText: false });
+		setFlags({ aiAutosaveText: false });
 		mockAnalyzeTransactionText.mockResolvedValue(safeExtraction());
 		await renderReady();
 

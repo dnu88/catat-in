@@ -483,7 +483,7 @@ export default function CaptureScreen() {
 	// Review-first entry flow. Off by default so every legacy branch below stays
 	// exactly as it was until the flag is rolled forward.
 	const entryV2 = featureFlags.transactionEntryV2;
-	const aiAutoSaveText = featureFlags.aiAutoSaveText;
+	const aiAutosaveText = featureFlags.aiAutosaveText;
 	const searchParams = useLocalSearchParams() as Record<
 		string,
 		string | string[] | undefined
@@ -1545,7 +1545,7 @@ export default function CaptureScreen() {
 				drafts: readyDrafts,
 			});
 
-			if (autoSaveDecision.auto && aiAutoSaveText) {
+			if (autoSaveDecision.auto && aiAutosaveText) {
 				autoSavePendingRef.current = true;
 				setAutoSavePending(true);
 			}
