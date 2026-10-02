@@ -166,3 +166,44 @@ Di luar lingkup (dicatat, tidak dikerjakan di plan ini):
 - Penuh: kembalikan `index.html` dari snapshot `rollback-<ts>-canary-state/index.html.prev` (pola lama), atau set `rollout-flags.json` lalu deploy ulang.
 
 **Belum diverifikasi:** perilaku di HP secara nyata (Safari iOS) — menunggu uji pengguna. Draf pengujian: (a) `beli kopi 35rb` harus langsung tersimpan + muncul bar Tersimpan dengan Batalkan/Ubah; (b) `bayar listrik` (tanpa nominal) harus berhenti di review dengan alasan; (c) foto/struk harus selalu konfirmasi; (d) saldo dompet hanya berubah sekali; (e) Batalkan mengembalikan saldo.
+
+## 12. Insiden pasca-rilis: auto-save tidak pernah jalan di UI Indonesia (diperbaiki 2026-10-02)
+
+**Gejala (laporan pengguna + rekaman layar):** `Makan mie ayam 20rb` tetap berhenti di layar review
+dengan catatan "Ada isian yang belum lengkap. Periksa dulu." — padahal hanya satu transaksi dan
+semua bagian terbaca (nominal 20000, kategori "Makan & Minum", jenis Pengeluaran).
+
+**Bukti:**
+1. Rekaman layar pengguna menunjukkan catatan itu persis teks alasan `invalid_draft`
+   ("Ada isian yang belum lengkap. Periksa dulu.") — jadi keputusan auto-save memang menolak, dan
+   yang gagal adalah `allDraftsValid`, bukan syarat lain (unresolved / confidence / nominal).
+2. Produksi (tabel `categories`): nama kategori tersimpan dalam **bahasa Inggris**
+   ("Food & Beverage", "Transport", "Salary", "Other expenses"), sedangkan draf dari ekstraktor
+   menyimpan **label bahasa aktif** ("Makan & Minum").
+3. Harness memakai kode nyata (classifier → adapter → keputusan auto-save) dengan nama kategori
+   produksi: draf `{amount:20000, category:"Makan & Minum", confidence:0.96, unresolved:[]}`
+   → keputusan `{"auto":false,"reason":"invalid_draft"}` dan `validateDraft` →
+   `{"category":"UNKNOWN_CATEGORY"}`. Dengan daftar kategori yang dilokalkan → `{"auto":true}`.
+   (Berkas diagnostik sementara, sudah dihapus setelah dipakai.)
+
+**Akar masalah:** `validateDraft` (`src/features/transaction-entry/draft.ts`) membandingkan nama
+kategori sebagai **teks literal** (`categoryNames(ctx).has(name.toLowerCase())`). Draf teks memakai
+label bahasa aktif, daftar kategori memakai nama tersimpan (Inggris) → setiap draf berbahasa
+Indonesia ditolak. Dampaknya bukan hanya auto-save batal: karena
+`savable = !saving && allDraftsValid(...)` di `TransactionReview`, **tombol Simpan ikut terkunci**
+untuk entri teks di UI Indonesia — bug V2 yang sudah ada sebelumnya dan baru tersingkap oleh baris
+alasan auto-save.
+
+**Perbaikan:** kategori dibandingkan lewat identitas kanonik taksonomi
+(`areCategoryNamesEquivalent`) — label id/en, beda huruf besar/kecil, dan alias dianggap kategori
+yang sama; nama yang benar-benar asing tetap `UNKNOWN_CATEGORY`.
+
+**Penjaga regresi (bentuk produksi: draf Indonesia vs kategori Inggris):**
+- `draft.test.ts` → "accepts a localised label for a category stored under its English name"
+- `auto-save.test.ts` → "auto-saves a draft whose category is labelled in the active language"
+
+**Verifikasi:** `tsc` bersih · suite penuh **88/88, 767 lulus, 8 dilewati, 0 gagal** ·
+`quality:live` exit 0 (13 fitur / 39 marker) · deploy ulang → bundle live
+`entry-0adff89a422b742e38afec08d1bd736e.js` (berbeda dari `entry-ee6da22e…` pra-perbaikan) dengan
+`TRANSACTION_ENTRY_V2 = "true"` dan `AI_AUTOSAVE_TEXT = "true"` tetap menyala.
+**Commit:** `7420937`. **Snapshot rollback:** `…/placeholder/rollback-<ts>-fix-category/index.html`.
