@@ -149,7 +149,7 @@ describe.each([false, true])('SettingsScreen honest controls (simpleNavigation=%
     expect(screen.queryByText('Pengaturan')).toBeNull()
     expect(screen.getByTestId('settings-profile')).toBeTruthy()
     expect(screen.getByTestId(simpleMode ? 'settings-entrance-3' : 'settings-entrance-10')).toBeTruthy()
-    expect(screen.queryByTestId(simpleMode ? 'settings-entrance-4' : 'settings-entrance-11')).toBeNull()
+    expect(screen.queryByTestId(simpleMode ? 'settings-entrance-5' : 'settings-entrance-11')).toBeNull()
     expect(screen.queryByTestId('settings-kaswise-logo-mark')).toBeNull()
     expect(screen.getByText('Bahasa aplikasi')).toBeTruthy()
     expect(screen.getByText('Tampilan')).toBeTruthy()
@@ -199,6 +199,14 @@ describe.each([false, true])('SettingsScreen honest controls (simpleNavigation=%
       .map((node: { props: { testID: string } }) => node.props.testID)
     expect(controls.indexOf('finance-context-switcher')).toBeLessThan(controls.indexOf('settings-wallets'))
     expect(screen.queryByTestId('settings-import-statement-link')).toBeNull()
+  })
+
+  itSimple('places logout after the last group, not inside it', async () => {
+    const screen = await renderSettings()
+    const ids = screen.UNSAFE_root.findAll((node: { type: unknown; props: { testID?: string } }) => typeof node.type === 'string' && Boolean(node.props.testID))
+      .map((node: { props: { testID: string } }) => node.props.testID)
+    expect(ids.indexOf('settings-logout')).toBeGreaterThan(ids.indexOf('settings-app-info'))
+    expect(ids.indexOf('settings-logout')).toBeGreaterThan(ids.indexOf('settings-account-deletion'))
   })
 
   itSimple('keeps notification writes distinct from inbox navigation', async () => {

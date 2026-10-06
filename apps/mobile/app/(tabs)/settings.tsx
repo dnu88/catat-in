@@ -1577,9 +1577,9 @@ export default function SettingsScreen() {
 						{securitySection}
 						{legalSection}
 						{deletionSection}
-						{logoutSection}
 						{appInfoSection}
 					</SettingsSection>,
+					logoutSection,
 				] : [
 					profileSection,
 					appearanceSection,
