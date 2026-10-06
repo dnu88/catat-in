@@ -97,13 +97,10 @@ docker-compose.override.yml
 
 # ── DESIGN / QA BINARY ARTIFACTS ─────────────────────────────
 # Derived output (screenshots, snapshots, reference video/frames) stays on disk
-# but is not versioned. Text docs (.md/.json) under these dirs ARE tracked.
+# but is not versioned. Text docs (.md/.json) under these dirs ARE tracked
+# (gitignore never untracks already-committed files).
 docs/qa/
 docs/design/moonveo-reference/*.mp4
 docs/design/moonveo-reference/*.jpg
-docs/design/kaswise-simple-premium/*.png
-docs/design/kaswise-simple-premium/*.jpg
-docs/design/kaswise-simple-premium/*.html
-docs/design/capture-text-receipt-preview/*.png
-docs/design/capture-text-receipt-preview/*.jpg
-docs/design/capture-text-receipt-preview/*.html
+docs/design/kaswise-simple-premium/
+docs/design/capture-text-receipt-preview/
