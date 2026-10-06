@@ -82,7 +82,7 @@ export const mobileLegalPages: Record<MobileLegalPage, MobileLegalContent> = {
       {
         title: "Kontrol pengguna dan penghapusan akun",
         body:
-          "Pengguna dapat melihat jalur penghapusan akun dari Settings atau melalui halaman publik account deletion. Untuk Track A, pengguna login dapat mengirim request penghapusan terautentikasi dari aplikasi.",
+          "Pengguna dapat melihat jalur penghapusan akun dari Settings atau melalui halaman publik account deletion. Pengguna yang login dapat mengirim request penghapusan terautentikasi dari aplikasi.",
       },
     ],
   },
@@ -114,7 +114,7 @@ export const mobileLegalPages: Record<MobileLegalPage, MobileLegalContent> = {
     eyebrow: "Penghapusan akun",
     title: "Penghapusan Akun Kaswise",
     intro:
-      "Kaswise menyediakan jalur yang jelas untuk meminta penghapusan akun dan data dari sistem aktif. Untuk Track A, pengguna login dapat mengirim request langsung dari Settings aplikasi.",
+      "Kaswise menyediakan jalur yang jelas untuk meminta penghapusan akun dan data dari sistem aktif. Pengguna yang login dapat mengirim request langsung dari Settings aplikasi.",
     ctaLabel: "Email penghapusan akun",
     ctaHref: `${supportMailto}?subject=Permintaan%20Penghapusan%20Akun%20Kaswise`,
     sections: [
@@ -142,21 +142,132 @@ export const mobileLegalPages: Record<MobileLegalPage, MobileLegalContent> = {
   },
 };
 
-const englishHelp: MobileLegalContent = {
-  eyebrow: "Kaswise help",
-  title: "Quick guide to Kaswise",
-  intro: "Record transactions, manage wallets, and understand your finances through reports.",
-  ctaLabel: "Email support",
-  ctaHref: mobileLegalPages.help.ctaHref,
-  sections: [
-    { title: "Record with text", body: "Open Add transaction and describe a transaction, such as ‘lunch 35 thousand’. Check the recorded result and make sure the amount, category, date, and wallet are correct." },
-    { title: "Record from receipts", body: "In Add transaction, choose a clear receipt photo. Review the details and total, then correct any mistakes before saving." },
-    { title: "Manage wallets", body: "Open Wallets to separate cash, bank accounts, and digital wallets. Choose the matching wallet when recording a transaction to keep balances organized." },
-    { title: "Read reports", body: "Open Reports and choose a period to see income, expenses, and category summaries. Reports reflect the transactions you save." },
-  ],
+const englishLegalPages: Record<MobileLegalPage, MobileLegalContent> = {
+  help: {
+    eyebrow: "Kaswise help",
+    title: "Quick guide to Kaswise",
+    intro: "Record transactions, manage wallets, and understand your finances through reports.",
+    ctaLabel: "Email support",
+    ctaHref: mobileLegalPages.help.ctaHref,
+    sections: [
+      { title: "Record with text", body: "Open Add transaction and describe a transaction, such as ‘lunch 35 thousand’. Check the recorded result and make sure the amount, category, date, and wallet are correct." },
+      { title: "Record from receipts", body: "In Add transaction, choose a clear receipt photo. Review the details and total, then correct any mistakes before saving." },
+      { title: "Manage wallets", body: "Open Wallets to separate cash, bank accounts, and digital wallets. Choose the matching wallet when recording a transaction to keep balances organized." },
+      { title: "Read reports", body: "Open Reports and choose a period to see income, expenses, and category summaries. Reports reflect the transactions you save." },
+    ],
+  },
+  terms: {
+    eyebrow: "Terms of service",
+    title: "Kaswise Terms of Service",
+    intro:
+      "By using Kaswise, you agree to the following terms for this personal finance tracking application.",
+    ctaLabel: "Ask about terms",
+    ctaHref: `${supportMailto}?subject=Kaswise%20Terms%20of%20Service`,
+    sections: [
+      {
+        title: "Scope of service",
+        body:
+          "Kaswise is provided as a tool for personal finance tracking and insights. You remain responsible for the data you enter and the financial decisions you make.",
+      },
+      {
+        title: "Not professional advice",
+        body:
+          "Kaswise does not provide legal, tax, accounting, investment, or professional financial advice. Reports and insights are informational only.",
+      },
+      {
+        title: "Account, use, and premium",
+        body:
+          "You are responsible for keeping your account access secure and not misusing the service. Premium availability may differ between web/PWA and native while Kaswise follows a platform-compliant release strategy.",
+      },
+    ],
+  },
+  privacy: {
+    eyebrow: "Privacy policy",
+    title: "Kaswise Privacy Policy",
+    intro:
+      "Financial data is sensitive. This page summarizes how Kaswise collects, uses, and protects user data.",
+    ctaLabel: "Ask about privacy",
+    ctaHref: `${supportMailto}?subject=Kaswise%20Privacy%20Policy`,
+    sections: [
+      {
+        title: "Data we collect",
+        body:
+          "Kaswise may process account data, transactions, wallets, budgets, bill reminders, app preferences, and scan/import or AI results when you use those features.",
+      },
+      {
+        title: "How we use data",
+        body:
+          "Data is used for authentication, showing your financial records and reports, running reminders and entitlements, and processing OCR, import, or AI workflows you request.",
+      },
+      {
+        title: "Infrastructure providers and retention",
+        body:
+          "Kaswise may use providers such as Supabase, a backend/API, and web/PWA payment processors. Data is kept as long as needed for service operation, security, backup, and lawful obligations.",
+      },
+      {
+        title: "User controls and account deletion",
+        body:
+          "You can find the account deletion path in Settings or through the public account deletion page. Logged-in users can submit an authenticated deletion request from the app.",
+      },
+    ],
+  },
+  contact: {
+    eyebrow: "Support contact",
+    title: "Contact Kaswise Support",
+    intro:
+      "For product help, policy questions, or issue reports, contact the Kaswise team by email.",
+    ctaLabel: supportEmail,
+    ctaHref: `${supportMailto}?subject=Kaswise%20Support`,
+    sections: [
+      {
+        title: "Support email",
+        body: supportEmail,
+      },
+      {
+        title: "What to include",
+        body:
+          "Include your account email, the device you use, the feature with the problem, the steps before the issue appeared, and a screenshot if it helps.",
+      },
+      {
+        title: "Privacy, terms, and account deletion",
+        body:
+          "Use the same contact for privacy questions, terms of service, or help with account deletion requests.",
+      },
+    ],
+  },
+  accountDeletion: {
+    eyebrow: "Account deletion",
+    title: "Kaswise Account Deletion",
+    intro:
+      "Kaswise provides a clear path to request deletion of your account and data from the active system. Logged-in users can submit a request directly from Settings.",
+    ctaLabel: "Account deletion email",
+    ctaHref: `${supportMailto}?subject=Kaswise%20Account%20Deletion`,
+    sections: [
+      {
+        title: "How to request deletion",
+        body:
+          "If you can still log in, open Settings and submit a deletion request from your active account. If you cannot log in, email support using the relevant Kaswise account address.",
+      },
+      {
+        title: "What we may ask for",
+        body:
+          "Kaswise may ask for your account email and confirmation as needed to verify that the requester controls the account. Kaswise should avoid asking for unnecessary identity information.",
+      },
+      {
+        title: "What is deleted and what may be kept temporarily",
+        body:
+          "Kaswise will disable account access and delete or anonymize relevant active data. Some limited data may be kept temporarily for security, backup, anti-fraud, or lawful obligations.",
+      },
+      {
+        title: "Processing time estimate",
+        body:
+          "Kaswise targets processing account deletion requests within up to 30 days, depending on verification and lawful retention needs.",
+      },
+    ],
+  },
 };
 
-/** Only the product guide is localized; legal policy text remains canonical. */
+/** All legal pages are localized; Indonesian remains the fallback for any future page. */
 export function getMobileLegalContent(page: MobileLegalPage, language: "id" | "en"): MobileLegalContent {
-  return page === "help" && language === "en" ? englishHelp : mobileLegalPages[page];
+  return language === "en" ? englishLegalPages[page] : mobileLegalPages[page];
 }

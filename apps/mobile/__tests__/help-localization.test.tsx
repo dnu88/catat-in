@@ -1,7 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react-native';
 import { Linking } from 'react-native';
 import { LegalInfoScreen } from '../src/components/legal/LegalInfoScreen';
-import { mobileLegalPages } from '../src/content/legal-pages';
+import { getMobileLegalContent, mobileLegalPages } from '../src/content/legal-pages';
 
 
 let mockLanguage: 'id' | 'en' = 'id';
@@ -24,10 +24,12 @@ describe('Help language and safe guidance', () => {
     expect(open).toHaveBeenCalledWith(mobileLegalPages.help.ctaHref);
     open.mockRestore();
   });
-  it.each(['terms', 'privacy'] as const)('keeps %s legal content unchanged in either locale', (page) => {
+  it.each(['terms', 'privacy', 'contact', 'accountDeletion'] as const)('localizes %s legal content into English', (page) => {
     mockLanguage = 'en';
     render(<LegalInfoScreen page={page} />);
-    expect(screen.getByText(mobileLegalPages[page].title)).toBeTruthy();
-    for (const section of mobileLegalPages[page].sections) expect(screen.getByText(section.body)).toBeTruthy();
+    const en = getMobileLegalContent(page, 'en');
+    expect(screen.getByText(en.title)).toBeTruthy();
+    for (const section of en.sections) expect(screen.getAllByText(section.body).length).toBeGreaterThan(0);
+    expect(screen.queryByText(mobileLegalPages[page].title)).toBeNull();
   });
 });
