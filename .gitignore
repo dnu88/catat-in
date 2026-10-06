@@ -94,3 +94,16 @@ docker-compose.override.yml
 
 # Backup env files (contain secrets)
 .env*.bak*
+
+# ── DESIGN / QA BINARY ARTIFACTS ─────────────────────────────
+# Derived output (screenshots, snapshots, reference video/frames) stays on disk
+# but is not versioned. Text docs (.md/.json) under these dirs ARE tracked.
+docs/qa/
+docs/design/moonveo-reference/*.mp4
+docs/design/moonveo-reference/*.jpg
+docs/design/kaswise-simple-premium/*.png
+docs/design/kaswise-simple-premium/*.jpg
+docs/design/kaswise-simple-premium/*.html
+docs/design/capture-text-receipt-preview/*.png
+docs/design/capture-text-receipt-preview/*.jpg
+docs/design/capture-text-receipt-preview/*.html
