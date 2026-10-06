@@ -1,0 +1,25 @@
+{
+  "reference": "Moonveo iPhone screen recording provided by Danu",
+  "video": "moonveo-reference.mp4",
+  "durationSeconds": 141.181224,
+  "dimensions": [384, 848],
+  "sha256": "a9344f2b83d73856f9dcdf4fd7fa86bcb99128144ca84e3cdb8073d375ae9c0c",
+  "inspection": "Full-resolution frames sampled every 5 seconds across entire video; no native frame-by-frame motion timing benchmark. Video analyzer unavailable (403), actual frames inspected directly.",
+  "privacy": "Recording includes incidental personal notifications around 125–130s and profile data. Do not reproduce these in public artifacts or product mocks. Original kept private; user-facing notes omit personal identifiers.",
+  "timeline": [
+    {"range":"0–5s","screen":"iOS Control Center","finding":"Not Moonveo UI; exclude from premium benchmark."},
+    {"range":"10s","screen":"Settings upper","finding":"Profile, Settings, Preferences grouped; row icons, chevrons and active values. Tracking Mode Full Net Worth, Tag Off, Currency Rp, budget period Day25, Language EN visible."},
+    {"range":"15s / 55s","screen":"Categories & Budget","finding":"Expense/Income segmented control, add button, icon/name/budget subtitle rows."},
+    {"range":"20s","screen":"Category visual editor color","finding":"Large selected preview, Color/Icon/Emoji tabs, custom color, palette selection ring, bottom Apply."},
+    {"range":"25–40s","screen":"Category visual editor icon","finding":"Scrollable icon grid, Search icon, large preview, persistent bottom Apply. No demonstrated successful emoji selection."},
+    {"range":"45s","screen":"Category detail edit","finding":"Category name and Monthly budget fields; keyboard open. Avoid conflating naming with icon editing."},
+    {"range":"50s","screen":"Category overview","finding":"Category header/icon/budget state, progress area, expense/income summary, Transactions period selector, contextual empty state."},
+    {"range":"60s / 95s","screen":"Settings lower","finding":"Preferences show Apple Shortcuts, Dark mode System, Export CSV, Import statement; Updates group; logout separated at bottom. Menu presence does not prove every function works."},
+    {"range":"65s / 90s","screen":"Home overview","finding":"Space identity, notification icon, Overview visibility/period controls, Expenses/Income, Categories donut zero-state, expense/income segment and next-step text. Floating 5-icon bottom nav."},
+    {"range":"70–75s","screen":"Net worth / asset overview","finding":"Net Worth Graph with period and headline value; Cash/Investments/Fixed Assets cards and add/disclosure controls. Native function results not demonstrated."},
+    {"range":"80s","screen":"Voice capture","finding":"One central Tap to start, language control, dismissible example hint, secondary Add Manual and Scan or Attach."},
+    {"range":"85s","screen":"Camera capture","finding":"Single Transaction/Multiple segment, camera preview, flash/camera controls, gallery and Take a picture. No completed OCR/save flow shown."},
+    {"range":"100s / 140s","screen":"Apple Shortcuts hub","finding":"Voice and Screen Scanner Add rows; Apple Pay Sync Setup automation row."},
+    {"range":"105–135s","screen":"Screen Scanner guide","finding":"Demonstration imagery/video, numbered Step by step instructions, Add action, persistent Done. In-guide screen examples are not evidence of live Kaswise capabilities."}
+  ]
+}
