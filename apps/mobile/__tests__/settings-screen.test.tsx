@@ -153,9 +153,10 @@ describe.each([false, true])('SettingsScreen honest controls (simpleNavigation=%
     expect(screen.queryByTestId('settings-kaswise-logo-mark')).toBeNull()
     expect(screen.getByText('Bahasa aplikasi')).toBeTruthy()
     expect(screen.getByText('Tampilan')).toBeTruthy()
-    expect(screen.getByTestId('settings-theme-system')).toBeTruthy()
-    expect(screen.getByTestId('settings-theme-light')).toBeTruthy()
-    expect(screen.getByTestId('settings-theme-dark')).toBeTruthy()
+    expect(screen.queryByTestId('settings-theme-system')).toBeNull()
+    expect(screen.getByTestId('settings-appearance-row')).toBeTruthy()
+    expect(screen.getByText('Terang')).toBeTruthy()
+    expect(screen.queryByTestId('settings-theme-dark')).toBeNull()
     expect(screen.getByText(simpleMode ? 'Preferensi notifikasi' : 'Notifikasi')).toBeTruthy()
     expect(screen.getByText('Keluarga')).toBeTruthy()
     expect(screen.getByText('Pusat Keluarga')).toBeTruthy()
@@ -191,7 +192,7 @@ describe.each([false, true])('SettingsScreen honest controls (simpleNavigation=%
     ])
     expect(screen.getByTestId('finance-context-switcher')).toBeTruthy()
     expect(screen.getByText('Pribadi')).toBeTruthy()
-    for (const title of ['Dompet & akun', 'Kategori & anggaran', 'Tagihan & pengingat']) {
+    for (const title of ['Dompet & akun', 'Anggaran kategori', 'Tagihan & pengingat']) {
       expect(screen.getByText(title)).toBeTruthy()
     }
     const controls = screen.UNSAFE_root.findAll((node: { type: unknown; props: { testID?: string } }) => typeof node.type === 'string' && node.props.testID)
@@ -203,6 +204,7 @@ describe.each([false, true])('SettingsScreen honest controls (simpleNavigation=%
   itSimple('keeps notification writes distinct from inbox navigation', async () => {
     const screen = await renderSettings()
     expect(screen.getByText('Preferensi notifikasi')).toBeTruthy()
+    await waitFor(() => expect(screen.getByTestId('settings-notification-daily').props.accessibilityState.disabled).toBe(false))
     fireEvent.press(screen.getByRole('switch', { name: 'Pengingat Harian' }))
     expect(updateNotificationPreferences).toHaveBeenCalledWith(mockSupabase, { daily_reminder_enabled: false })
     expect(mockPush).not.toHaveBeenCalled()
@@ -214,11 +216,12 @@ describe.each([false, true])('SettingsScreen honest controls (simpleNavigation=%
     jest.spyOn(featureFlags, 'importStatement', 'get').mockReturnValue(true)
     const screen = await renderSettings()
     expect(screen.getByText('Import rekening koran')).toBeTruthy()
+    fireEvent.press(screen.getByTestId('settings-language-row'))
     fireEvent.press(screen.getByTestId('settings-language-en'))
     expect(screen.getAllByRole('header').map(node => node.props.children)).toEqual([
       'Finance', 'Family', 'App', 'Account & support',
     ])
-    for (const label of ['Wallets & accounts', 'Categories & budgets', 'Bills & reminders',
+    for (const label of ['Wallets & accounts', 'Category budgets', 'Bills & reminders',
       'Bank statement import', 'Notification inbox', 'Notification preferences', 'Personal']) {
       expect(screen.getByText(label)).toBeTruthy()
     }
@@ -381,6 +384,7 @@ describe.each([false, true])('SettingsScreen honest controls (simpleNavigation=%
   it('still lets language controls work and keeps logout visible', async () => {
     const screen = await renderSettings()
 
+    fireEvent.press(screen.getByTestId('settings-language-row'))
     fireEvent.press(screen.getByTestId('settings-language-en'))
     expect(screen.queryByText('Settings')).toBeNull()
     expect(screen.getByText('App language')).toBeTruthy()
@@ -388,11 +392,11 @@ describe.each([false, true])('SettingsScreen honest controls (simpleNavigation=%
     expect(screen.getByText('Sign Out')).toBeTruthy()
   })
 
-  it('moves theme preference into settings', async () => {
+  it('shows actual light-first appearance without changing stored preference', async () => {
     const screen = await renderSettings()
 
-    fireEvent.press(screen.getByTestId('settings-theme-dark'))
-
-    expect(AsyncStorage.setItem).toHaveBeenCalledWith('kaswise:theme-preference', 'dark')
+    expect(screen.getByTestId('settings-appearance-row')).toBeTruthy()
+    expect(screen.queryByTestId('settings-theme-dark')).toBeNull()
+    expect(AsyncStorage.setItem).not.toHaveBeenCalledWith('kaswise:theme-preference', expect.anything())
   })
 })

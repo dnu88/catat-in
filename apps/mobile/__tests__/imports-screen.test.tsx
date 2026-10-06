@@ -7,6 +7,8 @@ const mockConfirmImportStatement = jest.fn();
 const mockGetDocumentAsync = jest.fn();
 let mockActiveContext: any = { type: "personal" };
 let mockCanCreate = true;
+let mockLanguage: 'id' | 'en' = 'id';
+jest.mock('../src/i18n/i18n-context', () => ({ useI18n: () => ({ language: mockLanguage }) }));
 
 jest.mock("expo-router", () => ({
 	useRouter: () => ({ push: mockPush, back: jest.fn() }),
@@ -80,6 +82,7 @@ describe("imports screen", () => {
 		mockGetDocumentAsync.mockReset();
 		mockActiveContext = { type: "personal" };
 		mockCanCreate = true;
+        mockLanguage = 'id';
 		(globalThis as any).fetch = jest.fn(async () => ({ ok: true, blob: async () => new Blob(["csv"], { type: "text/csv" }) }));
 		mockListWallets.mockResolvedValue([
 			{
@@ -102,8 +105,8 @@ describe("imports screen", () => {
 	it("renders a safe disabled state when the feature flag is off", () => {
 		renderImports();
 
-		expect(screen.getByText("Import Rekening Koran")).toBeTruthy();
-		expect(screen.getByText(/Fitur sedang disiapkan/i)).toBeTruthy();
+		expect(screen.getByText("Impor rekening koran")).toBeTruthy();
+		expect(screen.getByText(/Impor belum tersedia/i)).toBeTruthy();
 		expect(screen.queryByTestId("imports-choose-file")).toBeNull();
 
 		fireEvent.press(screen.getByTestId("imports-back-to-capture"));
@@ -240,4 +243,62 @@ describe("imports screen", () => {
 			household_id: "household-1",
 		})));
 	});
+  it.each(['id', 'en'] as const)('localizes disabled and active labels in %s', async (language) => {
+    mockLanguage = language;
+    const view = renderImports();
+    expect(screen.getByText(language === 'id' ? 'Kembali ke Catat' : 'Back to Add transaction')).toBeTruthy();
+    expect(screen.queryByText(/live|bertahap|rollout/i)).toBeNull();
+    view.unmount();
+    (globalThis as any).__KASWISE_FEATURE_FLAGS__.importStatement = true;
+    renderImports();
+    await screen.findByTestId('imports-wallet-wallet-1');
+    expect(screen.getByText(language === 'id' ? '1. Pilih dompet tujuan' : '1. Choose destination wallet')).toBeTruthy();
+    expect(screen.getByText(language === 'id' ? 'Pratinjau impor' : 'Preview import')).toBeTruthy();
+    fireEvent.press(screen.getByTestId('imports-preview-submit'));
+    expect(screen.getByText(language === 'id' ? 'Pilih file rekening koran terlebih dahulu.' : 'Choose a statement file first.')).toBeTruthy();
+  });
+  it('localizes preview, server row errors, and confirmation without changing the payload', async () => {
+    mockLanguage = 'en';
+    (globalThis as any).__KASWISE_FEATURE_FLAGS__.importStatement = true;
+    mockGetDocumentAsync.mockResolvedValue({ canceled: false, assets: [{ uri: 'file://statement.csv', name: 'statement.csv', size: 100 }] });
+    const transactions = [{ date: '2026-07-01', description: 'Lunch', type: 'expense', amount: 35000, hash: 'abc' }];
+    mockPreviewImportStatement.mockResolvedValue({ transactions, duplicates: [{}], errors: [{ row: 3, reason: 'Format tanggal tidak valid' }], total_rows: 3, skipped_months: 2, bank_name: 'BCA' });
+    mockConfirmImportStatement.mockResolvedValue({ success: true, imported: 1, skipped_duplicates: 1, message: 'Berhasil mengimpor 1 transaksi.' });
+    renderImports();
+    await screen.findByTestId('imports-wallet-wallet-1');
+    fireEvent.press(screen.getByTestId('imports-choose-file'));
+    await screen.findByText('statement.csv');
+    fireEvent.press(screen.getByTestId('imports-preview-submit'));
+    await screen.findByTestId('imports-preview-result');
+    expect(screen.getByText('Total rows')).toBeTruthy();
+    expect(screen.getByText(/Expense/)).toBeTruthy();
+    expect(screen.getByText('Row 3: Invalid date format')).toBeTruthy();
+    expect(screen.getByText('2 rows outside the free plan period were skipped.')).toBeTruthy();
+    fireEvent.press(screen.getByText('Confirm import'));
+    await screen.findByText('Import complete.');
+    expect(screen.getByText('1 transaction imported, 1 duplicate skipped.')).toBeTruthy();
+    expect(screen.queryByText(/Berhasil mengimpor/)).toBeNull();
+    expect(mockConfirmImportStatement).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ transactions, skip_duplicates: true, wallet_id: 'wallet-1', context_type: 'personal', household_id: null }));
+  });
+
+  it.each(['id', 'en'] as const)('localizes loading, picker failure, and file validation in %s', async (language) => {
+    mockLanguage = language;
+    (globalThis as any).__KASWISE_FEATURE_FLAGS__.importStatement = true;
+    let finish!: (rows: unknown[]) => void;
+    mockListWallets.mockImplementation(() => new Promise((resolve) => { finish = resolve; }));
+    renderImports();
+    expect(screen.getByLabelText(language === 'id' ? 'Memuat dompet' : 'Loading wallets')).toBeTruthy();
+    const { act } = require('@testing-library/react-native');
+    await act(async () => finish([]));
+    expect(screen.getByText(language === 'id' ? 'Belum ada dompet aktif. Buat dompet terlebih dahulu sebelum mengimpor.' : 'No active wallets. Create a wallet before importing.')).toBeTruthy();
+    mockGetDocumentAsync.mockRejectedValueOnce(new Error('native picker internal'));
+    fireEvent.press(screen.getByTestId('imports-choose-file'));
+    await screen.findByText(language === 'id' ? 'File belum bisa dipilih. Coba lagi.' : 'The file could not be selected. Try again.');
+    expect(screen.queryByText('native picker internal')).toBeNull();
+    mockGetDocumentAsync.mockResolvedValueOnce({ canceled: false, assets: [{ uri: 'file://large.csv', name: 'large.csv', size: 6000000 }] });
+    fireEvent.press(screen.getByTestId('imports-choose-file'));
+    await screen.findByText(language === 'id' ? 'File terlalu besar. Maksimal 5MB.' : 'File is too large. Maximum 5MB.');
+    expect(mockPreviewImportStatement).not.toHaveBeenCalled();
+  });
+
 });

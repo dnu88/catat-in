@@ -6,6 +6,7 @@ import { LinearGradient } from "expo-linear-gradient";
 
 import { FinanceContextSwitcher } from "../../src/components/FinanceContextSwitcher";
 import { featureFlags } from "../../src/config/features";
+import { recentEmptyStateCopy } from "../../src/features/home/empty-state-copy";
 import { PageEntrance, StaggeredEntrance } from "../../src/components/motion";
 import {
 	KaswiseIcon,
@@ -14,6 +15,11 @@ import {
 import { getUnreadNotificationCount } from "../../src/services/notifications";
 import { PROFILE_AVATARS, ProfileAvatarIllustration, readProfileVisualMetadata } from "../../src/components/profile/ProfileAvatar";
 
+import {
+	experienceIcon,
+	experienceTokens,
+	resolveExperienceTextStyle,
+} from "../../src/theme/experience-tokens";
 import { useI18n } from "../../src/i18n/i18n-context";
 import { useSupabase } from "../../src/lib/supabase";
 import {
@@ -94,6 +100,10 @@ export default function DashboardScreen() {
 	const router = useRouter();
 	const isEn = language === "en";
 	const simpleNavigation = featureFlags.simpleNavigation;
+	// T21 (simple premium): lead with saldo -> income/expense -> recent and expose
+	// exactly ONE record CTA. The decorative wallet stack and every existing
+	// section (attention, recent, budget, review) stay untouched.
+	const premium = featureFlags.simplePremiumExperience;
 	const tx = useMemo(
 		() =>
 			isEn
@@ -181,7 +191,9 @@ export default function DashboardScreen() {
 					},
 		[isEn],
 	);
-	const styles = useMemo(() => createStyles(theme), [theme]);
+	// B1 (visual foundation): the presentation flag is resolved before the styles
+	// object so flag OFF keeps every value identical to the pre-B1 baseline.
+	const styles = useMemo(() => createStyles(theme, premium), [theme, premium]);
 	const [envelopeAlerts, setEnvelopeAlerts] = useState<EnvelopeSummary[]>([]);
 	const [wallets, setWallets] = useState<Wallet[]>([]);
 	const [recentTransactions, setRecentTransactions] = useState<Transaction[]>(
@@ -627,6 +639,19 @@ export default function DashboardScreen() {
 				</View>
 
 				<View style={styles.paperSheet}>
+				{premium ? (
+					<Pressable
+						testID="home-capture-cta"
+						accessibilityRole="button"
+						accessibilityLabel={isEn ? "Record a transaction" : "Catat transaksi"}
+						style={styles.premiumCaptureCta}
+						onPress={() => router.push("/(tabs)/capture")}
+					>
+						<Text style={styles.premiumCaptureCtaText}>
+							{isEn ? "Record a transaction" : "Catat transaksi"}
+						</Text>
+					</Pressable>
+				) : null}
 				{simpleNavigation && hasAttention ? (
 					<View testID="home-attention-section" style={styles.attentionSection}>
 						{hasReview ? (
@@ -694,7 +719,14 @@ export default function DashboardScreen() {
 									<KaswiseIcon
 										name={item.icon}
 										color={item.iconColor}
-										size={18}
+										size={
+											premium
+												? Math.round(
+														experienceIcon.tile.section *
+															experienceIcon.glyphRatio,
+													)
+												: 18
+										}
 										weight="bold"
 									/>
 								</View>
@@ -721,7 +753,7 @@ export default function DashboardScreen() {
 							<View style={styles.emptyInlineCopy}>
 								<Text style={styles.emptyInlineTitle}>{isEn ? "No transactions yet" : "Belum ada transaksi"}</Text>
 								<Text style={styles.emptyInlineBody}>
-									{isEn ? "Use the + button to record the first one." : "Gunakan tombol + untuk mencatat transaksi pertama."}
+									{recentEmptyStateCopy({ isEn, premium })}
 								</Text>
 							</View>
 						</View>
@@ -816,7 +848,10 @@ export default function DashboardScreen() {
 	);
 }
 
-function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
+function createStyles(
+	theme: ReturnType<typeof useTheme>["theme"],
+	premium: boolean,
+) {
 	return StyleSheet.create({
 		screen: { flex: 1, backgroundColor: fe.navySurface },
 		scrollView: {
@@ -938,7 +973,16 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			gap: 10,
 			flexWrap: "wrap",
 		},
-		heroAmount: { color: fe.white, fontSize: 38, fontWeight: theme.typography.fontWeight.semibold, letterSpacing: -1.1 },
+		heroAmount: {
+			color: fe.white,
+			...(premium
+				? resolveExperienceTextStyle("heroBalance")
+				: {
+						fontSize: 38,
+						fontWeight: theme.typography.fontWeight.semibold,
+						letterSpacing: -1.1,
+					}),
+		},
 		heroAmountDanger: {
 			color: fe.financialExpenseAlert,
 		},
@@ -982,7 +1026,12 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			gap: 3,
 		},
 		heroMetricLabel: { color: "rgba(255,255,255,0.54)", fontSize: 11, fontWeight: theme.typography.fontWeight.medium },
-		heroMetricValue: { color: fe.white, fontSize: 15, fontWeight: theme.typography.fontWeight.semibold },
+		heroMetricValue: {
+			color: fe.white,
+			...(premium
+				? resolveExperienceTextStyle("metricAmount")
+				: { fontSize: 15, fontWeight: theme.typography.fontWeight.semibold }),
+		},
 		heroMetricSub: { color: "rgba(255,255,255,0.42)", fontSize: 10, fontWeight: theme.typography.fontWeight.medium },
 		walletStack: { height: 84, marginTop: 20, marginBottom: 4, position: "relative" },
 		walletStackBack: { position: "absolute", left: 30, right: 30, top: 0, height: 50, borderRadius: 18, backgroundColor: "rgba(6,30,87,0.22)" },
@@ -992,8 +1041,24 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 		walletStackMeta: { color: "rgba(255,255,255,0.68)", fontSize: 11 },
 		paperSheet: { backgroundColor: fe.paper, borderTopLeftRadius: 0, borderTopRightRadius: 0, paddingHorizontal: 20, paddingTop: 26, paddingBottom: 20, gap: 18, minHeight: 420 },
 		sectionCard: { backgroundColor: "transparent", borderWidth: 0, borderRadius: 0, padding: 0, gap: 12 },
+		premiumCaptureCta: {
+			minHeight: 48,
+			borderRadius: 14,
+			backgroundColor: fe.blue,
+			alignItems: "center",
+			justifyContent: "center",
+			marginTop: 4,
+			marginBottom: 14,
+		},
+		premiumCaptureCtaText: { color: fe.white, fontSize: 15, fontWeight: "700" },
 		attentionSection: { gap: 0, borderBottomWidth: 1, borderBottomColor: fe.line },
-		attentionRow: { flexDirection: "row", alignItems: "center", gap: 12, minHeight: 56, paddingVertical: 6 },
+		attentionRow: {
+			flexDirection: "row",
+			alignItems: "center",
+			gap: premium ? experienceTokens.spacing[3] : 12,
+			minHeight: premium ? experienceTokens.target.rowMinHeight : 56,
+			paddingVertical: 6,
+		},
 		attentionCopy: { flex: 1, gap: 3 },
 		attentionTitle: { flexShrink: 1, color: fe.ink, fontSize: 13, fontWeight: theme.typography.fontWeight.semibold },
 		attentionAction: { minHeight: 44, justifyContent: "center", marginLeft: "auto", flexShrink: 0 },
@@ -1002,7 +1067,16 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			justifyContent: "space-between",
 			alignItems: "center",
 		},
-		sectionTitle: { color: fe.ink, fontSize: 20, fontWeight: theme.typography.fontWeight.semibold, letterSpacing: -0.35 },
+		sectionTitle: {
+			color: fe.ink,
+			...(premium
+				? resolveExperienceTextStyle("sectionTitle")
+				: {
+						fontSize: 20,
+						fontWeight: theme.typography.fontWeight.semibold,
+						letterSpacing: -0.35,
+					}),
+		},
 		sectionAction: { color: fe.muted, fontSize: 12, fontWeight: theme.typography.fontWeight.semibold },
 		sectionActionTarget: {
 			minWidth: 44,
@@ -1051,14 +1125,21 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			borderRadius: 999,
 		},
 		budgetStatus: { color: fe.slate, fontSize: 11, marginTop: 2 },
-		txRow: { flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: fe.line },
+		txRow: {
+			flexDirection: "row",
+			alignItems: "center",
+			gap: premium ? experienceTokens.spacing[3] : 12,
+			paddingVertical: premium ? experienceTokens.spacing[3] : 12,
+			borderBottomWidth: 1,
+			borderBottomColor: fe.line,
+		},
 		txRowLast: {
 			borderBottomWidth: 0,
 		},
 		txBubble: {
-			width: 36,
-			height: 36,
-			borderRadius: 18,
+			width: premium ? experienceIcon.tile.section : 36,
+			height: premium ? experienceIcon.tile.section : 36,
+			borderRadius: premium ? experienceIcon.tile.section / 2 : 18,
 			borderWidth: 1,
 			alignItems: "center",
 			justifyContent: "center",
@@ -1073,7 +1154,11 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 		},
 		txTitle: { color: fe.ink, fontSize: 14, fontWeight: theme.typography.fontWeight.semibold },
 		txMeta: { color: fe.muted, fontSize: 11, marginTop: 2 },
-		txAmount: { fontSize: 13, fontWeight: theme.typography.fontWeight.semibold },
+		txAmount: {
+			...(premium
+				? resolveExperienceTextStyle("recentAmount")
+				: { fontSize: 13, fontWeight: theme.typography.fontWeight.semibold }),
+		},
 		txAmountIncome: { color: fe.financialIncome },
 		txAmountExpense: { color: fe.financialExpense },
 		});

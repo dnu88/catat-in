@@ -25,6 +25,9 @@ const mockTransactionEntryV2 = true;
 // Text auto-save is ON for every test in this file on purpose: the receipt path
 // must ignore it completely and always stop at the confirmation screen.
 const mockAiAutosaveText = true;
+// Premium batch presentation. OFF unless a test turns it on, so every existing
+// case keeps exercising the legacy review surface.
+let mockSimplePremiumExperience = false;
 jest.mock("../src/config/features", () => ({
 	featureFlags: {
 		get transactionEntryV2() {
@@ -32,6 +35,9 @@ jest.mock("../src/config/features", () => ({
 		},
 		get aiAutosaveText() {
 			return mockAiAutosaveText;
+		},
+		get simplePremiumExperience() {
+			return mockSimplePremiumExperience;
 		},
 		get simpleNavigation() {
 			return true;
@@ -144,9 +150,12 @@ jest.mock("../src/services/wallets", () => ({
 	]),
 }));
 
+// Keep context identity stable, matching the real store: an empty/cancelled
+// picker must not retrigger scoped loading on every render.
+const mockActiveContext = { type: "personal" };
 jest.mock("../src/state/finance-context", () => ({
 	useFinanceContext: () => ({
-		activeContext: { type: "personal" },
+		activeContext: mockActiveContext,
 		canCreate: true,
 		memberships: [],
 		setPersonalContext: jest.fn<any, any[]>(),
@@ -222,7 +231,14 @@ function renderCapture() {
 
 /** Drives photo selection through analysis until the receipt review is mounted. */
 async function reachReceiptReview() {
-	fireEvent.press(screen.getByTestId("capture-mode-Foto"));
+	// Premium replaces the mode chips with the composer's secondary routes, so
+	// pick whichever surface is actually mounted.
+	const legacyMode = screen.queryByTestId("capture-mode-Foto");
+	if (legacyMode) {
+		fireEvent.press(legacyMode);
+	} else {
+		fireEvent.press(screen.getByTestId("capture-composer-receipt"));
+	}
 	fireEvent.press(screen.getByTestId("capture-receipt-pick"));
 	await waitFor(() =>
 		expect(screen.getByTestId("capture-receipt-preview")).toBeTruthy(),
@@ -237,6 +253,8 @@ beforeEach(() => {
 	mockSaveEntry.mockReset();
 	mockReconcileEntry.mockReset();
 	mockReconcileEntry.mockResolvedValue([]);
+	// Premium presentation is opt-in per test; every case resets to legacy.
+	mockSimplePremiumExperience = false;
 	mockGetUser.mockReset();
 	mockGetUser.mockResolvedValue({ data: { user: { id: "user-1" } } });
 	mockAnalyzeTransactionText.mockReset();
@@ -250,6 +268,45 @@ beforeEach(() => {
 	mockPush.mockClear();
 	jest.mocked(AsyncStorage.getItem).mockReset();
 	jest.mocked(AsyncStorage.getItem).mockResolvedValue(null);
+});
+
+describe("receipt entry return navigation", () => {
+	it("returns from the receipt picker to existing entry without clearing text or wallet", async () => {
+		mockSimplePremiumExperience = true;
+		renderCapture();
+		await waitFor(() => expect(screen.getByText("Seabank")).toBeTruthy());
+		fireEvent.changeText(screen.getByTestId("capture-composer-input"), "Kopi 35 ribu");
+		fireEvent.press(screen.getByTestId("capture-composer-receipt"));
+		expect(screen.getByTestId("capture-receipt-pick")).toBeTruthy();
+		fireEvent.press(screen.getByTestId("capture-receipt-back"));
+		expect(screen.getByTestId("capture-composer-input").props.value).toBe("Kopi 35 ribu");
+		expect(screen.getByText("Seabank")).toBeTruthy();
+		expect(mockPush).not.toHaveBeenCalled();
+		expect(mockLaunchImageLibraryAsync).not.toHaveBeenCalled();
+		expect(mockAnalyzeTransactionText).not.toHaveBeenCalled();
+		expect(mockAnalyzeReceiptImage).not.toHaveBeenCalled();
+		expect(mockSaveEntry).not.toHaveBeenCalled();
+	});
+
+	it("does not allow return while receipt analysis is running", async () => {
+		mockSimplePremiumExperience = true;
+		let finish: ((value: ReceiptExtraction) => void) | undefined;
+		mockAnalyzeReceiptImage.mockImplementation(() => new Promise<ReceiptExtraction>((resolve) => { finish = resolve; }));
+		renderCapture();
+		await waitFor(() => expect(screen.getByText("Seabank")).toBeTruthy());
+		fireEvent.press(screen.getByTestId("capture-composer-receipt"));
+		fireEvent.press(screen.getByTestId("capture-receipt-pick"));
+		await waitFor(() => expect(mockAnalyzeReceiptImage).toHaveBeenCalledTimes(1));
+		const back = screen.queryByTestId("capture-receipt-back");
+		if (back) {
+			expect(back.props.accessibilityState).toMatchObject({ disabled: true });
+			fireEvent.press(back);
+			expect(screen.queryByTestId("capture-composer-input")).toBeNull();
+		}
+		expect(mockSaveEntry).not.toHaveBeenCalled();
+		expect(finish).toBeDefined();
+		await act(async () => { finish?.({ total_amount: 25000, merchant: "QA", date: "2026-10-04", confidence: 0.9, items: [] }); });
+	});
 });
 
 describe("capture receipt recording modes", () => {
@@ -376,6 +433,108 @@ describe("capture receipt recording modes", () => {
 		expect(payload.drafts.map((draft) => draft.amount)).toEqual([50000, 75000]);
 		// One atomic batch, never a loop of per-item inserts.
 		expect(mockCreateTransaction).not.toHaveBeenCalled();
+	});
+
+	it("(premium batch) renders ONE batch surface with count, total and a single CTA", async () => {
+		mockSimplePremiumExperience = true;
+		mockAnalyzeReceiptImage.mockResolvedValue({
+			total_amount: 125000,
+			merchant: "RM Sederhana",
+			confidence: 0.92,
+			date: "2026-10-02",
+			items: [
+				{ name: "Kopi", price: 50000 },
+				{ name: "Roti", price: 75000 },
+			],
+		} satisfies ReceiptExtraction);
+
+		renderCapture();
+		await reachReceiptReview();
+
+		fireEvent.press(screen.getByTestId("capture-receipt-split"));
+		await waitFor(() => expect(recordedTotalText()).toBe("2 transaksi · Rp 125.000"));
+
+		// Premium: one summary + collapsed rows instead of one card per item.
+		expect(screen.getByTestId("batch-review")).toBeTruthy();
+		expect(screen.getByTestId("batch-review-count").props.children).toBe("2 transaksi");
+		expect(screen.getByTestId("batch-review-total").props.children).toBe("Rp 125.000");
+		expect(screen.queryAllByTestId(/^review-draft-/)).toHaveLength(0);
+		expect(screen.getAllByTestId("batch-review-save")).toHaveLength(1);
+		expect(screen.getByTestId("batch-review-save").props.accessibilityLabel).toBe(
+			"Simpan 2 transaksi",
+		);
+	});
+
+	it("(premium batch) still issues exactly ONE atomic request, even on a double tap", async () => {
+		mockSimplePremiumExperience = true;
+		mockAnalyzeReceiptImage.mockResolvedValue({
+			total_amount: 125000,
+			merchant: "RM Sederhana",
+			confidence: 0.92,
+			date: "2026-10-02",
+			items: [
+				{ name: "Kopi", price: 50000 },
+				{ name: "Roti", price: 75000 },
+			],
+		} satisfies ReceiptExtraction);
+		// Never resolves: keeps the batch surface mounted so the save lock can be
+		// observed instead of racing the success screen.
+		mockSaveEntry.mockImplementation(() => new Promise(() => undefined));
+
+		renderCapture();
+		await reachReceiptReview();
+
+		fireEvent.press(screen.getByTestId("capture-receipt-split"));
+		await waitFor(() => expect(recordedTotalText()).toBe("2 transaksi · Rp 125.000"));
+
+		fireEvent.press(screen.getByTestId("batch-review-save"));
+
+		await waitFor(() => expect(mockSaveEntry).toHaveBeenCalledTimes(1));
+
+		const payload = mockSaveEntry.mock.calls[0][0] as {
+			drafts: Array<{ amount: number }>;
+			requestId: string;
+		};
+		// All drafts travel in the SAME request, with the same requestId.
+		expect(payload.drafts).toHaveLength(2);
+		expect(payload.drafts.map((draft) => draft.amount)).toEqual([50000, 75000]);
+		expect(typeof payload.requestId).toBe("string");
+		expect(mockCreateTransaction).not.toHaveBeenCalled();
+
+		// Double-submit protection: while the single request is in flight the
+		// whole batch surface is replaced by the busy state, so there is no CTA
+		// left to press a second time.
+		expect(screen.queryByTestId("batch-review-save")).toBeNull();
+		expect(screen.queryByTestId("batch-review")).toBeNull();
+		expect(mockSaveEntry).toHaveBeenCalledTimes(1);
+	});
+
+	it("saves the corrected receipt amount rather than the extracted total", async () => {
+		mockAnalyzeReceiptImage.mockResolvedValue({
+			total_amount: 125000, merchant: "RM Sederhana", confidence: 0.92,
+			date: "2026-10-02", items: [{ name: "Kopi", price: 125000 }],
+		} satisfies ReceiptExtraction);
+		mockSaveEntry.mockResolvedValue({ transactions: [{ ...SAVED_ROW, amount: 120000 }], budgetSyncWarning: false });
+		renderCapture();
+		await reachReceiptReview();
+		fireEvent.changeText(screen.getAllByLabelText("Nominal")[0], "120000");
+		expect(mockSaveEntry).not.toHaveBeenCalled();
+		fireEvent.press(screen.getByTestId("capture-receipt-confirm"));
+		await waitFor(() => expect(mockSaveEntry).toHaveBeenCalledTimes(1));
+		expect(mockSaveEntry.mock.calls[0][0].drafts[0]).toMatchObject({ amount: 120000, source: "image" });
+	});
+
+	it("cancels the photo picker without upload, analysis, or write", async () => {
+		mockLaunchImageLibraryAsync.mockResolvedValueOnce({ canceled: true, assets: null });
+		renderCapture();
+		fireEvent.press(screen.getByTestId("capture-mode-Foto"));
+		fireEvent.press(screen.getByTestId("capture-receipt-pick"));
+		await waitFor(() => expect(mockLaunchImageLibraryAsync).toHaveBeenCalledTimes(1));
+		await act(async () => { await Promise.resolve(); });
+		expect(screen.queryByTestId("capture-receipt-preview")).toBeNull();
+		expect(mockUploadReceiptImage).not.toHaveBeenCalled();
+		expect(mockAnalyzeReceiptImage).not.toHaveBeenCalled();
+		expect(mockSaveEntry).not.toHaveBeenCalled();
 	});
 
 	it("(g) never auto-saves a receipt, even while text auto-save is switched on", async () => {

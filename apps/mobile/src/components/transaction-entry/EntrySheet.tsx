@@ -1,6 +1,8 @@
-import { useMemo, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type KeyboardEvent, type ReactNode } from "react";
 import {
+	AccessibilityInfo,
 	Modal,
+	Platform,
 	Pressable,
 	ScrollView,
 	StyleSheet,
@@ -19,6 +21,8 @@ type EntrySheetProps = {
 	onClose: () => void;
 	children: ReactNode;
 	testID?: string;
+	/** Explicit host opt-in; legacy sheets retain their existing presentation. */
+	premium?: boolean;
 };
 
 /**
@@ -34,11 +38,35 @@ export function EntrySheet({
 	onClose,
 	children,
 	testID = "entry-sheet",
+	premium = false,
 }: EntrySheetProps) {
 	const { language } = useI18n();
 	const insets = useSafeAreaInsets();
 	const copy = entryCopy(language);
 	const styles = useMemo(() => createStyles(), []);
+
+	const [reduceMotion, setReduceMotion] = useState<boolean | null>(null);
+	useEffect(() => {
+		if (!premium) return;
+		let mounted = true;
+		let preferenceChanged = false;
+		setReduceMotion(null);
+		const subscription = AccessibilityInfo.addEventListener("reduceMotionChanged", (enabled) => {
+			preferenceChanged = true;
+			if (mounted) setReduceMotion(enabled);
+		});
+		AccessibilityInfo.isReduceMotionEnabled()
+			.then((enabled) => {
+				if (mounted && !preferenceChanged) setReduceMotion(enabled);
+			})
+			.catch(() => {
+				if (mounted && !preferenceChanged) setReduceMotion(false);
+			});
+		return () => {
+			mounted = false;
+			subscription?.remove();
+		};
+	}, [premium]);
 
 	const bottomPadding = Math.max(insets.bottom, 12);
 
@@ -46,11 +74,24 @@ export function EntrySheet({
 		<Modal
 			visible={visible}
 			transparent
-			animationType="slide"
+			animationType={premium && reduceMotion !== false ? "none" : "slide"}
 			onRequestClose={onClose}
 			statusBarTranslucent
 		>
-			<View style={styles.root} testID={testID}>
+			<View
+				style={styles.root}
+				testID={testID}
+				{...(premium && Platform.OS === "web" ? {
+					// RN Web's document Escape listener depends on animation activation.
+					// Handle only keys originating within this visible sheet, not other modals.
+					onKeyUpCapture: (event: KeyboardEvent) => {
+						if (visible && event.key === "Escape") {
+							event.stopPropagation();
+							onClose();
+						}
+					},
+				} : {})}
+			>
 				<Pressable
 					style={styles.backdrop}
 					onPress={onClose}
@@ -64,7 +105,7 @@ export function EntrySheet({
 					testID={`${testID}-panel`}
 				>
 					<View style={styles.header}>
-						<Text style={styles.title} accessibilityRole="header" numberOfLines={1}>
+						<Text style={styles.title} accessibilityRole="header" numberOfLines={premium ? undefined : 1}>
 							{title}
 						</Text>
 						<Pressable

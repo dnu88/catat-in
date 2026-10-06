@@ -8,6 +8,7 @@ type FeatureOverride = {
 	voiceNote?: boolean;
 	transactionEntryV2?: boolean;
 	aiAutosaveText?: boolean;
+	simplePremiumExperience?: boolean;
 };
 
 function featureOverrides() {
@@ -51,6 +52,22 @@ export const featureFlags = {
 		return (
 			featureOverrides()?.aiAutosaveText ??
 			flagEnabled(processEnv?.EXPO_PUBLIC_FEATURE_AI_AUTOSAVE_TEXT)
+		);
+	},
+	/**
+	 * Gates the "simple premium" presentation redesign (lighter capture
+	 * composer, calmer hierarchy, batch summary cards).
+	 *
+	 * Presentation only: it never changes what is persisted, the autosave
+	 * decision, entitlements, permissions, or payment. Kept independent from
+	 * `transactionEntryV2` / `aiAutosaveText` so a visual rollout can be
+	 * reverted on its own. Default OFF, so the legacy surfaces stay intact
+	 * until it is explicitly rolled out.
+	 */
+	get simplePremiumExperience() {
+		return (
+			featureOverrides()?.simplePremiumExperience ??
+			flagEnabled(processEnv?.EXPO_PUBLIC_FEATURE_SIMPLE_PREMIUM_EXPERIENCE)
 		);
 	},
 };

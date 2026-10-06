@@ -169,6 +169,7 @@ const DOCUMENTED_ROLLOUT_FLAG_KEYS = [
 	"EXPO_PUBLIC_FEATURE_IMPORT_STATEMENT",
 	"EXPO_PUBLIC_FEATURE_TRANSACTION_ENTRY_V2",
 	"EXPO_PUBLIC_FEATURE_AI_AUTOSAVE_TEXT",
+	"EXPO_PUBLIC_FEATURE_SIMPLE_PREMIUM_EXPERIENCE",
 ];
 
 // Slice a top-level `function name(...) { ... }` body out of a source file so
@@ -371,6 +372,32 @@ describe("deploy-pwa runtime config emission", () => {
 			});
 			expect(block).toContain(rolloutEnvLine(key, expected));
 		}
+	});
+
+	it("persists the user-approved premium activation in the rollout config", () => {
+		const committed = JSON.parse(
+			fs.readFileSync(rolloutConfigPath, "utf8"),
+		) as Record<string, RolloutSourceValue>;
+
+		// Global activation was explicitly approved by the user. Persist it so
+		// future deployments do not silently turn the premium UI back OFF.
+		expect(
+			resolveRolloutFlagValue({
+				envKey: "EXPO_PUBLIC_FEATURE_SIMPLE_PREMIUM_EXPERIENCE",
+				env: {},
+				envFile: {},
+				config: committed,
+			}),
+		).toBe("true");
+
+		const block = emitRuntimeConfigBlock({
+			env: {},
+			supabaseUrl: INJECTED_ENV_FILE.EXPO_PUBLIC_SUPABASE_URL,
+			supabaseAnonKey: INJECTED_ENV_FILE.EXPO_PUBLIC_SUPABASE_ANON_KEY,
+		});
+		expect(block).toContain(
+			rolloutEnvLine("EXPO_PUBLIC_FEATURE_SIMPLE_PREMIUM_EXPERIENCE", "true"),
+		);
 	});
 });
 

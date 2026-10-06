@@ -37,6 +37,7 @@ export type EntryCopy = {
 	save: string;
 	cancel: string;
 	summaryTotalLabel: string;
+	singleSummaryLabel: string;
 	countUnit: string;
 	acknowledge: string;
 	viewSource: string;
@@ -86,6 +87,7 @@ const id: EntryCopy = {
 	save: "Simpan",
 	cancel: "Batal",
 	summaryTotalLabel: "Total",
+	singleSummaryLabel: "Ringkasan",
 	countUnit: "transaksi",
 	acknowledge: "Konfirmasi",
 	viewSource: "Lihat sumber",
@@ -135,6 +137,7 @@ const en: EntryCopy = {
 	save: "Save",
 	cancel: "Cancel",
 	summaryTotalLabel: "Total",
+	singleSummaryLabel: "Summary",
 	countUnit: "transactions",
 	acknowledge: "Acknowledge",
 	viewSource: "View source",

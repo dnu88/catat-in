@@ -20,6 +20,7 @@ const { useLocalSearchParams } = ExpoRouter as { useLocalSearchParams?: any };
 
 import { KaswiseIcon } from "../../src/components/icons/kaswise-icons";
 import {
+	AmountText,
 	EmptyState,
 	FilterChip,
 	IconBubble,
@@ -28,6 +29,18 @@ import {
 import { LoadingState } from "../../src/components/ui/LoadingState";
 import { useTheme } from "../../src/theme/theme-context";
 import { financeEditorial as fe, resolveFinancialIconPalette } from "../../src/theme/finance-editorial";
+import {
+	experienceIcon,
+	experienceTokens,
+	resolveExperienceTextStyle,
+} from "../../src/theme/experience-tokens";
+import { featureFlags } from "../../src/config/features";
+import {
+	filterToggleLabel,
+	shouldShowFilterScroller,
+	showsStandaloneBillsChip,
+	showsStandaloneReviewChip,
+} from "../../src/features/transactions/filter-disclosure";
 import { resolveCategoryVisual } from "../../src/theme/category-visuals";
 import { useI18n } from "../../src/i18n/i18n-context";
 import { useFinanceContext } from "../../src/state/finance-context";
@@ -191,6 +204,8 @@ type TransactionListItem = {
 	onToggleSelect: (id: string) => void;
 	selectionMode: boolean;
 	selected: boolean;
+	/** B1: premium presentation tokens are resolved by the screen, never here. */
+	premium: boolean;
 };
 
 function TransactionRow({
@@ -206,6 +221,7 @@ function TransactionRow({
 	onToggleSelect,
 	selectionMode,
 	selected,
+	premium,
 }: TransactionListItem) {
 	const formattedDate = new Date(
 		item.date || item.created_at || Date.now(),
@@ -361,6 +377,7 @@ function TransactionRow({
 				]}
 			>
 				<Pressable
+					testID={`transaction-row-${item.id}`}
 					accessibilityRole="button"
 					accessibilityLabel={
 						selected
@@ -388,7 +405,7 @@ function TransactionRow({
 								color={rowIconPalette.color}
 								backgroundColor={rowIconPalette.background}
 								borderColor={rowIconPalette.border}
-								size={40}
+								size={premium ? experienceIcon.tile.row : 40}
 							/>
 						</View>
 						{selected ? (
@@ -412,18 +429,27 @@ function TransactionRow({
 							{localizedCategoryName || "-"} • {formattedDate}
 						</Text>
 					</View>
-					<Text
-						testID={`transaction-amount-${item.id}`}
-						style={[
-							styles.rowAmount,
-							item.transaction_type === "income"
-								? { color: fe.financialIncome }
-								: { color: fe.financialExpense },
-						]}
-					>
-						{item.transaction_type === "income" ? "+" : "-"} Rp{" "}
-						{amount.toLocaleString("id-ID")}
-					</Text>
+					{premium ? (
+						<AmountText
+							testID={`transaction-amount-${item.id}`}
+							value={`${item.transaction_type === "income" ? "+" : "-"} Rp ${amount.toLocaleString("id-ID")}`}
+							role={item.transaction_type === "income" ? "income" : "expense"}
+							style={styles.rowAmount}
+						/>
+					) : (
+						<Text
+							testID={`transaction-amount-${item.id}`}
+							style={[
+								styles.rowAmount,
+								item.transaction_type === "income"
+									? { color: fe.financialIncome }
+									: { color: fe.financialExpense },
+							]}
+						>
+							{item.transaction_type === "income" ? "+" : "-"} Rp{" "}
+							{amount.toLocaleString("id-ID")}
+						</Text>
+					)}
 				</Pressable>
 			</Animated.View>
 		</View>
@@ -436,7 +462,11 @@ export default function TransactionsScreen() {
 	const { activeContext, canCreate } = useFinanceContext();
 	const { activePeriod: reportPeriod } = useReportPeriod();
 	const router = ExpoRouter.useRouter();
-	const styles = useMemo(() => createStyles(theme), [theme]);
+	// B1 (visual foundation): resolve the presentation flag first so the styles
+	// object carries the token values for the active mode. Flag OFF keeps every
+	// value byte-identical to the pre-B1 baseline.
+	const premium = featureFlags.simplePremiumExperience;
+	const styles = useMemo(() => createStyles(theme, premium), [theme, premium]);
 	const activeContextKey =
 		activeContext.type === "household"
 			? `household:${activeContext.householdId}:${activeContext.role}`
@@ -455,6 +485,38 @@ export default function TransactionsScreen() {
 	const [loadError, setLoadError] = useState<string | null>(null);
 	const [selectedTransactionIds, setSelectedTransactionIds] = useState<string[]>([]);
 	const loadRequestRef = useRef(0);
+
+	// T22 (simple premium): collapse the preference filters behind a disclosure so
+	// the list stays calm, while the review affordance stays visible because it is
+	// a status rather than a filter preference.
+	const [premiumFilterOpen, setPremiumFilterOpen] = useState(false);
+	const reviewFilterChip = useMemo(
+		() => (
+			<View testID="transactions-review-chip">
+				<FilterChip
+					label={isEn ? "Needs review" : "Perlu dicek"}
+					selected={activeFilter === "review"}
+					onPress={() => setActiveFilter("review")}
+				/>
+			</View>
+		),
+		[activeFilter, isEn],
+	);
+	// T27 follow-up: the Bills chip is a NAVIGATION affordance, not a filter
+	// preference, so it must survive the collapse (it used to disappear with the
+	// scroller and silently remove an existing way into Bills).
+	const billsNavChip = useMemo(
+		() => (
+			<View testID="transactions-bills-chip">
+				<FilterChip
+					label={isEn ? "Bills" : "Tagihan"}
+					selected={false}
+					onPress={() => router.push("/(tabs)/bills" as never)}
+				/>
+			</View>
+		),
+		[isEn, router],
+	);
 
 	const useOptionalFocusEffect = (ExpoRouter as {
 		useFocusEffect?: typeof useEffect;
@@ -690,6 +752,7 @@ export default function TransactionsScreen() {
 			onToggleSelect={toggleTransactionSelection}
 			selectionMode={selectedTransactionIds.length > 0}
 			selected={selectedTransactionIds.includes(item.id)}
+			premium={premium}
 		/>
 	);
 
@@ -831,9 +894,10 @@ export default function TransactionsScreen() {
 						}`}
 						accessibilityState={{ selected: activePeriod === period }}
 						onPress={() => setActivePeriod(period)}
-						style={[
+						style={({ pressed }) => [
 							styles.periodChip,
 							activePeriod === period && styles.periodChipActive,
+							premium && pressed ? styles.chipPressed : null,
 						]}
 					>
 						<Text
@@ -862,6 +926,53 @@ export default function TransactionsScreen() {
 				))}
 			</View>
 
+			{premium ? (
+				<View testID="transactions-filter-bar" style={styles.filterBar}>
+					<Pressable
+						testID="transactions-filter-toggle"
+						accessibilityRole="button"
+						accessibilityLabel={
+							isEn
+								? `Filter, currently ${filterToggleLabel(activeFilter, true)}`
+								: `Filter, saat ini ${filterToggleLabel(activeFilter, false)}`
+						}
+						accessibilityHint={
+							premiumFilterOpen
+								? isEn
+									? "Hides the filter options"
+									: "Menyembunyikan pilihan filter"
+								: isEn
+									? "Shows the filter options"
+									: "Menampilkan pilihan filter"
+						}
+						accessibilityState={{ expanded: premiumFilterOpen }}
+						style={({ pressed }) => [
+							styles.filterToggle,
+							premium && pressed ? styles.chipPressed : null,
+						]}
+						onPress={() => setPremiumFilterOpen((open) => !open)}
+					>
+						<Text style={styles.filterToggleLabel}>
+							{filterToggleLabel(activeFilter, isEn)}
+						</Text>
+						<Text
+							style={styles.filterToggleChevron}
+							accessible={false}
+							importantForAccessibility="no"
+						>
+							{premiumFilterOpen ? "⌃" : "⌄"}
+						</Text>
+					</Pressable>
+					{showsStandaloneReviewChip(premium, premiumFilterOpen)
+						? reviewFilterChip
+						: null}
+					{showsStandaloneBillsChip(premium, premiumFilterOpen)
+						? billsNavChip
+						: null}
+				</View>
+			) : null}
+
+			{shouldShowFilterScroller(premium, premiumFilterOpen) ? (
 			<ScrollView
 				testID="transactions-filter-scroller"
 				horizontal
@@ -889,28 +1000,18 @@ export default function TransactionsScreen() {
 				    onPress={() => setActiveFilter(filter)}
 				  />
 				))}
-				<View testID="transactions-review-chip">
-				  <FilterChip
-				    key="review"
-				    label={isEn ? "Needs review" : "Perlu dicek"}
-				    selected={activeFilter === "review"}
-				    onPress={() => setActiveFilter("review")}
-				  />
-				</View>
-				{/* Navigation chip ke Bills */}
-				<View testID="transactions-bills-chip">
-				  <FilterChip
-				    key="bills"
-				    label={isEn ? "Bills" : "Tagihan"}
-				    selected={false}
-				    onPress={() => router.push("/(tabs)/bills" as never)}
-				  />
-				</View>
+				{reviewFilterChip}
+				{billsNavChip}
 				</ScrollView>
+			) : null}
 		</StaggeredStack>
 	), [
 		activeFilter,
 		activePeriod,
+		billsNavChip,
+		premium,
+		premiumFilterOpen,
+		reviewFilterChip,
 		clearTransactionSelection,
 		isEn,
 		handleDeleteSelectedTransactions,
@@ -1007,7 +1108,10 @@ export default function TransactionsScreen() {
 	);
 }
 
-function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
+function createStyles(
+	theme: ReturnType<typeof useTheme>["theme"],
+	premium: boolean,
+) {
 	const lightBrand = fe.ink;
 
 	return StyleSheet.create({
@@ -1070,7 +1174,18 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 		reportPeriodTitle: { color: fe.muted, fontSize: 11, fontWeight: "600", marginBottom: 3 },
 		reportPeriodLabel: { color: fe.ink, fontSize: 14, fontWeight: "700" },
 		periodRow: { flexDirection: "row", gap: 8, marginBottom: 16 },
-		periodChip: { flex: 1, paddingVertical: 10, minHeight: 44, borderRadius: 14, borderWidth: 0, backgroundColor: fe.white, alignItems: "center", justifyContent: "center" },
+		periodChip: {
+			flex: 1,
+			paddingVertical: 10,
+			minHeight: premium ? experienceTokens.target.chipMinHeight : 44,
+			borderRadius: 14,
+			borderWidth: premium ? 1 : 0,
+			borderColor: premium ? fe.line : "transparent",
+			backgroundColor: fe.white,
+			alignItems: "center",
+			justifyContent: "center",
+		},
+		chipPressed: { opacity: 0.85 },
 		periodChipActive: { backgroundColor: fe.ink },
 		periodChipText: { color: fe.slate, fontSize: 13, fontWeight: "600" },
 		periodChipTextActive: { color: fe.white },
@@ -1079,9 +1194,36 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 		statCard: { flex: 1, minHeight: 132, padding: 16, borderRadius: 20, backgroundColor: "rgba(255,255,255,0.12)", borderWidth: 1, borderColor: "rgba(255,255,255,0.18)", justifyContent: "space-between" },
 		statCardContent: { gap: 4 },
 		statLabel: { color: "rgba(255,255,255,0.70)", fontSize: 12, fontWeight: "600" },
-		statValueText: { color: fe.white, fontSize: 22, fontWeight: "700", lineHeight: 28 },
+		statValueText: {
+			color: fe.white,
+			...(premium
+				? resolveExperienceTextStyle("statAmount")
+				: { fontSize: 22, fontWeight: "700" as const }),
+			lineHeight: 28,
+		},
 		filterScroller: { marginTop: 4, marginRight: -20, marginBottom: 16 },
 		filterContent: { gap: 8, paddingRight: 20, paddingBottom: 4 },
+		filterBar: {
+			flexDirection: "row",
+			alignItems: "center",
+			gap: 8,
+			marginTop: 4,
+			marginBottom: 16,
+		},
+		filterToggle: {
+			flexDirection: "row",
+			alignItems: "center",
+			gap: 6,
+			paddingHorizontal: 14,
+			paddingVertical: 10,
+			minHeight: experienceTokens.target.chipMinHeight,
+			borderRadius: 999,
+			borderWidth: 1,
+			borderColor: fe.line,
+			backgroundColor: fe.white,
+		},
+		filterToggleLabel: { color: fe.ink, fontSize: 14, fontWeight: "600" },
+		filterToggleChevron: { color: fe.slate, fontSize: 14, fontWeight: "700" },
 		swipeShell: { position: "relative", overflow: "hidden", borderRadius: 18, backgroundColor: fe.white },
 		swipeActions: {
 			position: "absolute",
@@ -1111,10 +1253,16 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 		rowIconSelected: { borderWidth: 1, borderColor: fe.blue },
 		rowSelectionBadge: { position: "absolute", right: -2, top: -2, width: 18, height: 18, borderRadius: 9, backgroundColor: fe.blue, alignItems: "center", justifyContent: "center", borderWidth: 2, borderColor: fe.paper },
 		rowSelectionBadgeText: { color: fe.white, fontSize: 11, fontWeight: "700", lineHeight: 11 },
-		row: { flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 12, minHeight: 58 },
+		row: {
+			flexDirection: "row",
+			alignItems: "center",
+			gap: 12,
+			paddingVertical: 12,
+			minHeight: premium ? experienceTokens.target.rowMinHeight : 58,
+		},
 		rowIcon: {
-			width: 44,
-			height: 44,
+			width: experienceIcon.tile.row,
+			height: experienceIcon.tile.row,
 			borderRadius: theme.radius.sm + 2,
 			alignItems: "center",
 			justifyContent: "center",

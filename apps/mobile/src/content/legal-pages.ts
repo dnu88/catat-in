@@ -20,27 +20,15 @@ const supportMailto = `mailto:${supportEmail}`;
 export const mobileLegalPages: Record<MobileLegalPage, MobileLegalContent> = {
   help: {
     eyebrow: "Bantuan Kaswise",
-    title: "Bantuan menggunakan Kaswise",
-    intro:
-      "Kaswise membantu Anda mencatat transaksi, memantau dompet, mengatur budget, dan membaca laporan cashflow dengan cara yang tetap sederhana.",
+    title: "Panduan singkat Kaswise",
+    intro: "Catat transaksi, kelola dompet, dan pahami keuangan Anda dari laporan.",
     ctaLabel: "Email bantuan",
     ctaHref: `${supportMailto}?subject=Bantuan%20Kaswise`,
     sections: [
-      {
-        title: "Catat transaksi harian",
-        body:
-          "Tulis transaksi seperti kebiasaan sehari-hari. Kaswise membantu merapikan nominal, kategori, tanggal, dan dompet sebelum transaksi disimpan.",
-      },
-      {
-        title: "Pantau dompet dan budget",
-        body:
-          "Pisahkan saldo per kas, rekening, atau e-wallet, lalu gunakan budget kategori untuk membaca arah pengeluaran tanpa membuat alur jadi rumit.",
-      },
-      {
-        title: "Gunakan Capture AI seperlunya",
-        body:
-          "Track A saat ini menonjolkan alur yang benar-benar aktif: input teks dan foto struk OCR. Jika butuh bantuan, hubungi support Kaswise.",
-      },
+      { title: "Catat dengan teks", body: "Buka Catat dan tulis transaksi, misalnya ‘makan siang 35 ribu’. Periksa hasil pencatatan dan pastikan nominal, kategori, tanggal, serta dompet sudah sesuai." },
+      { title: "Catat dari struk", body: "Di Catat, pilih foto struk yang jelas. Periksa rincian dan total yang terbaca, lalu perbaiki jika ada yang keliru sebelum menyimpan." },
+      { title: "Kelola dompet", body: "Buka Dompet untuk memisahkan uang tunai, rekening bank, dan dompet digital. Pilih dompet yang sesuai saat mencatat transaksi agar saldo tetap rapi." },
+      { title: "Baca laporan", body: "Buka Laporan dan pilih periode untuk melihat pemasukan, pengeluaran, serta ringkasan per kategori. Laporan mengikuti transaksi yang Anda simpan." },
     ],
   },
   terms: {
@@ -153,3 +141,22 @@ export const mobileLegalPages: Record<MobileLegalPage, MobileLegalContent> = {
     ],
   },
 };
+
+const englishHelp: MobileLegalContent = {
+  eyebrow: "Kaswise help",
+  title: "Quick guide to Kaswise",
+  intro: "Record transactions, manage wallets, and understand your finances through reports.",
+  ctaLabel: "Email support",
+  ctaHref: mobileLegalPages.help.ctaHref,
+  sections: [
+    { title: "Record with text", body: "Open Add transaction and describe a transaction, such as ‘lunch 35 thousand’. Check the recorded result and make sure the amount, category, date, and wallet are correct." },
+    { title: "Record from receipts", body: "In Add transaction, choose a clear receipt photo. Review the details and total, then correct any mistakes before saving." },
+    { title: "Manage wallets", body: "Open Wallets to separate cash, bank accounts, and digital wallets. Choose the matching wallet when recording a transaction to keep balances organized." },
+    { title: "Read reports", body: "Open Reports and choose a period to see income, expenses, and category summaries. Reports reflect the transactions you save." },
+  ],
+};
+
+/** Only the product guide is localized; legal policy text remains canonical. */
+export function getMobileLegalContent(page: MobileLegalPage, language: "id" | "en"): MobileLegalContent {
+  return page === "help" && language === "en" ? englishHelp : mobileLegalPages[page];
+}

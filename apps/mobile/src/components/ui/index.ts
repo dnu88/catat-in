@@ -1,3 +1,4 @@
+export * from "./AmountText";
 export * from "./AuthScreen";
 export * from "./Button";
 export * from "./Card";

@@ -9,10 +9,11 @@ import {
 	View,
 } from "react-native";
 import { PageEntrance, StaggeredStack } from "../../src/components/motion";
-import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
+import { useFocusEffect, useLocalSearchParams, useRouter, useUnstableGlobalHref } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
 
 import { goBackSafely } from "../../src/lib/safe-back";
+import { useDraftExitGuard } from "../../src/features/capture/use-draft-exit-guard";
 
 import { IOSWheelDatePicker } from "../../src/components/date/IOSWheelDatePicker";
 import { KaswiseIcon } from "../../src/components/icons/kaswise-icons";
@@ -224,6 +225,8 @@ export default function TransactionNewScreen() {
 	);
 	const { activeContext, canCreate } = useFinanceContext();
 	const router = useRouter();
+	// Expo route state updates before its browser URL/history commit on focus.
+	const manualBrowserUrl = typeof useUnstableGlobalHref === "function" ? useUnstableGlobalHref() : undefined;
 	const rawParams = useLocalSearchParams() ?? {};
 	const transactionId = Array.isArray(rawParams.transactionId)
 		? rawParams.transactionId[0]
@@ -241,6 +244,7 @@ export default function TransactionNewScreen() {
 		useState<CategoryOption[]>(() => fallbackCategories(isEn, theme.mode));
 	const [loading, setLoading] = useState(true);
 	const [submitting, setSubmitting] = useState(false);
+	const submitLockRef = useRef(false);
 	const [error, setError] = useState<string | null>(null);
 	const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
@@ -694,8 +698,28 @@ export default function TransactionNewScreen() {
 		}
 	};
 
-	const submitHandler = compactMode ? onSubmitCompact : onSubmit;
+	const submitHandler = async () => {
+		// React state disables the button only after the next render. Guard
+		// synchronously too, so two taps in one frame cannot issue two writes.
+		if (submitLockRef.current) return;
+		submitLockRef.current = true;
+		try {
+			await (compactMode ? onSubmitCompact() : onSubmit());
+		} finally {
+			submitLockRef.current = false;
+		}
+	};
 	const submitDisabled = compactMode ? !compactCanSubmit : !canSubmit;
+	const manualExitDirty = compactMode
+		? Boolean(draft.amount !== null || draft.category || draft.description || draft.merchant || draft.transactionType !== "expense" || draft.targetWalletId || draft.date !== localToday() || note)
+		: Boolean(amountInput || category || customCategory || description || merchant || note || txType !== "expense" || targetWalletId || date !== todayIso());
+	const returnToCapture = () => router.replace("/(tabs)/capture");
+	const requestManualExit = useDraftExitGuard({
+		enabled: featureFlags.simplePremiumExperience, scopeKey: activeContextKey,
+		dirty: manualExitDirty, blocked: submitting || submitLockRef.current, isEn,
+		onDiscard: () => { resetForm(); resetCompactForm(); },
+		browserBack: returnToCapture, browserUrl: manualBrowserUrl,
+	});
 
 	if (loading) {
 		return (
@@ -732,7 +756,7 @@ export default function TransactionNewScreen() {
 					<Pressable
 						accessibilityRole="button"
 						accessibilityLabel={tx.backLabel}
-						onPress={() => goBackSafely(router, "/(tabs)/capture")}
+						onPress={() => requestManualExit(() => featureFlags.simplePremiumExperience ? returnToCapture() : goBackSafely(router, "/(tabs)/capture"))}
 						style={styles.closeBtn}
 					>
 						<KaswiseIcon
@@ -1086,6 +1110,7 @@ export default function TransactionNewScreen() {
 							title={entryCopy(language).categoryLabel}
 							onClose={closeCompactPicker}
 							testID="transaction-category-sheet"
+							premium={featureFlags.simplePremiumExperience}
 						>
 							{compactCategoryOptions.map((name) => {
 								const selected = Boolean(
@@ -1097,7 +1122,7 @@ export default function TransactionNewScreen() {
 										key={name}
 										testID={`transaction-category-option-${name}`}
 										accessibilityRole="button"
-										accessibilityLabel={tx.pickCategory(name)}
+										accessibilityLabel={featureFlags.simplePremiumExperience && selected ? `${tx.pickCategory(name)}, ${isEn ? "Selected" : "Terpilih"}` : tx.pickCategory(name)}
 										accessibilityState={{ selected }}
 										onPress={() => {
 											handleDraftChange({ category: name });
@@ -1114,7 +1139,7 @@ export default function TransactionNewScreen() {
 												selected && styles.sheetOptionTextSelected,
 											]}
 										>
-											{name}
+											{name}{featureFlags.simplePremiumExperience && selected ? " ✓" : null}
 										</Text>
 									</Pressable>
 								);
@@ -1126,6 +1151,7 @@ export default function TransactionNewScreen() {
 							title={entryCopy(language).walletLabel}
 							onClose={closeCompactPicker}
 							testID="transaction-wallet-sheet"
+							premium={featureFlags.simplePremiumExperience}
 						>
 							{wallets.map((wallet) => {
 								const selected = draft.walletId === wallet.id;
@@ -1134,7 +1160,7 @@ export default function TransactionNewScreen() {
 										key={wallet.id}
 										testID={`transaction-wallet-option-${wallet.id}`}
 										accessibilityRole="button"
-										accessibilityLabel={tx.pickWallet(wallet.name)}
+										accessibilityLabel={featureFlags.simplePremiumExperience && selected ? `${tx.pickWallet(wallet.name)}, ${isEn ? "Selected" : "Terpilih"}` : tx.pickWallet(wallet.name)}
 										accessibilityState={{ selected }}
 										onPress={() => {
 											handleDraftChange({ walletId: wallet.id });
@@ -1151,7 +1177,7 @@ export default function TransactionNewScreen() {
 												selected && styles.sheetOptionTextSelected,
 											]}
 										>
-											{wallet.name}
+											{wallet.name}{featureFlags.simplePremiumExperience && selected ? " ✓" : null}
 										</Text>
 									</Pressable>
 								);
@@ -1163,6 +1189,7 @@ export default function TransactionNewScreen() {
 							title={entryCopy(language).targetWalletLabel}
 							onClose={closeCompactPicker}
 							testID="transaction-target-wallet-sheet"
+							premium={featureFlags.simplePremiumExperience}
 						>
 							{wallets
 								.filter((wallet) => wallet.id !== draft.walletId)
@@ -1173,7 +1200,7 @@ export default function TransactionNewScreen() {
 											key={wallet.id}
 											testID={`transaction-target-wallet-option-${wallet.id}`}
 											accessibilityRole="button"
-											accessibilityLabel={tx.pickTargetWallet(wallet.name)}
+											accessibilityLabel={featureFlags.simplePremiumExperience && selected ? `${tx.pickTargetWallet(wallet.name)}, ${isEn ? "Selected" : "Terpilih"}` : tx.pickTargetWallet(wallet.name)}
 											accessibilityState={{ selected }}
 											onPress={() => {
 												handleDraftChange({ targetWalletId: wallet.id });
@@ -1190,7 +1217,7 @@ export default function TransactionNewScreen() {
 													selected && styles.sheetOptionTextSelected,
 												]}
 											>
-												{wallet.name}
+												{wallet.name}{featureFlags.simplePremiumExperience && selected ? " ✓" : null}
 											</Text>
 										</Pressable>
 									);
@@ -1202,6 +1229,7 @@ export default function TransactionNewScreen() {
 							title={entryCopy(language).datePickerTitle}
 							onClose={cancelCompactDate}
 							testID="transaction-date-sheet"
+							premium={featureFlags.simplePremiumExperience}
 						>
 							<IOSWheelDatePicker
 								value={compactDate}

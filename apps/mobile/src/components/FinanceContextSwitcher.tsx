@@ -5,11 +5,28 @@ import { useI18n } from "../i18n/i18n-context";
 import { useFinanceContext } from "../state/finance-context";
 import { useTheme } from "../theme/theme-context";
 import { financeEditorial as fe } from "../theme/finance-editorial";
+import { EntrySheet } from "./transaction-entry/EntrySheet";
+import { financeContextLabel } from "./finance-context-label";
+
+export type FinanceContextChoice =
+	| { type: "personal" }
+	| { type: "household"; householdId: string };
 
 export function FinanceContextSwitcher({
 	variant = "compact",
+	presentation = "dropdown",
+	beforeChange,
 }: {
 	variant?: "compact" | "hero";
+	/** Capture opts into a viewport-sized Modal; other hosts retain their menu. */
+	presentation?: "dropdown" | "sheet";
+	/**
+	 * Optional host guard. Return `false` to block the switch (the host is then
+	 * responsible for confirming with the user and applying the change itself).
+	 * When omitted, the switcher applies the change immediately — the legacy
+	 * behaviour every other screen relies on.
+	 */
+	beforeChange?: (next: FinanceContextChoice) => boolean;
 }) {
 	const { theme } = useTheme();
 	const { language, t } = useI18n();
@@ -19,33 +36,30 @@ export function FinanceContextSwitcher({
 	const [open, setOpen] = useState(false);
 	const styles = useMemo(() => createStyles(theme, variant), [theme, variant]);
 
-	const activeMembership =
-		activeContext.type === "household"
-			? memberships.find(
-					(membership) => membership.household_id === activeContext.householdId,
-				)
-			: undefined;
 	const personalLabel = isEn ? "Personal" : "Pribadi";
-	const activeLabel = activeMembership?.households?.name ?? personalLabel;
+	const activeLabel = financeContextLabel(activeContext, memberships, language);
 
 	const choosePersonal = () => {
-		setPersonalContext();
 		setOpen(false);
+		if (beforeChange && !beforeChange({ type: "personal" })) return;
+		setPersonalContext();
 	};
 
 	const chooseHousehold = (householdId: string) => {
-		setActiveHousehold(householdId);
 		setOpen(false);
+		if (beforeChange && !beforeChange({ type: "household", householdId }))
+			return;
+		setActiveHousehold(householdId);
 	};
 
 	return (
-		<View style={styles.container}>
+		<View style={[styles.container, presentation === "sheet" && styles.fullWidth]}>
 			<Pressable
 				testID="finance-context-switcher"
 				accessibilityRole="button"
 				accessibilityLabel={`${isEn ? "Choose finance context" : "Pilih konteks keuangan"}, ${isEn ? "currently" : "saat ini"} ${activeLabel}`}
 				accessibilityState={{ expanded: open }}
-				style={styles.trigger}
+				style={[styles.trigger, presentation === "sheet" && styles.sheetTrigger]}
 				onPress={() => setOpen((current) => !current)}
 			>
 				<View style={styles.iconBubble}>
@@ -55,7 +69,7 @@ export function FinanceContextSwitcher({
 				</View>
 				<View style={styles.labelBlock}>
 					<Text style={styles.caption}>{t("moneySpace")}</Text>
-					<Text style={styles.label} numberOfLines={1}>
+					<Text style={styles.label} numberOfLines={presentation === "sheet" ? 2 : 1}>
 						{activeLabel}
 					</Text>
 				</View>
@@ -63,7 +77,7 @@ export function FinanceContextSwitcher({
 			</Pressable>
 
 			{open ? (
-				<View style={styles.menu}>
+				<ContextPicker presentation={presentation} title={t("moneySpace")} onClose={() => setOpen(false)} menuStyle={styles.menu}>
 					<Pressable
 						testID="finance-context-option-personal"
 						accessibilityRole="button"
@@ -83,7 +97,7 @@ export function FinanceContextSwitcher({
 
 					{memberships.map((membership) => {
 						const householdName =
-							membership.households?.name ?? (isEn ? "Family" : "Keluarga");
+							membership.households?.name?.trim() || (isEn ? "Family" : "Keluarga");
 						const isActive =
 							activeContext.type === "household" &&
 							activeContext.householdId === membership.household_id;
@@ -98,15 +112,29 @@ export function FinanceContextSwitcher({
 								style={[styles.option, isActive && styles.optionActive]}
 								onPress={() => chooseHousehold(membership.household_id)}
 							>
-								<Text style={styles.optionTitle}>{householdName}</Text>
+								<Text style={styles.optionTitle} numberOfLines={2}>{householdName}</Text>
 								<Text style={styles.optionMeta}>{membership.role}</Text>
 							</Pressable>
 						);
 					})}
-				</View>
+				</ContextPicker>
 			) : null}
 		</View>
 	);
+}
+
+function ContextPicker({ presentation, title, onClose, menuStyle, children }: {
+	presentation: "dropdown" | "sheet";
+	title: string;
+	onClose: () => void;
+	menuStyle: import("react-native").ViewStyle;
+	children: import("react").ReactNode;
+}) {
+	return presentation === "sheet" ? (
+		<EntrySheet visible title={title} onClose={onClose} testID="finance-context-sheet">
+			{children}
+		</EntrySheet>
+	) : <View style={menuStyle}>{children}</View>;
 }
 
 function createStyles(
@@ -115,6 +143,8 @@ function createStyles(
 ) {
 	const isHero = variant === "hero";
 	return StyleSheet.create({
+		fullWidth: { width: "100%" },
+		sheetTrigger: { width: "100%", maxWidth: "100%", minWidth: 0 },
 		container: {
 			position: "relative",
 			zIndex: 10,

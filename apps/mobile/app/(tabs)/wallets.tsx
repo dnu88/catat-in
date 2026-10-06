@@ -28,6 +28,12 @@ import { useTheme } from "../../src/theme/theme-context";
 import { financeEditorial as fe } from "../../src/theme/finance-editorial";
 import { subscribeWalletChanges } from "../../src/services/wallet-events";
 import { featureFlags } from "../../src/config/features";
+import {
+	experienceTabularNumerals,
+	experienceTokens,
+	resolveExperienceTextStyle,
+} from "../../src/theme/experience-tokens";
+import { showsHeaderCreateToggle } from "../../src/features/wallets/primary-cta";
 
 type WalletType = "bank" | "ewallet" | "cash" | "investment";
 type FilterType = "all" | WalletType;
@@ -142,7 +148,10 @@ export default function WalletsScreen() {
 	const { language } = useI18n();
 	const { activeContext, memberships, canCreate } = useFinanceContext();
 	const tx = copy[language];
-	const styles = useMemo(() => createStyles(theme), [theme]);
+	// B1 (visual foundation): resolve the presentation flag first so flag OFF
+	// keeps every value identical to the pre-B1 baseline.
+	const premium = featureFlags.simplePremiumExperience;
+	const styles = useMemo(() => createStyles(theme, premium), [theme, premium]);
 	const [filter, setFilter] = useState<FilterType>("all");
 	const [wallets, setWallets] = useState<ScopedWallet[]>([]);
 	const [loading, setLoading] = useState(true);
@@ -362,6 +371,9 @@ export default function WalletsScreen() {
 	// to secondary controls below the list so they no longer fill the first
 	// viewport. Legacy mode keeps the exact previous order and density.
 	const simple = featureFlags.simpleNavigation;
+	// T23 (simple premium): the screen must expose exactly ONE add-wallet CTA.
+	// Premium drops the duplicate header toggle (the body CTA stays); when
+	// `simpleNavigation` is OFF the header toggle is the only CTA and is kept.
 
 	// Simple mode mounts the create/edit forms after the whole wallet list, so on
 	// a long list an opened form can sit below the fold and the tap looks like a
@@ -613,6 +625,7 @@ export default function WalletsScreen() {
 						<Text style={styles.title}>{tx.title}</Text>
 						<Text style={styles.subtitle}>{tx.subtitle}</Text>
 					</View>
+					{showsHeaderCreateToggle(premium, simple) ? (
 					<Pressable
 						testID="wallets-create-toggle"
 						accessibilityRole="button"
@@ -626,10 +639,11 @@ export default function WalletsScreen() {
 							{showCreate ? tx.cancel : tx.new}
 						</Text>
 					</Pressable>
+					) : null}
 				</View>
 				<View key="wallets-total-hero" testID="wallets-total-hero" style={styles.totalCard}>
 					<Text style={styles.totalLabel}>{tx.total}</Text>
-					<Text style={styles.totalValue}>{formatCurrency(totalBalance)}</Text>
+					<Text testID="wallets-total-value" style={styles.totalValue}>{formatCurrency(totalBalance)}</Text>
 					{simple ? (
 						<View testID="wallets-context-label" style={styles.contextPill}>
 							<Text style={styles.contextPillText}>
@@ -650,7 +664,7 @@ export default function WalletsScreen() {
 								<Text style={styles.walletStackLabel}>{wallets[0]?.name ?? tx.title}</Text>
 								<Text style={styles.walletStackMeta}>{wallets[0] ? tx.types[wallets[0].type as WalletType] : tx.subtitle}</Text>
 							</View>
-							<Text style={styles.walletStackBalance}>{wallets[0] ? formatCurrency(Number(wallets[0].balance ?? 0)) : "—"}</Text>
+							<Text testID="wallets-stack-balance" style={styles.walletStackBalance}>{wallets[0] ? formatCurrency(Number(wallets[0].balance ?? 0)) : "—"}</Text>
 						</View>
 					</View>
 				</View>
@@ -729,7 +743,10 @@ export default function WalletsScreen() {
 							</View>
 						</View>
 						<View style={styles.walletBottom}>
-							<Text style={styles.walletBalance}>
+							<Text
+								testID={`wallet-balance-${wallet.id}`}
+								style={styles.walletBalance}
+							>
 								{formatCurrency(Number(wallet.balance ?? 0))}
 							</Text>
 							<View style={styles.walletActions}>
@@ -781,7 +798,10 @@ export default function WalletsScreen() {
 	);
 }
 
-function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
+function createStyles(
+	theme: ReturnType<typeof useTheme>["theme"],
+	premium: boolean,
+) {
 	return StyleSheet.create({
 		screen: { flex: 1, backgroundColor: fe.paper },
 		content: { gap: 10, paddingBottom: 26, backgroundColor: fe.paper },
@@ -924,9 +944,13 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 		},
 		totalValue: {
 			color: fe.white,
-			fontSize: theme.typography.fontSize["4xl"],
-			fontWeight: theme.typography.fontWeight.extrabold,
-			letterSpacing: theme.typography.letterSpacing.tight,
+			...(premium
+				? resolveExperienceTextStyle("walletTotal")
+				: {
+						fontSize: theme.typography.fontSize["4xl"],
+						fontWeight: theme.typography.fontWeight.extrabold,
+						letterSpacing: theme.typography.letterSpacing.tight,
+					}),
 		},
 		totalRow: { marginTop: 6 },
 		totalChip: {
@@ -976,7 +1000,12 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 		walletStackFront: { position: "absolute", left: 0, right: 0, top: 25, minHeight: 76, borderRadius: 22, backgroundColor: "rgba(72,151,211,0.34)", borderWidth: 1, borderColor: "rgba(255,255,255,0.18)", paddingHorizontal: 16, flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
 		walletStackLabel: { color: fe.white, fontSize: 13, fontWeight: "800" },
 		walletStackMeta: { color: "rgba(255,255,255,0.64)", fontSize: 11, marginTop: 3 },
-		walletStackBalance: { color: fe.white, fontSize: 14, fontWeight: "800" },
+		walletStackBalance: {
+			color: fe.white,
+			fontSize: 14,
+			fontWeight: "800",
+			...(premium ? { fontVariant: [...experienceTabularNumerals] } : null),
+		},
 		filterRow: { gap: 8, paddingVertical: 2, paddingHorizontal: 20 },
 		filterSecondary: { gap: 8, paddingVertical: 4, marginTop: 4 },
 		filterSecondaryLabel: {
@@ -1014,7 +1043,11 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			padding: 14,
 			gap: 12,
 		},
-		walletTop: { flexDirection: "row", alignItems: "center", gap: 12 },
+		walletTop: {
+			flexDirection: "row",
+			alignItems: "center",
+			gap: premium ? experienceTokens.spacing[3] : 12,
+		},
 		walletIcon: {
 			width: 46,
 			height: 46,
@@ -1072,6 +1105,7 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			color: fe.financialTotal,
 			fontSize: 18,
 			fontWeight: "800",
+			...(premium ? { fontVariant: [...experienceTabularNumerals] } : null),
 		},
 		walletActions: { flexDirection: "row", gap: 8, flexWrap: "wrap" },
 		walletActionButton: {

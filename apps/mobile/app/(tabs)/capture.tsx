@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
 import {
 	ActivityIndicator,
+	Alert,
 	Image,
 	Pressable,
 	RefreshControl,
@@ -23,7 +24,10 @@ import { Sentry } from "../../src/lib/sentry";
 import { useTheme } from "../../src/theme/theme-context";
 import { financeEditorial as fe } from "../../src/theme/finance-editorial";
 import { IconBubble } from "../../src/components/ui";
-import { FinanceContextSwitcher } from "../../src/components/FinanceContextSwitcher";
+import {
+	FinanceContextSwitcher,
+	type FinanceContextChoice,
+} from "../../src/components/FinanceContextSwitcher";
 import {
 	KaswiseIcon,
 	type KaswiseIconName,
@@ -54,8 +58,10 @@ import {
 } from "../../src/services/transaction-classifier";
 import { listWallets, type Wallet } from "../../src/services/wallets";
 import { useFinanceContext } from "../../src/state/finance-context";
+import { financeContextLabel } from "../../src/components/finance-context-label";
 import { useEntitlements } from "../../src/hooks/useEntitlements";
 import { featureFlags } from "../../src/config/features";
+import { useDraftExitGuard } from "../../src/features/capture/use-draft-exit-guard";
 import {
 	getVoiceAuthSession,
 	processVoiceTransaction,
@@ -67,12 +73,14 @@ import {
 	createInitialEntryState,
 	createSubmitLock,
 	entryReducer,
+	hasUnsavedWork,
 	withSubmitLock,
 	type ContextSnapshot,
 } from "../../src/features/transaction-entry/state";
 import {
 	localToday,
 	summariseDrafts,
+	unacknowledgedWarnings,
 	type DraftFieldErrors,
 	type TransactionDraft,
 } from "../../src/features/transaction-entry/draft";
@@ -85,7 +93,17 @@ import {
 	voiceExtractionToDraft,
 } from "../../src/features/transaction-entry/adapters";
 import { AutoSaveToast } from "../../src/components/transaction-entry/AutoSaveToast";
+import {
+	CaptureComposer,
+	captureComposerCopy,
+} from "../../src/components/transaction-entry/CaptureComposer";
 import { TransactionReview } from "../../src/components/transaction-entry/TransactionReview";
+import {
+	BatchReviewList,
+	batchReviewCopy,
+	initialExpandedKeys,
+	type BatchReviewRow,
+} from "../../src/components/transaction-entry/BatchReviewList";
 import {
 	shouldAutoSaveEntry,
 	type AutoSaveBlockReason,
@@ -97,6 +115,7 @@ import { EntrySheet } from "../../src/components/transaction-entry/EntrySheet";
 import { TransactionDatePickerSheet } from "../../src/components/transaction-entry/TransactionDatePickerSheet";
 import { entryCopy, formatRupiah } from "../../src/components/transaction-entry/copy";
 import type { EntryPickerKind } from "../../src/components/transaction-entry/TransactionFields";
+import { TransactionFields } from "../../src/components/transaction-entry/TransactionFields";
 import {
 	EntryPersistenceError,
 	reconcileEntry,
@@ -299,8 +318,9 @@ export default function CaptureScreen() {
 	const { theme } = useTheme();
 	const { language } = useI18n();
 	const router = useRouter();
-	const { activeContext, canCreate } = useFinanceContext();
-	const { data: ent, refresh: refreshEntitlements } = useEntitlements();
+	const { activeContext, memberships, canCreate, setPersonalContext, setActiveHousehold } =
+		useFinanceContext();
+	const { data: ent, loading: entitlementsLoading, refresh: refreshEntitlements } = useEntitlements();
 	const isEn = language === "en";
 	const tx = useMemo(
 		() =>
@@ -378,7 +398,7 @@ export default function CaptureScreen() {
 						viewerNoticeV2: "You have view-only access in this money space, so you cannot record transactions.",
 						reconcileChecking: "The save result is unclear. Checking whether it was actually recorded…",
 						reconcileFound: "The transaction was actually recorded. Nothing was duplicated.",
-						reconcileNotCommitted: "The transaction was not recorded. Nothing was saved.",
+						reconcileUnconfirmed: "The complete save cannot be confirmed yet. Returning to review does not mean nothing was saved.",
 						reconcileFailed: "We could not confirm the save result yet. Check again before retrying.",
 						reconcileRetry: "Back to review",
 						reconcileAgain: "Check again",
@@ -463,7 +483,7 @@ export default function CaptureScreen() {
 						viewerNoticeV2: "Kamu hanya punya akses lihat di ruang uang ini, jadi belum bisa mencatat transaksi.",
 						reconcileChecking: "Hasil simpan belum jelas. Memeriksa apakah transaksi benar-benar tersimpan…",
 						reconcileFound: "Transaksi ternyata sudah tersimpan. Tidak ada duplikasi.",
-						reconcileNotCommitted: "Transaksi tidak tersimpan. Tidak ada yang tercatat.",
+						reconcileUnconfirmed: "Hasil simpan lengkap belum bisa dipastikan. Kembali ke review bukan berarti transaksi belum tersimpan.",
 						reconcileFailed: "Hasil simpan belum bisa dipastikan. Periksa lagi sebelum mencoba ulang.",
 						reconcileRetry: "Kembali ke review",
 						reconcileAgain: "Periksa lagi",
@@ -484,6 +504,9 @@ export default function CaptureScreen() {
 	// exactly as it was until the flag is rolled forward.
 	const entryV2 = featureFlags.transactionEntryV2;
 	const aiAutosaveText = featureFlags.aiAutosaveText;
+	// Presentation redesign. OFF by default: when OFF every legacy branch below
+	// renders exactly as before, so this only ever swaps the idle workspace.
+	const premium = featureFlags.simplePremiumExperience;
 	const searchParams = useLocalSearchParams() as Record<
 		string,
 		string | string[] | undefined
@@ -494,11 +517,27 @@ export default function CaptureScreen() {
 	);
 	const [activeMode, setActiveMode] = useState<ModeId>(() =>
 		resolveCaptureModeParam(
-			searchParams.mode,
+			searchParams.mode ?? (premium ? "text" : undefined),
 			featureFlags.voiceNote,
 			photoLocked(ent),
 		),
 	);
+	const [pendingReceiptOpen, setPendingReceiptOpen] = useState(false);
+	// Preserve a premium Struk tap made during entitlement lookup. Selecting Foto
+	// optimistically would be silently undone by the locked-photo effect below.
+	useEffect(() => {
+		if (!pendingReceiptOpen || entitlementsLoading) return;
+		setPendingReceiptOpen(false);
+		if (photoLocked(ent)) {
+			router.push("/upgrade");
+		} else {
+			setActiveMode("Foto");
+		}
+	}, [pendingReceiptOpen, entitlementsLoading, ent, router]);
+	const receiptReturnMode = useRef<ModeId>("Teks");
+	useEffect(() => {
+		if (activeMode !== "Foto") receiptReturnMode.current = activeMode;
+	}, [activeMode]);
 	const [textInput, setTextInput] = useState("");
 	const [voiceRecording, setVoiceRecording] = useState<Audio.Recording | null>(null);
 	const [voiceAsset, setVoiceAsset] = useState<VoiceAudioAsset | null>(null);
@@ -528,6 +567,7 @@ export default function CaptureScreen() {
 		}
 	}, [activeMode, ent, receiptDrafts.length]);
 	const autoProcessReceiptRef = useRef<string | null>(null);
+	const openManualEntry = () => requestCaptureExit(() => router.push("/(tabs)/transaction-new"));
 	const [receiptPath, setReceiptPath] = useState<string | null>(null);
 	const [receiptExtraction, setReceiptExtraction] = useState<ReceiptExtraction | null>(null);
 	// Explicit receipt recording mode: ONE total transaction by default, or one
@@ -550,15 +590,10 @@ export default function CaptureScreen() {
 				activeContext.type === "personal"
 					? "personal"
 					: activeContext.householdId,
-			label:
-				activeContext.type === "personal"
-					? isEn
-						? "Personal"
-						: "Pribadi"
-					: activeContext.householdId,
+			label: financeContextLabel(activeContext, memberships, language),
 			canCreate,
 		}),
-		[activeContext, canCreate, isEn],
+		[activeContext, memberships, canCreate, language],
 	);
 	const [entryState, entryDispatch] = useReducer(
 		entryReducer,
@@ -568,7 +603,8 @@ export default function CaptureScreen() {
 	const entrySubmitLockRef = useRef(createSubmitLock());
 	const entryRequestIdRef = useRef<string | null>(null);
 	const entryFingerprintRef = useRef<string | null>(null);
-	const entrySinceRef = useRef<string | null>(null);
+	const entrySaveContextRef = useRef<ContextSnapshot | null>(null);
+	const entryOutcomeUnknownRef = useRef(false);
 	const [entryErrors, setEntryErrors] = useState<
 		Record<string, DraftFieldErrors>
 	>({});
@@ -585,7 +621,7 @@ export default function CaptureScreen() {
 		kind: EntryPickerKind;
 	} | null>(null);
 	const [reconcileState, setReconcileState] = useState<
-		"idle" | "checking" | "found" | "not-committed" | "failed"
+		"idle" | "checking" | "found" | "unconfirmed" | "failed"
 	>("idle");
 	const entryPickerDraft =
 		entryPicker && entryState.drafts.find((draft) => draft.key === entryPicker.key);
@@ -1436,7 +1472,8 @@ export default function CaptureScreen() {
 	const resetEntryFlow = () => {
 		entryRequestIdRef.current = null;
 		entryFingerprintRef.current = null;
-		entrySinceRef.current = null;
+		entrySaveContextRef.current = null;
+		entryOutcomeUnknownRef.current = false;
 		entrySubmitLockRef.current.release();
 		setEntryErrors({});
 		setEntrySaved(null);
@@ -1447,19 +1484,19 @@ export default function CaptureScreen() {
 	const runEntryReconcile = async (drafts: TransactionDraft[]) => {
 		setReconcileState("checking");
 		try {
-			const sinceIso =
-				entrySinceRef.current ??
-				new Date(Date.now() - 120_000).toISOString();
-			const matches = await reconcileEntry({
-				context: entryContext,
-				drafts,
-				sinceIso,
-			});
-			if (matches.length > 0) {
+			const requestId = entryRequestIdRef.current;
+			const fingerprint = entryFingerprintRef.current;
+			const context = entrySaveContextRef.current;
+			if (!requestId || !fingerprint || !context) {
+				setReconcileState("failed");
+				return;
+			}
+			const matches = await reconcileEntry({ requestId, fingerprint, context, drafts });
+			if (drafts.length > 0 && matches.length === drafts.length) {
 				setEntrySaved({ transactions: matches, budgetSyncWarning: false });
 				setReconcileState("found");
 			} else {
-				setReconcileState("not-committed");
+				setReconcileState("unconfirmed");
 			}
 		} catch (reconcileError) {
 			Sentry.captureException(reconcileError);
@@ -1587,15 +1624,19 @@ export default function CaptureScreen() {
 			if (drafts.length === 0) return;
 
 			const fingerprint = draftFingerprint(drafts);
+			if (entryOutcomeUnknownRef.current && entryFingerprintRef.current !== fingerprint) {
+				setError(isEn
+					? "The original save is still unconfirmed. Restore the original fields before retrying; do not submit a new transaction."
+					: "Hasil simpan sebelumnya belum pasti. Pulihkan isian semula sebelum mencoba ulang; jangan kirim transaksi baru.");
+				return;
+			}
 			let requestId = entryRequestIdRef.current;
 			if (!requestId || entryFingerprintRef.current !== fingerprint) {
 				requestId = newEntryRequestId();
 				entryRequestIdRef.current = requestId;
 				entryFingerprintRef.current = fingerprint;
 			}
-			entrySinceRef.current = new Date(
-				Date.now() - 120_000,
-			).toISOString();
+			entrySaveContextRef.current = entryContext;
 			setEntryErrors({});
 			setReconcileState("idle");
 			entryDispatch({ type: "save-started" });
@@ -1617,6 +1658,7 @@ export default function CaptureScreen() {
 					})),
 				});
 				setEntrySaved(result);
+				entryOutcomeUnknownRef.current = false;
 				entryRequestIdRef.current = null;
 				entryFingerprintRef.current = null;
 				entryDispatch({
@@ -1659,6 +1701,7 @@ export default function CaptureScreen() {
 				}
 
 				if (kind === "network" || kind === "unknown") {
+					entryOutcomeUnknownRef.current = true;
 					// The request may have committed. Reconcile instead of a blind
 					// retry that could duplicate rows.
 					entryDispatch({
@@ -1765,11 +1808,135 @@ export default function CaptureScreen() {
 	const successCount = savedTransactions.length || successDrafts.length;
 
 	const reconcileMessage =
-		reconcileState === "not-committed"
-			? tx.reconcileNotCommitted
+		reconcileState === "unconfirmed"
+			? tx.reconcileUnconfirmed
 			: reconcileState === "failed"
 				? tx.reconcileFailed
 				: tx.reconcileChecking;
+
+	// Premium presentation only. An unknown save outcome must never look like a
+	// certain failure or a certain success, so the composer surfaces it with a
+	// status check that re-runs the EXISTING request-scoped reconciliation —
+	// never a new write from an edited payload.
+	const premiumUnknownActive =
+		premium &&
+		entryV2 &&
+		Boolean(entryState.outcomeUnknown) &&
+		(reconcileState === "unconfirmed" ||
+			reconcileState === "failed" ||
+			reconcileState === "checking");
+	const premiumProcessing =
+		submitting || entryBusy || reconcileState === "checking";
+	const premiumUnknownOutcome = premiumUnknownActive
+		? {
+				message:
+					reconcileState === "failed"
+						? tx.reconcileFailed
+						: reconcileState === "checking"
+							? tx.reconcileChecking
+							: tx.reconcileUnconfirmed,
+				onCheckStatus: () => {
+					const drafts =
+						entryState.frozenDrafts.length > 0
+							? entryState.frozenDrafts
+							: entryState.drafts;
+					void runEntryReconcile(drafts);
+				},
+			}
+		: null;
+
+	// Context switching with a live draft must be confirmed: the reducer clears
+	// work on `context-changed`, so an unconfirmed switch would silently discard
+	// the draft. Stale async results are already fenced by the generation bump.
+	// Complete reconciliation resolves the displayed outcome without mutating
+	// the persistence retry identity or its conservative unknown-outcome flags.
+	const captureOutcomeResolved = entrySuccessVisible;
+	const captureExitBlocked = submitting || Boolean(voiceRecording) || entryState.phase === "saving" || entryState.phase === "processing" || (!captureOutcomeResolved && (entryState.outcomeUnknown || entryOutcomeUnknownRef.current)) || autoSavePending;
+	const captureExitDirty = !captureOutcomeResolved && (Boolean(textInput.trim() || receiptAsset || voiceAsset || voiceDraft || receiptDrafts.length) || hasUnsavedWork(entryState));
+	const requestCaptureExit = useDraftExitGuard({
+		enabled: premium, scopeKey: entryContext.id, dirty: captureExitDirty, blocked: captureExitBlocked, isEn,
+		onDiscard: () => { resetEntryFlow(); resetCapture(true); },
+	});
+	const guardContextSwitch = (next: FinanceContextChoice) => {
+		if (premium) {
+			requestCaptureExit(() => {
+				if (next.type === "personal") setPersonalContext();
+				else setActiveHousehold(next.householdId);
+			});
+			return false;
+		}
+		if (!hasUnsavedWork(entryState)) return true;
+		Alert.alert(
+			isEn ? "Discard this draft?" : "Buang draf ini?",
+			isEn
+				? "Switching money space discards what you have typed."
+				: "Ganti ruang uang akan membuang yang sudah kamu ketik.",
+			[
+				{ text: isEn ? "Keep editing" : "Lanjut mengedit", style: "cancel" },
+				{
+					text: isEn ? "Switch" : "Ganti",
+					style: "destructive",
+					onPress: () => {
+						if (next.type === "personal") setPersonalContext();
+						else setActiveHousehold(next.householdId);
+					},
+				},
+			],
+		);
+		return false;
+	};
+
+	// Honest wallet readiness: a control must not look ready while the scoped
+	// list is still resolving, and an empty context must offer to create one.
+	const premiumWalletState: "loading" | "empty" | "ready" = walletLoading
+		? "loading"
+		: wallets.length === 0
+			? "empty"
+			: "ready";
+	const premiumWalletLabel =
+		wallets.find((wallet) => wallet.id === walletId)?.name ?? null;
+
+	// ---- Premium batch review (P4) ----
+	// Presentation only: the rows are a read-only projection of the same drafts
+	// the atomic save already uses. Nothing here mints a request, re-orders the
+	// batch, or touches the requestId/fingerprint.
+	const premiumBatchActive =
+		premium && entryV2 && entryState.drafts.length > 1;
+	const premiumBatchRows: BatchReviewRow[] = useMemo(
+		() =>
+			entryState.drafts.map((draft) => {
+				const draftErrors = entryErrors[draft.key];
+				return {
+					key: draft.key,
+					description:
+						draft.description || draft.merchant || tx.modeLabels.Teks,
+					amount: draft.amount,
+					category: draft.category || "—",
+					walletName:
+						wallets.find((wallet) => wallet.id === draft.walletId)?.name ?? "—",
+					hasWarning: unacknowledgedWarnings(draft).length > 0,
+					invalid: Boolean(
+						draftErrors &&
+							Object.values(draftErrors).some((value) => Boolean(value)),
+					),
+				};
+			}),
+		[entryState.drafts, entryErrors, wallets, tx.modeLabels.Teks],
+	);
+	const premiumBatchSignature = premiumBatchRows
+		.map((row) => `${row.key}:${row.hasWarning ? 1 : 0}${row.invalid ? 1 : 0}`)
+		.join("|");
+	const [premiumBatchExpanded, setPremiumBatchExpanded] = useState<string[]>([]);
+	// Problem rows open themselves; healthy rows stay folded. Keyed on a stable
+	// signature so re-renders do not fight the user's manual toggles.
+	useEffect(() => {
+		if (!premiumBatchActive) {
+			setPremiumBatchExpanded([]);
+			return;
+		}
+		setPremiumBatchExpanded(initialExpandedKeys(premiumBatchRows));
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [premiumBatchActive, premiumBatchSignature]);
 
 	return (
 		<PageEntrance testID="capture-page-entrance" style={styles.screen}>
@@ -1800,7 +1967,7 @@ export default function CaptureScreen() {
 					</View>
 				</LinearGradient>
 
-				{simple && workspace !== "success" && workspace !== "error" ? (
+				{simple && !premium && workspace !== "success" && workspace !== "error" ? (
 					<View key="capture-destination" testID="capture-destination" style={styles.destinationRow}>
 						<Text style={styles.destinationLabel}>{tx.destinationLabel}</Text>
 						<View style={styles.destinationControls}>
@@ -1810,9 +1977,10 @@ export default function CaptureScreen() {
 					</View>
 				) : null}
 
-				{showWorkspaceIdle ? (
+				{showWorkspaceIdle && (!premium || activeMode !== "Teks") ? (
 				<View key="capture-input" testID="capture-input" style={styles.inputArea}>
 
+					{!premium ? (
 					<View testID={simple ? "capture-workspace-idle" : undefined} style={styles.modeGrid}>
 						{captureModes.map((mode) => (
 							<Pressable
@@ -1836,10 +2004,13 @@ export default function CaptureScreen() {
 							</Pressable>
 						))}
 					</View>
+					) : null}
 
+					{!premium ? (
 					<Text style={styles.inputHelper}>{tx.modeHelpers[activeMode]}</Text>
+					) : null}
 
-					{activeMode === "Teks" ? (
+					{activeMode === "Teks" && !premium ? (
 						<View style={styles.textContainer}>
 							<TextInput
 								style={styles.textArea}
@@ -1867,6 +2038,20 @@ export default function CaptureScreen() {
 
 					{activeMode === "Foto" ? (
 						<View style={styles.textContainer}>
+							<Pressable
+								testID="capture-receipt-back"
+								accessibilityRole="button"
+								accessibilityLabel={isEn ? "Back to entry menu" : "Kembali ke menu pencatatan"}
+								accessibilityState={{ disabled: premiumProcessing || premiumUnknownActive }}
+								disabled={premiumProcessing || premiumUnknownActive}
+								style={[styles.receiptBackButton, (premiumProcessing || premiumUnknownActive) && { opacity: 0.5 }]}
+								onPress={() => {
+									if (premiumProcessing || premiumUnknownActive) return;
+									setActiveMode(receiptReturnMode.current);
+								}}
+							>
+								<Text style={styles.receiptBackText}>{isEn ? "← Back" : "← Kembali"}</Text>
+							</Pressable>
 							<View style={styles.receiptPickerCard}>
 								{receiptAsset ? <Image source={{ uri: receiptAsset.uri }} style={styles.receiptPreviewImage} /> : <Text style={styles.receiptPlaceholderText}>{tx.receiptPlaceholder}</Text>}
 							</View>
@@ -1935,6 +2120,57 @@ export default function CaptureScreen() {
 				</View>
 				) : null}
 
+				{premium && ((showWorkspaceIdle && activeMode === "Teks") || premiumUnknownActive) ? (
+					<View
+						key="capture-premium-composer"
+						testID="capture-premium-composer"
+						style={styles.inputArea}
+					>
+						<CaptureComposer
+							value={textInput}
+							onTextChange={setTextInput}
+							onSubmitText={() => {
+								void (entryV2 ? submitTextReview() : submitText());
+							}}
+							onOpenManual={openManualEntry}
+							onOpenReceipt={() => {
+								if (entitlementsLoading) {
+									setPendingReceiptOpen(true);
+									return;
+								}
+								if (photoLocked(ent)) {
+									router.push("/upgrade");
+									return;
+								}
+								setActiveMode("Foto");
+							}}
+							processing={premiumProcessing}
+							canCreate={canCreate}
+							voiceAvailable={featureFlags.voiceNote}
+							onOpenVoice={() => setActiveMode("Suara")}
+							showHero={false}
+							helperText={tx.modeHelpers.Teks}
+							unknownOutcome={premiumUnknownOutcome}
+							contextLabel={entryContext.label}
+							walletState={premiumWalletState}
+							selectedWalletLabel={premiumWalletLabel ?? undefined}
+							walletOptions={wallets.map((wallet) => ({
+								id: wallet.id,
+								name: wallet.name,
+							}))}
+							onSelectWallet={setWalletId}
+							onCreateWallet={() => router.push("/(tabs)/wallets")}
+							contextAccessory={
+								<FinanceContextSwitcher
+									presentation="sheet"
+									beforeChange={guardContextSwitch}
+								/>
+							}
+							copy={captureComposerCopy(language)}
+						/>
+					</View>
+				) : null}
+
 				{simple && workspace === "review" ? (
 					<View key="capture-workspace-review" testID="capture-workspace-review" style={styles.inputArea}>
 						{activeMode === "Foto" ? renderReceiptReview() : null}
@@ -1949,7 +2185,7 @@ export default function CaptureScreen() {
 					</View>
 				) : null}
 
-				{entryV2 && error && entryState.phase === "idle" && canCreate ? (
+				{entryV2 && error && (entryState.phase === "idle" || entryState.phase === "review") && canCreate ? (
 					<View key="capture-entry-notice" testID="capture-entry-notice" style={styles.feedbackCard}>
 						<Text style={styles.feedbackSub}>{error}</Text>
 					</View>
@@ -2050,6 +2286,60 @@ export default function CaptureScreen() {
 								) : null}
 							</View>
 						) : null}
+						{premiumBatchActive ? (
+							<BatchReviewList
+								rows={premiumBatchRows}
+								count={summariseDrafts(entryState.drafts).count}
+								total={summariseDrafts(entryState.drafts).total}
+								canCreate={canCreate}
+								saving={entryState.phase === "saving"}
+								expandedKeys={premiumBatchExpanded}
+								onToggleRow={(key) =>
+									setPremiumBatchExpanded((current) =>
+										current.includes(key)
+											? current.filter((candidate) => candidate !== key)
+											: [...current, key],
+									)
+								}
+								onEditRow={(key) =>
+									setEntryPicker({ key, kind: "category" })
+								}
+								onSave={saveReviewedDrafts}
+								copy={batchReviewCopy(language)}
+								renderRowEditor={(row) => {
+									const draft = entryState.drafts.find(
+										(candidate) => candidate.key === row.key,
+									);
+									if (!draft) return null;
+									return (
+										<TransactionFields
+											draft={draft}
+											onChange={(patch) =>
+												entryDispatch({
+													type: "draft-updated",
+													key: row.key,
+													patch,
+												})
+											}
+											wallets={wallets.map((wallet) => ({
+												id: wallet.id,
+												name: wallet.name,
+												is_active: wallet.is_active,
+											}))}
+											categories={categoryOptions.map((category) => ({
+												name: category.name,
+											}))}
+											canCreate={canCreate}
+											onOpenPicker={(kind) =>
+												setEntryPicker({ key: row.key, kind })
+											}
+											errors={entryErrors[row.key]}
+											testID={`draft-${row.key}`}
+										/>
+									);
+								}}
+							/>
+						) : (
 						<TransactionReview
 							drafts={entryState.drafts}
 							wallets={wallets.map((wallet) => ({
@@ -2070,6 +2360,7 @@ export default function CaptureScreen() {
 							errors={entryErrors}
 							summary={summariseDrafts(entryState.drafts)}
 						/>
+						)}
 						{entryState.source === "image" ? (
 							<Pressable
 								testID="capture-receipt-confirm"
@@ -2101,7 +2392,7 @@ export default function CaptureScreen() {
 					</View>
 				) : null}
 
-				{entryV2 && entryErrorVisible ? (
+				{entryV2 && entryErrorVisible && !premiumUnknownActive ? (
 					<View key="capture-entry-error" testID="capture-entry-error" style={styles.feedbackCard}>
 						<Text style={styles.feedbackTitle}>{tx.errorTitle}</Text>
 						<Text style={styles.feedbackSub}>{entryState.error ?? tx.errorFallback}</Text>
@@ -2111,7 +2402,7 @@ export default function CaptureScreen() {
 								{reconcileState === "checking" ? (
 									<ActivityIndicator testID="capture-reconciling" color={theme.colors.brandPrimary} />
 								) : null}
-								{reconcileState === "not-committed" || reconcileState === "failed" ? (
+								{reconcileState === "unconfirmed" || reconcileState === "failed" ? (
 									<Pressable
 										testID="capture-reconcile-retry"
 										accessibilityRole="button"
@@ -2153,6 +2444,11 @@ export default function CaptureScreen() {
 							description={successDescription}
 							amount={successAmount}
 							count={successCount}
+							category={
+								firstSavedTransaction?.category ??
+								successDrafts[0]?.category ??
+								null
+							}
 							onCaptureAnother={() => {
 								resetEntryFlow();
 								resetCapture(true);
@@ -2223,14 +2519,14 @@ export default function CaptureScreen() {
 					</View>
 				) : null}
 
-				{simple && workspace === "idle" ? (
+				{simple && !premium && workspace === "idle" ? (
 					<View key="capture-secondary-actions" testID="capture-secondary-actions" style={styles.secondaryActions}>
 						<Pressable
 							testID="capture-secondary-manual"
 							accessibilityRole="button"
 							accessibilityLabel={tx.manualDetail}
 							style={styles.secondaryButton}
-							onPress={() => router.push("/(tabs)/transaction-new")}
+							onPress={openManualEntry}
 						>
 							<Text style={styles.secondaryButtonText}>{tx.manualDetail}</Text>
 						</Pressable>
@@ -2418,6 +2714,15 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 		modeChipText: { color: fe.slate, fontSize: 13, fontWeight: "500" },
 		modeChipTextActive: { color: fe.ink, fontWeight: "600" },
 		textContainer: { gap: 12 },
+		receiptBackButton: {
+			minHeight: 44,
+			minWidth: 44,
+			paddingHorizontal: 12,
+			justifyContent: "center",
+			alignSelf: "flex-start",
+			borderRadius: 12,
+		},
+		receiptBackText: { color: fe.blue, fontSize: 14, fontWeight: "600" },
 		receiptPickerCard: {
 			minHeight: 190, borderRadius: 20, borderWidth: 0, backgroundColor: fe.white,
 			alignItems: "center", justifyContent: "center", overflow: "hidden", padding: 12,

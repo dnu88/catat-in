@@ -101,6 +101,27 @@ export function TransactionReview({
 					</View>
 				) : null}
 
+				{/* Single draft: one calm summary card with the amount as anchor, so
+				    the reviewer reads the number before the editable rows. */}
+				{summary.count === 1 && drafts[0] ? (
+					<View style={styles.singleSummary} testID="review-summary-single">
+						<Text style={styles.singleSummaryLabel}>
+							{copy.singleSummaryLabel}
+						</Text>
+						<Text
+							style={styles.singleSummaryAmount}
+							testID="review-summary-single-amount"
+						>
+							{formatRupiah(drafts[0].amount ?? 0)}
+						</Text>
+						{drafts[0].description ? (
+							<Text style={styles.singleSummaryMeta} numberOfLines={1}>
+								{drafts[0].description}
+							</Text>
+						) : null}
+					</View>
+				) : null}
+
 				{drafts.map((draft) => {
 					const draftErrors = errors?.[draft.key];
 					const warnings = unacknowledgedWarnings(draft);
@@ -230,6 +251,31 @@ function createStyles() {
 			borderRadius: 18,
 			paddingHorizontal: 16,
 			paddingVertical: 14,
+		},
+		singleSummary: {
+			backgroundColor: fe.white,
+			borderWidth: 1,
+			borderColor: fe.line,
+			borderRadius: 18,
+			paddingHorizontal: 16,
+			paddingVertical: 14,
+			gap: 2,
+		},
+		singleSummaryLabel: {
+			color: fe.textMuted,
+			fontSize: 10,
+			fontWeight: "800",
+			letterSpacing: 0.6,
+			textTransform: "uppercase",
+		},
+		singleSummaryAmount: {
+			color: fe.financialExpense,
+			fontSize: 22,
+			fontWeight: "800",
+		},
+		singleSummaryMeta: {
+			color: fe.textSecondary,
+			fontSize: 12,
 		},
 		summaryCount: {
 			color: fe.white,

@@ -3,8 +3,9 @@ jest.mock("react-native-safe-area-context", () => ({
 	SafeAreaProvider: ({ children }: { children: React.ReactNode }) => children,
 }));
 
+import { Alert } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { fireEvent, render, waitFor } from "@testing-library/react-native";
+import { act, fireEvent, render, waitFor, within } from "@testing-library/react-native";
 
 import TransactionNewScreen from "../app/(tabs)/transaction-new";
 import {
@@ -66,7 +67,7 @@ jest.mock("../src/state/finance-context", () => ({
 }));
 
 type FlagsGlobal = typeof globalThis & {
-	__KASWISE_FEATURE_FLAGS__?: { transactionEntryV2?: boolean };
+	__KASWISE_FEATURE_FLAGS__?: { transactionEntryV2?: boolean; simplePremiumExperience?: boolean };
 };
 const flagsGlobal = globalThis as FlagsGlobal;
 
@@ -104,6 +105,62 @@ describe("transaction-new compact entry (transactionEntryV2)", () => {
 		delete flagsGlobal.__KASWISE_FEATURE_FLAGS__;
 	});
 
+	it.each([false, true])("shows non-color selected category and wallet cues only in premium (%s)", async (premium) => {
+		flagsGlobal.__KASWISE_FEATURE_FLAGS__ = { transactionEntryV2: true, simplePremiumExperience: premium };
+		mockListWallets.mockResolvedValue([
+			{ id: "wallet-1", name: "BCA", is_active: true },
+			{ id: "wallet-2", name: "Tunai", is_active: true },
+		]);
+		const screen = render(renderTransactionNewTree());
+		await screen.findByText("Catat Manual");
+		fireEvent.press(screen.getByTestId("transaction-fields-category"));
+		fireEvent.press(screen.getByLabelText("Pilih kategori Makan & Minum"));
+		fireEvent.press(screen.getByTestId("transaction-fields-category"));
+		const category = screen.getByTestId("transaction-category-option-Makan & Minum");
+		expect(category.props.accessibilityLabel).toBe(`Pilih kategori Makan & Minum${premium ? ", Terpilih" : ""}`);
+		expect(Boolean(within(category).queryByText(/✓/))).toBe(premium);
+		fireEvent.press(screen.getByTestId("transaction-category-sheet-close"));
+		fireEvent.press(screen.getByTestId("transaction-fields-wallet"));
+		const wallet = screen.getByTestId("transaction-wallet-option-wallet-1");
+		expect(wallet.props.accessibilityLabel).toBe(`Pilih dompet BCA${premium ? ", Terpilih" : ""}`);
+		expect(Boolean(within(wallet).queryByText(/✓/))).toBe(premium);
+		const unselected = screen.getByTestId("transaction-wallet-option-wallet-2");
+		expect(unselected.props.accessibilityLabel).toBe("Pilih dompet Tunai");
+		expect(within(unselected).queryByText(/✓/)).toBeNull();
+		fireEvent.press(screen.getByTestId("transaction-wallet-sheet-close"));
+		fireEvent.press(screen.getByTestId("transaction-fields-type-transfer"));
+		fireEvent.press(screen.getByTestId("transaction-fields-target-wallet"));
+		const target = screen.getByTestId("transaction-target-wallet-option-wallet-2");
+		expect(target.props.accessibilityLabel).toBe("Pilih dompet tujuan Tunai");
+		expect(within(target).queryByText(/✓/)).toBeNull();
+		fireEvent.press(target);
+		fireEvent.press(screen.getByTestId("transaction-fields-target-wallet"));
+		const selectedTarget = screen.getByTestId("transaction-target-wallet-option-wallet-2");
+		expect(selectedTarget.props.accessibilityState).toMatchObject({ selected: true });
+		expect(selectedTarget.props.accessibilityLabel).toBe(`Pilih dompet tujuan Tunai${premium ? ", Terpilih" : ""}`);
+		expect(within(selectedTarget).getByText(`Tunai${premium ? " ✓" : ""}`)).toBeTruthy();
+		expect(Boolean(within(selectedTarget).queryByText(/✓/))).toBe(premium);
+	});
+
+	it("premium header Back requires discard and cancel retains the amount", async () => {
+		flagsGlobal.__KASWISE_FEATURE_FLAGS__ = { transactionEntryV2: true, simplePremiumExperience: true };
+		const screen = render(renderTransactionNewTree());
+		await screen.findByText("Catat Manual");
+		fireEvent.changeText(screen.getByTestId("transaction-fields-amount"), "35000");
+		const alert = jest.spyOn(Alert, "alert").mockImplementation(() => {});
+		fireEvent.press(screen.getByLabelText("Kembali dari catat manual"));
+		expect(mockBack).not.toHaveBeenCalled();
+		expect(mockReplace).not.toHaveBeenCalled();
+		expect(alert).toHaveBeenCalled();
+		const buttons = alert.mock.calls[0][2]!;
+		act(() => buttons.find((button) => button.style === "cancel")?.onPress?.());
+		expect(screen.getByTestId("transaction-fields-amount").props.value).toBe("35000");
+		act(() => buttons.find((button) => button.style === "destructive")?.onPress?.());
+		expect(mockReplace).toHaveBeenCalledWith("/(tabs)/capture");
+		expect(mockCreateTransaction).not.toHaveBeenCalled();
+		alert.mockRestore();
+	});
+
 	it("collapses merchant and description until the detail section expands", async () => {
 		const screen = render(renderTransactionNewTree());
 		expect(await screen.findByText("Catat Manual")).toBeTruthy();
@@ -121,6 +178,31 @@ describe("transaction-new compact entry (transactionEntryV2)", () => {
 
 		expect(screen.getByTestId("transaction-fields-merchant")).toBeTruthy();
 		expect(screen.getByTestId("transaction-fields-description")).toBeTruthy();
+	});
+
+	it.each([false, true])("guards rapid compact submits (edit=%s)", async (editing) => {
+		let finish!: (value: { id: string }) => void;
+		const pending = new Promise<{ id: string }>((resolve) => { finish = resolve; });
+		const write = editing ? mockUpdateTransaction : mockCreateTransaction;
+		write.mockReturnValueOnce(pending);
+		if (editing) {
+			mockSearchParams = { transactionId: "tx-1" };
+			mockGetTransaction.mockResolvedValue({
+				id: "tx-1", wallet_id: "wallet-1", transaction_type: "expense",
+				amount: 35000, category: "Makan & Minum", description: "Kopi sore", date: "2026-10-02",
+			});
+		}
+		const screen = render(renderTransactionNewTree());
+		await screen.findByText(editing ? "Edit Transaksi" : "Catat Manual");
+		if (!editing) {
+			fireEvent.changeText(screen.getByTestId("transaction-fields-amount"), "50000");
+			fireEvent.press(screen.getByTestId("transaction-fields-category"));
+			fireEvent.press(screen.getByLabelText("Pilih kategori Makan & Minum"));
+		}
+		const save = screen.getByTestId("transaction-form-submit");
+		await act(async () => { fireEvent.press(save); fireEvent.press(save); });
+		expect(write).toHaveBeenCalledTimes(1);
+		await act(async () => { finish({ id: "tx-1" }); });
 	});
 
 	it("hides the category row and reveals the destination wallet row for a transfer", async () => {

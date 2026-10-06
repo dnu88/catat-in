@@ -138,6 +138,40 @@ describe("transaction-new edit mode", () => {
 	});
 
 
+	it("blocks two edit submissions in the same render frame", async () => {
+		const pending = createDeferred<{ id: string }>();
+		mockUpdateTransaction.mockReturnValueOnce(pending.promise);
+		const screen = renderScreen();
+		await screen.findByDisplayValue("Kopi sore");
+		const save = screen.getByLabelText("Simpan perubahan transaksi");
+		await act(async () => {
+			fireEvent.press(save);
+			fireEvent.press(save);
+		});
+		expect(mockUpdateTransaction).toHaveBeenCalledTimes(1);
+		await act(async () => { pending.resolve({ id: "tx-1" }); });
+	});
+
+	it("keeps all edited fields after a failed update and permits an explicit retry", async () => {
+		mockUpdateTransaction.mockRejectedValueOnce(new Error("Koneksi terputus"));
+		const screen = renderScreen();
+		await screen.findByDisplayValue("Kopi sore");
+		fireEvent.changeText(screen.getByLabelText("Nominal transaksi"), "45000");
+		fireEvent.changeText(screen.getByLabelText("Deskripsi transaksi"), "Kopi pagi");
+		fireEvent.press(screen.getByLabelText("Simpan perubahan transaksi"));
+		await screen.findByText("Koneksi terputus");
+		expect(screen.getByLabelText("Deskripsi transaksi").props.value).toBe("Kopi pagi");
+		expect(screen.getByDisplayValue("Kopi Kenangan")).toBeTruthy();
+		expect(screen.getByDisplayValue("Less sugar")).toBeTruthy();
+		expect(mockBack).not.toHaveBeenCalled();
+		fireEvent.press(screen.getByLabelText("Simpan perubahan transaksi"));
+		await screen.findByText("Perubahan transaksi tersimpan.");
+		expect(mockUpdateTransaction).toHaveBeenCalledTimes(2);
+		expect(mockUpdateTransaction.mock.calls[1]).toEqual(mockUpdateTransaction.mock.calls[0]);
+		expect(mockUpdateTransaction.mock.calls[1][1].amount).toBe(45000);
+		expect(mockCreateTransaction).not.toHaveBeenCalled();
+	});
+
 	it("shows a cancel button beside save in edit mode", async () => {
 		const screen = renderScreen();
 

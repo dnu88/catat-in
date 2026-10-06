@@ -64,14 +64,20 @@
   },
   {
     "id": "ui.finance_editorial_surfaces",
-    "description": "Finance editorial surfaces stay live: paper content sheet, grouped settings, appearance control, and category bubble analytics.",
+    "description": "Finance editorial surfaces retain grouped settings, truthful light-first appearance, localized language selection, reliable notification settings, and category bubble analytics.",
     "critical": true,
     "markers": [
       "settings-appearance",
-      "settings-theme-system",
-      "settings-theme-dark",
+      "settings-appearance-row",
+      "settings-language-row",
+      "settings-language-sheet",
+      "settings-help-guide",
+      "settings-notification-daily",
+      "settings-notification-error",
       "reports-bubble-row"
-    ]
+    ],
+    "tests": ["apps/mobile/__tests__/package-a-settings.test.tsx", "apps/mobile/__tests__/settings-screen.test.tsx"],
+    "verification": "Settings show actual light-first appearance, persisted language selection, in-app help, and notification rollback/reconciliation; obsolete nonfunctional Dark/System choices are intentionally absent."
   },
   {
     "id": "home.dashboard_privacy_period",

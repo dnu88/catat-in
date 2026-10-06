@@ -13,7 +13,6 @@ import {
 } from "../features/transaction-entry/draft";
 import type { ContextSnapshot } from "../features/transaction-entry/state";
 import {
-	applyFinanceContextFilter,
 	canCreateInContext,
 	type FinanceContext,
 } from "./finance-context-query";
@@ -54,11 +53,7 @@ export type SaveEntryResult = {
 };
 
 export type EntryPersistenceErrorKind =
-	| "validation"
-	| "permission"
-	| "conflict"
-	| "network"
-	| "unknown";
+	"validation" | "permission" | "conflict" | "network" | "unknown";
 
 const USER_MESSAGES: Record<EntryPersistenceErrorKind, string> = {
 	validation: "Periksa kembali data transaksi.",
@@ -238,13 +233,12 @@ function toBudgetSyncTransaction(transaction: Transaction) {
  * A budget-allocation failure never fails the save; it only sets
  * budgetSyncWarning.
  */
-export async function saveEntry(input: SaveEntryInput): Promise<SaveEntryResult> {
+export async function saveEntry(
+	input: SaveEntryInput,
+): Promise<SaveEntryResult> {
 	const financeContext = toFinanceContext(input.context);
 
-	if (
-		!input.context.canCreate ||
-		!canCreateInContext(financeContext)
-	) {
+	if (!input.context.canCreate || !canCreateInContext(financeContext)) {
 		throw new EntryPersistenceError("permission", USER_MESSAGES.permission);
 	}
 
@@ -321,61 +315,84 @@ export async function saveEntry(input: SaveEntryInput): Promise<SaveEntryResult>
 	return { transactions, budgetSyncWarning };
 }
 
-function normalizedCategory(value: string | null | undefined): string {
-	return (value ?? "").trim().toLowerCase();
-}
-
-function matchesDraft(
-	draft: TransactionDraft,
-	transaction: Transaction,
-): boolean {
-	if (draft.amount === null || Number(transaction.amount) !== draft.amount) {
-		return false;
-	}
-	if ((transaction.date ?? "").slice(0, 10) !== draft.date) {
-		return false;
-	}
-	return (
-		normalizedCategory(transaction.category) ===
-		normalizedCategory(draft.category)
-	);
-}
-
 /**
- * Recovery path for an unknown-outcome save (e.g. a timeout).
- *
- * Read-only: it re-reads the rows for the SAME finance context created at or
- * after `sinceIso` and returns those matching any draft on
- * amount + date + category. It never inserts anything — its only job is to
- * reveal whether a timed-out save actually committed.
+ * Read-only recovery of the exact save request. Only its operation record can
+ * prove identity; financial field similarity or a time window cannot.
+ * [] means UNCONFIRMED (missing/in-flight operation, incomplete IDs, deleted or
+ * inaccessible rows), never proof that the original write did not commit.
+ * The existing RPC commits the operation and its complete batch atomically.
  */
-export async function reconcileEntry(input: {
-	context: ContextSnapshot;
-	drafts: TransactionDraft[];
-	sinceIso: string;
-}): Promise<Transaction[]> {
+export async function reconcileEntry(
+	input: Pick<
+		SaveEntryInput,
+		"requestId" | "fingerprint" | "context" | "drafts"
+	>,
+): Promise<Transaction[]> {
+	if (!input.requestId || !input.fingerprint || input.drafts.length === 0)
+		return [];
 	const financeContext = toFinanceContext(input.context);
-
-	let query: any = supabase.from("transactions").select("*");
-	query = applyFinanceContextFilter(query, financeContext);
-	query = query.gte("created_at", input.sinceIso);
-
-	let data: unknown;
-	let error: unknown;
+	const householdId =
+		financeContext.type === "household" ? financeContext.householdId : null;
 	try {
-		const response = await query;
-		data = response.data;
-		error = response.error;
-	} catch (thrown) {
-		throw toEntryError(thrown);
+		const userId = await getCurrentUserId();
+		const operationBase = supabase
+			.from("transaction_entry_operations")
+			.select("user_id, household_id, request_id, fingerprint, transaction_ids")
+			.eq("user_id", userId)
+			.eq("request_id", input.requestId);
+		const operationQuery =
+			financeContext.type === "personal"
+				? operationBase.is("household_id", null)
+				: operationBase.eq("household_id", householdId);
+		const { data: operations, error: operationError } = await operationQuery;
+		if (operationError) throw operationError;
+		if (!Array.isArray(operations) || operations.length !== 1) return [];
+		const operation = operations[0];
+		if (
+			operation.user_id !== userId ||
+			operation.household_id !== householdId ||
+			operation.request_id !== input.requestId
+		)
+			return [];
+		if (operation.fingerprint !== input.fingerprint) {
+			throw new EntryPersistenceError("conflict", USER_MESSAGES.conflict);
+		}
+		const ids: unknown = operation.transaction_ids;
+		if (
+			!Array.isArray(ids) ||
+			ids.length !== input.drafts.length ||
+			ids.some((id) => typeof id !== "string" || id.length === 0) ||
+			new Set(ids).size !== ids.length
+		)
+			return [];
+
+		const transactionBase = supabase
+			.from("transactions")
+			.select("*")
+			.eq("user_id", userId)
+			.in("id", ids);
+		const transactionQuery =
+			financeContext.type === "personal"
+				? transactionBase.is("household_id", null)
+				: transactionBase.eq("household_id", householdId);
+		const { data: rows, error: transactionError } = await transactionQuery;
+		if (transactionError) throw transactionError;
+		if (!Array.isArray(rows) || rows.length !== ids.length) return [];
+		const byId = new Map(rows.map((row) => [row.id, row]));
+		if (
+			byId.size !== ids.length ||
+			rows.some(
+				(row) =>
+					row.user_id !== userId ||
+					row.household_id !== householdId ||
+					!ids.includes(row.id),
+			) ||
+			ids.some((id) => !byId.has(id))
+		)
+			return [];
+		return ids.map((id) => normalizeTransaction(byId.get(id)));
+	} catch (error) {
+		if (error instanceof EntryPersistenceError) throw error;
+		throw toEntryError(error);
 	}
-
-	if (error) throw toEntryError(error);
-
-	const rows = (Array.isArray(data) ? data : []) as unknown[];
-	return rows
-		.map((row) => normalizeTransaction(row))
-		.filter((transaction) =>
-			input.drafts.some((draft) => matchesDraft(draft, transaction)),
-		);
 }

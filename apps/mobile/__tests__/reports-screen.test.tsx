@@ -401,20 +401,50 @@ describe("ReportsScreen visual parity", () => {
 		expect(getFlattenedStyle(foodFill).backgroundColor).not.toBe("#A3FF12");
 	});
 
-	it("renders a period-aware cashflow pulse instead of a mainstream line/bar chart", () => {
+	it("renders grouped solid bars on one baseline with an accessible period-aware chart", () => {
 		const screen = renderReports();
-
 		const chart = screen.getByTestId("reports-line-chart-svg");
-		expect(chart.props.accessibilityRole).toBe("image");
 		expect(chart.props.accessibilityLabel).toMatch(/Ritme Kas:/);
 		expect(screen.getByTestId("reports-pulse-chart")).toBeTruthy();
 		expect(screen.getAllByTestId(/reports-line-guide-/)).toHaveLength(3);
 		expect(screen.getAllByTestId(/reports-pulse-column-/).length).toBeGreaterThanOrEqual(4);
-		expect(screen.getAllByTestId(/reports-line-dot-income-/).length).toBeGreaterThanOrEqual(4);
-		expect(screen.getAllByTestId(/reports-line-dot-expense-/).length).toBeGreaterThanOrEqual(4);
+		expect(screen.getAllByTestId(/reports-pulse-bar-income-/).length).toBeGreaterThanOrEqual(4);
+		expect(screen.getAllByTestId(/reports-pulse-bar-expense-/).length).toBeGreaterThanOrEqual(4);
+		expect(screen.queryByTestId("reports-pulse-net-0")).toBeNull();
 		expect(screen.queryByTestId("reports-line-path-income")).toBeNull();
 		expect(screen.queryByTestId("reports-line-path-expense")).toBeNull();
-		expect(screen.queryByTestId("reports-bar-chart")).toBeNull();
+		expect(screen.getByTestId("reports-pulse-plot-scroll").props.horizontal).toBe(true);
+	});
+
+	it("integrates scoped period net and independently selected month detail without relabeling the aggregate", async () => {
+		const screen = renderReports();
+		await waitFor(() => expect(screen.getByTestId("reports-pulse-net-amount")).toHaveTextContent("Rp -1,1 jt"));
+		fireEvent.press(screen.getByText("6 Bulan"));
+		await waitFor(() => expect(screen.getAllByTestId(/reports-pulse-column-/)).toHaveLength(6));
+		fireEvent.press(screen.getByTestId("reports-pulse-column-5"));
+		expect(screen.getByTestId("reports-pulse-detail")).toHaveTextContent(/Jul 2026/);
+		expect(screen.getByTestId("reports-pulse-detail-income")).toHaveTextContent("Rp 125 rb");
+		expect(screen.getByTestId("reports-pulse-detail-expense")).toHaveTextContent("Rp 1,2 jt");
+		expect(screen.getByTestId("reports-pulse-detail-net")).toHaveTextContent("Rp -1,1 jt");
+		expect(screen.getByTestId("reports-pulse-net-amount")).toHaveTextContent("Rp -1,1 jt");
+		fireEvent.press(screen.getByTestId("reports-pulse-column-5"));
+		expect(screen.queryByTestId("reports-pulse-detail")).toBeNull();
+		fireEvent.press(screen.getByTestId("reports-pulse-column-5"));
+		fireEvent.press(screen.getByText("3 Bulan"));
+		expect(screen.queryByTestId("reports-pulse-detail")).toBeNull();
+	});
+
+	it("keeps all six empty months truthful and shows zero net with no fake balance insight", async () => {
+		mockTransactions = [];
+		const screen = renderReports();
+		fireEvent.press(screen.getByText("6 Bulan"));
+		await waitFor(() => expect(screen.getByTestId("reports-pulse-empty")).toBeTruthy());
+		expect(screen.getByTestId("reports-pulse-net-amount")).toHaveTextContent("Rp 0");
+		expect(screen.getByText("Belum ada aktivitas")).toBeTruthy();
+		expect(screen.getAllByTestId(/reports-pulse-column-/)).toHaveLength(6);
+		for (const bar of screen.getAllByTestId(/reports-pulse-bar-(income|expense)-/)) {
+			expect(getFlattenedStyle(bar).height).toBe(0);
+		}
 	});
 
 	it("updates the pulse bucket count immediately when selecting longer periods", () => {

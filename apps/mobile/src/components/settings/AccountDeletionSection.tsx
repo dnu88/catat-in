@@ -86,12 +86,12 @@ export function AccountDeletionSection({
   return (
     <View testID="settings-account-deletion-section" style={styles.sectionCard}>
       <Text style={styles.sectionTitle}>
-        {language === "id" ? "Request Penghapusan Akun" : "Account Deletion Request"}
+        {language === "id" ? "Permintaan penghapusan akun" : "Account deletion request"}
       </Text>
       <Text style={styles.sectionSub}>
         {language === "id"
-          ? "Track A memakai alur request yang diverifikasi support sebelum akun dan data aktif dihapus."
-          : "Track A uses a support-verified request flow before the account and active data are removed."}
+          ? "Tim dukungan memverifikasi permintaan sebelum akun dan data aktif dihapus."
+          : "Support verifies your request before deleting the account and active data."}
       </Text>
 
       <Pressable

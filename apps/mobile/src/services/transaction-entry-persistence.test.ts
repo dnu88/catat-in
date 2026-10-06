@@ -8,7 +8,6 @@ import {
 import type { ContextSnapshot } from "../features/transaction-entry/state";
 import {
 	EntryPersistenceError,
-	reconcileEntry,
 	saveEntry,
 } from "./transaction-entry-persistence";
 
@@ -278,7 +277,7 @@ describe("saveEntry error mapping", () => {
 		const raw = {
 			code: "23505",
 			message:
-				'ENTRY_REQUEST_CONFLICT: request abc was already recorded with a different payload',
+				"ENTRY_REQUEST_CONFLICT: request abc was already recorded with a different payload",
 		};
 		const error = await catchError(raw);
 		expect(error.kind).toBe("conflict");
@@ -300,102 +299,5 @@ describe("saveEntry error mapping", () => {
 		expect(error.kind).toBe("unknown");
 		expect(error.cause).toBe(raw);
 		expect(error.message).not.toContain("boom");
-	});
-});
-
-describe("reconcileEntry", () => {
-	function queryWith(rows: unknown[]) {
-		return {
-			is: jest.fn().mockReturnThis(),
-			eq: jest.fn().mockReturnThis(),
-			gte: jest.fn().mockReturnThis(),
-			then: (resolve: (value: unknown) => unknown) =>
-				Promise.resolve({ data: rows, error: null }).then(resolve),
-		};
-	}
-
-	test("filters by context and time window, matches amount+date+category, and writes nothing", async () => {
-		const query = queryWith([
-			{
-				id: "tx-match",
-				type: "expense",
-				nominal: 35000,
-				kategori: "Makan & Minum",
-				tanggal: "2026-10-02",
-				created_at: "2026-10-02T01:00:00Z",
-			},
-			{
-				id: "tx-other-amount",
-				type: "expense",
-				nominal: 40000,
-				kategori: "Makan & Minum",
-				tanggal: "2026-10-02",
-				created_at: "2026-10-02T01:00:00Z",
-			},
-			{
-				id: "tx-other-category",
-				type: "expense",
-				nominal: 35000,
-				kategori: "Transportasi",
-				tanggal: "2026-10-02",
-				created_at: "2026-10-02T01:00:00Z",
-			},
-			{
-				id: "tx-other-date",
-				type: "expense",
-				nominal: 35000,
-				kategori: "Makan & Minum",
-				tanggal: "2026-09-30",
-				created_at: "2026-09-30T01:00:00Z",
-			},
-		]);
-		(supabase.from as jest.Mock).mockReturnValue({
-			select: jest.fn().mockReturnValue(query),
-		});
-
-		const result = await reconcileEntry({
-			context: personalContext,
-			drafts: [draft()],
-			sinceIso: "2026-10-02T00:00:00Z",
-		});
-
-		expect(supabase.from).toHaveBeenCalledWith("transactions");
-		expect(
-			(supabase.from as jest.Mock).mock.calls.every(
-				([table]) => table === "transactions",
-			),
-		).toBe(true);
-		expect(query.is).toHaveBeenCalledWith("household_id", null);
-		expect(query.gte).toHaveBeenCalledWith(
-			"created_at",
-			"2026-10-02T00:00:00Z",
-		);
-		expect(result.map((transaction) => transaction.id)).toEqual(["tx-match"]);
-		expect(supabase.rpc).not.toHaveBeenCalled();
-	});
-
-	test("scopes a household reconciliation by household_id", async () => {
-		const query = queryWith([
-			{
-				id: "tx-hh",
-				type: "expense",
-				nominal: 35000,
-				kategori: "Makan & Minum",
-				tanggal: "2026-10-02",
-				created_at: "2026-10-02T01:00:00Z",
-			},
-		]);
-		(supabase.from as jest.Mock).mockReturnValue({
-			select: jest.fn().mockReturnValue(query),
-		});
-
-		const result = await reconcileEntry({
-			context: householdContext,
-			drafts: [draft({ walletId: "w-2" })],
-			sinceIso: "2026-10-02T00:00:00Z",
-		});
-
-		expect(query.eq).toHaveBeenCalledWith("household_id", "hh-1");
-		expect(result.map((transaction) => transaction.id)).toEqual(["tx-hh"]);
 	});
 });

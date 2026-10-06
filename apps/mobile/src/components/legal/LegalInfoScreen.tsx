@@ -1,14 +1,16 @@
+import { useI18n } from "../../i18n/i18n-context";
 import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 
 import { KaswiseLogoMark } from "../brand/KaswiseLogoMark";
 import { useTheme } from "../../theme/theme-context";
 import { financeEditorial as fe } from "../../theme/finance-editorial";
-import { mobileLegalPages, type MobileLegalPage } from "../../content/legal-pages";
+import { getMobileLegalContent, type MobileLegalPage } from "../../content/legal-pages";
 
 export function LegalInfoScreen({ page }: { page: MobileLegalPage }) {
   const { theme } = useTheme();
-  const content = mobileLegalPages[page];
+  const { language } = useI18n();
+  const content = getMobileLegalContent(page, language);
   const styles = createStyles(theme);
 
   return (

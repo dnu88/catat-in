@@ -213,12 +213,17 @@ describe("transaction swipe actions", () => {
 		fireEvent(screen.getByLabelText("Pilih transaksi Kopi sore"), "longPress");
 
 		await waitFor(() => expect(screen.getByTestId("transactions-selection-toolbar")).toBeTruthy());
-		expect(screen.queryByText("2 item")).toBeNull();
-		expect(screen.getByText("1 dipilih")).toBeTruthy();
-		expect(screen.getByText("Ketuk transaksi lain untuk menambah pilihan.")).toBeTruthy();
-		expect(screen.queryByLabelText("Edit transaksi Kopi sore")).toBeNull();
-		expect(screen.queryByLabelText("Hapus transaksi Kopi sore")).toBeNull();
-		expect(screen.queryByTestId("transaction-swipe-actions-tx-1")).toBeNull();
+		// Hardened 2026-10-03 (finding #3): the selection visuals commit in the same
+		// pass as the toolbar, so assert them inside one deterministic wait instead
+		// of bare reads that could race the async list update.
+		await waitFor(() => {
+			expect(screen.queryByText("2 item")).toBeNull();
+			expect(screen.getByText("1 dipilih")).toBeTruthy();
+			expect(screen.getByText("Ketuk transaksi lain untuk menambah pilihan.")).toBeTruthy();
+			expect(screen.queryByLabelText("Edit transaksi Kopi sore")).toBeNull();
+			expect(screen.queryByLabelText("Hapus transaksi Kopi sore")).toBeNull();
+			expect(screen.queryByTestId("transaction-swipe-actions-tx-1")).toBeNull();
+		});
 		await waitFor(() => expect(screen.getByTestId("transactions-selection-delete-action")).toBeTruthy());
 		expect(screen.getByTestId("transactions-selection-delete-count-text").props.children).toBe(1);
 		await waitFor(() => expect(screen.getByLabelText("Batalkan pilihan transaksi Kopi sore")).toBeTruthy());
@@ -619,7 +624,9 @@ describe("transaction swipe actions", () => {
 		const screen = renderScreen();
 
 		await waitFor(() => expect(screen.getByText("Kopi sore")).toBeTruthy());
-		expect(screen.queryByText("Bonus tahunan")).toBeNull();
+		// Hardened 2026-10-03 (finding #3): the out-of-period row must be absent, but
+		// the filtered list lands asynchronously — wait instead of a bare read.
+		await waitFor(() => expect(screen.queryByText("Bonus tahunan")).toBeNull());
 
 		fireEvent.press(screen.getByTestId("transactions-period-year"));
 
@@ -681,12 +688,12 @@ describe("transaction swipe actions", () => {
 		await waitFor(() => {
 			// Clean tx with merchant "Warung" should be hidden
 			expect(screen.queryByText("Warung")).toBeNull();
+			// Reviewable transactions should still show
+			expect(screen.getByText("Toko")).toBeTruthy();
+			expect(screen.getByText("Kafe")).toBeTruthy();
+			expect(screen.getByText("Parkir")).toBeTruthy();
+			expect(screen.queryByText("Sudah Dicek")).toBeNull();
 		});
-		// Reviewable transactions should still show
-		expect(screen.getByText("Toko")).toBeTruthy();
-		expect(screen.getByText("Kafe")).toBeTruthy();
-		expect(screen.getByText("Parkir")).toBeTruthy();
-		expect(screen.queryByText("Sudah Dicek")).toBeNull();
 	});
 
 	it("shows empty state when no transactions need review", async () => {

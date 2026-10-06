@@ -1,3 +1,4 @@
+import { reportTransactionType } from "../../src/features/reports/report-transaction-type";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
 	Pressable,
@@ -26,6 +27,15 @@ import { useTheme } from "../../src/theme/theme-context";
 import { financeEditorial as fe } from "../../src/theme/finance-editorial";
 import { useSupabase } from "../../src/lib/supabase";
 import { IOSWheelDatePicker } from "../../src/components/date/IOSWheelDatePicker";
+import { featureFlags } from "../../src/config/features";
+import {
+	periodStatusLine,
+	reportStateCopy,
+	resolveReportTabState,
+	shouldRenderReportChart,
+} from "../../src/features/reports/report-state";
+import { showsPeriodChips } from "../../src/features/reports/period-disclosure";
+import { CashflowPulse } from "../../src/features/reports/CashflowPulse";
 import { IconBubble } from "../../src/components/ui";
 import { PageEntrance, StaggeredEntrance } from "../../src/components/motion";
 import { KaswiseIcon, type KaswiseIconName } from "../../src/components/icons/kaswise-icons";
@@ -165,7 +175,7 @@ type Tab = "overview" | "category" | "compare";
 type PeriodFilter = ReportPeriodPreset | "custom" | "saved_rule";
 type ReportTransaction = {
 	amount: number;
-	transaction_type: "income" | "expense";
+	transaction_type: "income" | "expense" | "transfer";
 	category: string | null;
 	date: string | null;
 	description?: string | null;
@@ -176,8 +186,8 @@ type ReportTransaction = {
 type ReportTransactionRow = {
 	amount?: number | string | null;
 	nominal?: number | string | null;
-	transaction_type?: "income" | "expense" | null;
-	type?: "income" | "expense" | null;
+	transaction_type?: "income" | "expense" | "transfer" | null;
+	type?: "income" | "expense" | "transfer" | null;
 	category?: string | null;
 	kategori?: string | null;
 	date?: string | null;
@@ -195,6 +205,7 @@ function toReportDateKey(value: string | null | undefined) {
 
 function normalizeReportTransaction(
 	row: ReportTransactionRow,
+	premium: boolean,
 ): ReportTransaction {
 	const date = toReportDateKey(row.date ?? row.tanggal ?? row.created_at);
 	const transactionType = row.transaction_type ?? row.type;
@@ -202,7 +213,7 @@ function normalizeReportTransaction(
 
 	return {
 		amount: Number(row.amount ?? row.nominal ?? 0),
-		transaction_type: transactionType === "income" ? "income" : "expense",
+		transaction_type: reportTransactionType(transactionType, premium),
 		category: row.category ?? row.kategori ?? null,
 		date,
 		description: description ?? null,
@@ -269,12 +280,20 @@ export default function ReportsScreen() {
 	const styles = useMemo(() => createStyles(theme), [theme]);
 	const [activeTab, setActiveTab] = useState<Tab>("overview");
 	const [periodFilter, setPeriodFilter] = useState<PeriodFilter>("month");
-	const [selectedBar, setSelectedBar] = useState<number | null>(null);
+	// T24 (simple premium): lead with one main summary; the date/filter chips move
+	// into a picker. Report maths and the AI insight call count are untouched.
+	const premium = featureFlags.simplePremiumExperience;
+	const [premiumPeriodOpen, setPremiumPeriodOpen] = useState(false);
 	const [dataLoading, setDataLoading] = useState(false);
 	const [refreshTick, setRefreshTick] = useState(0);
 	const hasFocusedOnceRef = useRef(false);
 	const [dataError, setDataError] = useState<string | null>(null);
 	const [realTransactionCount, setRealTransactionCount] = useState<
+		number | null
+	>(null);
+	// B2 (G11): transactions in scope BEFORE the period filter, so an account
+	// with nothing at all is not confused with an empty selected period.
+	const [scopeTransactionCount, setScopeTransactionCount] = useState<
 		number | null
 	>(null);
 	const [showDateModal, setShowDateModal] = useState(false);
@@ -792,13 +811,15 @@ export default function ReportsScreen() {
 			);
 			if (!bucket) continue;
 			if (transaction.transaction_type === "income") bucket.income += transaction.amount || 0;
-			else bucket.expense += transaction.amount || 0;
+			else if (transaction.transaction_type === "expense") bucket.expense += transaction.amount || 0;
 		}
 
 		return {
 			keys: buckets.map((bucket) => bucket.key),
 			labels: buckets.map((bucket) => bucket.label),
 			years: buckets.map((bucket) => bucket.year),
+			startDates: buckets.map((bucket) => dateKey(bucket.start.getFullYear(), bucket.start.getMonth() + 1, bucket.start.getDate())),
+			endDates: buckets.map((bucket) => dateKey(bucket.end.getFullYear(), bucket.end.getMonth() + 1, bucket.end.getDate())),
 			income: buckets.map((bucket) => bucket.income / 1_000_000),
 			expense: buckets.map((bucket) => bucket.expense / 1_000_000),
 		};
@@ -811,19 +832,9 @@ export default function ReportsScreen() {
 		customStartYear,
 		periodFilter,
 		reportTransactions,
+		isEn,
 	]);
 
-	useEffect(() => {
-		setSelectedBar(null);
-	}, [
-		customEndDay,
-		customEndMonth,
-		customEndYear,
-		customStartDay,
-		customStartMonth,
-		customStartYear,
-		periodFilter,
-	]);
 	const top5Expenses = useMemo(() => {
 		const grouped = new Map<string, { amount: number; sourceName: string }>();
 		for (const transaction of reportTransactions) {
@@ -846,15 +857,6 @@ export default function ReportsScreen() {
 			.sort((a, b) => b.amount - a.amount)
 			.slice(0, 5);
 	}, [isEn, reportTransactions]);
-	const maxVal = Math.max(1, ...chartData.income, ...chartData.expense);
-	const pulseMaxHeight = 58;
-	const pulseHeightFor = (value: number) => {
-		if (value <= 0) return 2;
-		return Math.max(8, Math.round((value / maxVal) * pulseMaxHeight));
-	};
-	const netValueFor = (idx: number) =>
-		(chartData.income[idx] ?? 0) - (chartData.expense[idx] ?? 0);
-	const pulseAccessibilityLabel = `${tx.trendTitle}: ${periodDisplayLabel}`;
 	const donutSize = 200;
 	const donutCenter = donutSize / 2;
 	const donutRadius = 64;
@@ -1089,6 +1091,7 @@ export default function ReportsScreen() {
 	};
 
 	useEffect(() => {
+		let cancelled = false;
 		const loadTransactionData = async () => {
 			setDataLoading(true);
 			setDataError(null);
@@ -1150,6 +1153,7 @@ export default function ReportsScreen() {
 				const loadedCategories = await listCategories().catch(
 					() => [] as Category[],
 				);
+				if (premium && cancelled) return;
 				setCategoryOptions(loadedCategories);
 
 				let query = supabase.from("transactions").select("*");
@@ -1162,11 +1166,12 @@ export default function ReportsScreen() {
 				}
 				const { data: transactions, error } = await query;
 
+				if (premium && cancelled) return;
 				if (error) throw error;
 
 				const allTransactions = (
 					(transactions || []) as ReportTransactionRow[]
-				).map(normalizeReportTransaction);
+				).map((row) => normalizeReportTransaction(row, premium));
 				const loadedTransactions = filterReportTransactionsByDateRange(
 					allTransactions,
 					startDateString,
@@ -1174,6 +1179,7 @@ export default function ReportsScreen() {
 				);
 				setReportTransactions(loadedTransactions);
 				setRealTransactionCount(loadedTransactions.length);
+				setScopeTransactionCount(allTransactions.length);
 
 				const expenseTx = loadedTransactions.filter(
 					(t) => t.transaction_type === "expense",
@@ -1288,15 +1294,18 @@ export default function ReportsScreen() {
 					setCompareData(null);
 				}
 			} catch (err: any) {
+				if (premium && cancelled) return;
 				console.error("Failed to load transaction data:", err);
 				setDataError(tx.errorLoad);
 			} finally {
-				setDataLoading(false);
+				if (!premium || !cancelled) setDataLoading(false);
 			}
 		};
 
 		loadTransactionData();
+		return () => { cancelled = true; };
 	}, [
+		premium,
 		activeTab,
 		periodFilter,
 		customStartYear,
@@ -1309,6 +1318,70 @@ export default function ReportsScreen() {
 		activeContext,
 		refreshTick,
 	]);
+
+	// B2 — one place decides the active tab's presentation state.
+	const reportViewState = resolveReportTabState({
+		tab: activeTab,
+		previousTransactionCount: compareData?.previous?.count ?? 0,
+		expenseCategoryCount: dynamicCategories.length,
+		loading: dataLoading,
+		error: dataError,
+		scopeTransactionCount,
+		periodTransactionCount: realTransactionCount,
+	});
+	const stateCopy = reportStateCopy(reportViewState, isEn);
+
+	// Shared supporting cards keep their legacy position when premium is OFF.
+	const supportingCards = (
+		<>
+				<StaggeredEntrance index={1} testID="reports-entrance-ai-insight">
+					<AiInsightCard
+						insight={aiInsight}
+						loading={aiInsightLoading}
+						error={aiInsightError}
+						isPremium={isPremium}
+						onGenerate={handleGenerateAiInsight}
+						onUpgrade={() => router.push("/upgrade" as never)}
+					/>
+				</StaggeredEntrance>
+
+				<StaggeredEntrance index={2} testID="reports-entrance-recommendation">
+					<View testID="reports-envelope-entry" style={styles.envelopeEntryCard}>
+					<View style={styles.envelopeEntryTopRow}>
+						<View style={styles.envelopeEntryTitleRow}>
+							<IconBubble name="budgets" tone="navy" color={fe.blue} backgroundColor="rgba(12,78,145,0.12)" borderColor="rgba(12,78,145,0.24)" size={36} />
+							<View
+								testID="reports-envelope-copy"
+								style={styles.envelopeEntryCopy}
+							>
+								<Text style={styles.envelopeEntryTitle}>
+									{tx.budgetWalletTitle}
+								</Text>
+								<Text
+									style={styles.envelopeEntryMeta}
+									numberOfLines={2}
+									ellipsizeMode="tail"
+								>
+									{tx.budgetWalletMeta}
+								</Text>
+							</View>
+						</View>
+						<Pressable
+							testID="reports-envelope-manage"
+							accessibilityRole="button"
+							accessibilityLabel={tx.manageBudgetA11y}
+							style={styles.envelopeManageButton}
+							onPress={() => router.push("/(tabs)/budgets" as never)}
+						>
+							<Text style={styles.envelopeManageText}>
+								{tx.budgetWalletManage}
+							</Text>
+						</Pressable>
+					</View>
+					</View>
+				</StaggeredEntrance>
+		</>
+	);
 
 	return (
 		<View style={styles.screen}>
@@ -1404,52 +1477,50 @@ export default function ReportsScreen() {
 					</View>
 				</StaggeredEntrance>
 
-				<StaggeredEntrance index={1} testID="reports-entrance-ai-insight">
-					<AiInsightCard
-						insight={aiInsight}
-						loading={aiInsightLoading}
-						error={aiInsightError}
-						isPremium={isPremium}
-						onGenerate={handleGenerateAiInsight}
-						onUpgrade={() => router.push("/upgrade" as never)}
-					/>
-				</StaggeredEntrance>
-
-				<StaggeredEntrance index={2} testID="reports-entrance-recommendation">
-					<View testID="reports-envelope-entry" style={styles.envelopeEntryCard}>
-					<View style={styles.envelopeEntryTopRow}>
-						<View style={styles.envelopeEntryTitleRow}>
-							<IconBubble name="budgets" tone="navy" color={fe.blue} backgroundColor="rgba(12,78,145,0.12)" borderColor="rgba(12,78,145,0.24)" size={36} />
-							<View
-								testID="reports-envelope-copy"
-								style={styles.envelopeEntryCopy}
-							>
-								<Text style={styles.envelopeEntryTitle}>
-									{tx.budgetWalletTitle}
-								</Text>
-								<Text
-									style={styles.envelopeEntryMeta}
-									numberOfLines={2}
-									ellipsizeMode="tail"
-								>
-									{tx.budgetWalletMeta}
-								</Text>
-							</View>
-						</View>
-						<Pressable
-							testID="reports-envelope-manage"
-							accessibilityRole="button"
-							accessibilityLabel={tx.manageBudgetA11y}
-							style={styles.envelopeManageButton}
-							onPress={() => router.push("/(tabs)/budgets" as never)}
+				{/* B2 (G11): the state card sits directly under the summary so the
+				    explanation and its action are visible without scrolling. */}
+				{premium && stateCopy ? (
+					<StaggeredEntrance index={1} testID="reports-entrance-state">
+						<View
+							testID="reports-state-card"
+							style={[
+								styles.stateCard,
+								reportViewState === "error" ? styles.stateCardError : null,
+							]}
 						>
-							<Text style={styles.envelopeManageText}>
-								{tx.budgetWalletManage}
-							</Text>
-						</Pressable>
-					</View>
-					</View>
-				</StaggeredEntrance>
+							<Text style={styles.stateTitle}>{stateCopy.title}</Text>
+							<Text style={styles.stateBody}>{stateCopy.body}</Text>
+							{stateCopy.action ? (
+								<Pressable
+									testID="reports-state-action"
+									accessibilityRole="button"
+									accessibilityLabel={stateCopy.actionLabel}
+									style={({ pressed }) => [
+										styles.stateAction,
+										pressed ? styles.stateActionPressed : null,
+									]}
+									onPress={() => {
+										if (stateCopy.action === "retry") {
+											setRefreshTick((value) => value + 1);
+											return;
+										}
+										if (stateCopy.action === "capture") {
+											router.push("/(tabs)/capture" as never);
+											return;
+										}
+										setPremiumPeriodOpen(true);
+									}}
+								>
+									<Text style={styles.stateActionText}>
+										{stateCopy.actionLabel}
+									</Text>
+								</Pressable>
+							) : null}
+						</View>
+					</StaggeredEntrance>
+				) : null}
+
+				{!premium ? supportingCards : null}
 
 				{/* Tab Selector */}
 				<ScrollView
@@ -1530,7 +1601,65 @@ export default function ReportsScreen() {
 				</ScrollView>
 
 				{/* Period Selector */}
-				<View style={styles.periodWrap}>
+				{premium ? (
+					<Pressable
+						testID="reports-period-toggle"
+						accessibilityRole="button"
+						accessibilityLabel={
+							premiumPeriodOpen
+								? isEn
+									? "Hide period options"
+									: "Sembunyikan pilihan periode"
+								: isEn
+									? `Period: ${
+											periodFilter === "custom" || periodFilter === "saved_rule"
+												? periodDisplayLabel
+												: periodLabels[periodFilter]
+										}`
+									: `Periode: ${
+											periodFilter === "custom" || periodFilter === "saved_rule"
+												? periodDisplayLabel
+												: periodLabels[periodFilter]
+										}`
+						}
+						accessibilityHint={
+							premiumPeriodOpen
+								? isEn
+									? "Collapses the period options"
+									: "Menutup pilihan periode"
+								: isEn
+									? "Shows the period options"
+									: "Menampilkan pilihan periode"
+						}
+						accessibilityState={{ expanded: premiumPeriodOpen }}
+						style={styles.touchTarget}
+						onPress={() => setPremiumPeriodOpen((open) => !open)}
+					>
+						<View style={[styles.periodChip, styles.periodChipActive]}>
+							<Text style={[styles.periodChipText, styles.periodChipTextActive]}>
+								<Text accessible={false} importantForAccessibility="no">
+									{premiumPeriodOpen ? "⌃" : "⌄"}{" "}
+								</Text>
+								{periodFilter === "custom" || periodFilter === "saved_rule"
+									? periodDisplayLabel
+									: periodLabels[periodFilter]}
+							</Text>
+						</View>
+					</Pressable>
+				) : null}
+				{premium ? (
+					<Text testID="reports-period-status" style={styles.periodStatus}>
+						{periodStatusLine(
+							periodFilter === "custom" || periodFilter === "saved_rule"
+								? periodDisplayLabel
+								: periodLabels[periodFilter],
+							realTransactionCount,
+							isEn,
+						)}
+					</Text>
+				) : null}
+				{showsPeriodChips(premium, premiumPeriodOpen) ? (
+				<View testID="reports-period-chips" style={styles.periodWrap}>
 					{(Object.keys(periodLabels) as Exclude<PeriodFilter, "saved_rule">[]).map((key) => (
 						<Pressable
 							key={key}
@@ -1566,6 +1695,7 @@ export default function ReportsScreen() {
 						</Pressable>
 					))}
 				</View>
+				) : null}
 
 				<View testID="reports-active-period-card" style={styles.periodControlsCard}>
 					<View style={styles.activePeriodRow}>
@@ -1660,150 +1790,45 @@ export default function ReportsScreen() {
 					</View>
 				)}
 
-				{/* Loading/Error State */}
-				{dataLoading && (
-					<View style={styles.loadingCard}>
-						<Text style={styles.loadingText}>{tx.loading}</Text>
-					</View>
-				)}
-				{dataError && !dataLoading && (
-					<View style={styles.errorCard}>
-						<Text style={styles.errorText}>{dataError}</Text>
-					</View>
-				)}
-				{realTransactionCount !== null && !dataLoading && (
-					<StaggeredEntrance index={3} testID="reports-entrance-info">
-						<View testID="reports-info-card" style={styles.infoCard}>
-						<Text style={styles.infoText}>
-							{tx.txFound(realTransactionCount)}
-						</Text>
-						</View>
-					</StaggeredEntrance>
+				{/* B2 (G11): the legacy surface keeps its previous rendering. */}
+				{premium ? null : (
+					<>
+						{dataLoading && (
+							<View style={styles.loadingCard}>
+								<Text style={styles.loadingText}>{tx.loading}</Text>
+							</View>
+						)}
+						{dataError && !dataLoading && (
+							<View style={styles.errorCard}>
+								<Text style={styles.errorText}>{dataError}</Text>
+							</View>
+						)}
+						{realTransactionCount !== null && !dataLoading && (
+							<StaggeredEntrance index={3} testID="reports-entrance-info">
+								<View testID="reports-info-card" style={styles.infoCard}>
+								<Text style={styles.infoText}>
+									{tx.txFound(realTransactionCount)}
+								</Text>
+							</View>
+							</StaggeredEntrance>
+						)}
+					</>
 				)}
 
-				{activeTab === "overview" && (
+				{activeTab === "overview" &&
+					(premium ? shouldRenderReportChart(reportViewState) : true) && (
 					<>
 						{/* Chart */}
 						<StaggeredEntrance index={1} testID="reports-entrance-chart">
 							<View style={styles.chartCard}>
-							<Text style={styles.chartTitle}>{tx.trendTitle}</Text>
-							<Text style={styles.chartSub}>{tx.trendSub}</Text>
-
-							<View
-								testID="reports-pulse-chart"
-								style={styles.lineChartArea}
-							>
-								<View style={styles.lineGrid}>
-									<View testID="reports-line-guide-0" style={styles.gridLine} />
-									<View testID="reports-line-guide-1" style={styles.gridLine} />
-									<View testID="reports-line-guide-2" style={styles.gridLine} />
-								</View>
-								<View
-									testID="reports-line-chart-svg"
-									accessibilityRole="image"
-									accessibilityLabel={pulseAccessibilityLabel}
-									style={styles.lineGraphLayer}
-								>
-									{chartData.labels.map((label, idx) => {
-										const incomeHeight = pulseHeightFor(chartData.income[idx] ?? 0);
-										const expenseHeight = pulseHeightFor(chartData.expense[idx] ?? 0);
-										const netValue = netValueFor(idx);
-										return (
-											<Pressable
-												key={chartData.keys[idx] ?? `${label}-${chartData.years[idx]}`}
-												testID={`reports-pulse-column-${idx}`}
-												accessibilityRole="button"
-												accessibilityLabel={tx.chartColumnA11y(label, chartData.years[idx] ?? new Date().getFullYear())}
-												accessibilityState={{ selected: selectedBar === idx }}
-												style={styles.lineColumn}
-												onPress={() =>
-													setSelectedBar(selectedBar === idx ? null : idx)
-												}
-											>
-												<View style={styles.pulseStack}>
-													<View style={styles.pulseUpper}>
-														<View
-															testID={`reports-line-dot-income-${idx}`}
-															style={[
-																styles.pulseBar,
-																styles.incomePulse,
-																{ height: incomeHeight },
-															]}
-														/>
-													</View>
-													<View style={styles.pulseAxis}>
-														<View
-															testID={`reports-pulse-net-${idx}`}
-															style={[
-																styles.netDot,
-																netValue >= 0 ? styles.netDotPositive : styles.netDotNegative,
-															]}
-														/>
-													</View>
-													<View style={styles.pulseLower}>
-														<View
-															testID={`reports-line-dot-expense-${idx}`}
-															style={[
-																styles.pulseBar,
-																styles.expensePulse,
-																{ height: expenseHeight },
-															]}
-														/>
-													</View>
-												</View>
-												<Text style={styles.chartLabel}>{label}</Text>
-
-												{selectedBar === idx && (
-													<View style={styles.chartTooltip}>
-														<Text style={styles.tooltipTitle}>
-															{label} {chartData.years[idx]}
-														</Text>
-														<Text
-															style={[
-																styles.tooltipValue,
-																{ color: fe.financialIncome },
-															]}
-														>
-															{tx.tooltipIncome}: {" "}
-															{formatCompactRupiah((chartData.income[idx] ?? 0) * 1_000_000)}
-														</Text>
-														<Text
-															style={[
-																styles.tooltipValue,
-																{ color: fe.financialExpense },
-															]}
-														>
-															{tx.tooltipExpense}: {" "}
-															{formatCompactRupiah((chartData.expense[idx] ?? 0) * 1_000_000)}
-														</Text>
-													</View>
-												)}
-											</Pressable>
-										);
-									})}
-								</View>
-							</View>
-
-							<View style={styles.chartLegend}>
-								<View style={styles.legendItem}>
-									<View
-										style={[
-											styles.legendDot,
-											{ backgroundColor: fe.financialIncome },
-										]}
-									/>
-									<Text style={styles.legendText}>{tx.income}</Text>
-								</View>
-								<View style={styles.legendItem}>
-									<View
-										style={[
-											styles.legendDot,
-											{ backgroundColor: fe.financialExpense },
-										]}
-									/>
-									<Text style={styles.legendText}>{tx.expense}</Text>
-								</View>
-							</View>
+								<CashflowPulse
+								data={chartData}
+								summaryIncome={summaryIncome}
+								summaryExpense={summaryExpense}
+								periodLabel={periodDisplayLabel}
+								language={language}
+								scopeKey={`${activeContext.type === "household" ? activeContext.householdId : "personal"}:${periodFilter}:${customStartIso}:${customEndIso}:${activePeriod.startDate}:${activePeriod.endDate}:${activePeriod.ruleId ?? ""}`}
+								/>
 							</View>
 						</StaggeredEntrance>
 						<StaggeredEntrance index={3} testID="reports-entrance-history">
@@ -1834,7 +1859,7 @@ export default function ReportsScreen() {
 						</StaggeredEntrance>
 					</>
 				)}
-				{activeTab === "category" && (
+				{activeTab === "category" && (!premium || shouldRenderReportChart(reportViewState)) && (
 					<>
 						{/* Category Breakdown */}
 						<View style={styles.categoryCard}>
@@ -1976,10 +2001,10 @@ export default function ReportsScreen() {
 						</View>
 					</>
 				)}
-				{activeTab === "compare" && (
+				{activeTab === "compare" && (!premium || shouldRenderReportChart(reportViewState)) && (
 					<>
 						{/* Comparison Panel */}
-						<View style={styles.categoryCard}>
+						<View testID="reports-comparison-panel" style={styles.categoryCard}>
 							<Text style={styles.categoryCardTitle}>{tx.compareTitle}</Text>
 							<Text style={styles.categoryCardSub}>{tx.compareSub}</Text>
 
@@ -2109,6 +2134,8 @@ export default function ReportsScreen() {
 						</View>
 					</>
 				)}
+
+				{premium ? supportingCards : null}
 
 				<View style={{ height: 100 }} />
 				</ScrollView>
@@ -2859,6 +2886,50 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			fontSize: 13,
 			fontWeight: "800",
 		},
+		stateCard: {
+			backgroundColor: fe.white,
+			borderRadius: 16,
+			borderWidth: 1,
+			borderColor: fe.line,
+			paddingVertical: 16,
+			paddingHorizontal: 16,
+			gap: 6,
+		},
+		stateCardError: {
+			borderColor: `${theme.colors.danger}40`,
+			backgroundColor: `${theme.colors.danger}0D`,
+		},
+		stateTitle: {
+			color: fe.ink,
+			fontSize: 15,
+			fontWeight: "700",
+		},
+		stateBody: {
+			color: fe.slate,
+			fontSize: 13,
+			lineHeight: 19,
+		},
+		stateAction: {
+			alignSelf: "flex-start",
+			minHeight: 44,
+			justifyContent: "center",
+			paddingHorizontal: 16,
+			borderRadius: 999,
+			backgroundColor: fe.ink,
+			marginTop: 6,
+		},
+		stateActionPressed: { opacity: 0.85 },
+		stateActionText: {
+			color: fe.white,
+			fontSize: 13,
+			fontWeight: "700",
+		},
+		periodStatus: {
+			color: fe.muted,
+			fontSize: 12,
+			marginTop: 4,
+			marginBottom: 4,
+		},
 		loadingCard: {
 			backgroundColor: fe.white,
 			borderRadius: 12,
@@ -3022,171 +3093,6 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			borderColor: fe.line,
 			padding: 16,
 			gap: 10,
-		},
-		chartTitle: {
-			color: fe.ink,
-			fontSize: 16,
-			fontWeight: "800",
-		},
-		chartSub: { color: fe.slate, fontSize: 12 },
-		lineChartArea: {
-			height: 190,
-			marginTop: 8,
-			position: "relative",
-		},
-		lineGrid: {
-			position: "absolute",
-			left: 0,
-			right: 0,
-			top: 18,
-			bottom: 36,
-			justifyContent: "space-between",
-		},
-		gridLine: {
-			height: 1,
-			backgroundColor: fe.line,
-		},
-		lineGraphLayer: {
-			flex: 1,
-			flexDirection: "row",
-			justifyContent: "space-between",
-			paddingTop: 18,
-			paddingBottom: 32,
-			position: "relative",
-		},
-		lineSvgLayer: {
-			position: "absolute",
-			left: 0,
-			right: 0,
-			top: 0,
-		},
-		lineColumn: {
-			flex: 1,
-			alignItems: "center",
-			height: "100%",
-			position: "relative",
-		},
-		pulseStack: {
-			width: "100%",
-			minHeight: 124,
-			alignItems: "center",
-			justifyContent: "center",
-		},
-		pulseUpper: {
-			height: 58,
-			justifyContent: "flex-end",
-			alignItems: "center",
-		},
-		pulseAxis: {
-			height: 18,
-			alignItems: "center",
-			justifyContent: "center",
-		},
-		pulseLower: {
-			height: 58,
-			justifyContent: "flex-start",
-			alignItems: "center",
-		},
-		pulseBar: {
-			width: 12,
-			borderRadius: 999,
-			borderWidth: 1,
-			borderColor:
-				theme.mode === "light"
-					? "rgba(255,255,255,0.78)"
-					: "rgba(10,10,10,0.45)",
-		},
-		incomePulse: {
-			backgroundColor: fe.financialIncome,
-			shadowColor: fe.financialIncome,
-			shadowOpacity: theme.mode === "light" ? 0.18 : 0.28,
-			shadowRadius: 8,
-			shadowOffset: { width: 0, height: 4 },
-		},
-		expensePulse: {
-			backgroundColor: fe.financialExpense,
-			shadowColor: fe.financialExpense,
-			shadowOpacity: theme.mode === "light" ? 0.12 : 0.26,
-			shadowRadius: 8,
-			shadowOffset: { width: 0, height: 4 },
-		},
-		netDot: {
-			width: 10,
-			height: 10,
-			borderRadius: 5,
-			borderWidth: 2,
-			borderColor: fe.white,
-		},
-		netDotPositive: {
-			backgroundColor: fe.ink,
-		},
-		netDotNegative: {
-			backgroundColor: fe.ink,
-		},
-		lineDot: {
-			position: "absolute",
-			width: 10,
-			height: 10,
-			borderRadius: 5,
-			borderWidth: 2,
-			borderColor: fe.white,
-			zIndex: 3,
-		},
-		incomeDot: {
-			backgroundColor: theme.colors.success,
-		},
-		expenseDot: {
-			backgroundColor: theme.colors.danger,
-		},
-		lineSegment: {
-			position: "absolute",
-			left: "50%",
-			width: "100%",
-			height: 3,
-			borderRadius: 999,
-			opacity: 0.72,
-			zIndex: 1,
-		},
-		incomeSegment: {
-			backgroundColor: theme.colors.success,
-		},
-		expenseSegment: {
-			backgroundColor: theme.colors.danger,
-		},
-		chartTooltip: {
-			position: "absolute",
-			top: 8,
-			left: "50%",
-			marginLeft: -62,
-			width: 124,
-			backgroundColor: fe.white,
-			borderRadius: theme.radius.md,
-			padding: 8,
-			borderWidth: 1,
-			borderColor: fe.line,
-			...theme.shadow.md,
-			zIndex: 12,
-		},
-		tooltipTitle: {
-			fontSize: 11,
-			fontWeight: "700",
-			color: fe.ink,
-			marginBottom: 4,
-		},
-		tooltipValue: { fontSize: 10, fontWeight: "600", marginBottom: 2 },
-		chartLabel: {
-			color: fe.muted,
-			fontSize: 11,
-			fontWeight: "700",
-			marginTop: 6,
-		},
-		chartLegend: { flexDirection: "row", gap: 16, marginTop: 4 },
-		legendItem: { flexDirection: "row", alignItems: "center", gap: 6 },
-		legendDot: { width: 8, height: 8, borderRadius: 999 },
-		legendText: {
-			color: fe.muted,
-			fontSize: 11,
-			fontWeight: "600",
 		},
 		categoryCard: {
 			backgroundColor: fe.white,

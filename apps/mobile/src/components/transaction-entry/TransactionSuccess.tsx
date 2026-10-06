@@ -10,6 +10,8 @@ type TransactionSuccessProps = {
 	description: string;
 	amount: number;
 	count: number;
+	/** Optional so existing call sites keep working unchanged. */
+	category?: string | null;
 	onCaptureAnother: () => void;
 	onViewTransactions: () => void;
 	testID?: string;
@@ -26,6 +28,7 @@ export function TransactionSuccess({
 	description,
 	amount,
 	count,
+	category,
 	onCaptureAnother,
 	onViewTransactions,
 	testID = "transaction-success",
@@ -53,6 +56,12 @@ export function TransactionSuccess({
 			<Text style={styles.destination} testID={`${testID}-destination`}>
 				{`${copy.destinationPrefix}: ${destinationLabel}`}
 			</Text>
+
+			{category ? (
+				<Text style={styles.destination} testID={`${testID}-category`}>
+					{`${copy.categoryLabel}: ${category}`}
+				</Text>
+			) : null}
 
 			{description ? (
 				<Text style={styles.description} testID={`${testID}-description`}>

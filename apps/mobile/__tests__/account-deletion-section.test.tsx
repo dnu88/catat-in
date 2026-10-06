@@ -55,7 +55,7 @@ describe("AccountDeletionSection", () => {
       />,
     );
 
-    expect(screen.getByText("Request Penghapusan Akun")).toBeTruthy();
+    expect(screen.getByText("Permintaan penghapusan akun")).toBeTruthy();
     expect(screen.getByText(/Target proses maksimal 30 hari/)).toBeTruthy();
 
     fireEvent.press(screen.getByTestId("settings-account-deletion-toggle"));

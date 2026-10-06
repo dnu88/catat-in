@@ -1,3 +1,5 @@
+import { useI18n } from "../../src/i18n/i18n-context";
+import { getImportsCopy, getImportError, getImportRowReason } from "../../src/features/imports/copy";
 import { useCallback, useMemo, useState } from "react";
 import {
 	ActivityIndicator,
@@ -57,6 +59,8 @@ async function blobFromPickedFile(file: PickedImportFile) {
 export default function ImportsScreen() {
 	const { supabase } = useSupabase();
 	const { theme } = useTheme();
+	const { language } = useI18n();
+	const c = getImportsCopy(language);
 	const router = useRouter();
 	const { activeContext, canCreate } = useFinanceContext();
 	const [wallets, setWallets] = useState<Wallet[]>([]);
@@ -87,11 +91,11 @@ export default function ImportsScreen() {
 					: (activeRows[0]?.id ?? null),
 			);
 		} catch (err) {
-			setError(err instanceof Error ? err.message : "Daftar akun belum bisa dimuat.");
+			setError(getImportError(language, err, c.walletsError));
 		} finally {
 			setLoadingWallets(false);
 		}
-	}, [activeContext]);
+	}, [activeContext, language, c]);
 
 	useFocusEffect(
 		useCallback(() => {
@@ -122,17 +126,17 @@ export default function ImportsScreen() {
 				size: asset.size,
 			};
 			if (!isSupportedImportFile(picked.name)) {
-				setError("Format belum didukung. Gunakan file CSV, XLSX, atau PDF.");
+				setError(c.unsupported);
 				return;
 			}
 			if (picked.size && picked.size > MAX_IMPORT_FILE_BYTES) {
-				setError("File terlalu besar. Maksimal 5MB.");
+				setError(c.tooLarge);
 				return;
 			}
 			setFile(picked);
 			setPreview(null);
 		} catch (err) {
-			setError(err instanceof Error ? err.message : "File belum bisa dipilih.");
+			setError(getImportError(language, err, c.fileError));
 		}
 	};
 
@@ -140,19 +144,19 @@ export default function ImportsScreen() {
 		setError(null);
 		setConfirmResult(null);
 		if (!canCreate) {
-			setError("Akses lihat saja tidak dapat melakukan import.");
+			setError(c.readOnly);
 			return;
 		}
 		if (!selectedWalletId) {
-			setError("Pilih akun tujuan sebelum import.");
+			setError(c.selectWallet);
 			return;
 		}
 		if (!file) {
-			setError("Pilih file rekening koran terlebih dahulu.");
+			setError(c.selectFile);
 			return;
 		}
 		if (file.size && file.size > MAX_IMPORT_FILE_BYTES) {
-			setError("File terlalu besar. Maksimal 5MB.");
+			setError(c.tooLarge);
 			return;
 		}
 
@@ -160,7 +164,7 @@ export default function ImportsScreen() {
 		try {
 			const blob = await blobFromPickedFile(file);
 			if (blob.size > MAX_IMPORT_FILE_BYTES) {
-				setError("File terlalu besar. Maksimal 5MB.");
+				setError(c.tooLarge);
 				return;
 			}
 			const result = await previewImportStatement(supabase, {
@@ -172,7 +176,7 @@ export default function ImportsScreen() {
 			setPreview(result);
 		} catch (err) {
 			setPreview(null);
-			setError(err instanceof Error ? err.message : "File belum bisa diproses.");
+			setError(getImportError(language, err, c.previewError));
 		} finally {
 			setProcessing(false);
 		}
@@ -182,7 +186,7 @@ export default function ImportsScreen() {
 		setError(null);
 		if (!preview || !selectedWalletId) return;
 		if (preview.transactions.length === 0) {
-			setError("Tidak ada transaksi baru untuk diimpor.");
+			setError(c.noTransactions);
 			return;
 		}
 		setProcessing(true);
@@ -196,7 +200,7 @@ export default function ImportsScreen() {
 			});
 			setConfirmResult(result);
 		} catch (err) {
-			setError(err instanceof Error ? err.message : "Transaksi belum bisa diimpor.");
+			setError(getImportError(language, err, c.confirmError));
 		} finally {
 			setProcessing(false);
 		}
@@ -209,15 +213,15 @@ export default function ImportsScreen() {
 					<StaggeredStack testIDPrefix="imports-entrance">
 						{/* key="import-header" key="import-hero" key="import-methods" key="import-history-header" key="import-history-list" */}
 				<View key="import-placeholder" style={[styles.card, { backgroundColor: fe.white }]}>
-					<Text style={[styles.title, { color: theme.colors.textPrimary }]}>Import Rekening Koran</Text>
-					<Text style={[styles.helper, { color: theme.colors.textSecondary }]}>Fitur sedang disiapkan. Import akan tersedia bertahap tanpa mengubah alur aplikasi yang sudah live.</Text>
+					<Text style={[styles.title, { color: theme.colors.textPrimary }]}>{c.title}</Text>
+					<Text style={[styles.helper, { color: theme.colors.textSecondary }]}>{c.disabled}</Text>
 					<Pressable
 						testID="imports-back-to-capture"
 						accessibilityRole="button"
 						style={[styles.primaryButton, { backgroundColor: theme.colors.brandPrimary }]}
 						onPress={() => router.push("/(tabs)/capture")}
 					>
-						<Text style={[styles.primaryButtonText, { color: theme.colors.textInverse }]}>Kembali ke Capture</Text>
+						<Text style={[styles.primaryButtonText, { color: theme.colors.textInverse }]}>{c.back}</Text>
 					</Pressable>
 				</View>
 					</StaggeredStack>
@@ -237,15 +241,15 @@ export default function ImportsScreen() {
 				end={{ x: 1, y: 1 }}
 				style={[styles.card, styles.heroCard]}
 			>
-				<Text style={[styles.title, { color: fe.white }]}>Import Rekening Koran</Text>
-				<Text style={[styles.helper, { color: "rgba(255,255,255,0.72)" }]}>Upload CSV, XLSX, atau PDF dari bank/e-wallet. Kaswise akan menampilkan preview sebelum transaksi disimpan.</Text>
+				<Text style={[styles.title, { color: fe.white }]}>{c.title}</Text>
+				<Text style={[styles.helper, { color: "rgba(255,255,255,0.72)" }]}>{c.intro}</Text>
 			</LinearGradient>
 
 			<View key="import-methods" style={[styles.card, { backgroundColor: fe.white }]}>
-				<Text style={[styles.sectionTitle, { color: theme.colors.textPrimary }]}>1. Pilih akun tujuan</Text>
-				{loadingWallets ? <ActivityIndicator testID="imports-wallets-loading" /> : null}
+				<Text style={[styles.sectionTitle, { color: theme.colors.textPrimary }]}>{c.wallet}</Text>
+				{loadingWallets ? <ActivityIndicator testID="imports-wallets-loading" accessibilityLabel={c.loadingWallets} /> : null}
 				{activeWallets.length === 0 && !loadingWallets ? (
-					<Text style={[styles.helper, { color: theme.colors.textSecondary }]}>Belum ada akun aktif. Buat akun dulu sebelum import.</Text>
+					<Text style={[styles.helper, { color: theme.colors.textSecondary }]}>{c.noWallet}</Text>
 				) : (
 					<View style={styles.chipWrap}>
 						{activeWallets.map((wallet) => (
@@ -269,7 +273,7 @@ export default function ImportsScreen() {
 			</View>
 
 			<View key="import-header" style={[styles.card, { backgroundColor: fe.white }]}>
-				<Text style={[styles.sectionTitle, { color: theme.colors.textPrimary }]}>2. Pilih bank/e-wallet</Text>
+				<Text style={[styles.sectionTitle, { color: theme.colors.textPrimary }]}>{c.bank}</Text>
 				<View style={styles.chipWrap}>
 					{BANK_OPTIONS.map((bank) => (
 						<Pressable
@@ -291,16 +295,16 @@ export default function ImportsScreen() {
 			</View>
 
 			<View key="import-upload" style={[styles.card, { backgroundColor: fe.white }]}>
-				<Text style={[styles.sectionTitle, { color: theme.colors.textPrimary }]}>3. Upload file</Text>
+				<Text style={[styles.sectionTitle, { color: theme.colors.textPrimary }]}>{c.upload}</Text>
 				<Pressable
 					testID="imports-choose-file"
 					accessibilityRole="button"
 					style={[styles.secondaryButton, { borderColor: theme.colors.borderSoft }]}
 					onPress={chooseFile}
 				>
-					<Text style={[styles.secondaryButtonText, { color: theme.colors.textPrimary }]}>{file ? file.name : "Pilih CSV/XLSX/PDF"}</Text>
+					<Text style={[styles.secondaryButtonText, { color: theme.colors.textPrimary }]}>{file ? file.name : c.choose}</Text>
 				</Pressable>
-				<Text style={[styles.smallText, { color: theme.colors.textMuted }]}>Maksimal 5MB. PDF scan/OCR mungkin perlu waktu lebih lama dan wajib dicek sebelum konfirmasi.</Text>
+				<Text style={[styles.smallText, { color: theme.colors.textMuted }]}>{c.fileHint}</Text>
 				<Pressable
 					testID="imports-preview-submit"
 					accessibilityRole="button"
@@ -309,7 +313,7 @@ export default function ImportsScreen() {
 					style={[styles.primaryButton, { backgroundColor: theme.colors.brandPrimary, opacity: processing ? 0.6 : 1 }]}
 					onPress={runPreview}
 				>
-					{processing ? <ActivityIndicator color={theme.colors.textInverse} /> : <Text style={[styles.primaryButtonText, { color: theme.colors.textInverse }]}>Preview Import</Text>}
+					{processing ? <ActivityIndicator accessibilityLabel={c.processing} color={theme.colors.textInverse} /> : <Text style={[styles.primaryButtonText, { color: theme.colors.textInverse }]}>{c.preview}</Text>}
 				</Pressable>
 			</View>
 
@@ -321,28 +325,28 @@ export default function ImportsScreen() {
 
 			{preview ? (
 				<View key="import-history-list" testID="imports-preview-result" style={[styles.card, { backgroundColor: fe.white }]}>
-					<Text style={[styles.sectionTitle, { color: theme.colors.textPrimary }]}>Preview {preview.bank_name}</Text>
+					<Text style={[styles.sectionTitle, { color: theme.colors.textPrimary }]}>{c.previewTitle} {preview.bank_name}</Text>
 					<View style={styles.summaryGrid}>
-						<SummaryItem label="Total baris" value={preview.total_rows} />
-						<SummaryItem label="Transaksi baru" value={preview.transactions.length} />
-						<SummaryItem label="Duplikat" value={preview.duplicates.length} />
-						<SummaryItem label="Error" value={preview.errors.length} />
+						<SummaryItem label={c.totalRows} value={preview.total_rows} />
+						<SummaryItem label={c.newTransactions} value={preview.transactions.length} />
+						<SummaryItem label={c.duplicates} value={preview.duplicates.length} />
+						<SummaryItem label={c.errors} value={preview.errors.length} />
 					</View>
 					{preview.skipped_months > 0 ? (
-						<Text style={[styles.smallText, { color: theme.colors.textMuted }]}>{preview.skipped_months} baris di luar periode free tier dilewati.</Text>
+						<Text style={[styles.smallText, { color: theme.colors.textMuted }]}>{c.skipped(preview.skipped_months)}</Text>
 					) : null}
 					{preview.transactions.slice(0, 10).map((tx) => (
 						<View key={tx.hash} style={[styles.row, { borderColor: theme.colors.borderSoft }]}>
 							<View style={styles.rowMain}>
 								<Text style={[styles.rowTitle, { color: theme.colors.textPrimary }]}>{tx.description}</Text>
-								<Text style={[styles.smallText, { color: theme.colors.textMuted }]}>{tx.date} • {tx.type === "income" ? "Pemasukan" : "Pengeluaran"}</Text>
+								<Text style={[styles.smallText, { color: theme.colors.textMuted }]}>{tx.date} • {tx.type === "income" ? c.income : c.expense}</Text>
 							</View>
 							<Text style={[styles.rowAmount, { color: tx.type === "income" ? fe.financialIncome : fe.financialExpense }]}>{formatAmount(tx.amount)}</Text>
 						</View>
 					))}
-					{preview.duplicates.length > 0 ? <Text style={[styles.smallText, { color: theme.colors.textMuted }]}>{preview.duplicates.length} duplikat akan dilewati otomatis.</Text> : null}
+					{preview.duplicates.length > 0 ? <Text style={[styles.smallText, { color: theme.colors.textMuted }]}>{c.duplicateHint(preview.duplicates.length)}</Text> : null}
 					{preview.errors.slice(0, 5).map((row) => (
-						<Text key={`${row.row}-${row.reason}`} style={[styles.smallText, { color: theme.colors.danger ?? "#991b1b" }]}>Baris {row.row}: {row.reason}</Text>
+						<Text key={`${row.row}-${row.reason}`} style={[styles.smallText, { color: theme.colors.danger ?? "#991b1b" }]}>{c.row(row.row, getImportRowReason(language, row.reason))}</Text>
 					))}
 					<Pressable
 						testID="imports-confirm-submit"
@@ -352,22 +356,22 @@ export default function ImportsScreen() {
 						style={[styles.primaryButton, { backgroundColor: theme.colors.brandPrimary, opacity: processing || preview.transactions.length === 0 ? 0.6 : 1 }]}
 						onPress={runConfirm}
 					>
-						<Text style={[styles.primaryButtonText, { color: theme.colors.textInverse }]}>Konfirmasi Import</Text>
+						<Text style={[styles.primaryButtonText, { color: theme.colors.textInverse }]}>{processing ? c.saving : c.confirm}</Text>
 					</Pressable>
 				</View>
 			) : null}
 
 			{confirmResult ? (
 				<View key="import-history-header" testID="imports-confirm-result" style={[styles.messageCard, { backgroundColor: theme.mode === "light" ? "#dcfce7" : "rgba(34,197,94,0.16)" }]}>
-					<Text style={[styles.messageText, { color: theme.colors.success ?? "#166534" }]}>{confirmResult.message}</Text>
-					<Text style={[styles.smallText, { color: theme.colors.textSecondary }]}>{confirmResult.imported} transaksi masuk, {confirmResult.skipped_duplicates} duplikat dilewati.</Text>
+					<Text style={[styles.messageText, { color: theme.colors.success ?? "#166534" }]}>{c.complete}</Text>
+					<Text style={[styles.smallText, { color: theme.colors.textSecondary }]}>{c.result(confirmResult.imported, confirmResult.skipped_duplicates)}</Text>
 					<Pressable
 						testID="imports-view-transactions"
 						accessibilityRole="button"
 						style={[styles.secondaryButton, { borderColor: theme.colors.borderSoft }]}
 						onPress={() => router.push("/(tabs)/transactions")}
 					>
-						<Text style={[styles.secondaryButtonText, { color: theme.colors.textPrimary }]}>Lihat Transaksi</Text>
+						<Text style={[styles.secondaryButtonText, { color: theme.colors.textPrimary }]}>{c.view}</Text>
 					</Pressable>
 				</View>
 			) : null}

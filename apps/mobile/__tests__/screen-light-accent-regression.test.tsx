@@ -79,15 +79,14 @@ describe("light accent regressions", () => {
 			</I18nProvider>,
 		);
 
-		const lightChip = screen.getByTestId("settings-language-en");
-
-		fireEvent.press(lightChip);
-
-		const flattened = StyleSheet.flatten(
-			lightChip.props.style as object,
-		) as ViewStyle;
-		expect(flattened.backgroundColor).toBe("#0A3D78");
-		expect(flattened.backgroundColor).not.toBe("#A3FF12");
+		const languageRow = screen.getByTestId("settings-language-row");
+		fireEvent.press(languageRow);
+		fireEvent.press(screen.getByTestId("settings-language-en"));
+		expect(screen.queryByTestId("settings-language-sheet")).toBeNull();
+		const activeValue = screen.getByText("English");
+		const flattened = StyleSheet.flatten(activeValue.props.style);
+		expect(flattened.color).toBe("#0C4E91");
+		expect(flattened.color).not.toBe("#A3FF12");
 	});
 
 	it("keeps transaction-new icon controls accessible and at least 44px wide", async () => {

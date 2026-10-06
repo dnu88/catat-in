@@ -395,11 +395,101 @@ describe("Capture review-first entry (transactionEntryV2)", () => {
 		expect(screen.queryByTestId("capture-error-retry")).toBeNull();
 		await waitFor(() => expect(screen.getByTestId("capture-reconcile")).toBeTruthy());
 
-		// Reconcile confirmed the save did not commit, so review is offered back.
+		// An absent operation is unconfirmed, never proof of a failed commit.
 		await waitFor(() =>
 			expect(screen.getByTestId("capture-reconcile-retry")).toBeTruthy(),
 		);
-		expect(screen.getByText(/tidak tersimpan/i)).toBeTruthy();
+		expect(screen.getByText(/hasil simpan lengkap belum bisa dipastikan/i)).toBeTruthy();
+		expect(screen.queryByTestId("capture-entry-success")).toBeNull();
+		const saveInput = mockSaveEntry.mock.calls[0][0];
+		expect(mockReconcileEntry.mock.calls[0][0]).toEqual({
+			requestId: saveInput.requestId,
+			fingerprint: saveInput.fingerprint,
+			context: saveInput.context,
+			drafts: saveInput.drafts,
+		});
+		expect(mockSaveEntry).toHaveBeenCalledTimes(1);
+	});
+
+	it("does not show success for only one row of a two-draft reconciliation", async () => {
+		mockClassify.mockReturnValue([CLASSIFIED, { ...CLASSIFIED, amount: 40000 }]);
+		mockSaveEntry.mockRejectedValue(new Error("Network request failed"));
+		mockReconcileEntry.mockResolvedValue([SAVED_ROW]);
+		renderCapture();
+		await reachReview();
+		await act(async () => { await Promise.resolve(); });
+		fireEvent.press(screen.getByTestId("review-save"));
+		await screen.findByTestId("capture-reconcile-retry");
+		expect(mockSaveEntry.mock.calls[0][0].drafts).toHaveLength(2);
+		expect(screen.queryByTestId("capture-entry-success")).toBeNull();
+		expect(screen.getByText(/hasil simpan lengkap belum bisa dipastikan/i)).toBeTruthy();
+		expect(mockSaveEntry).toHaveBeenCalledTimes(1);
+	});
+
+	it("retains edited text drafts through reconciliation and retries the same request", async () => {
+		mockClassify.mockReturnValue([CLASSIFIED]);
+		mockSaveEntry.mockRejectedValueOnce(new Error("Network request failed"));
+		mockSaveEntry.mockResolvedValueOnce({ transactions: [SAVED_ROW], budgetSyncWarning: false });
+		renderCapture();
+		await reachReview();
+		fireEvent.changeText(screen.getAllByLabelText("Nominal")[0], "42000");
+		fireEvent.press(screen.getByTestId("review-save"));
+		await screen.findByTestId("capture-reconcile-retry");
+		expect(mockSaveEntry).toHaveBeenCalledTimes(1);
+		fireEvent.press(screen.getByTestId("capture-reconcile-retry"));
+		await screen.findByTestId("transaction-review");
+		expect(screen.getAllByLabelText("Nominal")[0].props.value).toBe("42000");
+		fireEvent.press(screen.getByTestId("review-save"));
+		await waitFor(() => expect(mockSaveEntry).toHaveBeenCalledTimes(2));
+		expect(mockSaveEntry.mock.calls[1][0]).toMatchObject({
+			requestId: mockSaveEntry.mock.calls[0][0].requestId,
+			fingerprint: mockSaveEntry.mock.calls[0][0].fingerprint,
+			drafts: mockSaveEntry.mock.calls[0][0].drafts,
+		});
+		await screen.findByTestId("capture-entry-success");
+	});
+
+	it("blocks a changed payload while the original save outcome is unknown", async () => {
+		mockClassify.mockReturnValue([CLASSIFIED]);
+		mockSaveEntry.mockRejectedValue(new Error("Network request failed"));
+		renderCapture();
+		await reachReview();
+		await act(async () => { await Promise.resolve(); });
+		fireEvent.press(screen.getByTestId("review-save"));
+		await screen.findByTestId("capture-reconcile-retry");
+		fireEvent.press(screen.getByTestId("capture-reconcile-retry"));
+		await screen.findByTestId("transaction-review");
+		fireEvent.changeText(screen.getAllByLabelText("Nominal")[0], "42000");
+		fireEvent.press(screen.getByTestId("review-save"));
+		await screen.findByText(/pulihkan isian semula/i);
+		expect(mockSaveEntry).toHaveBeenCalledTimes(1);
+	});
+
+	it("retries a failed reconciliation without submitting another write", async () => {
+		mockClassify.mockReturnValue([CLASSIFIED]);
+		mockSaveEntry.mockRejectedValue(new Error("Network request failed"));
+		mockReconcileEntry.mockRejectedValueOnce(new Error("offline"));
+		mockReconcileEntry.mockResolvedValueOnce([SAVED_ROW]);
+		renderCapture();
+		await reachReview();
+		await act(async () => { await Promise.resolve(); });
+		fireEvent.press(screen.getByTestId("review-save"));
+		await screen.findByTestId("capture-reconcile-retry");
+		fireEvent.press(screen.getByTestId("capture-reconcile-retry"));
+		await screen.findByTestId("capture-entry-success");
+		expect(mockReconcileEntry).toHaveBeenCalledTimes(2);
+		expect(mockSaveEntry).toHaveBeenCalledTimes(1);
+	});
+
+	it("cancels review without writing and retains the original text input", async () => {
+		mockClassify.mockReturnValue([CLASSIFIED]);
+		renderCapture();
+		await reachReview();
+		fireEvent.press(screen.getByTestId("review-cancel"));
+		await waitFor(() => expect(screen.queryByTestId("transaction-review")).toBeNull());
+		expect(screen.getByLabelText("Input teks transaksi").props.value).toBe("Beli kopi 35rb");
+		expect(mockSaveEntry).not.toHaveBeenCalled();
+		expect(mockCreateTransaction).not.toHaveBeenCalled();
 	});
 
 	it("(f) blocks every submit with a read-only notice for viewers", async () => {

@@ -3,6 +3,11 @@ import { financeEditorial } from '../../theme/finance-editorial'
 import { useTheme } from '../../theme/theme-context'
 import type { KaswiseIconName } from '../icons/kaswise-icons'
 import { IconBubble } from '../ui/IconBubble'
+import {
+  experienceIcon,
+  experienceTokens,
+  resolveExperienceTextStyle,
+} from '../../theme/experience-tokens'
 
 type SettingsNavigationRowProps = {
   testID: string
@@ -11,10 +16,16 @@ type SettingsNavigationRowProps = {
   description?: string
   badge?: string
   onPress: () => void
+  /**
+   * B1 (visual foundation): when the premium presentation is ON the row takes
+   * its tile size, row rhythm and title type from the shared experience tokens.
+   * Default false so the legacy layout keeps the pre-B1 values exactly.
+   */
+  premium?: boolean
 }
 
 export function SettingsNavigationRow({
-  testID, icon, title, description, badge, onPress,
+  testID, icon, title, description, badge, onPress, premium = false,
 }: SettingsNavigationRowProps) {
   const { theme } = useTheme()
 
@@ -32,14 +43,25 @@ export function SettingsNavigationRow({
           borderRadius: theme.radius.md,
           padding: theme.spacing.md,
           gap: theme.spacing.md,
+          minHeight: premium
+            ? experienceTokens.target.rowMinHeight
+            : styles.row.minHeight,
         },
       ]}
     >
-      <IconBubble name={icon} tone="primary" size={40} />
+      <IconBubble
+        name={icon}
+        tone="primary"
+        size={premium ? experienceIcon.tile.row : 40}
+      />
       <View style={styles.copy}>
         <Text
           numberOfLines={1}
-          style={[theme.typography.cardTitle, { color: financeEditorial.ink }]}
+          style={[
+            theme.typography.cardTitle,
+            premium ? resolveExperienceTextStyle('cardTitle') : null,
+            { color: financeEditorial.ink },
+          ]}
         >
           {title}
         </Text>

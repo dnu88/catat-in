@@ -6,8 +6,8 @@ import { AccountDeletionSection } from "../../src/components/settings/AccountDel
 import { FinanceContextSwitcher } from "../../src/components/FinanceContextSwitcher";
 import { SettingsNavigationRow } from "../../src/components/settings/SettingsNavigationRow";
 import { SettingsSection } from "../../src/components/settings/SettingsSection";
+import { SettingsLanguageRow } from "../../src/components/settings/SettingsLanguageRow";
 import { LegalSupportSection } from "../../src/components/settings/LegalSupportSection";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as ImagePicker from "expo-image-picker";
 import { LinearGradient } from "expo-linear-gradient";
 import Svg, { Circle, Path, Rect } from "react-native-svg";
@@ -22,18 +22,70 @@ import { financeEditorial as fe } from "../../src/theme/finance-editorial";
 import { useI18n } from "../../src/i18n/i18n-context";
 import { useEntitlements } from "../../src/hooks/useEntitlements";
 import { featureFlags } from "../../src/config/features";
+import { resolveExperienceTextStyle } from "../../src/theme/experience-tokens";
 import { planStatusLabel } from "../../src/utils/plan-labels";
 import { getStoreReleaseConfig } from "../../src/config/store-release";
 import { getLatestAccountDeletionRequest, submitAccountDeletionRequest, type AccountDeletionRequestItem } from "../../src/services/account-deletion";
-import { getNotificationPreferences, updateNotificationPreferences, type NotificationPreferences } from "../../src/services/notifications";
+import { useNotificationSettings } from "../../src/components/settings/useNotificationSettings";
+
+/**
+ * T25 (simple premium) — reusable settings rows.
+ *
+ * These rows used to be inlined inside the "Finance" group, which made the
+ * planned "Pencatatan" / "Data" groups impossible to build without duplicating
+ * JSX. Extracted once here so the simple layout and the premium grouping render
+ * exactly the same rows (same testIDs, same behaviour, one source of truth).
+ */
+function SettingsRecordingRows({ language }: { language: string }) {
+	return (
+		<>
+			<SettingsNavigationRow testID="settings-wallets" icon="wallets"
+				title={language === "id" ? "Dompet & akun" : "Wallets & accounts"}
+				onPress={() => router.push("/(tabs)/wallets")}
+							premium={featureFlags.simplePremiumExperience} />
+			<SettingsNavigationRow testID="settings-budgets" icon="budgets"
+				title={language === "id" ? "Anggaran kategori" : "Category budgets"}
+				description={language === "id" ? "Atur batas pengeluaran per kategori." : "Set expense budgets by category."}
+				onPress={() => router.push("/(tabs)/budgets")}
+							premium={featureFlags.simplePremiumExperience} />
+			<SettingsNavigationRow testID="settings-bills" icon="bills"
+				title={language === "id" ? "Tagihan & pengingat" : "Bills & reminders"}
+				onPress={() => router.push("/(tabs)/bills")}
+							premium={featureFlags.simplePremiumExperience} />
+		</>
+	);
+}
+
+function SettingsDataRows({ language }: { language: string }) {
+	// A feature that is OFF must never be promoted as active.
+	if (!featureFlags.importStatement) return null;
+	return (
+		<View testID="settings-import-statement">
+			<SettingsNavigationRow testID="settings-import-statement-link" icon="upload"
+				title={language === "id" ? "Import rekening koran" : "Bank statement import"}
+				onPress={() => router.push("/(tabs)/imports")}
+							premium={featureFlags.simplePremiumExperience} />
+		</View>
+	);
+}
+
+/**
+ * T27 follow-up (reviewer finding #2): the premium grouping initially dropped
+ * the notification-inbox row that the simpleNavigation layout renders, silently
+ * removing a way into `/notifications`. Extracted once so both layouts render
+ * exactly the same row (same testID, same target, same ID/EN copy).
+ */
+function SettingsNotificationInboxRow({ language }: { language: string }) {
+	return (
+		<SettingsNavigationRow testID="settings-notification-inbox" icon="notification"
+			title={language === "id" ? "Kotak masuk notifikasi" : "Notification inbox"}
+			description={language === "id" ? "Lihat notifikasi yang sudah diterima." : "View notifications you have received."}
+			onPress={() => router.push("/notifications")}
+							premium={featureFlags.simplePremiumExperience} />
+	);
+}
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
-
-const NOTIFICATION_KEYS = {
-	dailyReminder: "@kaswise/notifications/dailyReminder",
-	billReminder: "@kaswise/notifications/billReminder",
-	budgetAlert: "@kaswise/notifications/budgetAlert",
-} as const;
 
 const EXPENSE_CATEGORY_CONFIG = {
 	Makanan: {
@@ -390,25 +442,24 @@ function createBudgets({
 	}));
 }
 
-const THEME_OPTIONS = [
-	{ id: "system", testID: "settings-theme-system", idLabel: "Sistem", enLabel: "System" },
-	{ id: "light", testID: "settings-theme-light", idLabel: "Terang", enLabel: "Light" },
-	{ id: "dark", testID: "settings-theme-dark", idLabel: "Gelap", enLabel: "Dark" },
-] as const;
 
 export default function SettingsScreen() {
 	const { supabase } = useSupabase();
-	const { theme, preference, setPreference } = useTheme();
-	const { language, setLanguage, t } = useI18n();
-	const styles = useMemo(() => createStyles(theme), [theme]);
+	const { theme } = useTheme();
+	const { language, setLanguage } = useI18n();
+	// B1 (visual foundation): resolve the presentation flag first so flag OFF
+	// keeps every value identical to the pre-B1 baseline.
+	const premium = featureFlags.simplePremiumExperience;
+	const styles = useMemo(() => createStyles(theme, premium), [theme, premium]);
 	const storeReleaseConfig = useMemo(() => getStoreReleaseConfig(), []);
 	const allowNativePremiumPurchase = storeReleaseConfig.allowNativePremiumPurchase;
 	const { data: entitlements, loading: entitlementsLoading } = useEntitlements();
-	const [dailyReminder, setDailyReminder] = useState(true);
-	const [billReminder, setBillReminder] = useState(true);
-	const [budgetAlert, setBudgetAlert] = useState(true);
-	const [notifPrefs, setNotifPrefs] = useState<NotificationPreferences | null>(null);
-	const [notifPrefsLoading, setNotifPrefsLoading] = useState(false);
+	const notifications = useNotificationSettings(supabase);
+	const notifPrefs = notifications.prefs;
+	const notifPrefsLoading = notifications.loading;
+	const dailyReminder = notifPrefs?.daily_reminder_enabled ?? false;
+	const billReminder = notifPrefs?.bill_reminder_enabled ?? false;
+	const budgetAlert = notifPrefs?.budget_alert_enabled ?? false;
 	const [profileLoading, setProfileLoading] = useState(true);
 	const [profileName, setProfileName] = useState("");
 	const [profileEmail, setProfileEmail] = useState("");
@@ -490,39 +541,6 @@ export default function SettingsScreen() {
 		};
 	}, [supabase]);
 
-	useEffect(() => {
-		let active = true;
-		const loadNotifications = async () => {
-			// Load from backend first.
-			try {
-				setNotifPrefsLoading(true);
-				const prefs = await getNotificationPreferences(supabase);
-				if (active) {
-					setNotifPrefs(prefs);
-					setDailyReminder(prefs.daily_reminder_enabled);
-					setBillReminder(prefs.bill_reminder_enabled);
-					setBudgetAlert(prefs.budget_alert_enabled);
-				}
-			} catch {
-				// Fallback: load from legacy AsyncStorage (migration path).
-				const [daily, bill, budget] = await AsyncStorage.multiGet([
-					NOTIFICATION_KEYS.dailyReminder,
-					NOTIFICATION_KEYS.billReminder,
-					NOTIFICATION_KEYS.budgetAlert,
-				]);
-				if (!active) return;
-				if (daily[1] !== null) setDailyReminder(daily[1] === "true");
-				if (bill[1] !== null) setBillReminder(bill[1] === "true");
-				if (budget[1] !== null) setBudgetAlert(budget[1] === "true");
-			} finally {
-				if (active) setNotifPrefsLoading(false);
-			}
-		};
-		loadNotifications();
-		return () => {
-			active = false;
-		};
-	}, [supabase]);
 
 	useEffect(() => {
 		let active = true;
@@ -579,36 +597,10 @@ export default function SettingsScreen() {
 		(avatar) => avatarFilter === "all" || avatar.group === avatarFilter,
 	);
 
-	const toggleDailyReminder = () => {
-		setDailyReminder((v) => {
-			const next = !v;
-			updateNotificationPreferences(supabase, { daily_reminder_enabled: next }).catch(() => {});
-			return next;
-		});
-	};
-
-	const toggleBillReminder = () => {
-		setBillReminder((v) => {
-			const next = !v;
-			updateNotificationPreferences(supabase, { bill_reminder_enabled: next }).catch(() => {});
-			return next;
-		});
-	};
-
-	const toggleBudgetAlert = () => {
-		setBudgetAlert((v) => {
-			const next = !v;
-			updateNotificationPreferences(supabase, { budget_alert_enabled: next }).catch(() => {});
-			return next;
-		});
-	};
-
-	const toggleNotifEnabled = () => {
-		if (!notifPrefs) return;
-		const next = !notifPrefs.enabled;
-		setNotifPrefs({ ...notifPrefs, enabled: next });
-		updateNotificationPreferences(supabase, { enabled: next }).catch(() => {});
-	};
+	const toggleDailyReminder = () => { void notifications.toggle("daily_reminder_enabled"); };
+	const toggleBillReminder = () => { void notifications.toggle("bill_reminder_enabled"); };
+	const toggleBudgetAlert = () => { void notifications.toggle("budget_alert_enabled"); };
+	const toggleNotifEnabled = () => { void notifications.toggle("enabled"); };
 
 	const openProfileSheet = () => {
 		setDraftPhotoUri(profilePhotoUrl || null);
@@ -1097,27 +1089,11 @@ export default function SettingsScreen() {
 
 	const appearanceSection = (
 		<View key="settings-appearance" testID="settings-appearance" style={styles.sectionCard}>
-			<Text style={styles.sectionTitle}>{language === "id" ? "Tampilan" : "Appearance"}</Text>
-			<View style={styles.themeGrid}>
-				{THEME_OPTIONS.map((option) => {
-					const active = preference === option.id;
-					return (
-						<Pressable
-							key={option.id}
-							testID={option.testID}
-							accessibilityRole="button"
-							accessibilityLabel={language === "id" ? option.idLabel : option.enLabel}
-							accessibilityState={{ selected: active }}
-							onPress={() => setPreference(option.id)}
-							style={[styles.themeChip, active && styles.themeChipActive]}
-						>
-							<Text style={[styles.themeChipText, active && styles.themeChipTextActive]}>
-								{language === "id" ? option.idLabel : option.enLabel}
-							</Text>
-						</Pressable>
-					);
-				})}
+			<View testID="settings-appearance-row" accessible accessibilityLabel={language === "id" ? "Tampilan, Terang" : "Appearance, Light"} style={{ flexDirection: "row", justifyContent: "space-between", minHeight: 44, alignItems: "center" }}>
+				<Text style={styles.sectionTitle}>{language === "id" ? "Tampilan" : "Appearance"}</Text>
+				<Text style={styles.navigationTitle}>{language === "id" ? "Terang" : "Light"}</Text>
 			</View>
+			<Text style={[styles.sectionSub, { display: "flex", marginBottom: 0 }]}>{language === "id" ? "Kaswise memakai tampilan terang agar catatan keuangan tetap jelas dan mudah dibaca." : "Kaswise uses a light-first appearance to keep financial records clear and readable."}</Text>
 		</View>
 	);
 
@@ -1354,41 +1330,7 @@ export default function SettingsScreen() {
 		) : null
 	);
 
-	const languageSection = (
-		<View key="settings-language" testID="settings-language" style={styles.sectionCard}>
-			<Text style={styles.sectionTitle}>{t("languageSection")}</Text>
-			<Text style={styles.sectionSub}>{t("languageSectionHelper")}</Text>
-
-			<View style={styles.themeGrid}>
-				{(["id", "en"] as const).map((lang) => (
-					<Pressable
-						key={lang}
-						testID={`settings-language-${lang}`}
-						accessibilityRole="button"
-						accessibilityLabel={`${language === "id" ? "Pilih bahasa" : "Choose language"} ${lang === "id" ? t("indonesian") : t("english")}`}
-						accessibilityState={{ selected: language === lang }}
-						onPress={() => setLanguage(lang)}
-						style={[
-							styles.themeChip,
-							language === lang && {
-								backgroundColor: fe.blueDeep,
-								borderColor: fe.blueDeep,
-							},
-						]}
-					>
-						<Text
-							style={[
-								styles.themeChipText,
-								language === lang && { color: theme.colors.textInverse },
-							]}
-						>
-							{lang === "id" ? t("indonesian") : t("english")}
-						</Text>
-					</Pressable>
-				))}
-			</View>
-		</View>
-	);
+	const languageSection = <SettingsLanguageRow key="settings-language" language={language} onSelect={setLanguage} />;
 
 	const notificationsSection = (
 		<View key="settings-notifications" testID="settings-notifications" style={styles.sectionCard}>
@@ -1403,6 +1345,16 @@ export default function SettingsScreen() {
 					: "Manage important reminders."}
 			</Text>
 
+			{notifications.error ? (
+				<View>
+					<Text testID="settings-notification-error" accessibilityRole="alert" accessibilityLiveRegion="polite" style={{ color: theme.colors.danger }}>
+						{notifications.error === "load"
+							? (language === "id" ? "Preferensi belum dapat dimuat. Coba lagi." : "Preferences could not be loaded. Try again.")
+							: (language === "id" ? "Perubahan belum tersimpan. Pilihan dikembalikan; ketuk lagi untuk mencoba." : "Change not saved. Your choice was restored; toggle again to retry.")}
+					</Text>
+					{notifications.error === "load" ? <Pressable testID="settings-notification-retry" accessibilityRole="button" onPress={notifications.reload} style={{ minHeight: 44, justifyContent: "center" }}><Text style={{ color: fe.blue }}>{language === "id" ? "Coba lagi" : "Retry"}</Text></Pressable> : null}
+				</View>
+			) : null}
 			{notifPrefs != null ? (
 				<ToggleRow
 					icon="notification"
@@ -1415,6 +1367,9 @@ export default function SettingsScreen() {
 					}
 					value={notifPrefs.enabled}
 					onToggle={toggleNotifEnabled}
+				testID="settings-notification-enabled"
+				disabled={notifPrefsLoading || notifications.saving !== null || !notifPrefs}
+				busy={notifications.saving === "enabled"}
 					theme={theme}
 				/>
 			) : notifPrefsLoading ? (
@@ -1432,6 +1387,9 @@ export default function SettingsScreen() {
 				}
 				value={dailyReminder}
 				onToggle={toggleDailyReminder}
+				testID="settings-notification-daily"
+				disabled={notifPrefsLoading || notifications.saving !== null || !notifPrefs}
+				busy={notifications.saving === "daily_reminder_enabled"}
 				theme={theme}
 			/>
 			<ToggleRow
@@ -1445,6 +1403,9 @@ export default function SettingsScreen() {
 				}
 				value={billReminder}
 				onToggle={toggleBillReminder}
+				testID="settings-notification-bills"
+				disabled={notifPrefsLoading || notifications.saving !== null || !notifPrefs}
+				busy={notifications.saving === "bill_reminder_enabled"}
 				theme={theme}
 			/>
 			<ToggleRow
@@ -1458,13 +1419,23 @@ export default function SettingsScreen() {
 				}
 				value={budgetAlert}
 				onToggle={toggleBudgetAlert}
+				testID="settings-notification-budget"
+				disabled={notifPrefsLoading || notifications.saving !== null || !notifPrefs}
+				busy={notifications.saving === "budget_alert_enabled"}
 				theme={theme}
 			/>
 		</View>
 	);
 
 	const legalSection = (
-		<LegalSupportSection key="settings-legal-support" language={language} styles={styles} onOpenUrl={openLegalUrl} />
+		<View key="settings-legal-support" style={{ gap: 12 }}>
+			<SettingsNavigationRow testID="settings-help-guide" icon="file"
+				title={language === "id" ? "Panduan Kaswise" : "Kaswise guide"}
+				description={language === "id" ? "Cara mencatat transaksi, memilih dompet, dan membaca laporan." : "How to record transactions, choose wallets, and read reports."}
+				onPress={() => router.push("/help")}
+							premium={featureFlags.simplePremiumExperience} />
+			<LegalSupportSection key="settings-legal-support" language={language} styles={styles} onOpenUrl={openLegalUrl} />
+		</View>
 	);
 
 	const deletionSection = (
@@ -1543,39 +1514,59 @@ export default function SettingsScreen() {
 				}
 			>
 				<StaggeredStack testIDPrefix="settings-entrance">
-				{featureFlags.simpleNavigation ? [
+				{featureFlags.simplePremiumExperience ? [
+					<View key="settings-group-account" testID="settings-group-account">
+						<SettingsSection title={language === "id" ? "Akun" : "Account"}>
+							{profileSection}
+							{securitySection}
+							{planSection}
+							{familySection}
+						</SettingsSection>
+					</View>,
+					<View key="settings-group-recording" testID="settings-group-recording">
+						<SettingsSection title={language === "id" ? "Pencatatan" : "Recording"}>
+							<FinanceContextSwitcher variant="compact" />
+							<SettingsRecordingRows language={language} />
+						</SettingsSection>
+					</View>,
+					<View key="settings-group-data" testID="settings-group-data">
+						<SettingsSection title={language === "id" ? "Data" : "Data"}>
+							<SettingsDataRows language={language} />
+							{deletionSection}
+						</SettingsSection>
+					</View>,
+					<View key="settings-group-preferences" testID="settings-group-preferences">
+						<SettingsSection title={language === "id" ? "Preferensi" : "Preferences"}>
+							<SettingsNotificationInboxRow language={language} />
+							{appearanceSection}
+							{languageSection}
+							{notificationsSection}
+						</SettingsSection>
+					</View>,
+					<View key="settings-group-help" testID="settings-group-help">
+						<SettingsSection title={language === "id" ? "Bantuan" : "Help"}>
+							{legalSection}
+							{appInfoSection}
+						</SettingsSection>
+					</View>,
+					logoutSection,
+				] : featureFlags.simpleNavigation ? [
 					<SettingsSection key="settings-finance" title={language === "id" ? "Keuangan" : "Finance"}>
 						<FinanceContextSwitcher variant="compact" />
-						<SettingsNavigationRow testID="settings-wallets" icon="wallets"
-							title={language === "id" ? "Dompet & akun" : "Wallets & accounts"}
-							onPress={() => router.push("/(tabs)/wallets")} />
-						<SettingsNavigationRow testID="settings-budgets" icon="budgets"
-							title={language === "id" ? "Kategori & anggaran" : "Categories & budgets"}
-							onPress={() => router.push("/(tabs)/budgets")} />
-						<SettingsNavigationRow testID="settings-bills" icon="bills"
-							title={language === "id" ? "Tagihan & pengingat" : "Bills & reminders"}
-							onPress={() => router.push("/(tabs)/bills")} />
-						{featureFlags.importStatement ? (
-							<View testID="settings-import-statement">
-								<SettingsNavigationRow testID="settings-import-statement-link" icon="upload"
-									title={language === "id" ? "Import rekening koran" : "Bank statement import"}
-									onPress={() => router.push("/(tabs)/imports")} />
-							</View>
-						) : null}
+						<SettingsRecordingRows language={language} />
+						<SettingsDataRows language={language} />
 					</SettingsSection>,
 					<SettingsSection key="settings-family" title={language === "id" ? "Keluarga" : "Family"}>
 						<View testID="settings-family">
 							<SettingsNavigationRow testID="settings-family-center" icon="groups"
 								title={language === "id" ? "Pusat Keluarga" : "Family Center"}
 								description={language === "id" ? "Kelola akses dan undangan keluarga." : "Manage household access and invites."}
-								onPress={() => router.push("/(tabs)/groups")} />
+								onPress={() => router.push("/(tabs)/groups")}
+							premium={featureFlags.simplePremiumExperience} />
 						</View>
 					</SettingsSection>,
 					<SettingsSection key="settings-app" title={language === "id" ? "Aplikasi" : "App"}>
-						<SettingsNavigationRow testID="settings-notification-inbox" icon="notification"
-							title={language === "id" ? "Kotak masuk notifikasi" : "Notification inbox"}
-							description={language === "id" ? "Lihat notifikasi yang sudah diterima." : "View notifications you have received."}
-							onPress={() => router.push("/notifications")} />
+						<SettingsNotificationInboxRow language={language} />
 						{notificationsSection}
 						{languageSection}
 						{appearanceSection}
@@ -1840,6 +1831,7 @@ function ProfilePhotoAction({
 }
 
 function ToggleRow({
+	testID, disabled, busy,
 	icon,
 	tone: _tone,
 	title,
@@ -1849,6 +1841,9 @@ function ToggleRow({
 	theme,
 }: {
 	icon: KaswiseIconName;
+	testID: string;
+	disabled: boolean;
+	busy: boolean;
 	tone: "primary" | "success" | "warning" | "danger" | "accent" | "info";
 	title: string;
 	helper: string;
@@ -1858,9 +1853,14 @@ function ToggleRow({
 }) {
 	return (
 		<Pressable
+			testID={testID}
+			disabled={disabled}
 			onPress={onToggle}
 			accessibilityRole="switch"
-			accessibilityState={{ checked: value }}
+			aria-checked={value}
+			aria-disabled={disabled}
+			aria-busy={busy}
+			accessibilityState={{ checked: value, disabled, busy }}
 			accessibilityLabel={title}
 			style={{
 				flexDirection: "row",
@@ -1891,6 +1891,7 @@ function ToggleRow({
 					<Text style={{ display: "none" }}>{helper}</Text>
 				</View>
 			</View>
+			{busy ? <ActivityIndicator color={fe.blue} /> : null}
 			<View
 				style={{
 					width: 44,
@@ -1919,7 +1920,10 @@ function ToggleRow({
 	);
 }
 
-function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
+function createStyles(
+	theme: ReturnType<typeof useTheme>["theme"],
+	premium: boolean,
+) {
 	return StyleSheet.create({
 		screen: { flex: 1, backgroundColor: fe.paper },
 		content: { padding: 20, gap: 22, paddingBottom: 130 },
@@ -1931,8 +1935,21 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			gap: 14,
 		},
 		headerCopy: { flex: 1 },
-		title: { color: fe.ink, fontSize: 28, fontWeight: theme.typography.fontWeight.semibold, letterSpacing: -0.6 },
-		subtitle: { color: fe.slate, fontSize: 13, marginTop: 2 },
+		title: {
+			color: fe.ink,
+			...(premium
+				? resolveExperienceTextStyle("screenTitle")
+				: {
+						fontSize: 28,
+						fontWeight: theme.typography.fontWeight.semibold,
+						letterSpacing: -0.6,
+					}),
+		},
+		subtitle: {
+			color: fe.slate,
+			...(premium ? resolveExperienceTextStyle("body") : { fontSize: 13 }),
+			marginTop: 2,
+		},
 		profileCard: {
 			minHeight: 148, borderRadius: 28, borderWidth: 1,
 			borderColor: "rgba(255,255,255,0.16)", padding: 20,

@@ -1,4 +1,5 @@
 import { Redirect, Tabs, useRouter, useSegments } from "expo-router";
+import { DraftExitProvider, useScopedDraftExit } from "../../src/features/capture/DraftExitProvider";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useEffect, useState } from "react";
 import {
@@ -33,6 +34,11 @@ export const HIDDEN_ROUTE_BACK_FALLBACKS: Record<string, string> = {
 const DEFAULT_HIDDEN_BACK_FALLBACK = "/(tabs)";
 
 export default function TabsLayout() {
+	return <DraftExitProvider><TabsLayoutContent /></DraftExitProvider>;
+}
+
+function TabsLayoutContent() {
+	const draftExit = useScopedDraftExit();
 	const { supabase } = useSupabase();
 	const { theme } = useTheme();
 	const { t } = useI18n();
@@ -105,13 +111,16 @@ export default function TabsLayout() {
 			<Pressable
 				accessibilityRole="button"
 				accessibilityLabel={t("back")}
-				onPress={() =>
+				onPress={() => {
+					const leave = () =>
 					goBackSafely(
 						router,
 						HIDDEN_ROUTE_BACK_FALLBACKS[activeRoute] ??
 							DEFAULT_HIDDEN_BACK_FALLBACK,
-					)
-				}
+					);
+					if (draftExit?.current) draftExit.current(leave);
+					else leave();
+				}}
 				style={styles.headerBackButton}
 			>
 				<KaswiseIcon
@@ -131,6 +140,16 @@ export default function TabsLayout() {
 
 	return (
 		<Tabs
+			screenListeners={({ navigation }) => ({
+				tabPress: (event) => {
+					const state = navigation.getState();
+					if (!draftExit?.current || event.target === state.routes[state.index].key) return;
+					const route = state.routes.find((item) => item.key === event.target);
+					if (!route) return;
+					event.preventDefault();
+					draftExit.current(() => navigation.navigate(route.name));
+				},
+			})}
 			screenOptions={{
 				headerShown: true,
 				tabBarShowLabel: false,
