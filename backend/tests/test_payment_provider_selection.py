@@ -95,7 +95,7 @@ def test_fetch_and_sync_status_with_mayar_uses_known_order_id_when_extradata_mis
 
     repo = MagicMock()
     repo.get_payment_by_order_id.return_value = {
-        "id": "p1", "user_id": "u1", "plan": "monthly", "status": "pending", "amount": 29000,
+        "id": "p1", "user_id": "u1", "plan": "monthly", "status": "pending", "amount": 29000, "provider": "mayar",
     }
 
     result = orchestrator.fetch_and_sync_status(
@@ -143,7 +143,7 @@ def test_fetch_and_sync_status_with_mayar_does_not_activate_profile_when_disable
          patch.object(ps, "_get_supabase_service_client", return_value=object()), \
          patch.object(ps.settings, "MAYAR_ACTIVATION_ENABLED", False), \
          patch.object(ps.repository, "get_payment_by_order_id", return_value={
-             "id": "p1", "user_id": "u1", "plan": "monthly", "status": "pending", "amount": 29000,
+             "id": "p1", "user_id": "u1", "plan": "monthly", "status": "pending", "amount": 29000, "provider": "mayar",
          }), \
          patch.object(ps.repository, "update_payment") as update_payment, \
          patch.object(ps.repository, "update_profile") as update_profile:
