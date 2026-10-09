@@ -8,7 +8,18 @@
     "kaswise": "Kaswise sudah mengelompokkan Akun/Pencatatan/Data/Preferensi/Bantuan; logout muncul sebelum Pencatatan.",
     "action": "Rapikan urutan, kelompokkan preferensi dalam row ringkas, letakkan logout di akhir.",
     "acceptance": "Semua setting lama tetap dapat diakses; urutan dan row konsisten; logout tidak mendominasi area awal.",
-    "status": "Usulan—belum disetujui implementasi"
+    "status": "Selesai—terverifikasi lokal",
+    "verifikasi": {
+      "tingkat": "implemented + local-tested",
+      "cabang": "release/v2-transaction-entry",
+      "commit": "0036900 (di HEAD f2bbf9e)",
+      "bukti": [
+        "app/(tabs)/settings.tsx: logout ditempatkan setelah grup terakhir, urutan Akun→…→Bantuan→logout pada simple mode",
+        "Jest: __tests__/package-a-settings.test.tsx + __tests__/settings-screen.test.tsx (PASS)"
+      ],
+      "tanggal": "2026-10-10",
+      "catatan": "Belum live-verified lewat deploy; bukti = kode + suite Jest lokal."
+    }
   },
   {
     "id": "G02",
@@ -19,7 +30,18 @@
     "kaswise": "Bahasa dan tema Kaswise berupa pilihan inline; sudah berfungsi sebagai kontrol, bukan fitur yang hilang.",
     "action": "Ringkas menjadi label + nilai aktif + detail pilihan bila disetujui.",
     "acceptance": "Nilai terbaca tanpa membuka detail; pilihan persist; bahasa ID/EN tetap benar.",
-    "status": "Usulan—belum disetujui implementasi"
+    "status": "Selesai—terverifikasi lokal",
+    "verifikasi": {
+      "tingkat": "implemented + local-tested",
+      "cabang": "release/v2-transaction-entry",
+      "commit": "f2bbf9e",
+      "bukti": [
+        "SettingsLanguageRow menampilkan nilai aktif \"Indonesia\"/\"English\"; row appearance menampilkan \"Terang\"/\"Light\"",
+        "Jest: __tests__/package-a-settings.test.tsx (PASS)"
+      ],
+      "tanggal": "2026-10-10",
+      "catatan": "Nilai aktif terbaca tanpa membuka detail; persistensi pilihan diuji di suite settings."
+    }
   },
   {
     "id": "G03",
@@ -85,7 +107,18 @@
     "kaswise": "Kaswise mencampur istilah Capture, Reports/Dompet, request, Track A di copy yang terlihat.",
     "action": "Hilangkan istilah pengerjaan/internal dan rapikan istilah Indonesia/Inggris.",
     "acceptance": "Help tanpa Track A; label Reports/Capture diterjemahkan sesuai konteks; istilah konsisten ID/EN.",
-    "status": "Usulan—belum disetujui implementasi"
+    "status": "Selesai—terverifikasi lokal",
+    "verifikasi": {
+      "tingkat": "implemented + local-tested",
+      "cabang": "release/v2-transaction-entry",
+      "commit": "f2bbf9e (drop internal 'Track A' copy)",
+      "bukti": [
+        "grep \"Track A\" di src/ + tests/ = 0 hasil",
+        "Jest: __tests__/help-localization.test.tsx (PASS)"
+      ],
+      "tanggal": "2026-10-10",
+      "catatan": "Istilah pengerjaan/internal sudah hilang dari copy user-facing."
+    }
   },
   {
     "id": "G09",
@@ -173,7 +206,18 @@
     "kaswise": "Finance context sheet dan modal lain sudah ada; presentasi berbeda menurut fungsi. Audit lintas modal belum selesai.",
     "action": "Audit header, back/close, scroll, CTA dan backdrop pada setiap sheet.",
     "acceptance": "CTA tidak menutup pilihan; safe area aman; dismiss tidak menghapus draf; viewer tetap readonly.",
-    "status": "Usulan—belum disetujui implementasi"
+    "status": "Audit browser hijau—QA perangkat tertunda",
+    "verifikasi": {
+      "tingkat": "browser-audited (local preview bundle)",
+      "cabang": "release/v2-transaction-entry",
+      "bundel": "entry-c75572bcc91c5d6b958dd979b5eca2c2.js",
+      "bukti": [
+        "Playwright experience suite: 237 passed / 0 failed (viewports 360/390/430)",
+        "spec: controls-forms, manual-back"
+      ],
+      "tanggal": "2026-10-10",
+      "catatan": "Verifikasi lokal via preview bundle (Supabase stub + override flag); belum deployed, belum live-verified."
+    }
   },
   {
     "id": "G17",
@@ -184,7 +228,18 @@
     "kaswise": "Manual entry dan berbagai formulir sudah ada; screenshot mobile viewport tidak membuktikan perilaku keyboard HP.",
     "action": "Uji nominal, nama, fokus dan keyboard di HP nyata; pertahankan Capture existing.",
     "acceptance": "Field aktif dan tombol terlihat; scroll tidak terjebak; draf utuh saat kembali.",
-    "status": "Usulan—belum disetujui implementasi"
+    "status": "Audit browser hijau—QA perangkat tertunda",
+    "verifikasi": {
+      "tingkat": "browser-audited (local preview bundle)",
+      "cabang": "release/v2-transaction-entry",
+      "bundel": "entry-c75572bcc91c5d6b958dd979b5eca2c2.js",
+      "bukti": [
+        "Playwright experience suite: 237 passed / 0 failed (viewports 360/390/430)",
+        "spec: measurement, controls-forms"
+      ],
+      "tanggal": "2026-10-10",
+      "catatan": "Perilaku keyboard Android/iOS fisik belum dibuktikan dari sini (Playwright hanya viewport resize). QA perangkat wajib."
+    }
   },
   {
     "id": "G18",
@@ -195,7 +250,18 @@
     "kaswise": "Floating5tab Kaswise sudah ada dan active navy jelas.",
     "action": "Audit overlap konten, tombol terakhir, active state dan browser Back.",
     "acceptance": "Tidak ada konten/tombol tertutup navigasi; rute kembali benar; tidak menambah CTA ganda.",
-    "status": "Usulan—belum disetujui implementasi"
+    "status": "Audit browser hijau—QA perangkat tertunda",
+    "verifikasi": {
+      "tingkat": "browser-audited (local preview bundle)",
+      "cabang": "release/v2-transaction-entry",
+      "bundel": "entry-c75572bcc91c5d6b958dd979b5eca2c2.js",
+      "bukti": [
+        "Playwright experience suite: 237 passed / 0 failed (viewports 360/390/430)",
+        "spec: touch-targets, transaction-flow"
+      ],
+      "tanggal": "2026-10-10",
+      "catatan": "Verifikasi lokal via preview bundle (Supabase stub + override flag); belum deployed, belum live-verified."
+    }
   },
   {
     "id": "G19",
@@ -206,7 +272,18 @@
     "kaswise": "Komponen animasi sudah ada; feedback dan error state perlu diuji pada setiap flow.",
     "action": "Samakan feedback tekan, saving, success, retry dan pengaman double-submit.",
     "acceptance": "Simpan hanya sekali; status jelas; animasi tidak memperlambat pencatatan.",
-    "status": "Usulan—belum disetujui implementasi"
+    "status": "Audit browser hijau—QA perangkat tertunda",
+    "verifikasi": {
+      "tingkat": "browser-audited (local preview bundle)",
+      "cabang": "release/v2-transaction-entry",
+      "bundel": "entry-c75572bcc91c5d6b958dd979b5eca2c2.js",
+      "bukti": [
+        "Playwright experience suite: 237 passed / 0 failed (viewports 360/390/430)",
+        "spec: measurement, transaction-flow"
+      ],
+      "tanggal": "2026-10-10",
+      "catatan": "Verifikasi lokal via preview bundle (Supabase stub + override flag); belum deployed, belum live-verified."
+    }
   },
   {
     "id": "G20",
@@ -217,7 +294,18 @@
     "kaswise": "Source memiliki entrance animation dan reduced-motion support. Durasi/kualitas real-device belum diukur.",
     "action": "Audit animasi dan reduced motion di perangkat nyata; ukur sebelum menetapkan target durasi.",
     "acceptance": "Reduced motion dihormati; tidak berkedip atau menunggu animasi; hasil pengukuran dicatat.",
-    "status": "Usulan—belum disetujui implementasi"
+    "status": "Audit browser hijau—QA perangkat tertunda",
+    "verifikasi": {
+      "tingkat": "browser-audited (local preview bundle)",
+      "cabang": "release/v2-transaction-entry",
+      "bundel": "entry-c75572bcc91c5d6b958dd979b5eca2c2.js",
+      "bukti": [
+        "Playwright experience suite: 237 passed / 0 failed (viewports 360/390/430)",
+        "spec: measurement, b1-visual-foundation"
+      ],
+      "tanggal": "2026-10-10",
+      "catatan": "Motion/smoothness perangkat nyata belum diukur (durasi/fps). QA perangkat wajib."
+    }
   },
   {
     "id": "G21",
@@ -228,7 +316,18 @@
     "kaswise": "Screenshot Setelan menunjukkan spinner preferensi; belum ada bukti durasi atau kegagalan menetap.",
     "action": "Uji loading, request gagal dan offline; gunakan placeholder dengan ukuran stabil.",
     "acceptance": "Layout tidak meloncat; loading tidak tanpa akhir; error tidak disamarkan sebagai sukses/data kosong.",
-    "status": "Usulan—belum disetujui implementasi"
+    "status": "Audit browser hijau—QA perangkat tertunda",
+    "verifikasi": {
+      "tingkat": "browser-audited (local preview bundle)",
+      "cabang": "release/v2-transaction-entry",
+      "bundel": "entry-c75572bcc91c5d6b958dd979b5eca2c2.js",
+      "bukti": [
+        "Playwright experience suite: 237 passed / 0 failed (viewports 360/390/430)",
+        "spec: b2-continuation, b2-reports-states"
+      ],
+      "tanggal": "2026-10-10",
+      "catatan": "Verifikasi lokal via preview bundle (Supabase stub + override flag); belum deployed, belum live-verified."
+    }
   },
   {
     "id": "G22",
@@ -239,7 +338,18 @@
     "kaswise": "Palette dan beberapa tap-target helpers sudah ada; accessibility lengkap belum diuji.",
     "action": "Audit kontras WCAG, target sentuh, accessible labels, fokus dan pembesaran teks.",
     "acceptance": "Target usulan: AA 4.5:1 teks normal/3:1 teks besar; touch 44 px; ID/EN dan font besar tidak overflow.",
-    "status": "Usulan—belum disetujui implementasi"
+    "status": "Audit browser hijau—QA perangkat tertunda",
+    "verifikasi": {
+      "tingkat": "browser-audited (local preview bundle)",
+      "cabang": "release/v2-transaction-entry",
+      "bundel": "entry-c75572bcc91c5d6b958dd979b5eca2c2.js",
+      "bukti": [
+        "Playwright experience suite: 237 passed / 0 failed (viewports 360/390/430)",
+        "spec: touch-targets, transaction-flow, b1-visual-foundation"
+      ],
+      "tanggal": "2026-10-10",
+      "catatan": "Verifikasi lokal via preview bundle (Supabase stub + override flag); belum deployed, belum live-verified."
+    }
   },
   {
     "id": "G23",
@@ -250,7 +360,18 @@
     "kaswise": "Ritme Kas sudah live. Audit ini memakai akun kosong; pengujian chart berdata adalah pekerjaan verifikasi terpisah.",
     "action": "Uji data pemasukan/pengeluaran/outlier/periodee; chart kosong bukan bukti kerusakan.",
     "acceptance": "Nilai cocok readback; skala bersama tidak menipu; nol, defisit, outlier dan tooltip benar.",
-    "status": "Usulan—belum disetujui implementasi"
+    "status": "Audit browser hijau—QA perangkat tertunda",
+    "verifikasi": {
+      "tingkat": "browser-audited (local preview bundle)",
+      "cabang": "release/v2-transaction-entry",
+      "bundel": "entry-c75572bcc91c5d6b958dd979b5eca2c2.js",
+      "bukti": [
+        "Playwright experience suite: 237 passed / 0 failed (viewports 360/390/430)",
+        "spec: b2-reports-states, b2-continuation"
+      ],
+      "tanggal": "2026-10-10",
+      "catatan": "Verifikasi lokal via preview bundle (Supabase stub + override flag); belum deployed, belum live-verified."
+    }
   },
   {
     "id": "G24",
@@ -261,7 +382,18 @@
     "kaswise": "Pilihan Sistem/Terang/Gelap terlihat live, tetapi resolver tema operasional di source selalu light sesuai kebijakan desain.",
     "action": "Selaraskan pilihan dan penjelasan dengan efek yang nyata; jangan otomatis membangun dark theme.",
     "acceptance": "Pilihan tidak menyesatkan. Kebijakan navy-blue light-first tetap, kecuali ada persetujuan baru.",
-    "status": "Usulan—belum disetujui implementasi"
+    "status": "Selesai—terverifikasi lokal",
+    "verifikasi": {
+      "tingkat": "implemented + local-tested",
+      "cabang": "release/v2-transaction-entry",
+      "commit": "f2bbf9e",
+      "bukti": [
+        "settings.tsx: row Tampilan hanya menampilkan \"Terang\"; ada copy alasan light-first",
+        "Jest: __tests__/light-theme-accents.test.tsx (PASS)"
+      ],
+      "tanggal": "2026-10-10",
+      "catatan": "Tidak ada pilihan Gelap/Sistem di UI; kebijakan navy-blue light-first dipertahankan."
+    }
   },
   {
     "id": "G25",
@@ -360,7 +492,19 @@
     "kaswise": "Source Kaswise mengubah state lokal secara optimistis lalu mengabaikan error penyimpanan. Belum mereproduksi kegagalan live.",
     "action": "Uji gagal simpan; sediakan rollback, feedback atau retry, bukan sukses visual palsu.",
     "acceptance": "Saat request gagal, pengguna tahu dan state sesuai server; retry aman; reload membuktikan persistensi.",
-    "status": "Usulan—belum disetujui implementasi"
+    "status": "Selesai—terverifikasi lokal",
+    "verifikasi": {
+      "tingkat": "implemented + local-tested",
+      "cabang": "release/v2-transaction-entry",
+      "commit": "604fbdb (harden payment and notification reliability)",
+      "bukti": [
+        "useNotificationSettings: serialisasi write + readback getNotificationPreferences saat gagal; setError save/load, tanpa sukses visual palsu",
+        "settings.tsx: settings-notification-error (accessibilityRole=\"alert\")",
+        "Jest: __tests__/settings-notifications.test.tsx + __tests__/notification-bell.test.tsx (PASS)"
+      ],
+      "tanggal": "2026-10-10",
+      "catatan": "Gagal simpan tidak lagi dianggap sukses; state direkonsiliasi ke server."
+    }
   },
   {
     "id": "G34",
@@ -382,7 +526,18 @@
     "kaswise": "Link Kaswise Kategori & anggaran menuju pengelolaan envelope yang memfilter kategori pengeluaran.",
     "action": "Sesuaikan nama/helper dengan kemampuan nyata, atau spesifikasikan manager kategori sebagai fitur terpisah.",
     "acceptance": "Judul/menu sesuai tujuan; tidak menjanjikan pengelolaan income yang belum ditampilkan.",
-    "status": "Usulan—belum disetujui implementasi"
+    "status": "Selesai—terverifikasi lokal",
+    "verifikasi": {
+      "tingkat": "implemented + local-tested",
+      "cabang": "release/v2-transaction-entry",
+      "commit": "f2bbf9e",
+      "bukti": [
+        "settings.tsx: \"Anggaran kategori\" + \"Atur batas pengeluaran per kategori.\" (EN: \"Category budgets\")",
+        "Jest: __tests__/package-a-settings.test.tsx (PASS)"
+      ],
+      "tanggal": "2026-10-10",
+      "catatan": "Judul menu sesuai kemampuan nyata; tidak menjanjikan pengelolaan income."
+    }
   },
   {
     "id": "G36",
@@ -393,6 +548,17 @@
     "kaswise": "Kaswise punya pilihan ID/EN; source Help dan sebagian Import masih berbahasa Indonesia tanpa selector locale.",
     "action": "Lengkapi terjemahan konten bantuan dan jalur impor yang aktif, serta audit istilah bersama.",
     "acceptance": "ID/EN konsisten di seluruh flow yang dirilis; tidak ada label internal atau campuran bahasa yang tak disengaja.",
-    "status": "Usulan—belum disetujui implementasi"
+    "status": "Selesai—terverifikasi lokal",
+    "verifikasi": {
+      "tingkat": "implemented + local-tested",
+      "cabang": "release/v2-transaction-entry",
+      "commit": "f2bbf9e (localize all legal pages)",
+      "bukti": [
+        "src/content/legal-pages.ts: englishLegalPages + resolver language === \"en\"",
+        "Jest: __tests__/legal-route-screen.test.tsx, __tests__/legal-links.test.ts, __tests__/legal-support-section.test.tsx, __tests__/help-localization.test.tsx (PASS)"
+      ],
+      "tanggal": "2026-10-10",
+      "catatan": "Halaman legal kini punya versi EN, bukan canonical Indonesia-only."
+    }
   }
 ]

@@ -67,6 +67,8 @@ Prioritas pertama: Settings yang lebih terkurasi; tipografi/spacing/control hier
 - **Audit:** skenario QA atau risiko source yang harus diuji; belum disebut bug live tanpa reproduksi.
 - **Opsional:** keputusan fitur terpisah, bukan wajib demi premium.
 - **Guardrail:** bagian yang dipertahankan dan diuji regression.
+- **Selesai—terverifikasi lokal:** implementasi ada di HEAD dan lolos tes otomatis lokal; belum live-verified.
+- **Audit browser hijau—QA perangkat tertunda:** sudah diuji suite browser lokal (Playwright), masih menunggu QA perangkat fisik.
 - P1 = dampak/kepentingan awal; P2 = penyempurnaan/QA lanjutan; P3 = feature discovery. Prioritas ini rekomendasi, bukan urutan yang sudah disetujui pengguna.
 
 **Total: 36 item = 17 polish + 11 audit + 5 opsional + 3 guardrail.**
@@ -74,14 +76,14 @@ Prioritas pertama: Settings yang lebih terkurasi; tipografi/spacing/control hier
 ## Matriks ringkas
 | ID | Prioritas | Jenis | Area | Status |
 |---|---|---|---|---|
-| G01 | P1 | Polish | Struktur Setelan | Usulan—belum disetujui implementasi |
-| G02 | P1 | Polish | Nilai aktif preferensi | Usulan—belum disetujui implementasi |
+| G01 | P1 | Polish | Struktur Setelan | Selesai—terverifikasi lokal |
+| G02 | P1 | Polish | Nilai aktif preferensi | Selesai—terverifikasi lokal |
 | G03 | P1 | Polish | Tipografi dan angka | Usulan—belum disetujui implementasi |
 | G04 | P1 | Polish | Ritme spacing | Usulan—belum disetujui implementasi |
 | G05 | P1 | Polish | Surface, border, shadow | Usulan—belum disetujui implementasi |
 | G06 | P1 | Polish | Sistem kontrol | Usulan—belum disetujui implementasi |
 | G07 | P1 | Polish | Ikon dan affordance | Usulan—belum disetujui implementasi |
-| G08 | P1 | Polish | Bahasa produk | Usulan—belum disetujui implementasi |
+| G08 | P1 | Polish | Bahasa produk | Selesai—terverifikasi lokal |
 | G09 | P1 | Polish | Hierarki Laporan | Usulan—belum disetujui implementasi |
 | G10 | P1 | Polish | Kontrol periode | Usulan—belum disetujui implementasi |
 | G11 | P1 | Polish | Empty state kontekstual | Usulan—belum disetujui implementasi |
@@ -89,15 +91,15 @@ Prioritas pertama: Settings yang lebih terkurasi; tipografi/spacing/control hier
 | G13 | P2 | Polish | Kategori dan anggaran list | Usulan—belum disetujui implementasi |
 | G14 | P2 | Polish | Editor visual kategori | Usulan—belum disetujui implementasi |
 | G15 | P2 | Opsional | Detail kategori | Usulan—belum disetujui implementasi |
-| G16 | P2 | Audit | Pola bottom sheet | Usulan—belum disetujui implementasi |
-| G17 | P2 | Audit | Keyboard dan formulir | Usulan—belum disetujui implementasi |
-| G18 | P2 | Audit | Navigasi bawah dan scroll | Usulan—belum disetujui implementasi |
-| G19 | P2 | Audit | Feedback interaksi | Usulan—belum disetujui implementasi |
-| G20 | P2 | Audit | Motion konsisten | Usulan—belum disetujui implementasi |
-| G21 | P2 | Audit | Loading, layoutshift, offline/error | Usulan—belum disetujui implementasi |
-| G22 | P2 | Audit | Kontras, tap target, fontbesar | Usulan—belum disetujui implementasi |
-| G23 | P2 | Audit | Chart berdata nyata | Usulan—belum disetujui implementasi |
-| G24 | P2 | Polish | Tema yang benar-benar konsisten | Usulan—belum disetujui implementasi |
+| G16 | P2 | Audit | Pola bottom sheet | Audit browser hijau—QA perangkat tertunda |
+| G17 | P2 | Audit | Keyboard dan formulir | Audit browser hijau—QA perangkat tertunda |
+| G18 | P2 | Audit | Navigasi bawah dan scroll | Audit browser hijau—QA perangkat tertunda |
+| G19 | P2 | Audit | Feedback interaksi | Audit browser hijau—QA perangkat tertunda |
+| G20 | P2 | Audit | Motion konsisten | Audit browser hijau—QA perangkat tertunda |
+| G21 | P2 | Audit | Loading, layoutshift, offline/error | Audit browser hijau—QA perangkat tertunda |
+| G22 | P2 | Audit | Kontras, tap target, fontbesar | Audit browser hijau—QA perangkat tertunda |
+| G23 | P2 | Audit | Chart berdata nyata | Audit browser hijau—QA perangkat tertunda |
+| G24 | P2 | Polish | Tema yang benar-benar konsisten | Selesai—terverifikasi lokal |
 | G25 | P2 | Audit | Context dan dompet | Usulan—belum disetujui implementasi |
 | G26 | P3 | Opsional | Shortcut native iOS | Usulan—belum disetujui implementasi |
 | G27 | P3 | Opsional | Scan single/multiple dan voice | Usulan—belum disetujui implementasi |
@@ -106,22 +108,36 @@ Prioritas pertama: Settings yang lebih terkurasi; tipografi/spacing/control hier
 | G30 | P1 | Guardrail | Capture existing + Kembali | Dipertahankan |
 | G31 | P1 | Guardrail | Home stack dompet | Dipertahankan |
 | G32 | P1 | Guardrail | Scope rilis dan identitas | Dipertahankan |
-| G33 | P1 | Audit | Keandalan toggle notifikasi | Usulan—belum disetujui implementasi |
+| G33 | P1 | Audit | Keandalan toggle notifikasi | Selesai—terverifikasi lokal |
 | G34 | P1 | Audit | Cakupan perubahan ikon/warna | Usulan—belum disetujui implementasi |
-| G35 | P1 | Polish | Kejelasan nama tujuan menu | Usulan—belum disetujui implementasi |
-| G36 | P1 | Polish | Kelengkapan lokalisasi | Usulan—belum disetujui implementasi |
+| G35 | P1 | Polish | Kejelasan nama tujuan menu | Selesai—terverifikasi lokal |
+| G36 | P1 | Polish | Kelengkapan lokalisasi | Selesai—terverifikasi lokal |
+
+## Log verifikasi (2026-10-10)
+
+Diverifikasi terhadap HEAD `f2bbf9e` pada branch `release/v2-transaction-entry` (working tree bersih).
+
+| Sumber bukti | Hasil |
+|---|---|
+| Jest (lokal) — `package-a-settings`, `settings-screen`, `settings-notifications`, `notification-bell`, `help-localization`, `legal-route-screen`, `legal-support-section`, `legal-links`, `light-theme-accents` | **61 passed / 0 failed** |
+| Playwright experience suite (lokal, preview bundle `entry-c75572…`, viewport 360/390/430) | **237 passed / 0 failed** |
+
+- **Selesai—terverifikasi lokal (7):** G01, G02, G08, G24, G33, G35, G36.
+- **Audit browser hijau—QA perangkat tertunda (8):** G16–G23.
+- **Batasan:** keduanya belum dapat disebut *live-verified*. Suite browser memakai preview bundle dengan Supabase stub + override flag; G17 (keyboard) & G20 (motion) hanya dapat dibuktikan di perangkat fisik.
+- **Checklist QA perangkat (langkah demi langkah):** lihat `Kaswise Device QA - Moonveo G16-G23 Checklist.md` di folder yang sama.
 
 ## Checklist detail: perbandingan → tindakan → bukti selesai
 
 ### G01 — Struktur Setelan (P1 · Polish)
-- [ ] **Status:** Usulan—belum disetujui implementasi. Tidak ada implementasi dari pencatatan ini.
+- [x] **Status:** Selesai—terverifikasi lokal (implemented + local-tested, 2026-10-10; bukti di `gap-matrix.json`).
 - **Moonveo / bukti:** 10/60/95s: grouped rows + nilai aktif
 - **Kaswise sekarang:** Kaswise sudah mengelompokkan Akun/Pencatatan/Data/Preferensi/Bantuan; logout muncul sebelum Pencatatan.
 - **Tindakan yang diusulkan:** Rapikan urutan, kelompokkan preferensi dalam row ringkas, letakkan logout di akhir.
 - **Kriteria penerimaan:** Semua setting lama tetap dapat diakses; urutan dan row konsisten; logout tidak mendominasi area awal.
 
 ### G02 — Nilai aktif preferensi (P1 · Polish)
-- [ ] **Status:** Usulan—belum disetujui implementasi. Tidak ada implementasi dari pencatatan ini.
+- [x] **Status:** Selesai—terverifikasi lokal (implemented + local-tested, 2026-10-10; bukti di `gap-matrix.json`).
 - **Moonveo / bukti:** 10/60s: Currency Rp, Language EN, Dark mode System
 - **Kaswise sekarang:** Bahasa dan tema Kaswise berupa pilihan inline; sudah berfungsi sebagai kontrol, bukan fitur yang hilang.
 - **Tindakan yang diusulkan:** Ringkas menjadi label + nilai aktif + detail pilihan bila disetujui.
@@ -163,7 +179,7 @@ Prioritas pertama: Settings yang lebih terkurasi; tipografi/spacing/control hier
 - **Kriteria penerimaan:** Satu makna satu ikon; ikon custom user tidak direset; emoji tidak menjadi default identitas.
 
 ### G08 — Bahasa produk (P1 · Polish)
-- [ ] **Status:** Usulan—belum disetujui implementasi. Tidak ada implementasi dari pencatatan ini.
+- [x] **Status:** Selesai—terverifikasi lokal (implemented + local-tested, 2026-10-10; bukti di `gap-matrix.json`).
 - **Moonveo / bukti:** 50/65s: empty state dan bantuan menjelaskan tindakan
 - **Kaswise sekarang:** Kaswise mencampur istilah Capture, Reports/Dompet, request, Track A di copy yang terlihat.
 - **Tindakan yang diusulkan:** Hilangkan istilah pengerjaan/internal dan rapikan istilah Indonesia/Inggris.
@@ -219,63 +235,63 @@ Prioritas pertama: Settings yang lebih terkurasi; tipografi/spacing/control hier
 - **Kriteria penerimaan:** Jika dibuat: filterkategori/periode benar, personal/household benar, back mempertahankan filter.
 
 ### G16 — Pola bottom sheet (P2 · Audit)
-- [ ] **Status:** Usulan—belum disetujui implementasi. Tidak ada implementasi dari pencatatan ini.
+- [x] **Status:** Audit browser hijau—QA perangkat tertunda (Playwright experience suite 237 passed / 0 failed, bundle `entry-c75572…`; QA perangkat fisik belum).
 - **Moonveo / bukti:** 10–60/80/100s: handle/back/close + hierarchy
 - **Kaswise sekarang:** Finance context sheet dan modal lain sudah ada; presentasi berbeda menurut fungsi. Audit lintas modal belum selesai.
 - **Tindakan yang diusulkan:** Audit header, back/close, scroll, CTA dan backdrop pada setiap sheet.
 - **Kriteria penerimaan:** CTA tidak menutup pilihan; safe area aman; dismiss tidak menghapus draf; viewer tetap readonly.
 
 ### G17 — Keyboard dan formulir (P2 · Audit)
-- [ ] **Status:** Usulan—belum disetujui implementasi. Tidak ada implementasi dari pencatatan ini.
+- [x] **Status:** Audit browser hijau—QA perangkat tertunda (Playwright experience suite 237 passed / 0 failed, bundle `entry-c75572…`; QA perangkat fisik belum).
 - **Moonveo / bukti:** 45s: category fields dengan keyboard
 - **Kaswise sekarang:** Manual entry dan berbagai formulir sudah ada; screenshot mobile viewport tidak membuktikan perilaku keyboard HP.
 - **Tindakan yang diusulkan:** Uji nominal, nama, fokus dan keyboard di HP nyata; pertahankan Capture existing.
 - **Kriteria penerimaan:** Field aktif dan tombol terlihat; scroll tidak terjebak; draf utuh saat kembali.
 
 ### G18 — Navigasi bawah dan scroll (P2 · Audit)
-- [ ] **Status:** Usulan—belum disetujui implementasi. Tidak ada implementasi dari pencatatan ini.
+- [x] **Status:** Audit browser hijau—QA perangkat tertunda (Playwright experience suite 237 passed / 0 failed, bundle `entry-c75572…`; QA perangkat fisik belum).
 - **Moonveo / bukti:** 65/70/90s: floating nav active state
 - **Kaswise sekarang:** Floating5tab Kaswise sudah ada dan active navy jelas.
 - **Tindakan yang diusulkan:** Audit overlap konten, tombol terakhir, active state dan browser Back.
 - **Kriteria penerimaan:** Tidak ada konten/tombol tertutup navigasi; rute kembali benar; tidak menambah CTA ganda.
 
 ### G19 — Feedback interaksi (P2 · Audit)
-- [ ] **Status:** Usulan—belum disetujui implementasi. Tidak ada implementasi dari pencatatan ini.
+- [x] **Status:** Audit browser hijau—QA perangkat tertunda (Playwright experience suite 237 passed / 0 failed, bundle `entry-c75572…`; QA perangkat fisik belum).
 - **Moonveo / bukti:** 20/40s: Apply tunggal; Moonveo success latency tidak diukur
 - **Kaswise sekarang:** Komponen animasi sudah ada; feedback dan error state perlu diuji pada setiap flow.
 - **Tindakan yang diusulkan:** Samakan feedback tekan, saving, success, retry dan pengaman double-submit.
 - **Kriteria penerimaan:** Simpan hanya sekali; status jelas; animasi tidak memperlambat pencatatan.
 
 ### G20 — Motion konsisten (P2 · Audit)
-- [ ] **Status:** Usulan—belum disetujui implementasi. Tidak ada implementasi dari pencatatan ini.
+- [x] **Status:** Audit browser hijau—QA perangkat tertunda (Playwright experience suite 237 passed / 0 failed, bundle `entry-c75572…`; QA perangkat fisik belum).
 - **Moonveo / bukti:** Sheet/navigation pada video; durasi transisi belum diukur
 - **Kaswise sekarang:** Source memiliki entrance animation dan reduced-motion support. Durasi/kualitas real-device belum diukur.
 - **Tindakan yang diusulkan:** Audit animasi dan reduced motion di perangkat nyata; ukur sebelum menetapkan target durasi.
 - **Kriteria penerimaan:** Reduced motion dihormati; tidak berkedip atau menunggu animasi; hasil pengukuran dicatat.
 
 ### G21 — Loading, layoutshift, offline/error (P2 · Audit)
-- [ ] **Status:** Usulan—belum disetujui implementasi. Tidak ada implementasi dari pencatatan ini.
+- [x] **Status:** Audit browser hijau—QA perangkat tertunda (Playwright experience suite 237 passed / 0 failed, bundle `entry-c75572…`; QA perangkat fisik belum).
 - **Moonveo / bukti:** Tidak ada benchmark loading/offline Moonveo dari video
 - **Kaswise sekarang:** Screenshot Setelan menunjukkan spinner preferensi; belum ada bukti durasi atau kegagalan menetap.
 - **Tindakan yang diusulkan:** Uji loading, request gagal dan offline; gunakan placeholder dengan ukuran stabil.
 - **Kriteria penerimaan:** Layout tidak meloncat; loading tidak tanpa akhir; error tidak disamarkan sebagai sukses/data kosong.
 
 ### G22 — Kontras, tap target, fontbesar (P2 · Audit)
-- [ ] **Status:** Usulan—belum disetujui implementasi. Tidak ada implementasi dari pencatatan ini.
+- [x] **Status:** Audit browser hijau—QA perangkat tertunda (Playwright experience suite 237 passed / 0 failed, bundle `entry-c75572…`; QA perangkat fisik belum).
 - **Moonveo / bukti:** Teks sekunder/card title terlihat; nilai contrast Moonveo tidak diukur
 - **Kaswise sekarang:** Palette dan beberapa tap-target helpers sudah ada; accessibility lengkap belum diuji.
 - **Tindakan yang diusulkan:** Audit kontras WCAG, target sentuh, accessible labels, fokus dan pembesaran teks.
 - **Kriteria penerimaan:** Target usulan: AA 4.5:1 teks normal/3:1 teks besar; touch 44 px; ID/EN dan font besar tidak overflow.
 
 ### G23 — Chart berdata nyata (P2 · Audit)
-- [ ] **Status:** Usulan—belum disetujui implementasi. Tidak ada implementasi dari pencatatan ini.
+- [x] **Status:** Audit browser hijau—QA perangkat tertunda (Playwright experience suite 237 passed / 0 failed, bundle `entry-c75572…`; QA perangkat fisik belum).
 - **Moonveo / bukti:** 70/75s: NetWorth Graph; recording data terbatas
 - **Kaswise sekarang:** Ritme Kas sudah live. Audit ini memakai akun kosong; pengujian chart berdata adalah pekerjaan verifikasi terpisah.
 - **Tindakan yang diusulkan:** Uji data pemasukan/pengeluaran/outlier/periodee; chart kosong bukan bukti kerusakan.
 - **Kriteria penerimaan:** Nilai cocok readback; skala bersama tidak menipu; nol, defisit, outlier dan tooltip benar.
 
 ### G24 — Tema yang benar-benar konsisten (P2 · Polish)
-- [ ] **Status:** Usulan—belum disetujui implementasi. Tidak ada implementasi dari pencatatan ini.
+- [x] **Status:** Selesai—terverifikasi lokal (implemented + local-tested, 2026-10-10; bukti di `gap-matrix.json`).
 - **Moonveo / bukti:** 60/95s: Dark mode System label
 - **Kaswise sekarang:** Pilihan Sistem/Terang/Gelap terlihat live, tetapi resolver tema operasional di source selalu light sesuai kebijakan desain.
 - **Tindakan yang diusulkan:** Selaraskan pilihan dan penjelasan dengan efek yang nyata; jangan otomatis membangun dark theme.
@@ -338,7 +354,7 @@ Prioritas pertama: Settings yang lebih terkurasi; tipografi/spacing/control hier
 - **Kriteria penerimaan:** Checklist per item, before/after, tests dan live QA saat disetujui; rollback tersedia; jangan reset ikon/warna DB.
 
 ### G33 — Keandalan toggle notifikasi (P1 · Audit)
-- [ ] **Status:** Usulan—belum disetujui implementasi. Tidak ada implementasi dari pencatatan ini.
+- [x] **Status:** Selesai—terverifikasi lokal (implemented + local-tested, 2026-10-10; bukti di `gap-matrix.json`).
 - **Moonveo / bukti:** 10/60s: reminder/notification settings; persistensi Moonveo tidak diuji
 - **Kaswise sekarang:** Source Kaswise mengubah state lokal secara optimistis lalu mengabaikan error penyimpanan. Belum mereproduksi kegagalan live.
 - **Tindakan yang diusulkan:** Uji gagal simpan; sediakan rollback, feedback atau retry, bukan sukses visual palsu.
@@ -352,14 +368,14 @@ Prioritas pertama: Settings yang lebih terkurasi; tipografi/spacing/control hier
 - **Kriteria penerimaan:** Tidak ada perubahan diam-diam ke kategori lain; efek shared jelas; kegagalan tidak meninggalkan status sukses palsu.
 
 ### G35 — Kejelasan nama tujuan menu (P1 · Polish)
-- [ ] **Status:** Usulan—belum disetujui implementasi. Tidak ada implementasi dari pencatatan ini.
+- [x] **Status:** Selesai—terverifikasi lokal (implemented + local-tested, 2026-10-10; bukti di `gap-matrix.json`).
 - **Moonveo / bukti:** 15/55s: Categories & Budget mencakup income/expense
 - **Kaswise sekarang:** Link Kaswise Kategori & anggaran menuju pengelolaan envelope yang memfilter kategori pengeluaran.
 - **Tindakan yang diusulkan:** Sesuaikan nama/helper dengan kemampuan nyata, atau spesifikasikan manager kategori sebagai fitur terpisah.
 - **Kriteria penerimaan:** Judul/menu sesuai tujuan; tidak menjanjikan pengelolaan income yang belum ditampilkan.
 
 ### G36 — Kelengkapan lokalisasi (P1 · Polish)
-- [ ] **Status:** Usulan—belum disetujui implementasi. Tidak ada implementasi dari pencatatan ini.
+- [x] **Status:** Selesai—terverifikasi lokal (implemented + local-tested, 2026-10-10; bukti di `gap-matrix.json`).
 - **Moonveo / bukti:** 10/60s: language EN terlihat; kelengkapan seluruh Moonveo tidak dibuktikan
 - **Kaswise sekarang:** Kaswise punya pilihan ID/EN; source Help dan sebagian Import masih berbahasa Indonesia tanpa selector locale.
 - **Tindakan yang diusulkan:** Lengkapi terjemahan konten bantuan dan jalur impor yang aktif, serta audit istilah bersama.
