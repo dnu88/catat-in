@@ -10,6 +10,21 @@ import pytest
 from app.services import ai_service
 
 
+@pytest.fixture(autouse=True)
+def _insight_keys_off(monkeypatch):
+    """Setiap test mulai dari tanpa kunci; urutan provider direset ke bawaan.
+
+    Tanpa ini, .env pengembangan (yang memuat DEEPSEEK/ANTHROPIC key) membuat
+    test bergantung pada isi file lokal.
+    """
+    monkeypatch.setattr(ai_service.settings, "DEEPSEEK_API_KEY", None, raising=False)
+    monkeypatch.setattr(ai_service.settings, "ANTHROPIC_API_KEY", None, raising=False)
+    monkeypatch.setattr(
+        ai_service.settings, "INSIGHT_PROVIDER_ORDER", "deepseek,anthropic", raising=False
+    )
+    monkeypatch.setattr(ai_service.settings, "INSIGHT_MAX_TOKENS", 4000, raising=False)
+
+
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -400,3 +415,132 @@ def test_generated_at_is_iso_timestamp():
         pytest.fail(f"generated_at is not a valid ISO timestamp: {ts!r}")
     # Should have timezone info (UTC)
     assert parsed.tzinfo is not None
+
+
+# ---------------------------------------------------------------------------
+# generate_financial_insight — urutan provider (DeepSeek utama, Claude cadangan)
+# ---------------------------------------------------------------------------
+
+VALID_INSIGHT_JSON = json.dumps({
+    "summary": "Pengeluaran terkendali bulan ini.",
+    "highlights": ["Makan turun 12%"],
+    "recommendations": ["Lanjutkan anggaran"],
+    "risk_flags": [],
+})
+
+
+def test_prefers_deepseek_when_its_key_exists(monkeypatch):
+    monkeypatch.setattr(ai_service.settings, "DEEPSEEK_API_KEY", "ds-key", raising=False)
+    monkeypatch.setattr(ai_service.settings, "ANTHROPIC_API_KEY", "sk-ant", raising=False)
+    assert ai_service.insight_provider_order() == ["deepseek", "anthropic"]
+
+
+def test_insight_order_is_configurable_and_ignores_unknown_names(monkeypatch):
+    monkeypatch.setattr(ai_service.settings, "DEEPSEEK_API_KEY", "ds-key", raising=False)
+    monkeypatch.setattr(ai_service.settings, "ANTHROPIC_API_KEY", "sk-ant", raising=False)
+    monkeypatch.setattr(
+        ai_service.settings, "INSIGHT_PROVIDER_ORDER", "anthropic,openai,deepseek", raising=False
+    )
+    assert ai_service.insight_provider_order() == ["anthropic", "deepseek"]
+
+
+def test_insight_order_skips_providers_without_keys(monkeypatch):
+    monkeypatch.setattr(ai_service.settings, "DEEPSEEK_API_KEY", "ds-key", raising=False)
+    assert ai_service.insight_provider_order() == ["deepseek"]
+
+
+@pytest.mark.asyncio
+async def test_insight_without_any_key_returns_local_summary():
+    """Tanpa provider sama sekali: ringkasan lokal, bukan error."""
+    result = await ai_service.generate_financial_insight(
+        {"transaction_count": 8, "expense_total": 250_000}, period="monthly"
+    )
+    assert result["period"] == "monthly"
+    assert "8 transaksi" in result["summary"]
+    assert "gagal" not in result["summary"].lower()
+
+
+@pytest.mark.asyncio
+async def test_deepseek_insight_payload_and_result(monkeypatch):
+    """Payload DeepSeek harus memuat prompt JSON dan anggaran token yang lega."""
+    captured = {}
+
+    class FakeResponse:
+        status_code = 200
+        text = ""
+
+        @staticmethod
+        def json():
+            return {"choices": [{"message": {"content": VALID_INSIGHT_JSON}}]}
+
+    class FakeClient:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *args):
+            return False
+
+        async def post(self, url, headers=None, json=None):
+            captured["url"] = url
+            captured["headers"] = headers
+            captured["payload"] = json
+            return FakeResponse()
+
+    monkeypatch.setattr(ai_service.settings, "DEEPSEEK_API_KEY", "ds-key", raising=False)
+    monkeypatch.setattr(ai_service.httpx, "AsyncClient", FakeClient)
+
+    result = await ai_service.generate_financial_insight(
+        {"total_income": 5_000_000}, period="monthly"
+    )
+
+    assert result["summary"] == "Pengeluaran terkendali bulan ini."
+    assert captured["url"].endswith("/chat/completions")
+    assert captured["headers"]["Authorization"] == "Bearer ds-key"
+    assert captured["payload"]["model"] == ai_service.settings.DEEPSEEK_MODEL
+    assert captured["payload"]["max_tokens"] >= 2000
+    prompt = captured["payload"]["messages"][0]["content"]
+    assert "JSON" in prompt and "Bahasa Indonesia" in prompt
+    assert "5000000" in prompt or "5_000_000" in prompt
+
+
+@pytest.mark.asyncio
+async def test_empty_deepseek_answer_falls_through_to_claude(monkeypatch):
+    """DeepSeek balas kosong (reasoning habis) → Claude yang dipakai."""
+    monkeypatch.setattr(ai_service.settings, "DEEPSEEK_API_KEY", "ds-key", raising=False)
+    monkeypatch.setattr(ai_service.settings, "ANTHROPIC_API_KEY", "sk-ant", raising=False)
+
+    async def empty(prompt):
+        raise RuntimeError("DeepSeek mengembalikan jawaban kosong")
+
+    async def ok(prompt):
+        return VALID_INSIGHT_JSON
+
+    monkeypatch.setattr(ai_service, "_deepseek_insight_json", empty)
+    monkeypatch.setattr(ai_service, "_anthropic_insight_json", ok)
+
+    result = await ai_service.generate_financial_insight({}, period="monthly")
+    assert result["summary"] == "Pengeluaran terkendali bulan ini."
+
+
+@pytest.mark.asyncio
+async def test_all_insight_providers_failing_returns_local_fallback(monkeypatch):
+    """Semua provider gagal → ringkasan lokal dengan pesan jujur, bukan 500."""
+    monkeypatch.setattr(ai_service.settings, "DEEPSEEK_API_KEY", "ds-key", raising=False)
+    monkeypatch.setattr(ai_service.settings, "ANTHROPIC_API_KEY", "sk-ant", raising=False)
+
+    async def boom(prompt):
+        raise RuntimeError("credit balance is too low")
+
+    monkeypatch.setattr(ai_service, "_deepseek_insight_json", boom)
+    monkeypatch.setattr(ai_service, "_anthropic_insight_json", boom)
+
+    result = await ai_service.generate_financial_insight(
+        {"transaction_count": 3, "expense_total": 90_000}, period="monthly"
+    )
+    assert "gagal" in result["summary"].lower()
+    assert result["highlights"]
+    assert result["recommendations"]
+    assert "data_quality" in result
