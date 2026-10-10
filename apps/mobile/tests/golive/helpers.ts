@@ -89,12 +89,23 @@ export async function openBudgets(page: Page) {
 
 export async function openManualTransaction(page: Page) {
   await gotoApp(page, '/transaction-new');
-  await expect(page.getByTestId('transaction-form-amount')).toBeVisible();
+  // Premium (compact) entry renders the shared TransactionFields component; legacy renders
+  // its own form. Accept either amount field.
+  await expect(
+    page.getByTestId('transaction-form-amount').or(page.getByTestId('transaction-fields-amount')),
+  ).toBeVisible({ timeout: 30_000 });
 }
 
 export async function createWallet(page: Page, name = testData.walletName) {
   await openWallets(page);
-  await page.getByTestId('wallets-create-toggle').click();
+  // Premium wallets exposes a single body CTA (`wallets-add-cta`) and removes the legacy
+  // header toggle. Accept either so the smoke works under both rollout states.
+  const addCta = page.getByTestId('wallets-add-cta');
+  if (await addCta.count()) {
+    await addCta.first().click();
+  } else {
+    await page.getByTestId('wallets-create-toggle').click();
+  }
   await expect(page.getByTestId('wallet-create-form')).toBeVisible();
   await page.getByLabel(/Nama dompet|Wallet name/i).first().fill(name);
   await page.getByLabel(/Saldo awal|Starting balance/i).first().fill('1000000');
@@ -169,16 +180,49 @@ async function waitForManualTransactionResult(page: Page, description: string) {
 
 export async function createManualExpense(page: Page) {
   await openManualTransaction(page);
-  await page.getByLabel('Nominal transaksi').fill(testData.manualAmount);
-  await page.getByLabel('Deskripsi transaksi').fill(testData.manualDescription);
-  await page.getByRole('button', { name: new RegExp(`Pilih dompet ${testData.walletName}`) }).first().click();
-  await page.getByRole('button', { name: /Pilih kategori Makan/i }).click();
-  await page.getByLabel('Merchant transaksi opsional').fill('GoLive Warteg');
+
+  const premiumFields = page.getByTestId('transaction-fields');
+  const isPremium = (await premiumFields.count()) > 0;
+
+  // Amount — premium label is "Nominal" (shared fields), legacy is "Nominal transaksi".
+  const amountInput = isPremium
+    ? premiumFields.getByRole('textbox').first()
+    : page.getByLabel('Nominal transaksi').first();
+  await amountInput.fill(testData.manualAmount);
+
+  if (isPremium) {
+    // Category lives behind a picker row in premium mode.
+    await premiumFields.getByTestId('transaction-fields-category').click();
+    await page.getByRole('button', { name: /Pilih kategori Makan|Category: Food|Makan/i }).first().click();
+
+    // Single-wallet accounts auto-select the only wallet; only open the sheet when needed.
+    const walletRow = premiumFields.getByTestId('transaction-fields-wallet');
+    const walletRowText = (await walletRow.innerText().catch(() => '')) || '';
+    if (!walletRowText.includes(testData.walletName)) {
+      await walletRow.click();
+      await page.getByRole('button', { name: new RegExp(`Pilih dompet ${testData.walletName}`) }).first().click();
+    }
+
+    // Merchant/description sit behind the "add detail" toggle.
+    await premiumFields.getByTestId('transaction-fields-detail-toggle').click();
+    await premiumFields.getByTestId('transaction-fields-merchant').fill('GoLive Warteg');
+    await premiumFields.getByTestId('transaction-fields-description').fill(testData.manualDescription);
+  } else {
+    await page.getByLabel('Deskripsi transaksi').fill(testData.manualDescription);
+    await page.getByRole('button', { name: new RegExp(`Pilih dompet ${testData.walletName}`) }).first().click();
+    await page.getByRole('button', { name: /Pilih kategori Makan/i }).click();
+    await page.getByLabel('Merchant transaksi opsional').fill('GoLive Warteg');
+  }
 
   const stopDialogAutoAccept = registerExpectedDialogAutoAccept(page, /Berhasil|Transaksi tersimpan/i);
   let operationError: unknown = null;
   try {
-    await page.getByRole('button', { name: /Simpan transaksi manual/i }).click();
+    const submit = page.getByTestId('transaction-form-submit');
+    if (await submit.count()) {
+      await submit.first().click();
+    } else {
+      await page.getByRole('button', { name: /Simpan transaksi manual/i }).click();
+    }
     await waitForManualTransactionResult(page, testData.manualDescription);
   } catch (error) {
     operationError = error;
@@ -193,6 +237,38 @@ export async function createManualExpense(page: Page) {
 
 export async function createCaptureExpense(page: Page) {
   await gotoApp(page, '/capture');
+
+  // Premium capture renders the shared CaptureComposer; legacy renders the receipt/voice workspace.
+  const composer = page.getByTestId('capture-composer');
+  if ((await composer.count()) > 0) {
+    const input = page.getByTestId('capture-composer-input');
+    await expect(input).toBeVisible({ timeout: 30_000 });
+    await input.fill(testData.captureDescription);
+
+    const walletRow = page.getByTestId('capture-composer-wallet');
+    if (await walletRow.count()) {
+      const label = await walletRow.first().innerText().catch(() => '');
+      if (label && !label.includes(testData.walletName)) {
+        await walletRow.first().click();
+        await page.getByTestId('capture-composer-wallet-options').waitFor({ state: 'visible', timeout: 10_000 }).catch(() => undefined);
+        await page.getByRole('button', { name: new RegExp(`Pilih dompet ${testData.walletName}`) }).first().click().catch(() => undefined);
+      }
+    }
+
+    const submit = page.getByTestId('capture-composer-submit');
+    await expect(submit).toBeVisible({ timeout: 30_000 });
+    // Text autosave (aiAutosaveText) may already have saved a clear sentence; submitting is still
+    // the primary path, so click only while the CTA is still actionable.
+    if (await submit.isEnabled().catch(() => false)) {
+      await submit.click();
+    }
+
+    await expect(
+      page.getByTestId('capture-entry-success').or(page.getByTestId('capture-success')),
+    ).toBeVisible({ timeout: 30_000 });
+    return;
+  }
+
   await expect(page.getByTestId('capture-input')).toBeVisible();
   const textMode = page.getByTestId('capture-mode-Teks');
   if (await textMode.isVisible().catch(() => false)) await textMode.click();
