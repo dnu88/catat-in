@@ -490,11 +490,103 @@ async def analyze_receipt_image(
     return _unreadable_receipt()
 
 
-async def generate_financial_insight(user_data: dict, period: str = "monthly") -> dict:
-    """Generate a structured financial insight dict from Claude.
+# Urutan provider AI Insight bawaan bila INSIGHT_PROVIDER_ORDER tidak diisi.
+DEFAULT_INSIGHT_PROVIDER_ORDER = ("deepseek", "anthropic")
 
-    Always returns a dict with all required keys. If the API key is missing or
-    Claude fails, a graceful fallback dict is returned — never raises.
+_INSIGHT_KEY_BY_PROVIDER = {
+    "deepseek": "DEEPSEEK_API_KEY",
+    "anthropic": "ANTHROPIC_API_KEY",
+}
+
+
+def insight_provider_order() -> list[str]:
+    """Urutan provider AI Insight yang tersedia (kuncinya terisi).
+
+    Sejalan dengan vision_provider_order(): satu akun yang kreditnya habis tidak
+    boleh mematikan fitur Insight, dan perpindahan akun cukup lewat env tanpa
+    deploy ulang. Nama provider yang tidak dikenal diabaikan.
+    """
+    raw = (getattr(settings, "INSIGHT_PROVIDER_ORDER", "") or "").strip()
+    names = [n.strip().lower() for n in raw.split(",") if n.strip()]
+    if not names:
+        names = list(DEFAULT_INSIGHT_PROVIDER_ORDER)
+
+    order: list[str] = []
+    for name in names:
+        attr = _INSIGHT_KEY_BY_PROVIDER.get(name)
+        if attr is None:
+            continue
+        if getattr(settings, attr, None) and name not in order:
+            order.append(name)
+    return order
+
+
+async def _deepseek_insight_json(prompt: str) -> str:
+    """AI Insight lewat DeepSeek (endpoint kompatibel-OpenAI).
+
+    Insight butuh penalaran, dan `deepseek-flash` adalah model reasoning: token
+    untuk reasoning_content diambil dari anggaran yang sama, jadi max_tokens
+    harus lega (INSIGHT_MAX_TOKENS). Jawaban kosong pada HTTP 200 diperlakukan
+    sebagai kegagalan supaya provider berikutnya dicoba.
+    """
+    if not settings.DEEPSEEK_API_KEY:
+        raise RuntimeError("DEEPSEEK_API_KEY belum dikonfigurasi di server.")
+
+    payload = {
+        "model": settings.DEEPSEEK_MODEL,
+        "max_tokens": settings.INSIGHT_MAX_TOKENS,
+        "temperature": 0,
+        "messages": [{"role": "user", "content": prompt}],
+    }
+
+    async with httpx.AsyncClient(timeout=180) as client:
+        response = await client.post(
+            f"{settings.DEEPSEEK_BASE_URL.rstrip('/')}/chat/completions",
+            headers={
+                "Authorization": f"Bearer {settings.DEEPSEEK_API_KEY}",
+                "Content-Type": "application/json",
+            },
+            json=payload,
+        )
+
+    if response.status_code >= 400:
+        raise RuntimeError(
+            f"DeepSeek error {response.status_code}: {response.text[:200]}"
+        )
+
+    choices = response.json().get("choices") or []
+    if not choices:
+        raise RuntimeError("DeepSeek tidak mengembalikan pilihan jawaban.")
+
+    message = choices[0].get("message", {}) or {}
+    content = (message.get("content") or "").strip()
+    if not content:
+        hint = (
+            " (token habis untuk reasoning; naikkan INSIGHT_MAX_TOKENS)"
+            if message.get("reasoning_content")
+            else ""
+        )
+        raise RuntimeError(f"DeepSeek mengembalikan jawaban kosong{hint}")
+    return content
+
+
+async def _anthropic_insight_json(prompt: str) -> str:
+    """AI Insight lewat Claude (cadangan)."""
+    client = _get_async_anthropic_client()
+    response = await client.messages.create(
+        model=settings.ANTHROPIC_MODEL_INSIGHT,
+        max_tokens=2048,
+        messages=[{"role": "user", "content": prompt}],
+    )
+    return response.content[0].text
+
+
+async def generate_financial_insight(user_data: dict, period: str = "monthly") -> dict:
+    """Generate a structured financial insight dict.
+
+    Provider mengikuti INSIGHT_PROVIDER_ORDER (bawaan: DeepSeek -> Claude).
+    Always returns a dict with all required keys: kalau kunci tidak ada atau
+    semua provider gagal, ringkasan lokal dikembalikan — never raises.
     """
     user_data = user_data or {}
     context = {
@@ -504,7 +596,8 @@ async def generate_financial_insight(user_data: dict, period: str = "monthly") -
         "other_category_percent": user_data.get("other_category_percent"),
     }
 
-    if not settings.ANTHROPIC_API_KEY:
+    providers = insight_provider_order()
+    if not providers:
         return normalize_insight_response(
             _build_local_insight_payload(user_data, period), context
         )
@@ -534,33 +627,37 @@ FORMAT JSON yang harus dikembalikan:
 
 INGAT: HANYA kembalikan JSON. Tidak boleh ada teks lain."""
 
-    try:
-        client = _get_async_anthropic_client()
-        response = await client.messages.create(
-            model=settings.ANTHROPIC_MODEL_INSIGHT,
-            max_tokens=2048,
-            messages=[{"role": "user", "content": prompt}],
-        )
-        raw_text = response.content[0].text.strip()
-        cleaned = _strip_json_code_block(raw_text)
-        parsed = json.loads(cleaned)
-        return normalize_insight_response(parsed, context)
+    last_error: Exception | None = None
+    for provider in providers:
+        try:
+            if provider == "deepseek":
+                raw_text = await _deepseek_insight_json(prompt)
+            else:
+                raw_text = await _anthropic_insight_json(prompt)
+            cleaned = _strip_json_code_block(raw_text.strip())
+            parsed = json.loads(cleaned)
+            return normalize_insight_response(parsed, context)
+        except Exception as exc:  # provider bermasalah -> coba berikutnya
+            last_error = exc
+            continue
 
-    except (json.JSONDecodeError, anthropic.APIError, Exception):
-        import logging
+    # Semua provider gagal: jangan 500 — balas ringkasan lokal dengan pesan jujur.
+    import logging
 
-        logging.getLogger("app.services.ai_service").exception(
-            "generate_financial_insight failed for period=%s", period
-        )
-        error_msg = (
-            "Maaf, insight AI gagal diproses. "
-            "Silakan coba lagi nanti atau gunakan laporan dashboard."
-        )
-        fallback = _build_local_insight_payload(user_data, period)
-        fallback["summary"] = (
-            f"{error_msg} Berikut ringkasan lokal dari data yang tersedia."
-        )
-        return normalize_insight_response(fallback, context)
+    logging.getLogger("app.services.ai_service").exception(
+        "generate_financial_insight gagal untuk provider=%s (error terakhir: %s)",
+        providers,
+        last_error,
+    )
+    error_msg = (
+        "Maaf, insight AI gagal diproses. "
+        "Silakan coba lagi nanti atau gunakan laporan dashboard."
+    )
+    fallback = _build_local_insight_payload(user_data, period)
+    fallback["summary"] = (
+        f"{error_msg} Berikut ringkasan lokal dari data yang tersedia."
+    )
+    return normalize_insight_response(fallback, context)
 
 
 def period_keterangan(period: str) -> str:

@@ -117,6 +117,14 @@ class Settings(BaseSettings):
     # sama-sama kehabisan kredit, sementara deepseek-flash sanggup membaca gambar).
     VISION_PROVIDER_ORDER: str = "deepseek,gemini,anthropic"
 
+    # Urutan provider AI Insight (analisis keuangan), dipisah koma. Sama seperti
+    # VISION_PROVIDER_ORDER: hanya provider yang kuncinya terisi yang dipakai, dan
+    # bisa diubah lewat env tanpa deploy. Bila semua provider gagal, endpoint tetap
+    # membalas ringkasan lokal (tidak pernah 500).
+    INSIGHT_PROVIDER_ORDER: str = "deepseek,anthropic"
+    # deepseek-flash adalah model reasoning: beri ruang token lega untuk penalaran.
+    INSIGHT_MAX_TOKENS: int = 4000
+
     # Midtrans
     MIDTRANS_SERVER_KEY: str | None = None
     MIDTRANS_CLIENT_KEY: str | None = None
