@@ -1,9 +1,10 @@
-"""Uji jalur pembaca gambar/struk (Gemini utama -> Claude cadangan).
+"""Uji jalur pembaca gambar/struk (DeepSeek utama -> Gemini -> Claude).
 
-Latar: setelah provider teks pindah ke DeepSeek, jalur struk tetap terikat
-Claude yang kreditnya habis, sehingga fitur scan struk mati di produksi.
-DeepSeek tidak menerima gambar, jadi jalur struk sekarang memakai Gemini
-(endpoint kompatibel-OpenAI) dengan Claude sebagai cadangan — dan satu akun
+Latar: setelah provider teks pindah ke DeepSeek, jalur struk sempat terikat
+Gemini lalu Claude — dan keduanya kehabisan kredit, sehingga fitur scan struk
+mati di produksi. Probe 2026-10-10 membuktikan asumsi lama ("DeepSeek tidak
+menerima gambar") keliru: deepseek-flash membaca dua struk berbeda dengan benar.
+Urutan provider sekarang mengikuti VISION_PROVIDER_ORDER, dan satu akun
 bermasalah tidak boleh mematikan scan struk.
 """
 
@@ -28,8 +29,173 @@ def _run(coro):
 @pytest.fixture(autouse=True)
 def _quiet_keys(monkeypatch):
     """Setiap test mulai dari tanpa kunci sama sekali."""
+    monkeypatch.setattr(settings, "DEEPSEEK_API_KEY", None, raising=False)
     monkeypatch.setattr(settings, "GEMINI_API_KEY", None, raising=False)
     monkeypatch.setattr(settings, "ANTHROPIC_API_KEY", None, raising=False)
+    monkeypatch.setattr(
+        settings, "VISION_PROVIDER_ORDER", "deepseek,gemini,anthropic", raising=False
+    )
+
+
+def test_prefers_deepseek_when_its_key_exists(monkeypatch):
+    monkeypatch.setattr(settings, "DEEPSEEK_API_KEY", "ds-key", raising=False)
+    monkeypatch.setattr(settings, "GEMINI_API_KEY", "gemini-key", raising=False)
+    monkeypatch.setattr(settings, "ANTHROPIC_API_KEY", "sk-ant", raising=False)
+    assert ai_service.active_vision_provider() == "deepseek"
+    assert ai_service.vision_provider_order() == ["deepseek", "gemini", "anthropic"]
+
+
+def test_order_follows_the_configured_vision_provider_order(monkeypatch):
+    """Kalau kredit berpindah akun, cukup ubah env — tanpa deploy ulang."""
+    monkeypatch.setattr(settings, "DEEPSEEK_API_KEY", "ds-key", raising=False)
+    monkeypatch.setattr(settings, "GEMINI_API_KEY", "gemini-key", raising=False)
+    monkeypatch.setattr(settings, "VISION_PROVIDER_ORDER", "gemini,deepseek", raising=False)
+    assert ai_service.vision_provider_order() == ["gemini", "deepseek"]
+    assert ai_service.active_vision_provider() == "gemini"
+
+
+def test_unknown_or_unkeyed_providers_are_skipped(monkeypatch):
+    """Salah tulis nama provider tidak boleh mematikan scan struk."""
+    monkeypatch.setattr(settings, "GEMINI_API_KEY", "gemini-key", raising=False)
+    monkeypatch.setattr(
+        settings, "VISION_PROVIDER_ORDER", "openai, deepseek, gemini, gemini", raising=False
+    )
+    assert ai_service.vision_provider_order() == ["gemini"]
+
+
+def test_deepseek_payload_carries_the_image_and_a_generous_token_budget(monkeypatch):
+    """deepseek-flash model reasoning: anggaran token harus lega, bukan 1024."""
+    captured = {}
+
+    class FakeResponse:
+        status_code = 200
+        text = ""
+
+        @staticmethod
+        def json():
+            return {"choices": [{"message": {"content": RECEIPT_JSON}}]}
+
+    class FakeClient:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *args):
+            return False
+
+        async def post(self, url, headers=None, json=None):
+            captured["url"] = url
+            captured["headers"] = headers
+            captured["payload"] = json
+            return FakeResponse()
+
+    monkeypatch.setattr(settings, "DEEPSEEK_API_KEY", "ds-key", raising=False)
+    monkeypatch.setattr(ai_service.httpx, "AsyncClient", FakeClient)
+
+    out = _run(ai_service.analyze_receipt_image(b"fake-bytes", "image/jpeg"))
+
+    assert out["total_amount"] == 125000
+    assert captured["url"].endswith("/chat/completions")
+    assert captured["headers"]["Authorization"] == "Bearer ds-key"
+    assert captured["payload"]["model"] == settings.DEEPSEEK_MODEL
+    assert captured["payload"]["max_tokens"] >= 2000
+
+    parts = captured["payload"]["messages"][1]["content"]
+    image_part = next(part for part in parts if part["type"] == "image_url")
+    assert image_part["image_url"]["url"].startswith("data:image/jpeg;base64,")
+
+
+def test_empty_deepseek_answer_falls_through_to_the_next_provider(monkeypatch):
+    """HTTP 200 dengan content kosong (reasoning menghabiskan token) bukan hasil valid."""
+    monkeypatch.setattr(settings, "DEEPSEEK_API_KEY", "ds-key", raising=False)
+    monkeypatch.setattr(settings, "GEMINI_API_KEY", "gemini-key", raising=False)
+
+    async def empty(image_b64, media_type):
+        raise RuntimeError("DeepSeek mengembalikan jawaban kosong")
+
+    async def ok(image_b64, media_type):
+        return RECEIPT_JSON
+
+    monkeypatch.setattr(ai_service, "_deepseek_receipt_json", empty)
+    monkeypatch.setattr(ai_service, "_gemini_receipt_json", ok)
+
+    out = _run(ai_service.analyze_receipt_image(b"fake-bytes", "image/jpeg"))
+    assert out["total_amount"] == 125000
+
+
+def test_deepseek_receipt_json_rejects_empty_content(monkeypatch):
+    """Tanpa provider lain, jawaban kosong = error yang jelas, bukan 'tidak terbaca'."""
+    monkeypatch.setattr(settings, "DEEPSEEK_API_KEY", "ds-key", raising=False)
+
+    class FakeResponse:
+        status_code = 200
+        text = ""
+
+        @staticmethod
+        def json():
+            return {
+                "choices": [
+                    {"message": {"content": "", "reasoning_content": "thinking..."}}
+                ]
+            }
+
+    class FakeClient:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *args):
+            return False
+
+        async def post(self, url, headers=None, json=None):
+            return FakeResponse()
+
+    monkeypatch.setattr(ai_service.httpx, "AsyncClient", FakeClient)
+
+    async def boom(image_b64, media_type):
+        raise RuntimeError("jangan sampai dipanggil")
+
+    monkeypatch.setattr(ai_service, "_gemini_receipt_json", boom)
+    monkeypatch.setattr(ai_service, "_anthropic_receipt_json", boom)
+
+    with pytest.raises(RuntimeError) as excinfo:
+        _run(ai_service.analyze_receipt_image(b"fake-bytes", "image/jpeg"))
+    assert "kosong" in str(excinfo.value)
+
+
+def test_deepseek_error_status_is_reported(monkeypatch):
+    monkeypatch.setattr(settings, "DEEPSEEK_API_KEY", "ds-key", raising=False)
+
+    class FakeResponse:
+        status_code = 402
+        text = '{"error":{"message":"Insufficient Balance"}}'
+
+        @staticmethod
+        def json():
+            return {}
+
+    class FakeClient:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *args):
+            return False
+
+        async def post(self, url, headers=None, json=None):
+            return FakeResponse()
+
+    monkeypatch.setattr(ai_service.httpx, "AsyncClient", FakeClient)
+
+    with pytest.raises(RuntimeError) as excinfo:
+        _run(ai_service._deepseek_receipt_json("b64", "image/jpeg"))
+    assert "DeepSeek error 402" in str(excinfo.value)
 
 
 def test_prefers_gemini_when_its_key_exists(monkeypatch):

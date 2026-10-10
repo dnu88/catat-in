@@ -197,23 +197,51 @@ RECEIPT_ANALYSIS_USER_TEXT = (
     "Tolong analisis struk belanja ini dan ekstrak informasi transaksinya."
 )
 
+# deepseek-flash adalah model reasoning: sebagian token habis untuk
+# reasoning_content sebelum menulis jawaban. Anggaran terlalu kecil membuat
+# `content` kosong walau HTTP 200, jadi beri ruang lega.
+_RECEIPT_MAX_TOKENS = 2500
+
+# Urutan provider gambar bawaan bila VISION_PROVIDER_ORDER tidak diisi.
+DEFAULT_VISION_PROVIDER_ORDER = ("deepseek", "gemini", "anthropic")
+
+_VISION_KEY_BY_PROVIDER = {
+    "deepseek": "DEEPSEEK_API_KEY",
+    "gemini": "GEMINI_API_KEY",
+    "anthropic": "ANTHROPIC_API_KEY",
+}
+
+
+def vision_provider_order() -> list[str]:
+    """Urutan provider gambar yang benar-benar tersedia (kuncinya terisi).
+
+    Mengikuti VISION_PROVIDER_ORDER (dipisah koma). Nama yang tidak dikenal
+    diabaikan supaya salah tulis konfigurasi tidak mematikan fitur scan struk,
+    dan satu akun yang bermasalah tidak menghapus provider lain dari daftar.
+    """
+    raw = (getattr(settings, "VISION_PROVIDER_ORDER", "") or "").strip()
+    names = [n.strip().lower() for n in raw.split(",") if n.strip()]
+    if not names:
+        names = list(DEFAULT_VISION_PROVIDER_ORDER)
+
+    order: list[str] = []
+    for name in names:
+        attr = _VISION_KEY_BY_PROVIDER.get(name)
+        if attr is None:
+            continue
+        if getattr(settings, attr, None) and name not in order:
+            order.append(name)
+    return order
+
 
 def active_vision_provider() -> str:
-    """Provider gambar yang dicoba lebih dulu: Gemini, lalu Claude."""
-    if settings.GEMINI_API_KEY:
-        return "gemini"
-    if settings.ANTHROPIC_API_KEY:
-        return "anthropic"
-    return "none"
+    """Provider gambar yang dicoba lebih dulu (bawaan: DeepSeek)."""
+    order = vision_provider_order()
+    return order[0] if order else "none"
 
 
 def _vision_providers() -> list[str]:
-    providers: list[str] = []
-    if settings.GEMINI_API_KEY:
-        providers.append("gemini")
-    if settings.ANTHROPIC_API_KEY:
-        providers.append("anthropic")
-    return providers
+    return vision_provider_order()
 
 
 def _unreadable_receipt(confidence: float = 0.2) -> dict:
@@ -297,10 +325,11 @@ async def _gemini_chat_once(model: str, image_b64: str, media_type: str) -> str:
 async def _gemini_receipt_json(image_b64: str, media_type: str) -> str:
     """Baca struk lewat Gemini (endpoint kompatibel-OpenAI Google AI Studio).
 
-    DeepSeek tidak menerima gambar, jadi jalur struk memakai Gemini sebagai
-    provider utama dengan Claude sebagai cadangan. Model diatur lewat
-    GEMINI_MODEL, dan bila model itu sudah dipensiunkan untuk kunci baru,
-    GEMINI_FALLBACK_MODEL dicoba otomatis sebelum menyerah.
+    Gemini adalah cadangan: provider utama kini DeepSeek, yang ternyata sanggup
+    membaca gambar (dibuktikan dengan probe dua struk berbeda + kontrol tanpa
+    gambar). Model diatur lewat GEMINI_MODEL, dan bila model itu sudah
+    dipensiunkan untuk kunci baru, GEMINI_FALLBACK_MODEL dicoba otomatis
+    sebelum menyerah.
     """
     if not settings.GEMINI_API_KEY:
         raise RuntimeError("GEMINI_API_KEY belum dikonfigurasi di server.")
@@ -314,6 +343,72 @@ async def _gemini_receipt_json(image_b64: str, media_type: str) -> str:
             continue
 
     raise RuntimeError(f"Model Gemini tidak tersedia: {last_error}") from last_error
+
+
+async def _deepseek_receipt_json(image_b64: str, media_type: str) -> str:
+    """Baca struk lewat DeepSeek (endpoint kompatibel-OpenAI).
+
+    DeepSeek dianggap hanya bisa teks sampai probe 2026-10-10 membuktikan
+    sebaliknya: `deepseek-flash` mengiklankan input_modalities ['text','image']
+    dan benar-benar membaca dua struk berbeda (kode nota acak ikut terbaca).
+
+    Catatan: `deepseek-flash` adalah model *reasoning*, jadi sebagian token
+    habis untuk reasoning_content sebelum jawaban ditulis. Bila anggaran token
+    terlalu kecil, `content` bisa kosong meski statusnya HTTP 200 — kondisi itu
+    dilempar sebagai error supaya provider berikutnya dicoba, bukan dianggap
+    "struk tidak terbaca".
+    """
+    if not settings.DEEPSEEK_API_KEY:
+        raise RuntimeError("DEEPSEEK_API_KEY belum dikonfigurasi di server.")
+
+    payload = {
+        "model": settings.DEEPSEEK_MODEL,
+        "max_tokens": _RECEIPT_MAX_TOKENS,
+        "temperature": 0,
+        "messages": [
+            {"role": "system", "content": RECEIPT_ANALYSIS_PROMPT},
+            {
+                "role": "user",
+                "content": [
+                    {
+                        "type": "image_url",
+                        "image_url": {"url": f"data:{media_type};base64,{image_b64}"},
+                    },
+                    {"type": "text", "text": RECEIPT_ANALYSIS_USER_TEXT},
+                ],
+            },
+        ],
+    }
+
+    async with httpx.AsyncClient(timeout=120) as client:
+        response = await client.post(
+            f"{settings.DEEPSEEK_BASE_URL.rstrip('/')}/chat/completions",
+            headers={
+                "Authorization": f"Bearer {settings.DEEPSEEK_API_KEY}",
+                "Content-Type": "application/json",
+            },
+            json=payload,
+        )
+
+    if response.status_code >= 400:
+        raise RuntimeError(
+            f"DeepSeek error {response.status_code}: {response.text[:200]}"
+        )
+
+    choices = response.json().get("choices") or []
+    if not choices:
+        raise RuntimeError("DeepSeek tidak mengembalikan pilihan jawaban.")
+
+    message = choices[0].get("message", {}) or {}
+    content = message.get("content") or ""
+    if not content.strip():
+        hint = (
+            " (token habis untuk reasoning; naikkan _RECEIPT_MAX_TOKENS)"
+            if message.get("reasoning_content")
+            else ""
+        )
+        raise RuntimeError(f"DeepSeek mengembalikan jawaban kosong{hint}")
+    return content
 
 
 async def _anthropic_receipt_json(image_b64: str, media_type: str) -> str:
@@ -354,10 +449,11 @@ async def analyze_receipt_image(
 ) -> dict:
     """Baca struk dari gambar.
 
-    Urutan provider: Gemini (utama) -> Claude (cadangan). Satu akun yang
-    bermasalah tidak boleh mematikan seluruh fitur scan struk. Kalau tidak ada
-    provider gambar sama sekali, balasannya sama seperti sebelumnya: struk
-    dianggap tidak terbaca (bukan error) supaya aplikasi tetap jalan.
+    Urutan provider mengikuti VISION_PROVIDER_ORDER (bawaan: DeepSeek -> Gemini
+    -> Claude). Satu akun yang bermasalah tidak boleh mematikan seluruh fitur
+    scan struk. Kalau tidak ada provider gambar sama sekali, balasannya sama
+    seperti sebelumnya: struk dianggap tidak terbaca (bukan error) supaya
+    aplikasi tetap jalan.
     """
     providers = _vision_providers()
     if not providers:
@@ -369,7 +465,9 @@ async def analyze_receipt_image(
 
     for provider in providers:
         try:
-            if provider == "gemini":
+            if provider == "deepseek":
+                raw = await _deepseek_receipt_json(image_b64, media_type)
+            elif provider == "gemini":
                 raw = await _gemini_receipt_json(image_b64, media_type)
             else:
                 raw = await _anthropic_receipt_json(image_b64, media_type)
