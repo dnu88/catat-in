@@ -102,7 +102,7 @@ class Settings(BaseSettings):
     DEEPSEEK_MODEL: str = "deepseek-flash"
     DEEPSEEK_BASE_URL: str = "https://api.deepseek.com"
 
-    # Gemini (pembaca gambar/struk — DeepSeek hanya menerima teks).
+    # Gemini (pembaca gambar/struk — cadangan).
     # Endpoint-nya kompatibel-OpenAI, jadi bentuk panggilannya sama seperti DeepSeek.
     GEMINI_API_KEY: str | None = None
     GEMINI_MODEL: str = "gemini-3.8-flash"
@@ -110,6 +110,12 @@ class Settings(BaseSettings):
     # (pernah terjadi: gemini-2.5-flash -> "no longer available to new users").
     GEMINI_FALLBACK_MODEL: str = "gemini-flash-latest"
     GEMINI_BASE_URL: str = "https://generativelanguage.googleapis.com/v1beta/openai"
+
+    # Urutan provider pembaca struk/gambar, dipisah koma. Hanya provider yang
+    # kuncinya terisi yang dipakai. Bisa diubah lewat env tanpa deploy ulang —
+    # berguna saat kredit salah satu akun habis (pernah terjadi: Gemini & Claude
+    # sama-sama kehabisan kredit, sementara deepseek-flash sanggup membaca gambar).
+    VISION_PROVIDER_ORDER: str = "deepseek,gemini,anthropic"
 
     # Midtrans
     MIDTRANS_SERVER_KEY: str | None = None
