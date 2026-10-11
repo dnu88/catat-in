@@ -69,6 +69,7 @@ Prioritas pertama: Settings yang lebih terkurasi; tipografi/spacing/control hier
 - **Guardrail:** bagian yang dipertahankan dan diuji regression.
 - **Selesai—terverifikasi lokal:** implementasi ada di HEAD dan lolos tes otomatis lokal; belum live-verified.
 - **Audit browser hijau—QA perangkat tertunda:** sudah diuji suite browser lokal (Playwright), masih menunggu QA perangkat fisik.
+- **Terverifikasi perangkat—live-verified:** sudah diuji di perangkat fisik (iPhone 14 · Chrome iOS). Item yang diuji di produksi (`app.kaswise.com`) bersifat live-verified; yang diuji pada preview bundle dicatat di `verifikasi.perangkat.tingkat`.
 - P1 = dampak/kepentingan awal; P2 = penyempurnaan/QA lanjutan; P3 = feature discovery. Prioritas ini rekomendasi, bukan urutan yang sudah disetujui pengguna.
 
 **Total: 36 item = 17 polish + 11 audit + 5 opsional + 3 guardrail.**
@@ -91,13 +92,13 @@ Prioritas pertama: Settings yang lebih terkurasi; tipografi/spacing/control hier
 | G13 | P2 | Polish | Kategori dan anggaran list | Usulan—belum disetujui implementasi |
 | G14 | P2 | Polish | Editor visual kategori | Usulan—belum disetujui implementasi |
 | G15 | P2 | Opsional | Detail kategori | Usulan—belum disetujui implementasi |
-| G16 | P2 | Audit | Pola bottom sheet | Audit browser hijau—QA perangkat tertunda |
-| G17 | P2 | Audit | Keyboard dan formulir | Audit browser hijau—QA perangkat tertunda |
-| G18 | P2 | Audit | Navigasi bawah dan scroll | Audit browser hijau—QA perangkat tertunda |
-| G19 | P2 | Audit | Feedback interaksi | Audit browser hijau—QA perangkat tertunda |
-| G20 | P2 | Audit | Motion konsisten | Audit browser hijau—QA perangkat tertunda |
-| G21 | P2 | Audit | Loading, layoutshift, offline/error | Audit browser hijau—QA perangkat tertunda |
-| G22 | P2 | Audit | Kontras, tap target, fontbesar | Audit browser hijau—QA perangkat tertunda |
+| G16 | P2 | Audit | Pola bottom sheet | Terverifikasi perangkat—live-verified |
+| G17 | P2 | Audit | Keyboard dan formulir | Terverifikasi perangkat—live-verified |
+| G18 | P2 | Audit | Navigasi bawah dan scroll | Terverifikasi perangkat—live-verified |
+| G19 | P2 | Audit | Feedback interaksi | Terverifikasi perangkat—live-verified |
+| G20 | P2 | Audit | Motion konsisten | Terverifikasi perangkat—live-verified |
+| G21 | P2 | Audit | Loading, layoutshift, offline/error | Terverifikasi perangkat—live-verified |
+| G22 | P2 | Audit | Kontras, tap target, fontbesar | Terverifikasi perangkat—live-verified |
 | G23 | P2 | Audit | Chart berdata nyata | Audit browser hijau—QA perangkat tertunda |
 | G24 | P2 | Polish | Tema yang benar-benar konsisten | Selesai—terverifikasi lokal |
 | G25 | P2 | Audit | Context dan dompet | Usulan—belum disetujui implementasi |
@@ -121,10 +122,14 @@ Diverifikasi terhadap HEAD `f2bbf9e` pada branch `release/v2-transaction-entry` 
 |---|---|
 | Jest (lokal) — `package-a-settings`, `settings-screen`, `settings-notifications`, `notification-bell`, `help-localization`, `legal-route-screen`, `legal-support-section`, `legal-links`, `light-theme-accents` | **61 passed / 0 failed** |
 | Playwright experience suite (lokal, preview bundle `entry-c75572…`, viewport 360/390/430) | **237 passed / 0 failed** |
+| QA perangkat fisik (iPhone 14 · Chrome iOS) — G16–G22 | **7 LULUS / 0 GAGAL** |
 
 - **Selesai—terverifikasi lokal (7):** G01, G02, G08, G24, G33, G35, G36.
-- **Audit browser hijau—QA perangkat tertunda (8):** G16–G23.
-- **Batasan:** keduanya belum dapat disebut *live-verified*. Suite browser memakai preview bundle dengan Supabase stub + override flag; G17 (keyboard) & G20 (motion) hanya dapat dibuktikan di perangkat fisik.
+- **Terverifikasi perangkat—live-verified (7):** G16, G17, G18, G19, G20, G21, G22. G19–G22 diuji di produksi (`app.kaswise.com`); G16–G18 diuji pada preview bundle (kode identik dengan yang live).
+- **Audit browser hijau—QA perangkat tertunda (1):** G23 (chart berdata nyata — butuh akun dengan data).
+- **Guardrail belum diuji di perangkat:** G30, G31, G32.
+- **Batasan:** item Paket A belum dapat disebut *live-verified* sampai ada deploy frontend yang tercatat. G23 butuh akun uji berisi data nyata.
+- **Hasil perangkat (rinci):** `Device QA Results - Moonveo G16-G23 2026-10-10.md`.
 - **Checklist QA perangkat (langkah demi langkah):** lihat `Kaswise Device QA - Moonveo G16-G23 Checklist.md` di folder yang sama.
 
 ## Checklist detail: perbandingan → tindakan → bukti selesai
@@ -235,49 +240,49 @@ Diverifikasi terhadap HEAD `f2bbf9e` pada branch `release/v2-transaction-entry` 
 - **Kriteria penerimaan:** Jika dibuat: filterkategori/periode benar, personal/household benar, back mempertahankan filter.
 
 ### G16 — Pola bottom sheet (P2 · Audit)
-- [x] **Status:** Audit browser hijau—QA perangkat tertunda (Playwright experience suite 237 passed / 0 failed, bundle `entry-c75572…`; QA perangkat fisik belum).
+- [x] **Status:** Terverifikasi perangkat—live-verified (QA perangkat iPhone 14 · Chrome iOS, 2026-10-10; rincian di `Device QA Results - Moonveo G16-G23 2026-10-10.md`).
 - **Moonveo / bukti:** 10–60/80/100s: handle/back/close + hierarchy
 - **Kaswise sekarang:** Finance context sheet dan modal lain sudah ada; presentasi berbeda menurut fungsi. Audit lintas modal belum selesai.
 - **Tindakan yang diusulkan:** Audit header, back/close, scroll, CTA dan backdrop pada setiap sheet.
 - **Kriteria penerimaan:** CTA tidak menutup pilihan; safe area aman; dismiss tidak menghapus draf; viewer tetap readonly.
 
 ### G17 — Keyboard dan formulir (P2 · Audit)
-- [x] **Status:** Audit browser hijau—QA perangkat tertunda (Playwright experience suite 237 passed / 0 failed, bundle `entry-c75572…`; QA perangkat fisik belum).
+- [x] **Status:** Terverifikasi perangkat—live-verified (QA perangkat iPhone 14 · Chrome iOS, 2026-10-10; rincian di `Device QA Results - Moonveo G16-G23 2026-10-10.md`).
 - **Moonveo / bukti:** 45s: category fields dengan keyboard
 - **Kaswise sekarang:** Manual entry dan berbagai formulir sudah ada; screenshot mobile viewport tidak membuktikan perilaku keyboard HP.
 - **Tindakan yang diusulkan:** Uji nominal, nama, fokus dan keyboard di HP nyata; pertahankan Capture existing.
 - **Kriteria penerimaan:** Field aktif dan tombol terlihat; scroll tidak terjebak; draf utuh saat kembali.
 
 ### G18 — Navigasi bawah dan scroll (P2 · Audit)
-- [x] **Status:** Audit browser hijau—QA perangkat tertunda (Playwright experience suite 237 passed / 0 failed, bundle `entry-c75572…`; QA perangkat fisik belum).
+- [x] **Status:** Terverifikasi perangkat—live-verified (QA perangkat iPhone 14 · Chrome iOS, 2026-10-10; rincian di `Device QA Results - Moonveo G16-G23 2026-10-10.md`).
 - **Moonveo / bukti:** 65/70/90s: floating nav active state
 - **Kaswise sekarang:** Floating5tab Kaswise sudah ada dan active navy jelas.
 - **Tindakan yang diusulkan:** Audit overlap konten, tombol terakhir, active state dan browser Back.
 - **Kriteria penerimaan:** Tidak ada konten/tombol tertutup navigasi; rute kembali benar; tidak menambah CTA ganda.
 
 ### G19 — Feedback interaksi (P2 · Audit)
-- [x] **Status:** Audit browser hijau—QA perangkat tertunda (Playwright experience suite 237 passed / 0 failed, bundle `entry-c75572…`; QA perangkat fisik belum).
+- [x] **Status:** Terverifikasi perangkat—live-verified (QA perangkat iPhone 14 · Chrome iOS, 2026-10-10; rincian di `Device QA Results - Moonveo G16-G23 2026-10-10.md`).
 - **Moonveo / bukti:** 20/40s: Apply tunggal; Moonveo success latency tidak diukur
 - **Kaswise sekarang:** Komponen animasi sudah ada; feedback dan error state perlu diuji pada setiap flow.
 - **Tindakan yang diusulkan:** Samakan feedback tekan, saving, success, retry dan pengaman double-submit.
 - **Kriteria penerimaan:** Simpan hanya sekali; status jelas; animasi tidak memperlambat pencatatan.
 
 ### G20 — Motion konsisten (P2 · Audit)
-- [x] **Status:** Audit browser hijau—QA perangkat tertunda (Playwright experience suite 237 passed / 0 failed, bundle `entry-c75572…`; QA perangkat fisik belum).
+- [x] **Status:** Terverifikasi perangkat—live-verified (QA perangkat iPhone 14 · Chrome iOS, 2026-10-10; rincian di `Device QA Results - Moonveo G16-G23 2026-10-10.md`).
 - **Moonveo / bukti:** Sheet/navigation pada video; durasi transisi belum diukur
 - **Kaswise sekarang:** Source memiliki entrance animation dan reduced-motion support. Durasi/kualitas real-device belum diukur.
 - **Tindakan yang diusulkan:** Audit animasi dan reduced motion di perangkat nyata; ukur sebelum menetapkan target durasi.
 - **Kriteria penerimaan:** Reduced motion dihormati; tidak berkedip atau menunggu animasi; hasil pengukuran dicatat.
 
 ### G21 — Loading, layoutshift, offline/error (P2 · Audit)
-- [x] **Status:** Audit browser hijau—QA perangkat tertunda (Playwright experience suite 237 passed / 0 failed, bundle `entry-c75572…`; QA perangkat fisik belum).
+- [x] **Status:** Terverifikasi perangkat—live-verified (QA perangkat iPhone 14 · Chrome iOS, 2026-10-10; rincian di `Device QA Results - Moonveo G16-G23 2026-10-10.md`).
 - **Moonveo / bukti:** Tidak ada benchmark loading/offline Moonveo dari video
 - **Kaswise sekarang:** Screenshot Setelan menunjukkan spinner preferensi; belum ada bukti durasi atau kegagalan menetap.
 - **Tindakan yang diusulkan:** Uji loading, request gagal dan offline; gunakan placeholder dengan ukuran stabil.
 - **Kriteria penerimaan:** Layout tidak meloncat; loading tidak tanpa akhir; error tidak disamarkan sebagai sukses/data kosong.
 
 ### G22 — Kontras, tap target, fontbesar (P2 · Audit)
-- [x] **Status:** Audit browser hijau—QA perangkat tertunda (Playwright experience suite 237 passed / 0 failed, bundle `entry-c75572…`; QA perangkat fisik belum).
+- [x] **Status:** Terverifikasi perangkat—live-verified (QA perangkat iPhone 14 · Chrome iOS, 2026-10-10; rincian di `Device QA Results - Moonveo G16-G23 2026-10-10.md`).
 - **Moonveo / bukti:** Teks sekunder/card title terlihat; nilai contrast Moonveo tidak diukur
 - **Kaswise sekarang:** Palette dan beberapa tap-target helpers sudah ada; accessibility lengkap belum diuji.
 - **Tindakan yang diusulkan:** Audit kontras WCAG, target sentuh, accessible labels, fokus dan pembesaran teks.

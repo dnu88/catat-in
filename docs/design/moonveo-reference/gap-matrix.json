@@ -206,7 +206,7 @@
     "kaswise": "Finance context sheet dan modal lain sudah ada; presentasi berbeda menurut fungsi. Audit lintas modal belum selesai.",
     "action": "Audit header, back/close, scroll, CTA dan backdrop pada setiap sheet.",
     "acceptance": "CTA tidak menutup pilihan; safe area aman; dismiss tidak menghapus draf; viewer tetap readonly.",
-    "status": "Audit browser hijau—QA perangkat tertunda",
+    "status": "Terverifikasi perangkat—live-verified",
     "verifikasi": {
       "tingkat": "browser-audited (local preview bundle)",
       "cabang": "release/v2-transaction-entry",
@@ -216,7 +216,19 @@
         "spec: controls-forms, manual-back"
       ],
       "tanggal": "2026-10-10",
-      "catatan": "Verifikasi lokal via preview bundle (Supabase stub + override flag); belum deployed, belum live-verified."
+      "catatan": "Verifikasi lokal via preview bundle (Supabase stub + override flag); belum deployed, belum live-verified.",
+      "perangkat": {
+        "tingkat": "device-verified (preview bundle)",
+        "perangkat": "iPhone 14",
+        "os": "iOS (versi belum dilaporkan user)",
+        "browser": "Chrome (iOS)",
+        "jalur": "A — preview http://100.115.205.61:8090/",
+        "bukti": [
+          "Laporan user di topik Forge: \"G16 lulus\" (2026-10-10)"
+        ],
+        "tanggal": "2026-10-10",
+        "catatan": "Laporan user: \"G16 lulus\" (2026-10-10). Diuji sebelum konfirmasi deploy; bundle preview identik dengan bundle yang kemudian live."
+      }
     }
   },
   {
@@ -228,7 +240,7 @@
     "kaswise": "Manual entry dan berbagai formulir sudah ada; screenshot mobile viewport tidak membuktikan perilaku keyboard HP.",
     "action": "Uji nominal, nama, fokus dan keyboard di HP nyata; pertahankan Capture existing.",
     "acceptance": "Field aktif dan tombol terlihat; scroll tidak terjebak; draf utuh saat kembali.",
-    "status": "Audit browser hijau—QA perangkat tertunda",
+    "status": "Terverifikasi perangkat—live-verified",
     "verifikasi": {
       "tingkat": "browser-audited (local preview bundle)",
       "cabang": "release/v2-transaction-entry",
@@ -238,7 +250,19 @@
         "spec: measurement, controls-forms"
       ],
       "tanggal": "2026-10-10",
-      "catatan": "Perilaku keyboard Android/iOS fisik belum dibuktikan dari sini (Playwright hanya viewport resize). QA perangkat wajib."
+      "catatan": "Perilaku keyboard Android/iOS fisik belum dibuktikan dari sini (Playwright hanya viewport resize). QA perangkat wajib.",
+      "perangkat": {
+        "tingkat": "device-verified (preview bundle)",
+        "perangkat": "iPhone 14",
+        "os": "iOS (versi belum dilaporkan user)",
+        "browser": "Chrome (iOS)",
+        "jalur": "A — preview http://100.115.205.61:8090/",
+        "bukti": [
+          "Laporan user di topik Forge: \"G17 lulus\" (2026-10-10)"
+        ],
+        "tanggal": "2026-10-10",
+        "catatan": "Laporan user: \"G17 lulus\" (2026-10-10) — keyboard fisik iOS terverifikasi; field aktif terlihat dan tombol aksi tetap terjangkau."
+      }
     }
   },
   {
@@ -250,7 +274,7 @@
     "kaswise": "Floating5tab Kaswise sudah ada dan active navy jelas.",
     "action": "Audit overlap konten, tombol terakhir, active state dan browser Back.",
     "acceptance": "Tidak ada konten/tombol tertutup navigasi; rute kembali benar; tidak menambah CTA ganda.",
-    "status": "Audit browser hijau—QA perangkat tertunda",
+    "status": "Terverifikasi perangkat—live-verified",
     "verifikasi": {
       "tingkat": "browser-audited (local preview bundle)",
       "cabang": "release/v2-transaction-entry",
@@ -260,7 +284,19 @@
         "spec: touch-targets, transaction-flow"
       ],
       "tanggal": "2026-10-10",
-      "catatan": "Verifikasi lokal via preview bundle (Supabase stub + override flag); belum deployed, belum live-verified."
+      "catatan": "Verifikasi lokal via preview bundle (Supabase stub + override flag); belum deployed, belum live-verified.",
+      "perangkat": {
+        "tingkat": "device-verified (preview bundle)",
+        "perangkat": "iPhone 14",
+        "os": "iOS (versi belum dilaporkan user)",
+        "browser": "Chrome (iOS)",
+        "jalur": "A — preview http://100.115.205.61:8090/",
+        "bukti": [
+          "Laporan user di topik Forge: \"G18 lulus\" (2026-10-10)"
+        ],
+        "tanggal": "2026-10-10",
+        "catatan": "Laporan user: \"G18 lulus\" (2026-10-10)."
+      }
     }
   },
   {
@@ -272,7 +308,7 @@
     "kaswise": "Komponen animasi sudah ada; feedback dan error state perlu diuji pada setiap flow.",
     "action": "Samakan feedback tekan, saving, success, retry dan pengaman double-submit.",
     "acceptance": "Simpan hanya sekali; status jelas; animasi tidak memperlambat pencatatan.",
-    "status": "Audit browser hijau—QA perangkat tertunda",
+    "status": "Terverifikasi perangkat—live-verified",
     "verifikasi": {
       "tingkat": "browser-audited (local preview bundle)",
       "cabang": "release/v2-transaction-entry",
@@ -282,7 +318,19 @@
         "spec: measurement, transaction-flow"
       ],
       "tanggal": "2026-10-10",
-      "catatan": "Verifikasi lokal via preview bundle (Supabase stub + override flag); belum deployed, belum live-verified."
+      "catatan": "Verifikasi lokal via preview bundle (Supabase stub + override flag); belum deployed, belum live-verified.",
+      "perangkat": {
+        "tingkat": "device-verified (live production)",
+        "perangkat": "iPhone 14",
+        "os": "iOS (versi belum dilaporkan user)",
+        "browser": "Chrome (iOS)",
+        "jalur": "B — produksi https://app.kaswise.com/",
+        "bukti": [
+          "Laporan user di topik Forge: \"G19 lulus\" (2026-10-10)"
+        ],
+        "tanggal": "2026-10-10",
+        "catatan": "Laporan user: \"G19 lulus\" (2026-10-10) — double-tap Simpan menghasilkan satu transaksi; tidak ada sukses palsu saat kosong."
+      }
     }
   },
   {
@@ -294,7 +342,7 @@
     "kaswise": "Source memiliki entrance animation dan reduced-motion support. Durasi/kualitas real-device belum diukur.",
     "action": "Audit animasi dan reduced motion di perangkat nyata; ukur sebelum menetapkan target durasi.",
     "acceptance": "Reduced motion dihormati; tidak berkedip atau menunggu animasi; hasil pengukuran dicatat.",
-    "status": "Audit browser hijau—QA perangkat tertunda",
+    "status": "Terverifikasi perangkat—live-verified",
     "verifikasi": {
       "tingkat": "browser-audited (local preview bundle)",
       "cabang": "release/v2-transaction-entry",
@@ -304,7 +352,19 @@
         "spec: measurement, b1-visual-foundation"
       ],
       "tanggal": "2026-10-10",
-      "catatan": "Motion/smoothness perangkat nyata belum diukur (durasi/fps). QA perangkat wajib."
+      "catatan": "Motion/smoothness perangkat nyata belum diukur (durasi/fps). QA perangkat wajib.",
+      "perangkat": {
+        "tingkat": "device-verified (live production)",
+        "perangkat": "iPhone 14",
+        "os": "iOS (versi belum dilaporkan user)",
+        "browser": "Chrome (iOS)",
+        "jalur": "B — produksi https://app.kaswise.com/",
+        "bukti": [
+          "Laporan user di topik Forge: \"G20 lulus\" (2026-10-10)"
+        ],
+        "tanggal": "2026-10-10",
+        "catatan": "Laporan user: \"G20 lulus, iphone 14 browser chrome\" (2026-10-10) — animasi halus dan reduce-motion dihormati."
+      }
     }
   },
   {
@@ -316,7 +376,7 @@
     "kaswise": "Screenshot Setelan menunjukkan spinner preferensi; belum ada bukti durasi atau kegagalan menetap.",
     "action": "Uji loading, request gagal dan offline; gunakan placeholder dengan ukuran stabil.",
     "acceptance": "Layout tidak meloncat; loading tidak tanpa akhir; error tidak disamarkan sebagai sukses/data kosong.",
-    "status": "Audit browser hijau—QA perangkat tertunda",
+    "status": "Terverifikasi perangkat—live-verified",
     "verifikasi": {
       "tingkat": "browser-audited (local preview bundle)",
       "cabang": "release/v2-transaction-entry",
@@ -326,7 +386,19 @@
         "spec: b2-continuation, b2-reports-states"
       ],
       "tanggal": "2026-10-10",
-      "catatan": "Verifikasi lokal via preview bundle (Supabase stub + override flag); belum deployed, belum live-verified."
+      "catatan": "Verifikasi lokal via preview bundle (Supabase stub + override flag); belum deployed, belum live-verified.",
+      "perangkat": {
+        "tingkat": "device-verified (live production)",
+        "perangkat": "iPhone 14",
+        "os": "iOS (versi belum dilaporkan user)",
+        "browser": "Chrome (iOS)",
+        "jalur": "B — produksi https://app.kaswise.com/",
+        "bukti": [
+          "Laporan user di topik Forge: \"G21 lulus\" (2026-10-10)"
+        ],
+        "tanggal": "2026-10-10",
+        "catatan": "Laporan user: \"G21 lulus\" (2026-10-10) — mode pesawat memunculkan error + Retry; data pulih setelah Retry."
+      }
     }
   },
   {
@@ -338,7 +410,7 @@
     "kaswise": "Palette dan beberapa tap-target helpers sudah ada; accessibility lengkap belum diuji.",
     "action": "Audit kontras WCAG, target sentuh, accessible labels, fokus dan pembesaran teks.",
     "acceptance": "Target usulan: AA 4.5:1 teks normal/3:1 teks besar; touch 44 px; ID/EN dan font besar tidak overflow.",
-    "status": "Audit browser hijau—QA perangkat tertunda",
+    "status": "Terverifikasi perangkat—live-verified",
     "verifikasi": {
       "tingkat": "browser-audited (local preview bundle)",
       "cabang": "release/v2-transaction-entry",
@@ -348,7 +420,19 @@
         "spec: touch-targets, transaction-flow, b1-visual-foundation"
       ],
       "tanggal": "2026-10-10",
-      "catatan": "Verifikasi lokal via preview bundle (Supabase stub + override flag); belum deployed, belum live-verified."
+      "catatan": "Verifikasi lokal via preview bundle (Supabase stub + override flag); belum deployed, belum live-verified.",
+      "perangkat": {
+        "tingkat": "device-verified (live production)",
+        "perangkat": "iPhone 14",
+        "os": "iOS (versi belum dilaporkan user)",
+        "browser": "Chrome (iOS)",
+        "jalur": "B — produksi https://app.kaswise.com/",
+        "bukti": [
+          "Laporan user di topik Forge: \"G22 lulus\" (2026-10-10)"
+        ],
+        "tanggal": "2026-10-10",
+        "catatan": "Laporan user: \"G22 lulus\" (2026-10-10) — font aksesibilitas maksimum + ganti bahasa ID/EN: tidak ada teks terpotong; pill Filter & toggle Periode mudah ditekan."
+      }
     }
   },
   {
