@@ -444,7 +444,7 @@
     "kaswise": "Ritme Kas sudah live. Audit ini memakai akun kosong; pengujian chart berdata adalah pekerjaan verifikasi terpisah.",
     "action": "Uji data pemasukan/pengeluaran/outlier/periodee; chart kosong bukan bukti kerusakan.",
     "acceptance": "Nilai cocok readback; skala bersama tidak menipu; nol, defisit, outlier dan tooltip benar.",
-    "status": "Audit browser hijau—QA perangkat tertunda",
+    "status": "Terverifikasi perangkat—live-verified",
     "verifikasi": {
       "tingkat": "browser-audited (local preview bundle)",
       "cabang": "release/v2-transaction-entry",
@@ -454,7 +454,19 @@
         "spec: b2-reports-states, b2-continuation"
       ],
       "tanggal": "2026-10-10",
-      "catatan": "Verifikasi lokal via preview bundle (Supabase stub + override flag); belum deployed, belum live-verified."
+      "catatan": "Verifikasi lokal via preview bundle (Supabase stub + override flag); belum deployed, belum live-verified.",
+      "perangkat": {
+        "tingkat": "device-verified (live production)",
+        "perangkat": "iPhone 14",
+        "os": "iOS (versi belum dilaporkan user)",
+        "browser": "Chrome (iOS)",
+        "jalur": "B — produksi https://app.kaswise.com/",
+        "bukti": [
+          "Laporan user di topik Forge: \"G23 lulus\" (2026-10-14) + 2 screenshot (bubble chart Okt 2026 & Cashflow Pulse 1 Tahun)"
+        ],
+        "tanggal": "2026-10-14",
+        "catatan": "Chart bubble kategori & bar chart tampil data riil (Income 23,4 jt / Expense 21,8 jt / Savings 1,6 jt / 6,7% rate)."
+      }
     }
   },
   {

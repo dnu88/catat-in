@@ -91,7 +91,7 @@ Perangkat yang dipakai: **iPhone 14 · Chrome (iOS)** · versi iOS belum dilapor
 2. Cocokkan angka total chart dengan daftar **Transaksi** pada periode yang sama.
 3. Coba periode tanpa data → tampil **empty state** periode (bukan chart kosong menipu).
 4. Jika ada pemasukan saja / pengeluaran saja → chart tetap benar (tidak salah skala).
-- [ ] LULUS / [ ] GAGAL — catatan: **belum diuji** (akun uji masih tipis data).
+- [x] LULUS / [ ] GAGAL — catatan: dilaporkan user "G23 lulus" (Jalur B, produksi) — chart bubble & batang tampil data riil.
 
 ### G30 — Guardrail: Capture existing + Kembali
 1. Buka **Catat → foto struk** → pilih struk → layar pilih struk punya tombol **Kembali**.
