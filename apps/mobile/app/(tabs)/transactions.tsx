@@ -43,6 +43,7 @@ import {
 } from "../../src/features/transactions/filter-disclosure";
 import { resolveCategoryVisual } from "../../src/theme/category-visuals";
 import { useI18n } from "../../src/i18n/i18n-context";
+import { formatCompactCurrency } from "../../src/lib/currency";
 import { useFinanceContext } from "../../src/state/finance-context";
 import {
 	formatReportPeriodLabel,
@@ -124,15 +125,8 @@ export function shouldOpenSwipe(dx: number): boolean {
 	return dx <= -SWIPE_GESTURE_CONFIG.openThreshold;
 }
 
-function formatCompactRupiah(value: number) {
-	const amount = Math.abs(value);
-	if (amount >= 1_000_000) {
-		return `Rp ${(amount / 1_000_000).toLocaleString("id-ID", { maximumFractionDigits: 1 })} jt`;
-	}
-	if (amount >= 1_000) {
-		return `Rp ${(amount / 1_000).toLocaleString("id-ID", { maximumFractionDigits: 1 })} rb`;
-	}
-	return `Rp ${amount.toLocaleString("id-ID", { maximumFractionDigits: 0 })}`;
+function formatCompactRupiah(value: number, language: string) {
+	return formatCompactCurrency(value, language);
 }
 
 export function getTransactionDateValue(item: Transaction): number | null {
@@ -842,7 +836,7 @@ export default function TransactionsScreen() {
 						<IconBubble name="chart" tone="success" color={fe.financialIncome} backgroundColor="rgba(22,143,168,0.12)" borderColor="rgba(22,143,168,0.24)" size={36} />
 						<View style={styles.statCardContent}>
 							<Text style={styles.statLabel}>{isEn ? "Income" : "Pemasukan"}</Text>
-							<Text style={styles.statValueText}>{formatCompactRupiah(totalIncome)}</Text>
+							<Text style={styles.statValueText}>{formatCompactRupiah(totalIncome, language)}</Text>
 						</View>
 					</View>
 				</View>
@@ -851,7 +845,7 @@ export default function TransactionsScreen() {
 						<IconBubble name="transactions" tone="navy" color={fe.blue} backgroundColor="rgba(12,78,145,0.12)" borderColor="rgba(12,78,145,0.24)" size={36} />
 						<View style={styles.statCardContent}>
 							<Text style={styles.statLabel}>{isEn ? "Expense" : "Pengeluaran"}</Text>
-							<Text style={styles.statValueText}>{formatCompactRupiah(totalExpense)}</Text>
+							<Text style={styles.statValueText}>{formatCompactRupiah(totalExpense, language)}</Text>
 						</View>
 					</View>
 				</View>

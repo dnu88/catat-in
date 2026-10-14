@@ -82,6 +82,7 @@ import {
 	type CategoryTone,
 } from "../../src/theme/category-visuals";
 import { useI18n } from "../../src/i18n/i18n-context";
+import { formatCompactCurrency } from "../../src/lib/currency";
 import { useFinanceContext } from "../../src/state/finance-context";
 import {
 	buildCustomReportPeriod,
@@ -680,15 +681,7 @@ export default function ReportsScreen() {
 
 	const formatRupiah = (valueInJuta: number) =>
 		`Rp ${(valueInJuta * 1_000_000).toLocaleString("id-ID")}`;
-	const formatCompactRupiah = (value: number) => {
-		if (value >= 1_000_000) {
-			return `Rp ${(value / 1_000_000).toLocaleString("id-ID", { maximumFractionDigits: 1 })} jt`;
-		}
-		if (value >= 1_000) {
-			return `Rp ${(value / 1_000).toLocaleString("id-ID", { maximumFractionDigits: 0 })} rb`;
-		}
-		return `Rp ${value.toLocaleString("id-ID")}`;
-	};
+	const formatCompactRupiah = (value: number) => formatCompactCurrency(value, language);
 	const summaryIncome = useMemo(
 		() =>
 			reportTransactions
