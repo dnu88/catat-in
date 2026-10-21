@@ -465,6 +465,53 @@ describe("capture receipt recording modes", () => {
 		);
 	});
 
+	it("premium warning acknowledgements are explicit, field-scoped and keep invalid amounts blocked", async () => {
+		mockSimplePremiumExperience = true;
+		mockAnalyzeReceiptImage.mockResolvedValue({ total_amount: 125000, confidence: 0.4, items: [{ name: "Kopi", price: 50000 }, { name: "Roti", price: 75000 }] });
+		mockSaveEntry.mockImplementation(async (input) => {
+			const { allDraftsValid } = jest.requireActual("../src/features/transaction-entry/draft");
+			expect(allDraftsValid(input.drafts, { wallets: input.wallets, categories: input.categories, canCreate: true })).toBe(true);
+			return { transactions: [SAVED_ROW, { ...SAVED_ROW, id: "tx-2" }], budgetSyncWarning: false };
+		});
+		renderCapture();
+		await reachReceiptReview();
+		fireEvent.press(screen.getByTestId("capture-receipt-split"));
+		await waitFor(() => expect(screen.getByTestId("batch-review")).toBeTruthy());
+		expect(screen.getByTestId("batch-review-save")).toBeDisabled();
+		const categoryAck = screen.getAllByTestId(/^review-ack-.*-category$/)[0];
+		fireEvent.press(categoryAck);
+		expect(screen.getAllByTestId(/^review-ack-.*-date$/)).toHaveLength(2);
+		expect(screen.getByTestId("batch-review-save")).toBeDisabled();
+		fireEvent.changeText(screen.getAllByLabelText("Nominal")[0], "0");
+		for (const ack of screen.getAllByTestId(/^review-ack-/)) fireEvent.press(ack);
+		expect(screen.getByTestId("batch-review-save")).toBeDisabled();
+		fireEvent.press(screen.getByTestId("batch-review-save"));
+		expect(mockSaveEntry).not.toHaveBeenCalled();
+		fireEvent.changeText(screen.getAllByLabelText("Nominal")[0], "50000");
+		expect(screen.getByTestId("batch-review-save")).not.toBeDisabled();
+		fireEvent.press(screen.getByTestId("batch-review-save"));
+		await waitFor(() => expect(mockSaveEntry).toHaveBeenCalledTimes(1));
+	});
+
+	it.each([false, true])("premium receipt has exactly one save action (split=%s) and discrepancy gate", async (split) => {
+		mockSimplePremiumExperience = true;
+		mockAnalyzeReceiptImage.mockResolvedValue({ total_amount: 100000, merchant: "RM Sederhana", confidence: 0.92, date: "2026-10-02", items: [{ name: "Kopi", price: 30000 }, { name: "Roti", price: 40000 }] });
+		renderCapture();
+		await reachReceiptReview();
+		if (split) fireEvent.press(screen.getByTestId("capture-receipt-split"));
+		expect(screen.getAllByTestId(/^(review-save|batch-review-save|capture-receipt-confirm)$/)).toHaveLength(1);
+		const save = screen.getByTestId(split ? "batch-review-save" : "review-save");
+		if (split) {
+			expect(save).toBeDisabled();
+			fireEvent.press(save);
+			expect(mockSaveEntry).not.toHaveBeenCalled();
+			fireEvent.press(screen.getByTestId("capture-receipt-discrepancy-ack"));
+		}
+		// Category inference can still be uncertain independently of the total.
+		for (const ack of screen.queryAllByTestId(/^review-ack-/)) fireEvent.press(ack);
+		expect(screen.getByTestId(split ? "batch-review-save" : "review-save")).not.toBeDisabled();
+	});
+
 	it("(premium batch) still issues exactly ONE atomic request, even on a double tap", async () => {
 		mockSimplePremiumExperience = true;
 		mockAnalyzeReceiptImage.mockResolvedValue({

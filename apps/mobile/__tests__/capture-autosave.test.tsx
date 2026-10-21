@@ -330,6 +330,18 @@ describe("Capture text auto-save (aiAutosaveText)", () => {
 		expect(mockDeleteTransaction).not.toHaveBeenCalled();
 	});
 
+	it("edits the saved original ID without reopening a create draft", async () => {
+		mockAnalyzeTransactionText.mockResolvedValue(safeExtraction());
+		await renderReady();
+		await submitText();
+		await waitFor(() => expect(screen.getByTestId("auto-save-edit")).toBeTruthy());
+		fireEvent.press(screen.getByTestId("auto-save-edit"));
+		expect(mockPush).toHaveBeenCalledWith({ pathname: "/(tabs)/transaction-new", params: { transactionId: "tx-1" } });
+		expect(screen.queryByTestId("review-save")).toBeNull();
+		expect(mockSaveEntry).toHaveBeenCalledTimes(1);
+		expect(mockCreateTransaction).not.toHaveBeenCalled();
+	});
+
 	it("keeps review and explains itself when the extractor flags uncertainty", async () => {
 		const extraction = safeExtraction();
 		extraction.unclear = "tanggal transaksi belum jelas";

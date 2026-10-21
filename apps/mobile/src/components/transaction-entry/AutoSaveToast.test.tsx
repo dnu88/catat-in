@@ -33,6 +33,11 @@ describe("AutoSaveToast", () => {
 		expect(screen.getByText(/Rp35\.000/)).toBeTruthy();
 	});
 
+	it("can clear the floating bottom navigation without changing the legacy position", () => {
+		renderToast({ bottomOffset: 100 });
+		expect(screen.getByTestId("auto-save-toast")).toHaveStyle({ bottom: 100 });
+	});
+
 	it("calls onUndo when the undo action is pressed", () => {
 		const { props } = renderToast();
 		fireEvent.press(screen.getByTestId("auto-save-undo"));

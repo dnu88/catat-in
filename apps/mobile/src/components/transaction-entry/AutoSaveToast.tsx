@@ -7,6 +7,7 @@ export type AutoSaveToastProps = {
 	actionLabel: string;
 	editLabel: string;
 	timeoutMs?: number;
+	bottomOffset?: number;
 	onUndo: () => void;
 	onEdit: () => void;
 	onExpire: () => void;
@@ -23,6 +24,7 @@ const DEFAULT_TIMEOUT_MS = 10_000;
  */
 export function AutoSaveToast({
 	title,
+	bottomOffset = 16,
 	actionLabel,
 	editLabel,
 	timeoutMs = DEFAULT_TIMEOUT_MS,
@@ -40,7 +42,7 @@ export function AutoSaveToast({
 	}, [onExpire, timeoutMs]);
 
 	return (
-		<View style={styles.container} testID="auto-save-toast">
+		<View style={[styles.container, { bottom: bottomOffset }]} testID="auto-save-toast">
 			<Text style={styles.title} numberOfLines={2}>
 				{title}
 			</Text>

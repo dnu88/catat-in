@@ -78,6 +78,8 @@ import {
 	type ContextSnapshot,
 } from "../../src/features/transaction-entry/state";
 import {
+	allDraftsValid,
+	validateDraft,
 	localToday,
 	summariseDrafts,
 	unacknowledgedWarnings,
@@ -97,7 +99,8 @@ import {
 	CaptureComposer,
 	captureComposerCopy,
 } from "../../src/components/transaction-entry/CaptureComposer";
-import { TransactionReview } from "../../src/components/transaction-entry/TransactionReview";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { DraftWarnings, TransactionReview } from "../../src/components/transaction-entry/TransactionReview";
 import {
 	BatchReviewList,
 	batchReviewCopy,
@@ -314,6 +317,7 @@ function aiExtractionToDrafts(
 }
 
 export default function CaptureScreen() {
+	const safeAreaInsets = useSafeAreaInsets();
 	const { supabase } = useSupabase();
 	const { theme } = useTheme();
 	const { language } = useI18n();
@@ -1753,9 +1757,11 @@ export default function CaptureScreen() {
 	};
 
 	const editAutoSavedEntry = () => {
+		const transactionId = entrySaved?.transactions[0]?.id;
+		if (!transactionId) return;
 		setAutoSaveToastVisible(false);
 		void recordAutoSaveOutcome("edited");
-		entryDispatch({ type: "review-again" });
+		router.push({ pathname: "/(tabs)/transaction-new", params: { transactionId } });
 	};
 
 	const entryReviewVisible =
@@ -1905,7 +1911,7 @@ export default function CaptureScreen() {
 	const premiumBatchRows: BatchReviewRow[] = useMemo(
 		() =>
 			entryState.drafts.map((draft) => {
-				const draftErrors = entryErrors[draft.key];
+				const draftErrors = { ...validateDraft(draft, { wallets, categories: categoryOptions, canCreate }), ...entryErrors[draft.key] };
 				return {
 					key: draft.key,
 					description:
@@ -1921,7 +1927,7 @@ export default function CaptureScreen() {
 					),
 				};
 			}),
-		[entryState.drafts, entryErrors, wallets, tx.modeLabels.Teks],
+		[entryState.drafts, entryErrors, wallets, categoryOptions, canCreate, tx.modeLabels.Teks],
 	);
 	const premiumBatchSignature = premiumBatchRows
 		.map((row) => `${row.key}:${row.hasWarning ? 1 : 0}${row.invalid ? 1 : 0}`)
@@ -2289,6 +2295,7 @@ export default function CaptureScreen() {
 						{premiumBatchActive ? (
 							<BatchReviewList
 								rows={premiumBatchRows}
+								saveBlocked={receiptDiscrepancyBlocked || !allDraftsValid(entryState.drafts, { wallets, categories: categoryOptions, canCreate })}
 								count={summariseDrafts(entryState.drafts).count}
 								total={summariseDrafts(entryState.drafts).total}
 								canCreate={canCreate}
@@ -2312,6 +2319,8 @@ export default function CaptureScreen() {
 									);
 									if (!draft) return null;
 									return (
+										<View>
+										<DraftWarnings draft={draft} onAcknowledge={(key, field) => entryDispatch({ type: "draft-acknowledged", key, field })} />
 										<TransactionFields
 											draft={draft}
 											onChange={(patch) =>
@@ -2336,11 +2345,13 @@ export default function CaptureScreen() {
 											errors={entryErrors[row.key]}
 											testID={`draft-${row.key}`}
 										/>
+										</View>
 									);
 								}}
 							/>
 						) : (
 						<TransactionReview
+							saveBlocked={premium && receiptDiscrepancyBlocked}
 							drafts={entryState.drafts}
 							wallets={wallets.map((wallet) => ({
 								id: wallet.id,
@@ -2361,7 +2372,7 @@ export default function CaptureScreen() {
 							summary={summariseDrafts(entryState.drafts)}
 						/>
 						)}
-						{entryState.source === "image" ? (
+						{entryState.source === "image" && !premium ? (
 							<Pressable
 								testID="capture-receipt-confirm"
 								accessibilityRole="button"
@@ -2665,6 +2676,7 @@ export default function CaptureScreen() {
 			</ScrollView>
 			{entryV2 && autoSaveToastVisible && entryState.phase === "success" ? (
 				<AutoSaveToast
+					bottomOffset={premium ? Math.max(10, safeAreaInsets.bottom) + 64 + 16 : 16}
 					title={`${isEn ? "Saved" : "Tersimpan"}: ${successDrafts[0]?.category ?? ""} · Rp${(successAmount ?? 0).toLocaleString("id-ID")}`}
 					actionLabel={isEn ? "Undo" : "Batalkan"}
 					editLabel={isEn ? "Edit" : "Ubah"}

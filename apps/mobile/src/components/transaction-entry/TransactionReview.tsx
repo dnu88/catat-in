@@ -32,6 +32,7 @@ type TransactionReviewProps = {
 	wallets: WalletOption[];
 	categories: CategoryOption[];
 	canCreate: boolean;
+	saveBlocked?: boolean;
 	onChange: (key: string, patch: Partial<TransactionDraft>) => void;
 	onAcknowledge: (key: string, field: ReviewField) => void;
 	onOpenPicker: (key: string, kind: EntryPickerKind) => void;
@@ -41,6 +42,45 @@ type TransactionReviewProps = {
 	errors?: Record<string, DraftFieldErrors>;
 	summary: { count: number; total: number };
 };
+
+export function DraftWarnings({
+	draft,
+	onAcknowledge,
+}: {
+	draft: TransactionDraft;
+	onAcknowledge: (key: string, field: ReviewField) => void;
+}) {
+	const { language } = useI18n();
+	const copy = entryCopy(language);
+	const styles = useMemo(() => createStyles(), []);
+	const warnings = unacknowledgedWarnings(draft);
+	if (warnings.length === 0) return null;
+
+	return (
+		<View style={styles.warningBox} testID={`review-warnings-${draft.key}`}>
+			{warnings.map((field) => (
+				<View key={field} style={styles.warningRow}>
+					<Text
+						style={styles.warningText}
+						accessibilityRole="alert"
+						accessibilityLiveRegion="polite"
+					>
+						{warningLabel(field, language)}
+					</Text>
+					<Pressable
+						onPress={() => onAcknowledge(draft.key, field)}
+						accessibilityRole="button"
+						accessibilityLabel={copy.acknowledge}
+						style={styles.ackButton}
+						testID={`review-ack-${draft.key}-${field}`}
+					>
+						<Text style={styles.ackButtonText}>{copy.acknowledge}</Text>
+					</Pressable>
+				</View>
+			))}
+		</View>
+	);
+}
 
 function sourceLine(draft: TransactionDraft): string {
 	const extracted = draft.extraction ? JSON.stringify(draft.extraction) : "";
@@ -59,6 +99,7 @@ export function TransactionReview({
 	wallets,
 	categories,
 	canCreate,
+	saveBlocked = false,
 	onChange,
 	onAcknowledge,
 	onOpenPicker,
@@ -77,7 +118,7 @@ export function TransactionReview({
 		() => ({ wallets, categories, canCreate }),
 		[wallets, categories, canCreate],
 	);
-	const savable = !saving && allDraftsValid(drafts, context);
+	const savable = !saving && !saveBlocked && allDraftsValid(drafts, context);
 
 	return (
 		<View style={styles.container} testID="transaction-review">
@@ -124,7 +165,6 @@ export function TransactionReview({
 
 				{drafts.map((draft) => {
 					const draftErrors = errors?.[draft.key];
-					const warnings = unacknowledgedWarnings(draft);
 					return (
 						<View key={draft.key} style={styles.card} testID={`review-draft-${draft.key}`}>
 							<TransactionFields
@@ -138,30 +178,7 @@ export function TransactionReview({
 								testID={`draft-${draft.key}`}
 							/>
 
-							{warnings.length > 0 ? (
-								<View style={styles.warningBox} testID={`review-warnings-${draft.key}`}>
-									{warnings.map((field) => (
-										<View key={field} style={styles.warningRow}>
-											<Text
-												style={styles.warningText}
-												accessibilityRole="alert"
-												accessibilityLiveRegion="polite"
-											>
-												{warningLabel(field, language)}
-											</Text>
-											<Pressable
-												onPress={() => onAcknowledge(draft.key, field)}
-												accessibilityRole="button"
-												accessibilityLabel={copy.acknowledge}
-												style={styles.ackButton}
-												testID={`review-ack-${draft.key}-${field}`}
-											>
-												<Text style={styles.ackButtonText}>{copy.acknowledge}</Text>
-											</Pressable>
-										</View>
-									))}
-								</View>
-							) : null}
+							<DraftWarnings draft={draft} onAcknowledge={onAcknowledge} />
 						</View>
 					);
 				})}
