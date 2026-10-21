@@ -32,6 +32,7 @@ type TransactionReviewProps = {
 	wallets: WalletOption[];
 	categories: CategoryOption[];
 	canCreate: boolean;
+	saveBlocked?: boolean;
 	onChange: (key: string, patch: Partial<TransactionDraft>) => void;
 	onAcknowledge: (key: string, field: ReviewField) => void;
 	onOpenPicker: (key: string, kind: EntryPickerKind) => void;
@@ -41,6 +42,45 @@ type TransactionReviewProps = {
 	errors?: Record<string, DraftFieldErrors>;
 	summary: { count: number; total: number };
 };
+
+export function DraftWarnings({
+	draft,
+	onAcknowledge,
+}: {
+	draft: TransactionDraft;
+	onAcknowledge: (key: string, field: ReviewField) => void;
+}) {
+	const { language } = useI18n();
+	const copy = entryCopy(language);
+	const styles = useMemo(() => createStyles(), []);
+	const warnings = unacknowledgedWarnings(draft);
+	if (warnings.length === 0) return null;
+
+	return (
+		<View style={styles.warningBox} testID={`review-warnings-${draft.key}`}>
+			{warnings.map((field) => (
+				<View key={field} style={styles.warningRow}>
+					<Text
+						style={styles.warningText}
+						accessibilityRole="alert"
+						accessibilityLiveRegion="polite"
+					>
+						{warningLabel(field, language)}
+					</Text>
+					<Pressable
+						onPress={() => onAcknowledge(draft.key, field)}
+						accessibilityRole="button"
+						accessibilityLabel={copy.acknowledge}
+						style={styles.ackButton}
+						testID={`review-ack-${draft.key}-${field}`}
+					>
+						<Text style={styles.ackButtonText}>{copy.acknowledge}</Text>
+					</Pressable>
+				</View>
+			))}
+		</View>
+	);
+}
 
 function sourceLine(draft: TransactionDraft): string {
 	const extracted = draft.extraction ? JSON.stringify(draft.extraction) : "";
@@ -59,6 +99,7 @@ export function TransactionReview({
 	wallets,
 	categories,
 	canCreate,
+	saveBlocked = false,
 	onChange,
 	onAcknowledge,
 	onOpenPicker,
@@ -77,7 +118,18 @@ export function TransactionReview({
 		() => ({ wallets, categories, canCreate }),
 		[wallets, categories, canCreate],
 	);
-	const savable = !saving && allDraftsValid(drafts, context);
+	const savable = !saving && !saveBlocked && allDraftsValid(drafts, context);
+
+	// When the extractor is unsure about one or two fields, the reviewer should
+	// not have to re-read the whole form. Name only what is unresolved and give
+	// a one-tap route to the matching picker; acknowledging still happens in the
+	// warning row so a doubtful read can never be saved silently.
+	const focusFields = useMemo(
+		() => (drafts.length === 1 ? unacknowledgedWarnings(drafts[0]) : []),
+		[drafts],
+	);
+	const fixKindFor = (field: ReviewField): EntryPickerKind | null =>
+		field === "category" || field === "wallet" || field === "date" ? field : null;
 
 	return (
 		<View style={styles.container} testID="transaction-review">
@@ -122,9 +174,38 @@ export function TransactionReview({
 					</View>
 				) : null}
 
+				{focusFields.length > 0 ? (
+					<View style={styles.focusBanner} testID="review-focus-banner">
+						<Text style={styles.focusTitle}>{copy.focusTitle}</Text>
+						<View style={styles.focusChips}>
+							{focusFields.map(field => {
+								const kind = fixKindFor(field);
+								const label = warningLabel(field, language).replace(/\.$/, "");
+								return kind ? (
+									<Pressable
+										key={field}
+										testID={`review-focus-fix-${field}`}
+										accessibilityRole="button"
+										accessibilityLabel={`${copy.focusFix}: ${label}`}
+										accessibilityHint={copy.focusRest}
+										onPress={() => onOpenPicker(drafts[0].key, kind)}
+										style={styles.focusChip}
+									>
+										<Text style={styles.focusChipText}>{label}</Text>
+									</Pressable>
+								) : (
+									<View key={field} style={styles.focusChipStatic}>
+										<Text style={styles.focusChipText}>{label}</Text>
+									</View>
+								);
+							})}
+						</View>
+						<Text style={styles.focusRest}>{copy.focusRest}</Text>
+					</View>
+				) : null}
+
 				{drafts.map((draft) => {
 					const draftErrors = errors?.[draft.key];
-					const warnings = unacknowledgedWarnings(draft);
 					return (
 						<View key={draft.key} style={styles.card} testID={`review-draft-${draft.key}`}>
 							<TransactionFields
@@ -138,30 +219,7 @@ export function TransactionReview({
 								testID={`draft-${draft.key}`}
 							/>
 
-							{warnings.length > 0 ? (
-								<View style={styles.warningBox} testID={`review-warnings-${draft.key}`}>
-									{warnings.map((field) => (
-										<View key={field} style={styles.warningRow}>
-											<Text
-												style={styles.warningText}
-												accessibilityRole="alert"
-												accessibilityLiveRegion="polite"
-											>
-												{warningLabel(field, language)}
-											</Text>
-											<Pressable
-												onPress={() => onAcknowledge(draft.key, field)}
-												accessibilityRole="button"
-												accessibilityLabel={copy.acknowledge}
-												style={styles.ackButton}
-												testID={`review-ack-${draft.key}-${field}`}
-											>
-												<Text style={styles.ackButtonText}>{copy.acknowledge}</Text>
-											</Pressable>
-										</View>
-									))}
-								</View>
-							) : null}
+							<DraftWarnings draft={draft} onAcknowledge={onAcknowledge} />
 						</View>
 					);
 				})}
@@ -307,12 +365,42 @@ function createStyles() {
 		},
 		warningBox: {
 			gap: 10,
+			borderRadius: 14,
+			padding: 12,
 			backgroundColor: "rgba(138, 75, 8, 0.08)",
 			borderWidth: 1,
 			borderColor: "rgba(138, 75, 8, 0.24)",
-			borderRadius: 14,
-			padding: 12,
 		},
+		focusBanner: {
+			gap: 8,
+			padding: 14,
+			borderRadius: 16,
+			backgroundColor: "rgba(20, 71, 230, 0.06)",
+			borderWidth: 1,
+			borderColor: "rgba(20, 71, 230, 0.18)",
+		},
+		focusTitle: { color: fe.ink, fontSize: 14, fontWeight: "700" },
+		focusChips: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+		focusChip: {
+			minHeight: 44,
+			justifyContent: "center",
+			paddingHorizontal: 14,
+			borderRadius: 12,
+			backgroundColor: fe.white,
+			borderWidth: 1,
+			borderColor: "rgba(20, 71, 230, 0.28)",
+		},
+		focusChipStatic: {
+			minHeight: 44,
+			justifyContent: "center",
+			paddingHorizontal: 14,
+			borderRadius: 12,
+			backgroundColor: "rgba(255, 255, 255, 0.7)",
+			borderWidth: 1,
+			borderColor: "rgba(20, 71, 230, 0.16)",
+		},
+		focusChipText: { color: fe.blue, fontSize: 13, fontWeight: "600" },
+		focusRest: { color: fe.slate, fontSize: 12 },
 		warningRow: {
 			gap: 8,
 		},

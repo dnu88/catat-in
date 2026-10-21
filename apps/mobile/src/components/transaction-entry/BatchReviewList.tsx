@@ -90,6 +90,7 @@ export type BatchReviewListProps = {
 	count: number;
 	total: number;
 	canCreate: boolean;
+	saveBlocked?: boolean;
 	saving: boolean;
 	/** Controller-owned: which rows are currently open. */
 	expandedKeys: string[];
@@ -105,6 +106,7 @@ export function BatchReviewList({
 	count,
 	total,
 	canCreate,
+	saveBlocked = false,
 	saving,
 	expandedKeys,
 	onToggleRow,
@@ -116,7 +118,7 @@ export function BatchReviewList({
 	const styles = useMemo(() => createStyles(), []);
 	const expanded = useMemo(() => new Set(expandedKeys), [expandedKeys]);
 
-	const saveDisabled = saving || !canCreate;
+	const saveDisabled = saving || !canCreate || saveBlocked;
 
 	const handleSave = () => {
 		if (saveDisabled) return;

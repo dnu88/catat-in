@@ -61,6 +61,12 @@ export type EntryCopy = {
 	sameWalletError: string;
 	permissionError: string;
 	genericError: string;
+	/** Heading for the "only this needs a check" banner shown before the form. */
+	focusTitle: string;
+	/** Shortcut label that opens the picker for one unresolved field. */
+	focusFix: string;
+	/** Reassurance that everything outside the banner is already filled. */
+	focusRest: string;
 };
 
 const id: EntryCopy = {
@@ -111,6 +117,9 @@ const id: EntryCopy = {
 	sameWalletError: "Dompet tujuan harus berbeda dari dompet sumber.",
 	permissionError: "Kamu tidak punya akses untuk mencatat.",
 	genericError: "Periksa kembali kolom ini.",
+	focusTitle: "Cuma ini yang perlu dicek",
+	focusFix: "Perbaiki",
+	focusRest: "Sisanya sudah terisi.",
 };
 
 const en: EntryCopy = {
@@ -161,6 +170,9 @@ const en: EntryCopy = {
 	sameWalletError: "Destination wallet must differ from the source wallet.",
 	permissionError: "You do not have permission to record transactions.",
 	genericError: "Check this field again.",
+	focusTitle: "Only this needs a check",
+	focusFix: "Fix",
+	focusRest: "Everything else is filled.",
 };
 
 const COPY: Record<Language, EntryCopy> = { id, en };

@@ -78,6 +78,8 @@ import {
 	type ContextSnapshot,
 } from "../../src/features/transaction-entry/state";
 import {
+	allDraftsValid,
+	validateDraft,
 	localToday,
 	summariseDrafts,
 	unacknowledgedWarnings,
@@ -97,7 +99,8 @@ import {
 	CaptureComposer,
 	captureComposerCopy,
 } from "../../src/components/transaction-entry/CaptureComposer";
-import { TransactionReview } from "../../src/components/transaction-entry/TransactionReview";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { DraftWarnings, TransactionReview } from "../../src/components/transaction-entry/TransactionReview";
 import {
 	BatchReviewList,
 	batchReviewCopy,
@@ -314,6 +317,7 @@ function aiExtractionToDrafts(
 }
 
 export default function CaptureScreen() {
+	const safeAreaInsets = useSafeAreaInsets();
 	const { supabase } = useSupabase();
 	const { theme } = useTheme();
 	const { language } = useI18n();
@@ -615,6 +619,11 @@ export default function CaptureScreen() {
 	const [autoSaveReason, setAutoSaveReason] =
 		useState<AutoSaveBlockReason | null>(null);
 	const [autoSaveToastVisible, setAutoSaveToastVisible] = useState(false);
+	// Undo is a delete over the network. When it fails the entry is still stored,
+	// so the screen must say so and offer a retry instead of silently implying
+	// the cancellation worked.
+	const [undoFailureIds, setUndoFailureIds] = useState<string[] | null>(null);
+	const [undoRetrying, setUndoRetrying] = useState(false);
 	const autoSavePendingRef = useRef(false);
 	const [entryPicker, setEntryPicker] = useState<{
 		key: string;
@@ -1742,20 +1751,43 @@ export default function CaptureScreen() {
 		setAutoSaveToastVisible(false);
 		void recordAutoSaveOutcome("undone");
 		entryDispatch({ type: "reset" });
+		const failedIds: string[] = [];
 		for (const savedTransaction of savedForUndo) {
 			try {
 				await deleteTransaction(savedTransaction.id, activeContext);
 			} catch (undoError) {
 				Sentry.captureException(undoError);
+				failedIds.push(savedTransaction.id);
 			}
 		}
+		setUndoFailureIds(failedIds.length ? failedIds : null);
+		void loadWalletOptions();
+	};
+
+	const retryUndoAutoSavedEntry = async () => {
+		const pendingIds = undoFailureIds ?? [];
+		if (!pendingIds.length || undoRetrying) return;
+		setUndoRetrying(true);
+		const stillFailing: string[] = [];
+		for (const id of pendingIds) {
+			try {
+				await deleteTransaction(id, activeContext);
+			} catch (retryError) {
+				Sentry.captureException(retryError);
+				stillFailing.push(id);
+			}
+		}
+		setUndoFailureIds(stillFailing.length ? stillFailing : null);
+		setUndoRetrying(false);
 		void loadWalletOptions();
 	};
 
 	const editAutoSavedEntry = () => {
+		const transactionId = entrySaved?.transactions[0]?.id;
+		if (!transactionId) return;
 		setAutoSaveToastVisible(false);
 		void recordAutoSaveOutcome("edited");
-		entryDispatch({ type: "review-again" });
+		router.push({ pathname: "/(tabs)/transaction-new", params: { transactionId } });
 	};
 
 	const entryReviewVisible =
@@ -1905,7 +1937,7 @@ export default function CaptureScreen() {
 	const premiumBatchRows: BatchReviewRow[] = useMemo(
 		() =>
 			entryState.drafts.map((draft) => {
-				const draftErrors = entryErrors[draft.key];
+				const draftErrors = { ...validateDraft(draft, { wallets, categories: categoryOptions, canCreate }), ...entryErrors[draft.key] };
 				return {
 					key: draft.key,
 					description:
@@ -1921,7 +1953,7 @@ export default function CaptureScreen() {
 					),
 				};
 			}),
-		[entryState.drafts, entryErrors, wallets, tx.modeLabels.Teks],
+		[entryState.drafts, entryErrors, wallets, categoryOptions, canCreate, tx.modeLabels.Teks],
 	);
 	const premiumBatchSignature = premiumBatchRows
 		.map((row) => `${row.key}:${row.hasWarning ? 1 : 0}${row.invalid ? 1 : 0}`)
@@ -2289,6 +2321,7 @@ export default function CaptureScreen() {
 						{premiumBatchActive ? (
 							<BatchReviewList
 								rows={premiumBatchRows}
+								saveBlocked={receiptDiscrepancyBlocked || !allDraftsValid(entryState.drafts, { wallets, categories: categoryOptions, canCreate })}
 								count={summariseDrafts(entryState.drafts).count}
 								total={summariseDrafts(entryState.drafts).total}
 								canCreate={canCreate}
@@ -2312,6 +2345,8 @@ export default function CaptureScreen() {
 									);
 									if (!draft) return null;
 									return (
+										<View>
+										<DraftWarnings draft={draft} onAcknowledge={(key, field) => entryDispatch({ type: "draft-acknowledged", key, field })} />
 										<TransactionFields
 											draft={draft}
 											onChange={(patch) =>
@@ -2336,11 +2371,13 @@ export default function CaptureScreen() {
 											errors={entryErrors[row.key]}
 											testID={`draft-${row.key}`}
 										/>
+										</View>
 									);
 								}}
 							/>
 						) : (
 						<TransactionReview
+							saveBlocked={premium && receiptDiscrepancyBlocked}
 							drafts={entryState.drafts}
 							wallets={wallets.map((wallet) => ({
 								id: wallet.id,
@@ -2361,7 +2398,7 @@ export default function CaptureScreen() {
 							summary={summariseDrafts(entryState.drafts)}
 						/>
 						)}
-						{entryState.source === "image" ? (
+						{entryState.source === "image" && !premium ? (
 							<Pressable
 								testID="capture-receipt-confirm"
 								accessibilityRole="button"
@@ -2665,6 +2702,7 @@ export default function CaptureScreen() {
 			</ScrollView>
 			{entryV2 && autoSaveToastVisible && entryState.phase === "success" ? (
 				<AutoSaveToast
+					bottomOffset={premium ? Math.max(10, safeAreaInsets.bottom) + 64 + 16 : 16}
 					title={`${isEn ? "Saved" : "Tersimpan"}: ${successDrafts[0]?.category ?? ""} · Rp${(successAmount ?? 0).toLocaleString("id-ID")}`}
 					actionLabel={isEn ? "Undo" : "Batalkan"}
 					editLabel={isEn ? "Edit" : "Ubah"}
@@ -2673,6 +2711,33 @@ export default function CaptureScreen() {
 					onExpire={() => setAutoSaveToastVisible(false)}
 				/>
 			) : null}
+			{undoFailureIds?.length ? (
+				<View
+					testID="capture-undo-error"
+					accessibilityRole="alert"
+					style={[
+						styles.undoErrorBar,
+						{ bottom: premium ? Math.max(10, safeAreaInsets.bottom) + 64 + 16 : 16 },
+					]}
+				>
+					<Text style={styles.undoErrorText}>
+						{isEn
+							? "Undo failed — the entry is still saved."
+							: "Batalkan gagal — transaksi masih tersimpan."}
+					</Text>
+					<Pressable
+						testID="capture-undo-retry"
+						accessibilityRole="button"
+						disabled={undoRetrying}
+						onPress={() => void retryUndoAutoSavedEntry()}
+						style={styles.undoRetryButton}
+					>
+						<Text style={styles.undoRetryText}>
+							{undoRetrying ? (isEn ? "Retrying…" : "Mencoba…") : isEn ? "Retry" : "Coba lagi"}
+						</Text>
+					</Pressable>
+				</View>
+			) : null}
 		</PageEntrance>
 	);
 }
@@ -2680,6 +2745,23 @@ export default function CaptureScreen() {
 function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 	return StyleSheet.create({
 		screen: { flex: 1, backgroundColor: fe.paper },
+		undoErrorBar: {
+			position: "absolute",
+			left: 16,
+			right: 16,
+			flexDirection: "row",
+			alignItems: "center",
+			gap: 12,
+			paddingVertical: 12,
+			paddingHorizontal: 16,
+			borderRadius: 16,
+			borderWidth: 1,
+			borderColor: fe.danger,
+			backgroundColor: fe.white,
+		},
+		undoErrorText: { flex: 1, color: fe.danger, fontSize: 13, lineHeight: 18 },
+		undoRetryButton: { minHeight: 44, minWidth: 44, justifyContent: "center", alignItems: "center" },
+		undoRetryText: { color: fe.blue, fontWeight: "700", fontSize: 14 },
 		content: { padding: 20, gap: 14, paddingBottom: 130 },
 		headerRow: {
 			minHeight: 132, borderRadius: 28, padding: 20, marginBottom: 4,

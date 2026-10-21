@@ -7,6 +7,7 @@ import {
 import { StyleSheet } from "react-native";
 import type { StyleProp, ViewStyle } from "react-native";
 
+import { featureFlags } from "../src/config/features";
 import ReportsScreen from "../app/(tabs)/reports";
 import { ThemeProvider } from "../src/theme/theme-context";
 import { SupabaseProvider } from "../src/lib/supabase";
@@ -252,6 +253,26 @@ describe("ReportsScreen visual parity", () => {
 		mockTransactions = defaultMockTransactions;
 		jest.clearAllMocks();
 	});
+	it("premium uses the chosen period in its header without a redundant active-period card and retains saved-rule access", async () => {
+		const premium = jest.spyOn(featureFlags, "simplePremiumExperience", "get").mockReturnValue(true);
+		try {
+			renderReports();
+			await waitFor(() => expect(screen.getByTestId("reports-period-toggle")).toBeTruthy());
+			expect(screen.queryByTestId("reports-active-period-card")).toBeNull();
+			expect(screen.queryByTestId("reports-saved-rules-card")).toBeNull();
+			fireEvent.press(screen.getByTestId("reports-period-toggle"));
+			expect(screen.getByTestId("reports-manage-saved-rule-rule-1")).toBeTruthy();
+			expect(screen.getByTestId("reports-saved-rule-rule-1")).toBeTruthy();
+			fireEvent.press(screen.getByLabelText("Pilih periode 6 Bulan"));
+			expect(screen.getByTestId("reports-month-badge").props.children.props.children).toBe("6 Bulan");
+			expect(screen.queryByTestId("reports-active-period-card")).toBeNull();
+			fireEvent.press(screen.getByTestId("reports-period-toggle"));
+			expect(screen.queryByTestId("reports-period-options")).toBeNull();
+		} finally {
+			premium.mockRestore();
+		}
+	});
+
 	it("exposes budget wallet management entry point in Reports without letting copy collide with the action", async () => {
 		renderReports();
 

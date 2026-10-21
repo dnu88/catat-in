@@ -146,6 +146,56 @@ describe("TransactionReview", () => {
 		);
 	});
 
+	it("names only the unresolved field and opens its picker in one tap", () => {
+		const warned = makeDraft("d1", { unresolvedFields: ["category"] });
+		const { screen, harness } = renderReview({ drafts: [warned] });
+
+		const banner = screen.getByTestId("review-focus-banner");
+		expect(banner).toBeTruthy();
+		expect(screen.getByText("Cuma ini yang perlu dicek")).toBeTruthy();
+		expect(screen.getByText("Sisanya sudah terisi.")).toBeTruthy();
+		// Only the doubtful field is listed, not the fields the AI read cleanly.
+		expect(screen.getByTestId("review-focus-fix-category")).toBeTruthy();
+		expect(screen.queryByTestId("review-focus-fix-amount")).toBeNull();
+		expect(screen.queryByTestId("review-focus-fix-wallet")).toBeNull();
+
+		fireEvent.press(screen.getByTestId("review-focus-fix-category"));
+
+		expect(harness.onOpenPicker).toHaveBeenCalledWith("d1", "category");
+		// A shortcut must never save on its own.
+		expect(harness.onSave).not.toHaveBeenCalled();
+	});
+
+	it("shows a non-interactive chip for fields that have no picker", () => {
+		const warned = makeDraft("d1", { unresolvedFields: ["amount"] });
+		const { screen, harness } = renderReview({ drafts: [warned] });
+
+		expect(screen.getByTestId("review-focus-banner")).toBeTruthy();
+		expect(screen.queryByTestId("review-focus-fix-amount")).toBeNull();
+		expect(harness.onOpenPicker).not.toHaveBeenCalled();
+		// The explicit acknowledge control is still the only way past the warning.
+		expect(screen.getByTestId("review-ack-d1-amount")).toBeTruthy();
+	});
+
+	it("hides the focus banner once every field is resolved", () => {
+		const clean = makeDraft("d1");
+		const { screen } = renderReview({ drafts: [clean] });
+
+		expect(screen.queryByTestId("review-focus-banner")).toBeNull();
+	});
+
+	it("keeps the banner out of multi-draft batch reviews", () => {
+		const { screen } = renderReview({
+			drafts: [
+				makeDraft("d1", { unresolvedFields: ["category"] }),
+				makeDraft("d2"),
+			],
+			summary: { count: 2, total: 20000 },
+		});
+
+		expect(screen.queryByTestId("review-focus-banner")).toBeNull();
+	});
+
 	it("enables the save CTA once an uncertain field is acknowledged", () => {
 		const warned = makeDraft("d1", { unresolvedFields: ["amount"] });
 		const { screen, harness, rerenderWith } = renderReview({ drafts: [warned] });

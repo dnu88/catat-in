@@ -368,6 +368,9 @@ export function ReportPeriodProvider({ children }: { children: React.ReactNode }
 	const scopeRef = useRef<{ userId: string; storageKey: string } | null>(null);
 	const rulesRef = useRef(savedRules);
 	const selectionRef = useRef(activeSelection);
+	// Bumped on every user selection. A preference load that started before the
+	// user picked a period must not overwrite that newer choice when it resolves.
+	const selectionVersionRef = useRef(0);
 
 	useEffect(() => {
 		rulesRef.current = savedRules;
@@ -379,6 +382,7 @@ export function ReportPeriodProvider({ children }: { children: React.ReactNode }
 	useEffect(() => {
 		let cancelled = false;
 		async function load() {
+			const versionAtStart = selectionVersionRef.current;
 			try {
 				const { data: { user } } = await supabase.auth.getUser();
 				if (!user?.id || cancelled) return;
@@ -401,7 +405,7 @@ export function ReportPeriodProvider({ children }: { children: React.ReactNode }
 				const remote = await maybeLoadRemote(supabase, user.id, activeContext);
 				if (remote?.rules.length) nextRules = remote.rules;
 				if (remote?.selection) nextSelection = remote.selection;
-				if (cancelled) return;
+				if (cancelled || selectionVersionRef.current !== versionAtStart) return;
 				setSavedRules(nextRules);
 				setActiveSelection(nextSelection ?? { type: "preset", preset: "month" });
 			} catch {
@@ -423,6 +427,7 @@ export function ReportPeriodProvider({ children }: { children: React.ReactNode }
 	}, [activeContext, supabase]);
 
 	const setSelectionAndPersist = useCallback((selection: ActiveReportPeriodSelection) => {
+		selectionVersionRef.current += 1;
 		setActiveSelection(selection);
 		selectionRef.current = selection;
 		persist(rulesRef.current, selection);

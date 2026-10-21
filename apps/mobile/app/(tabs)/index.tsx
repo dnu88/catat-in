@@ -1,5 +1,5 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Image, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useFocusEffect, useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
@@ -195,10 +195,21 @@ export default function DashboardScreen() {
 	// object so flag OFF keeps every value identical to the pre-B1 baseline.
 	const styles = useMemo(() => createStyles(theme, premium), [theme, premium]);
 	const [envelopeAlerts, setEnvelopeAlerts] = useState<EnvelopeSummary[]>([]);
-	const [wallets, setWallets] = useState<Wallet[]>([]);
-	const [recentTransactions, setRecentTransactions] = useState<Transaction[]>(
-		[],
-	);
+	const [auxiliaryScope, setAuxiliaryScope] = useState<string | null>(null);
+	const [loadedWallets, setWallets] = useState<Wallet[]>([]);
+	const [loadedTransactions, setRecentTransactions] = useState<Transaction[]>([]);
+	const scopeKey = activeContext.type === "household" ? `household:${activeContext.householdId}` : "personal";
+	const scopeRef = useRef(scopeKey);
+	scopeRef.current = scopeKey;
+	const requestRef = useRef(0);
+	const [loadedScope, setLoadedScope] = useState<string | null>(null);
+	const [loadState, setLoadState] = useState<{ scope: string; loading: boolean; error: boolean }>({ scope: scopeKey, loading: true, error: false });
+	const hasCurrentData = loadedScope === scopeKey;
+	const hideUnloadedData = premium && !hasCurrentData;
+	const wallets = hideUnloadedData ? [] : loadedWallets;
+	const recentTransactions = hideUnloadedData ? [] : loadedTransactions;
+	const dataLoading = loadState.scope !== scopeKey || loadState.loading;
+	const dataError = loadState.scope === scopeKey && loadState.error;
 	const [reviewSummary, setReviewSummary] = useState<TransactionReviewSummary | null>(null);
 	const [categoryOptions, setCategoryOptions] = useState<Category[]>([]);
 	const [userName, setUserName] = useState("");
@@ -254,7 +265,10 @@ export default function DashboardScreen() {
 		[isNominalHidden],
 	);
 
-	const loadDashboard = useCallback(async (isMounted: () => boolean = () => true) => {
+	const loadDashboard = useCallback(async (stillMounted: () => boolean = () => true) => {
+			const request = ++requestRef.current;
+			const isMounted = () => stillMounted() && request === requestRef.current && scopeRef.current === scopeKey;
+			setLoadState({ scope: scopeKey, loading: true, error: false });
 			try {
 				const {
 					data: { user },
@@ -270,6 +284,8 @@ export default function DashboardScreen() {
 						setRecentTransactions([]);
 						setReviewSummary(null);
 						setCategoryOptions([]);
+						setLoadedScope(null);
+						setLoadState({ scope: scopeKey, loading: false, error: true });
 					}
 					return;
 				}
@@ -287,9 +303,8 @@ export default function DashboardScreen() {
 					setProfileAvatarKey(visual.avatarKey);
 				}
 
-				const [envelopes, scopedWallets, scopedTransactions, categories] =
+				const [scopedWallets, scopedTransactions, categories] =
 					await Promise.all([
-						listBudgetEnvelopes(supabase, user.id, activeContext),
 						listWallets(activeContext),
 						listTransactions(undefined, activeContext),
 						listCategories().catch(() => [] as Category[]),
@@ -300,23 +315,28 @@ export default function DashboardScreen() {
 					);
 					setRecentTransactions(scopedTransactions);
 					setCategoryOptions(categories);
+					setLoadedScope(scopeKey);
+					setLoadState({ scope: scopeKey, loading: false, error: false });
 				}
+				// Budget requests are auxiliary: a failure must not hide the core ledger.
+				const envelopes = await listBudgetEnvelopes(supabase, user.id, activeContext).catch(() => []);
 				const activeEnvelopes = envelopes.filter(
 					(envelope) => getEnvelopeStatus(envelope) === "active",
 				);
-				const allocations = await listEnvelopeAllocations(
+				const allocationResult = await listEnvelopeAllocations(
 					supabase,
 					activeEnvelopes.map((envelope) => envelope.id),
-				);
+				).catch(() => null);
+				const allocations = allocationResult ?? [];
 
 				// Load transaction review summary
 				const reviewResult = await getTransactionReviewSummary(activeContext)
 					.catch(() => null);
-				if (isMounted() && reviewResult) {
-					setReviewSummary(reviewResult.summary);
+				if (isMounted()) {
+					setReviewSummary(reviewResult?.summary ?? null);
 				}
 
-				const summaries = activeEnvelopes.map((envelope) => ({
+				const summaries = (allocationResult ? activeEnvelopes : []).map((envelope) => ({
 					envelope,
 					progress: buildEnvelopeProgress(envelope, allocations),
 					reviewCount: allocations.filter(
@@ -325,15 +345,19 @@ export default function DashboardScreen() {
 					).length,
 				}));
 
-				if (isMounted()) setEnvelopeAlerts(getHomeEnvelopeAlerts(summaries));
+				if (isMounted()) {
+					setEnvelopeAlerts(getHomeEnvelopeAlerts(summaries));
+					setAuxiliaryScope(scopeKey);
+				}
 			} catch (error) {
 				if (isMounted()) {
 					console.error("Error loading home envelope alerts:", error);
 					setEnvelopeAlerts([]);
 					setReviewSummary(null);
+					setLoadState({ scope: scopeKey, loading: false, error: true });
 				}
 			}
-	}, [supabase, activeContext]);
+	}, [supabase, activeContext, scopeKey]);
 
 	useFocusEffect(
 		useCallback(() => {
@@ -341,6 +365,7 @@ export default function DashboardScreen() {
 			void loadDashboard(() => mounted);
 			return () => {
 				mounted = false;
+				requestRef.current += 1;
 			};
 		}, [loadDashboard]),
 	);
@@ -354,8 +379,9 @@ export default function DashboardScreen() {
 		}
 	}, [loadDashboard]);
 
-	const primaryEnvelopeAlert = envelopeAlerts[0];
-	const hasReview = !!reviewSummary && reviewSummary.count > 0;
+	const hideAuxiliaryData = premium && auxiliaryScope !== scopeKey;
+	const primaryEnvelopeAlert = hideUnloadedData || hideAuxiliaryData ? undefined : envelopeAlerts[0];
+	const hasReview = !hideUnloadedData && !hideAuxiliaryData && !!reviewSummary && reviewSummary.count > 0;
 	const hasAttention = hasReview || !!primaryEnvelopeAlert;
 	const totalBalance = wallets.reduce(
 		(sum, wallet) => sum + Number(wallet.balance ?? 0),
@@ -401,15 +427,15 @@ export default function DashboardScreen() {
 			id: transaction.id,
 			title:
 				transaction.merchant ?? transaction.description ?? transaction.category,
-			meta: `${transaction.date ?? ""} · ${localizedCategoryName}`,
-			amount: displayAmount(formatCompactAmount(
+			meta: `${transaction.date ?? ""} · ${premium && transaction.transaction_type === "transfer" ? "Transfer" : localizedCategoryName}`,
+			amount: displayAmount(premium && transaction.transaction_type === "transfer" ? formatCurrency(transaction.amount).replace("Rp ", "") : formatCompactAmount(
 				transaction.amount,
 				transaction.transaction_type,
 			)),
 			amountTone:
 				transaction.transaction_type === "income"
 					? ("income" as const)
-					: ("expense" as const),
+					: premium && transaction.transaction_type === "transfer" ? ("transfer" as const) : ("expense" as const),
 			icon:
 				transaction.transaction_type === "income" ? "chart" : categoryVisual.icon,
 			iconColor: iconPalette.color,
@@ -579,7 +605,7 @@ export default function DashboardScreen() {
 									testID="home-total-balance"
 									style={styles.heroAmount}
 								>
-									{displayAmount(formatCurrency(totalBalance))}
+									{hideUnloadedData ? "—" : displayAmount(formatCurrency(totalBalance))}
 								</Text>
 							</View>
 						</View>
@@ -605,14 +631,14 @@ export default function DashboardScreen() {
 							<View style={styles.heroMetricCard}>
 								<Text style={styles.heroMetricLabel}>{heroTitle}</Text>
 								<Text testID="home-monthly-remaining" style={[styles.heroMetricValue, monthlyRemainingTone === "danger" && styles.heroAmountDanger]}>
-									{displayAmount(formatSignedCurrency(monthlyRemaining))}
+									{hideUnloadedData ? "—" : displayAmount(formatSignedCurrency(monthlyRemaining))}
 								</Text>
 								<Text style={styles.heroMetricSub}>{activePeriodLabel}</Text>
 							</View>
 							<View style={styles.heroMetricCard}>
 								<Text style={styles.heroMetricLabel}>{tx.monthlyExpense}</Text>
 								<Text testID="home-monthly-expense" style={styles.heroMetricValue}>
-									{displayAmount(formatCurrency(monthlyExpense))}
+									{hideUnloadedData ? "—" : displayAmount(formatCurrency(monthlyExpense))}
 								</Text>
 								<Text style={styles.heroMetricSub}>{isCurrentMonth ? tx.monthlyExpenseSub : tx.monthlyExpensePeriodSub}</Text>
 							</View>
@@ -639,6 +665,16 @@ export default function DashboardScreen() {
 				</View>
 
 				<View style={styles.paperSheet}>
+				{premium && (dataLoading || dataError) ? (
+					<View testID="home-data-status" accessibilityLiveRegion="polite" style={styles.sectionCard}>
+						<Text style={styles.emptyInlineTitle}>{dataLoading
+							? (isEn ? (hasCurrentData ? "Updating…" : "Loading your finances…") : (hasCurrentData ? "Memperbarui…" : "Memuat keuangan…"))
+							: (isEn ? (hasCurrentData ? "Could not update. Showing last loaded data." : "Could not load your finances.") : (hasCurrentData ? "Gagal memperbarui. Menampilkan data terakhir." : "Keuangan belum berhasil dimuat."))}</Text>
+						{dataError ? <Pressable testID="home-data-retry" accessibilityRole="button" onPress={onRefresh} style={styles.sectionActionTarget}>
+							<Text style={styles.sectionAction}>{isEn ? "Retry" : "Coba lagi"}</Text>
+						</Pressable> : null}
+					</View>
+				) : null}
 				{premium ? (
 					<Pressable
 						testID="home-capture-cta"
@@ -740,14 +776,14 @@ export default function DashboardScreen() {
 										styles.txAmount,
 										item.amountTone === "income"
 											? styles.txAmountIncome
-											: styles.txAmountExpense,
+											: item.amountTone === "transfer" ? { color: fe.blue } : styles.txAmountExpense,
 									]}
 								>
 									{item.amount}
 								</Text>
 							</View>
 						))
-					) : (
+					) : premium && (hideUnloadedData || dataError) ? null : (
 						<View style={styles.emptyInline}>
 							<KaswiseIcon name="transactions" size={20} color={theme.colors.textMuted} />
 							<View style={styles.emptyInlineCopy}>
@@ -999,7 +1035,8 @@ function createStyles(
 		},
 		heroPeriodText: { color: "rgba(255,255,255,0.72)", fontSize: 11, fontWeight: theme.typography.fontWeight.medium },
 		heroPeriodReset: {
-			minHeight: 30,
+			minHeight: premium ? 44 : 30,
+			...(premium ? { minWidth: 44 } : {}),
 			borderRadius: 999,
 			paddingHorizontal: 10,
 			alignItems: "center",

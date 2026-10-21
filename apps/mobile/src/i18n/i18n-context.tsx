@@ -6,7 +6,12 @@ type TranslationKey = keyof typeof translations.id
 
 type I18nContextValue = {
   language: Language
-  setLanguage: (language: Language) => void
+  /**
+   * Applies the language immediately and reports whether it could be stored.
+   * `false` means the choice is active for this session but will NOT survive a
+   * reload, so callers must tell the user instead of implying it was saved.
+   */
+  setLanguage: (language: Language) => Promise<boolean>
   t: (key: TranslationKey) => string
 }
 
@@ -241,9 +246,14 @@ export function I18nProvider({ children }: { children: React.ReactNode }) {
   const value = useMemo<I18nContextValue>(
     () => ({
       language,
-      setLanguage: (nextLanguage) => {
+      setLanguage: async (nextLanguage) => {
         setLanguageState(nextLanguage)
-        AsyncStorage.setItem(I18N_STORAGE_KEY, nextLanguage).catch(() => {})
+        try {
+          await AsyncStorage.setItem(I18N_STORAGE_KEY, nextLanguage)
+          return true
+        } catch {
+          return false
+        }
       },
       t: (key) => translations[language][key],
     }),

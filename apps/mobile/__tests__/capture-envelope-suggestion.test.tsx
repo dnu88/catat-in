@@ -15,6 +15,11 @@ import CaptureScreen from "../app/(tabs)/capture";
 import { I18nProvider } from "../src/i18n/i18n-context";
 import { ThemeProvider } from "../src/theme/theme-context";
 
+jest.mock("react-native-safe-area-context", () => ({
+	useSafeAreaInsets: () => ({ top: 0, right: 0, bottom: 0, left: 0 }),
+	SafeAreaProvider: ({ children }: { children: React.ReactNode }) => children,
+}));
+
 jest.mock("expo-av", () => ({
 	Audio: {
 		requestPermissionsAsync: jest.fn(),

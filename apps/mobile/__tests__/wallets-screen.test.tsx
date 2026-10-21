@@ -80,7 +80,9 @@ function getFlattenedStyle(node: StyleHostNode): ViewStyle {
 
 function LanguageSetter({ language }: { language: Language }) {
 	const { setLanguage } = useI18n();
-	React.useEffect(() => setLanguage(language), [language, setLanguage]);
+	React.useEffect(() => {
+		void setLanguage(language);
+	}, [language, setLanguage]);
 	return null;
 }
 
