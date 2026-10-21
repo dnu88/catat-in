@@ -80,28 +80,29 @@ Reports period observation — resolved. Root cause: `ReportPeriodProvider` load
 
 ## F. Five-point UX roadmap — subsequent work, not all release blockers
 
-Release blocker found during live acceptance: authenticated backend entitlements and AI return HTTP500 without CORS. Backend traceback identifies `NameError: name 'lru_cache' is not defined`; deployed backend source contains decorator usage but no import. The backend container predates this frontend release and was not modified/restarted by it. Home authenticated balance and receipt-back preservation passed, but AI -> autosave -> edit live acceptance remains blocked. Do not label release fully healthy/live-verified. Seek separate approval for minimal backend hotfix; frontend rollback alone does not remove this backend defect. Backup/provenance manifest recorded in durable backups, and smoke diagnostics include successful fixture cleanup.
+Live acceptance found a pre-existing backend defect: authenticated entitlements and AI answered HTTP500 without CORS (`NameError: lru_cache`). A minimal import-only hotfix was approved, built as an overlay on the exact running image, deployed with the 54-variable runtime preserved, and verified: entitlements 200 with CORS, AI chat 200, receipt OCR 200. This section is now a resolved record, not an open blocker.
 
 ### F1. Transaction entry
 - [x] Existing text/receipt/defaults/editable review/Kembali retained; current hardening in A.
-- [ ] Define and implement focused questions for only missing fields instead of opening full review, without weakening financial validation.
-- [ ] Make failed Undo visible and recoverable; do not imply successful cancellation if deletion fails.
+- [x] Make failed Undo visible and recoverable; do not imply successful cancellation if deletion fails. Undo now collects failed deletes, shows `capture-undo-error` ("Batalkan gagal — transaksi masih tersimpan") with a 44px `capture-undo-retry`, and clears it only after the delete actually succeeds. Covered by two new cases in `__tests__/capture-autosave.test.tsx`.
+- [ ] Deferred (next scope): ask only for the missing field instead of opening full review. Needs a design decision because the financial validators (amount, type, category confidence) must stay blocking; not attempted blind.
 
 ### F2. Home simplicity
 - [x] Existing primary Catat, balance/month summary, wallet stack and conditional attention retained; state reliability improved.
-- [ ] Assess settled screen density on device with long scope names and multiple alerts; change only demonstrated friction.
+- [x] Assess settled screen density on device with long scope names and multiple alerts; change only demonstrated friction. Measured live with a disposable account holding five wallets (one name 56 characters) at 390px and 360px across Home, Capture and Reports: zero horizontal overflow, zero clipped text nodes, zero controls below 44×44. No change made because no friction was demonstrated.
 
 ### F3. Lightweight editing
 - [x] Existing ID-based editor retained; autosave Edit corrected.
-- [ ] Device acceptance of keyboard, pickers and immediate saved-value/balance feedback (covered by C and E; do not duplicate implementation).
+- [x] Device acceptance of keyboard, pickers and immediate saved-value/balance feedback. Owner confirmed the iPhone pass; live smoke proves the saved nominal and wallet balance update immediately (35.000→45.000, 5.000.000→4.955.000). No duplicate implementation added.
 
 ### F4. Reports and Settings
 - [x] Existing report states and active settings values retained; period controls consolidated.
-- [ ] Consider language preference save-failure feedback and picker consistency as a separate small scope.
+- [x] Language preference save-failure feedback implemented: `setLanguage` now reports whether the write persisted, `SettingsLanguageRow` shows `settings-language-error` ("aktif sekarang, tapi gagal disimpan di perangkat") instead of failing silently, and legacy fire-and-forget callers stay error-free. Covered by `__tests__/settings-language-persistence.test.tsx`.
+- [ ] Deferred: unify every settings picker onto one sheet pattern (cosmetic consistency, separate scope).
 
 ### F5. Visual/motion polish
 - [x] Existing Finance Editorial tokens/components preserved; no redesign.
-- [ ] Prioritize remaining typography/touch/picker inconsistencies from device evidence; preserve reduced-motion and accessibility behavior.
+- [x] Touch-target and text-clipping audit completed on live data (390/360, Home/Capture/Reports): no sub-44px interactive controls and no clipped long labels. Remaining picker/motion polish stays deferred so it does not churn a verified release.
 
 ## Engineering reference (internal execution details)
 
