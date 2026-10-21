@@ -177,19 +177,20 @@ Instrumented (cheap, local counters already possible):
 ## 11. Phases
 
 - **P1 (shipped)** — focus banner naming unresolved fields + one-tap picker.
-- **P2** — collapse resolved fields behind “Ubah detail”, keep context line,
-  keep save predicate identical. Behind flag.
-- **P3** — auto-focus the single doubtful row; move the save CTA above the fold.
-- **P4** — metrics above, then decide whether the full review remains the
-  fallback for anything.
+- **P2 (this change)** — routing classification plus local counters
+  (`src/features/transaction-entry/review-metrics.ts`). The form still renders in
+  full, so nothing the user sees changes and no validation path moves.
+- **P3** — collapse resolved fields behind “Ubah detail” with the always-on
+  context line, then auto-focus the single doubtful row.
+- **P4** — read the counters, decide whether the full review stays the fallback
+  for anything, and only then consider moving the save CTA above the fold.
 
-## 12. Decisions needed from the product owner
+## 12. Decisions — answered by the product owner (2026-10-21)
 
-1. Is the context line (wallet · date · type) always shown, or only when the
-   corresponding field was doubtful? (Recommendation: always — it is the guard
-   against hidden mistakes.)
-2. Keep “Sudah benar” as the acknowledge affordance, or rename to something
-   shorter on mobile?
-3. Is a collapsed-by-default form acceptable for a first release, or should P2
-   ship with everything expanded and only P3 collapse it?
-4. Do we want the metrics in P4, or is a manual read of review taps enough for now?
+1. **Context line:** always shown, not only for doubtful fields. It is the guard
+   against hidden mistakes (R3), so it is not optional in P3.
+2. **Acknowledge affordance:** keep “Sudah benar”. No renaming.
+3. **First release shape:** the form stays **fully expanded**. Collapsing moves to
+   P3, after the counters from P2 give a baseline. This is why P2 touches no UI.
+4. **Metrics:** required. Implemented in P2 as device-local, non-identifying
+   counters — no amounts, categories, text or identifiers are stored.
