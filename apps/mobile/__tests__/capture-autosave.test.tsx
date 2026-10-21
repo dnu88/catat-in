@@ -342,6 +342,49 @@ describe("Capture text auto-save (aiAutosaveText)", () => {
 		expect(mockCreateTransaction).not.toHaveBeenCalled();
 	});
 
+	it("admits the undo failed and offers a retry instead of implying success", async () => {
+		mockAnalyzeTransactionText.mockResolvedValue(safeExtraction());
+		await renderReady();
+		await submitText();
+		await waitFor(() => expect(screen.getByTestId("auto-save-undo")).toBeTruthy());
+
+		mockDeleteTransaction.mockRejectedValueOnce(new Error("jaringan putus"));
+		await act(async () => {
+			fireEvent.press(screen.getByTestId("auto-save-undo"));
+		});
+
+		await waitFor(() => expect(screen.getByTestId("capture-undo-error")).toBeTruthy());
+		expect(mockDeleteTransaction).toHaveBeenCalledWith("tx-1", expect.anything());
+		// The notice must not pretend the cancellation worked.
+		expect(screen.queryByTestId("auto-save-toast")).toBeNull();
+		expect(
+			String(screen.getByTestId("capture-undo-error").props.children ?? ""),
+		).not.toMatch(/berhasil/i);
+
+		mockDeleteTransaction.mockResolvedValueOnce(undefined);
+		await act(async () => {
+			fireEvent.press(screen.getByTestId("capture-undo-retry"));
+		});
+
+		await waitFor(() => expect(screen.queryByTestId("capture-undo-error")).toBeNull());
+		expect(mockDeleteTransaction).toHaveBeenCalledTimes(2);
+	});
+
+	it("closes the undo notice without an error when the delete succeeds", async () => {
+		mockAnalyzeTransactionText.mockResolvedValue(safeExtraction());
+		await renderReady();
+		await submitText();
+		await waitFor(() => expect(screen.getByTestId("auto-save-undo")).toBeTruthy());
+
+		await act(async () => {
+			fireEvent.press(screen.getByTestId("auto-save-undo"));
+		});
+
+		await waitFor(() => expect(screen.queryByTestId("capture-undo-error")).toBeNull());
+		expect(mockDeleteTransaction).toHaveBeenCalledTimes(1);
+		expect(mockDeleteTransaction).toHaveBeenCalledWith("tx-1", expect.anything());
+	});
+
 	it("keeps review and explains itself when the extractor flags uncertainty", async () => {
 		const extraction = safeExtraction();
 		extraction.unclear = "tanggal transaksi belum jelas";

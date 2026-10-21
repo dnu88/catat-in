@@ -619,6 +619,11 @@ export default function CaptureScreen() {
 	const [autoSaveReason, setAutoSaveReason] =
 		useState<AutoSaveBlockReason | null>(null);
 	const [autoSaveToastVisible, setAutoSaveToastVisible] = useState(false);
+	// Undo is a delete over the network. When it fails the entry is still stored,
+	// so the screen must say so and offer a retry instead of silently implying
+	// the cancellation worked.
+	const [undoFailureIds, setUndoFailureIds] = useState<string[] | null>(null);
+	const [undoRetrying, setUndoRetrying] = useState(false);
 	const autoSavePendingRef = useRef(false);
 	const [entryPicker, setEntryPicker] = useState<{
 		key: string;
@@ -1746,13 +1751,34 @@ export default function CaptureScreen() {
 		setAutoSaveToastVisible(false);
 		void recordAutoSaveOutcome("undone");
 		entryDispatch({ type: "reset" });
+		const failedIds: string[] = [];
 		for (const savedTransaction of savedForUndo) {
 			try {
 				await deleteTransaction(savedTransaction.id, activeContext);
 			} catch (undoError) {
 				Sentry.captureException(undoError);
+				failedIds.push(savedTransaction.id);
 			}
 		}
+		setUndoFailureIds(failedIds.length ? failedIds : null);
+		void loadWalletOptions();
+	};
+
+	const retryUndoAutoSavedEntry = async () => {
+		const pendingIds = undoFailureIds ?? [];
+		if (!pendingIds.length || undoRetrying) return;
+		setUndoRetrying(true);
+		const stillFailing: string[] = [];
+		for (const id of pendingIds) {
+			try {
+				await deleteTransaction(id, activeContext);
+			} catch (retryError) {
+				Sentry.captureException(retryError);
+				stillFailing.push(id);
+			}
+		}
+		setUndoFailureIds(stillFailing.length ? stillFailing : null);
+		setUndoRetrying(false);
 		void loadWalletOptions();
 	};
 
@@ -2685,6 +2711,33 @@ export default function CaptureScreen() {
 					onExpire={() => setAutoSaveToastVisible(false)}
 				/>
 			) : null}
+			{undoFailureIds?.length ? (
+				<View
+					testID="capture-undo-error"
+					accessibilityRole="alert"
+					style={[
+						styles.undoErrorBar,
+						{ bottom: premium ? Math.max(10, safeAreaInsets.bottom) + 64 + 16 : 16 },
+					]}
+				>
+					<Text style={styles.undoErrorText}>
+						{isEn
+							? "Undo failed — the entry is still saved."
+							: "Batalkan gagal — transaksi masih tersimpan."}
+					</Text>
+					<Pressable
+						testID="capture-undo-retry"
+						accessibilityRole="button"
+						disabled={undoRetrying}
+						onPress={() => void retryUndoAutoSavedEntry()}
+						style={styles.undoRetryButton}
+					>
+						<Text style={styles.undoRetryText}>
+							{undoRetrying ? (isEn ? "Retrying…" : "Mencoba…") : isEn ? "Retry" : "Coba lagi"}
+						</Text>
+					</Pressable>
+				</View>
+			) : null}
 		</PageEntrance>
 	);
 }
@@ -2692,6 +2745,23 @@ export default function CaptureScreen() {
 function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 	return StyleSheet.create({
 		screen: { flex: 1, backgroundColor: fe.paper },
+		undoErrorBar: {
+			position: "absolute",
+			left: 16,
+			right: 16,
+			flexDirection: "row",
+			alignItems: "center",
+			gap: 12,
+			paddingVertical: 12,
+			paddingHorizontal: 16,
+			borderRadius: 16,
+			borderWidth: 1,
+			borderColor: fe.danger,
+			backgroundColor: fe.white,
+		},
+		undoErrorText: { flex: 1, color: fe.danger, fontSize: 13, lineHeight: 18 },
+		undoRetryButton: { minHeight: 44, minWidth: 44, justifyContent: "center", alignItems: "center" },
+		undoRetryText: { color: fe.blue, fontWeight: "700", fontSize: 14 },
 		content: { padding: 20, gap: 14, paddingBottom: 130 },
 		headerRow: {
 			minHeight: 132, borderRadius: 28, padding: 20, marginBottom: 4,
