@@ -84,6 +84,7 @@ import {
 	summariseDrafts,
 	unacknowledgedWarnings,
 	type DraftFieldErrors,
+	type ReviewField,
 	type TransactionDraft,
 } from "../../src/features/transaction-entry/draft";
 import {
@@ -112,6 +113,12 @@ import {
 	type AutoSaveBlockReason,
 } from "../../src/features/transaction-entry/auto-save";
 import { recordAutoSaveOutcome } from "../../src/services/auto-save-metrics";
+import {
+	reviewMode,
+	trackFieldTouched,
+	trackReviewClosed,
+	trackReviewOpened,
+} from "../../src/features/transaction-entry/review-metrics";
 import { deleteTransaction } from "../../src/services/transactions";
 import { TransactionSuccess } from "../../src/components/transaction-entry/TransactionSuccess";
 import { EntrySheet } from "../../src/components/transaction-entry/EntrySheet";
@@ -619,6 +626,9 @@ export default function CaptureScreen() {
 	const [autoSaveReason, setAutoSaveReason] =
 		useState<AutoSaveBlockReason | null>(null);
 	const [autoSaveToastVisible, setAutoSaveToastVisible] = useState(false);
+	// One "review opened" event per review session, tagged with the routing mode
+	// from review-metrics so the counters can tell focus from full reviews.
+	const reviewOpenedTrackedRef = useRef(false);
 	// Undo is a delete over the network. When it fails the entry is still stored,
 	// so the screen must say so and offer a retry instead of silently implying
 	// the cancellation worked.
@@ -1479,6 +1489,11 @@ export default function CaptureScreen() {
 	};
 
 	const resetEntryFlow = () => {
+		// Leaving review without saving is an abandonment signal for the counters.
+		if (entryState.phase === "review") {
+			void trackReviewClosed("abandoned");
+		}
+		reviewOpenedTrackedRef.current = false;
 		entryRequestIdRef.current = null;
 		entryFingerprintRef.current = null;
 		entrySaveContextRef.current = null;
@@ -1670,6 +1685,8 @@ export default function CaptureScreen() {
 				entryOutcomeUnknownRef.current = false;
 				entryRequestIdRef.current = null;
 				entryFingerprintRef.current = null;
+				if (!options?.auto) void trackReviewClosed("saved");
+				reviewOpenedTrackedRef.current = false;
 				entryDispatch({
 					type: "save-succeeded",
 					generation,
@@ -1684,6 +1701,7 @@ export default function CaptureScreen() {
 				}
 			} catch (saveError) {
 				Sentry.captureException(saveError);
+				void trackReviewClosed("failed");
 				const persistenceError =
 					saveError instanceof EntryPersistenceError
 						? saveError
@@ -1745,6 +1763,25 @@ export default function CaptureScreen() {
 		// saveReviewedDrafts is recreated every render; the phase is the trigger.
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [entryV2, entryState.phase]);
+
+	// Counters: how often does a review ask about one doubtful field instead of a
+	// whole form, and does that path still end in a saved entry? Local only.
+	useEffect(() => {
+		if (entryState.phase !== "review") return;
+		if (reviewOpenedTrackedRef.current) return;
+		// The auto-save path also passes through "review"; that is not a user review.
+		if (autoSavePendingRef.current) return;
+		reviewOpenedTrackedRef.current = true;
+		void trackReviewOpened(
+			reviewMode(entryState.drafts, autoSaveReason),
+			autoSaveReason,
+		);
+	}, [entryState.phase, entryState.drafts, autoSaveReason]);
+
+	const handleAcknowledge = (key: string, field: ReviewField) => {
+		entryDispatch({ type: "draft-acknowledged", key, field });
+		void trackFieldTouched(field);
+	};
 
 	const undoAutoSavedEntry = async () => {
 		const savedForUndo = entrySaved?.transactions ?? [];
@@ -2346,7 +2383,7 @@ export default function CaptureScreen() {
 									if (!draft) return null;
 									return (
 										<View>
-										<DraftWarnings draft={draft} onAcknowledge={(key, field) => entryDispatch({ type: "draft-acknowledged", key, field })} />
+										<DraftWarnings draft={draft} onAcknowledge={handleAcknowledge} />
 										<TransactionFields
 											draft={draft}
 											onChange={(patch) =>
@@ -2389,7 +2426,7 @@ export default function CaptureScreen() {
 							}))}
 							canCreate={canCreate}
 							onChange={(key, patch) => entryDispatch({ type: "draft-updated", key, patch })}
-							onAcknowledge={(key, field) => entryDispatch({ type: "draft-acknowledged", key, field })}
+							onAcknowledge={handleAcknowledge}
 							onOpenPicker={(key, kind) => setEntryPicker({ key, kind })}
 							onSave={saveReviewedDrafts}
 							onCancel={resetEntryFlow}
