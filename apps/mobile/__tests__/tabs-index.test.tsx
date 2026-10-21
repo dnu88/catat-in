@@ -1,4 +1,4 @@
-import { fireEvent, render, waitFor } from "@testing-library/react-native";
+import { act, fireEvent, render, waitFor } from "@testing-library/react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { StyleSheet, Text } from "react-native";
 import type { StyleProp, TextStyle, ViewStyle } from "react-native";
@@ -211,6 +211,86 @@ const SOFT_GREEN_BORDERS = [
 ];
 
 describe("DashboardScreen dark luxury Home parity", () => {
+	it("keeps delayed initial data distinct from first-use and recovers through retry", async () => {
+		jest.spyOn(featureFlags, "simplePremiumExperience", "get").mockReturnValue(true);
+		const { listWallets } = require("../src/services/wallets");
+		let reject!: (error: Error) => void;
+		jest.mocked(listWallets).mockImplementationOnce(() => new Promise((_resolve, fail) => { reject = fail; }));
+		const screen = renderDashboard();
+		expect(screen.getByTestId("home-data-status")).toBeTruthy();
+		expect(screen.queryByText("Belum ada transaksi")).toBeNull();
+		expect(screen.getByTestId("home-total-balance").props.children).toBe("—");
+		await waitFor(() => expect(reject).toBeDefined());
+		await act(async () => { reject(new Error("offline")); });
+		await waitFor(() => expect(screen.getByTestId("home-data-retry")).toBeTruthy());
+		await act(async () => { fireEvent.press(screen.getByTestId("home-data-retry")); });
+		await waitFor(() => expect(screen.getByText("Belum ada transaksi")).toBeTruthy());
+		expect(screen.queryByTestId("home-data-status")).toBeNull();
+	});
+	it("retains the loaded balance after refresh failure and retries successfully", async () => {
+		jest.spyOn(featureFlags, "simplePremiumExperience", "get").mockReturnValue(true);
+		const { listTransactions } = require("../src/services/transactions");
+		mockWallets = [{ id: "wallet", balance: 12345, is_active: true }];
+		const screen = renderDashboard();
+		await waitFor(() => expect(screen.getByTestId("home-total-balance").props.children).toBe("Rp 12.345"));
+		jest.mocked(listTransactions).mockRejectedValueOnce(new Error("offline"));
+		const { RefreshControl } = require("react-native");
+		await act(async () => { await screen.UNSAFE_getByType(RefreshControl).props.onRefresh(); });
+		expect(screen.getByTestId("home-total-balance").props.children).toBe("Rp 12.345");
+		expect(screen.getByText("Gagal memperbarui. Menampilkan data terakhir.")).toBeTruthy();
+		await act(async () => { fireEvent.press(screen.getByTestId("home-data-retry")); });
+		await waitFor(() => expect(screen.queryByTestId("home-data-status")).toBeNull());
+	});
+
+	it("shows core finances while budgets are delayed, and survives their rejection", async () => {
+		jest.spyOn(featureFlags, "simplePremiumExperience", "get").mockReturnValue(true);
+		const { listBudgetEnvelopes } = require("../src/services/budget-envelopes");
+		let reject!: (error: Error) => void;
+		jest.mocked(listBudgetEnvelopes).mockImplementationOnce(() => new Promise((_resolve, fail) => { reject = fail; }));
+		mockWallets = [{ id: "wallet", balance: 12345, is_active: true }];
+		const screen = renderDashboard();
+		await waitFor(() => expect(screen.getByTestId("home-total-balance").props.children).toBe("Rp 12.345"));
+		expect(screen.queryByTestId("home-data-status")).toBeNull();
+		await act(async () => { reject(new Error("budget offline")); });
+		expect(screen.getByTestId("home-total-balance").props.children).toBe("Rp 12.345");
+		expect(screen.queryByTestId("home-data-retry")).toBeNull();
+	});
+
+	it("hides previous-scope data immediately and ignores late responses from that scope", async () => {
+		jest.spyOn(featureFlags, "simplePremiumExperience", "get").mockReturnValue(true);
+		const { listTransactions } = require("../src/services/transactions");
+		const screen = renderDashboard();
+		await screen.findByText("Belum ada transaksi");
+		expect(screen.queryByTestId("home-data-status")).toBeNull();
+		let release!: (rows: any[]) => void;
+		jest.mocked(listTransactions).mockImplementationOnce(() => new Promise((resolve) => { release = resolve; }));
+		const { RefreshControl } = require("react-native");
+		act(() => { void screen.UNSAFE_getByType(RefreshControl).props.onRefresh(); });
+		await waitFor(() => expect(release).toBeDefined());
+		mockActiveContext = { type: "household", householdId: "hh-1", role: "admin" };
+		mockTransactions = [{ id: "new", description: "Household purchase", amount: 1000, transaction_type: "expense", category: "Groceries", date: "2026-06-01" }];
+		screen.rerender(<ThemeProvider><I18nProvider><DashboardScreen /></I18nProvider></ThemeProvider>);
+		expect(screen.getByTestId("home-total-balance").props.children).toBe("—");
+		await screen.findByText("Household purchase");
+		await act(async () => { release([{ id: "old", description: "Old personal purchase", amount: 5000, transaction_type: "expense", category: "Groceries" }]); });
+		expect(screen.queryByText("Old personal purchase")).toBeNull();
+		expect(screen.getByText("Household purchase")).toBeTruthy();
+	});
+
+	it("presents transfers neutrally and gives custom-period reset a 44px target", async () => {
+		jest.spyOn(featureFlags, "simplePremiumExperience", "get").mockReturnValue(true);
+		mockActivePeriod = { type: "custom", startDate: "2026-05-25", endDate: "2026-06-24" };
+		mockTransactions = [{ id: "transfer", amount: 42000, transaction_type: "transfer", category: "Other expenses", date: "2026-06-01", description: "Move funds" }];
+		const screen = renderDashboard();
+		const amount = await screen.findByTestId("home-recent-amount-transfer");
+		expect(amount.props.children).toBe("42.000");
+		expect(StyleSheet.flatten(amount.props.style).color).toBe("#0C4E91");
+		expect(screen.getByText("2026-06-01 · Transfer")).toBeTruthy();
+		const resetStyle = getFlattenedStyle(screen.getByTestId("home-period-reset"));
+		expect(resetStyle.minHeight).toBeGreaterThanOrEqual(44);
+		expect(resetStyle.minWidth).toBeGreaterThanOrEqual(44);
+	});
+
 	beforeEach(() => {
 		jest.restoreAllMocks();
 		jest.spyOn(featureFlags, "simpleNavigation", "get").mockReturnValue(false);

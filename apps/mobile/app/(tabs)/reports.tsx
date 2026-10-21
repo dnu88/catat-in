@@ -1404,7 +1404,7 @@ export default function ReportsScreen() {
 							</Text>
 						</View>
 						<View testID="reports-month-badge" style={styles.monthBadge}>
-							<Text style={styles.monthBadgeText}>{tx.monthBadge}</Text>
+							<Text style={styles.monthBadgeText}>{premium ? (periodFilter === "custom" || periodFilter === "saved_rule" ? periodDisplayLabel : periodLabels[periodFilter]) : tx.monthBadge}</Text>
 						</View>
 						<Pressable
 							accessibilityRole="button"
@@ -1690,15 +1690,16 @@ export default function ReportsScreen() {
 				</View>
 				) : null}
 
-				<View testID="reports-active-period-card" style={styles.periodControlsCard}>
+				{!premium || premiumPeriodOpen ? (
+				<View testID={premium ? "reports-period-options" : "reports-active-period-card"} style={premium ? undefined : styles.periodControlsCard}>
 					<View style={styles.activePeriodRow}>
-						<View style={styles.activePeriodCopy}>
+						{!premium ? <View style={styles.activePeriodCopy}>
 							<Text style={styles.activePeriodTitle}>{tx.activePeriodTitle}</Text>
 							<Text numberOfLines={1} style={styles.activePeriodValue}>{activePeriodNameLabel}</Text>
 							{shouldShowActivePeriodRange ? (
 								<Text numberOfLines={1} style={styles.activePeriodDate}>{activePeriodRangeLabel}</Text>
 							) : null}
-						</View>
+						</View> : null}
 						{!isCurrentMonthActive ? (
 							<Pressable
 								testID="reports-reset-current-month"
@@ -1761,7 +1762,8 @@ export default function ReportsScreen() {
 						</View>
 					) : null}
 				</View>
-				{periodFilter === "custom" && (
+				) : null}
+				{periodFilter === "custom" && (!premium || premiumPeriodOpen) && (
 					<View style={styles.customRulePrompt}>
 						<Pressable
 							accessibilityRole="button"
