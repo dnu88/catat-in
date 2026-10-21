@@ -43,7 +43,7 @@ Planning only: this document does not authorize or execute deployment, commit, p
 
 ## C. Physical iPhone candidate acceptance — release blocker
 
-Status: the owner reported checking the live build on his iPhone with no blocker (see E7). Items C2–C8 stay unticked because the model, iOS version, browser and per-case results were never itemized; owner acceptance is not the same as a recorded per-case device pass.
+Status: closed as **owner confirmation only**. Danu reported checking the live build on his iPhone with no blocker and chose (2026-10-21) to record it that way rather than itemising model, iOS version, browser and per-case results. Items C2–C8 therefore remain unticked on purpose: this is an accepted residual gap, not a device pass with evidence.
 
 - [x] C1. A safe, reusable candidate target was provided: the same build is served at https://app.kaswise.com and every acceptance run used a disposable fixture account, never personal transactions.
 - [ ] C2. Record iPhone model, iOS version and browser; test Safari first, then Chrome iOS if used daily.
