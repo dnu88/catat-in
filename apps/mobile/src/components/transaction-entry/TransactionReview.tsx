@@ -120,6 +120,17 @@ export function TransactionReview({
 	);
 	const savable = !saving && !saveBlocked && allDraftsValid(drafts, context);
 
+	// When the extractor is unsure about one or two fields, the reviewer should
+	// not have to re-read the whole form. Name only what is unresolved and give
+	// a one-tap route to the matching picker; acknowledging still happens in the
+	// warning row so a doubtful read can never be saved silently.
+	const focusFields = useMemo(
+		() => (drafts.length === 1 ? unacknowledgedWarnings(drafts[0]) : []),
+		[drafts],
+	);
+	const fixKindFor = (field: ReviewField): EntryPickerKind | null =>
+		field === "category" || field === "wallet" || field === "date" ? field : null;
+
 	return (
 		<View style={styles.container} testID="transaction-review">
 			<ScrollView
@@ -160,6 +171,36 @@ export function TransactionReview({
 								{drafts[0].description}
 							</Text>
 						) : null}
+					</View>
+				) : null}
+
+				{focusFields.length > 0 ? (
+					<View style={styles.focusBanner} testID="review-focus-banner">
+						<Text style={styles.focusTitle}>{copy.focusTitle}</Text>
+						<View style={styles.focusChips}>
+							{focusFields.map(field => {
+								const kind = fixKindFor(field);
+								const label = warningLabel(field, language).replace(/\.$/, "");
+								return kind ? (
+									<Pressable
+										key={field}
+										testID={`review-focus-fix-${field}`}
+										accessibilityRole="button"
+										accessibilityLabel={`${copy.focusFix}: ${label}`}
+										accessibilityHint={copy.focusRest}
+										onPress={() => onOpenPicker(drafts[0].key, kind)}
+										style={styles.focusChip}
+									>
+										<Text style={styles.focusChipText}>{label}</Text>
+									</Pressable>
+								) : (
+									<View key={field} style={styles.focusChipStatic}>
+										<Text style={styles.focusChipText}>{label}</Text>
+									</View>
+								);
+							})}
+						</View>
+						<Text style={styles.focusRest}>{copy.focusRest}</Text>
 					</View>
 				) : null}
 
@@ -324,12 +365,42 @@ function createStyles() {
 		},
 		warningBox: {
 			gap: 10,
+			borderRadius: 14,
+			padding: 12,
 			backgroundColor: "rgba(138, 75, 8, 0.08)",
 			borderWidth: 1,
 			borderColor: "rgba(138, 75, 8, 0.24)",
-			borderRadius: 14,
-			padding: 12,
 		},
+		focusBanner: {
+			gap: 8,
+			padding: 14,
+			borderRadius: 16,
+			backgroundColor: "rgba(20, 71, 230, 0.06)",
+			borderWidth: 1,
+			borderColor: "rgba(20, 71, 230, 0.18)",
+		},
+		focusTitle: { color: fe.ink, fontSize: 14, fontWeight: "700" },
+		focusChips: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+		focusChip: {
+			minHeight: 44,
+			justifyContent: "center",
+			paddingHorizontal: 14,
+			borderRadius: 12,
+			backgroundColor: fe.white,
+			borderWidth: 1,
+			borderColor: "rgba(20, 71, 230, 0.28)",
+		},
+		focusChipStatic: {
+			minHeight: 44,
+			justifyContent: "center",
+			paddingHorizontal: 14,
+			borderRadius: 12,
+			backgroundColor: "rgba(255, 255, 255, 0.7)",
+			borderWidth: 1,
+			borderColor: "rgba(20, 71, 230, 0.16)",
+		},
+		focusChipText: { color: fe.blue, fontSize: 13, fontWeight: "600" },
+		focusRest: { color: fe.slate, fontSize: 12 },
 		warningRow: {
 			gap: 8,
 		},

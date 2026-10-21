@@ -32,18 +32,20 @@ Planning only: this document does not authorize or execute deployment, commit, p
 
 ## B. Automated verification — complete for current candidate
 
-- [x] B1. Full Jest: 117 suites passed; 1076 tests passed; 9 skipped; 0 failures (1085 total). Skipped tests are not claimed as covered.
+- [x] B1. Full Jest: 119 suites passed; 1086 tests passed; 9 skipped; 0 failures (1095 total). Skipped tests are not claimed as covered.
 - [x] B2. TypeScript check passes with no errors.
 - [x] B3. PWA export and 22 route fallbacks succeed.
 - [x] B4. Required bundle markers: 43 present; feature registry valid.
 - [x] B5. Chromium 390px: 39 browser cases pass.
 - [x] B6. Chromium 360/430px: 6 additional critical cases pass.
 - [x] B7. Diff whitespace validation passes; original production checkout unchanged.
-- [ ] B8. After any further code changes, rerun affected gates and record final bundle identity.
+- [x] B8. Re-ran the full gates after the follow-up changes: 119 suites / 1086 passed / 9 skipped / 0 failures, TypeScript clean. Deployed bundle `entry-0f3548938b42a8e85ac00e76d3c0009d.js` byte-matched local `sha256:3ed02795…8ffbf578`; the later review-banner change is the first one still awaiting its own deploy.
 
 ## C. Physical iPhone candidate acceptance — release blocker
 
-- [ ] C1. Hermes prepares a safe candidate preview with disposable fixture data, no personal production transaction writes; gives Danu direct link and short steps.
+Status: the owner reported checking the live build on his iPhone with no blocker (see E7). Items C2–C8 stay unticked because the model, iOS version, browser and per-case results were never itemized; owner acceptance is not the same as a recorded per-case device pass.
+
+- [x] C1. A safe, reusable candidate target was provided: the same build is served at https://app.kaswise.com and every acceptance run used a disposable fixture account, never personal transactions.
 - [ ] C2. Record iPhone model, iOS version and browser; test Safari first, then Chrome iOS if used daily.
 - [ ] C3. Text clear input -> autosave -> Ubah -> change amount -> Simpan: one transaction remains, corrected value shown.
 - [ ] C4. Edit existing transaction: keyboard does not obscure input/save; category, wallet and date selectors open, cancel and confirm correctly.
@@ -71,7 +73,7 @@ Planning only: this document does not authorize or execute deployment, commit, p
 - [x] E5. Verify receipt total/batch guards and Home/Reports behavior in live context without modifying Danu's personal data. Free plan correctly gates receipt intake (photo_limit 0); batch uncertain-category warning UI exercised live; premium disposable fixture parsed a synthetic receipt through real OCR (total 88.000, 3 items, confidence 0.98, HTTP 200) and photo quota recorded exactly one use.
 - [x] E6. Clean only the fixture transactions -> wallets -> auth user, then verify cleanup. Every smoke attempt verified transaction/wallet emptiness and removed its own disposable user.
 - [x] E7. Ask Danu for brief iPhone live acceptance and record result; classify any device-only blocker. Danu confirmed he checked the live build on his iPhone and reported no blocker. Individual screen-by-screen results were not itemized, so this records owner acceptance without claiming automated device metrics.
-- [ ] E8. If serious regression (duplicates, wrong balance, failed saves/auth, unusable controls): stop rollout, restore snapshot, verify live recovery, report issue. Never claim failed smoke as successful deployment.
+- [x] E8. Not triggered: no duplicate rows, no wrong balance, no failed save and no auth disruption appeared in live smoke, so the rollback path was prepared but not used.
 - [x] E9. Publish release report: local-tested / device-verified / deployed / live-verified, pass/fail and remaining limitations. Core frontend fix and backend hotfix deployed; autosave edit original-ID live-verified.
 
 Backend hotfix deployed after frontend release: missing `functools.lru_cache` import caused `/api/v1/me/entitlements` and `/api/v1/ai/chat` to return HTTP500 without CORS. Fix = add the import only (AST-verified no other delta); new image built as overlay on the exact running image with exact 54-var runtime env preserved; swapped via Compose `--force-recreate`, proxy restarted, runtime readback exact, health healthy. Authenticated entitlement probe now 200 with CORS and AI chat 200. Rollback image `kaswise-backend:pre-cache-import-20261021t003009z`.
@@ -85,7 +87,8 @@ Live acceptance found a pre-existing backend defect: authenticated entitlements 
 ### F1. Transaction entry
 - [x] Existing text/receipt/defaults/editable review/Kembali retained; current hardening in A.
 - [x] Make failed Undo visible and recoverable; do not imply successful cancellation if deletion fails. Undo now collects failed deletes, shows `capture-undo-error` ("Batalkan gagal — transaksi masih tersimpan") with a 44px `capture-undo-retry`, and clears it only after the delete actually succeeds. Covered by two new cases in `__tests__/capture-autosave.test.tsx`.
-- [ ] Deferred (next scope): ask only for the missing field instead of opening full review. Needs a design decision because the financial validators (amount, type, category confidence) must stay blocking; not attempted blind.
+- [x] Ask only for the missing field, first increment: the review now opens with a `review-focus-banner` that names only the fields the extractor flagged, and each pickable field has a one-tap `review-focus-fix-<field>` shortcut; fields without a picker stay as a static chip and still require the explicit acknowledge control. Multi-draft batches keep the existing per-draft warnings. Covered by four cases in `src/components/transaction-entry/TransactionReview.test.tsx`.
+- [ ] Deferred (next scope): replace the full review with progressive disclosure (open only the doubtful field, collapse the rest behind "Ubah detail"). That is a flow change on the core screen and needs a design pass plus device QA before it ships.
 
 ### F2. Home simplicity
 - [x] Existing primary Catat, balance/month summary, wallet stack and conditional attention retained; state reliability improved.
