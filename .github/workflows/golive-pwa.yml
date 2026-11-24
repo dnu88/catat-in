@@ -3,6 +3,10 @@ name: Go Live PWA Smoke
 on:
   workflow_dispatch:
     inputs:
+      runner_only:
+        description: Verify Chromium without contacting Kaswise or Supabase
+        type: boolean
+        default: true
       base_url:
         description: Live PWA URL to test
         required: false
@@ -15,15 +19,12 @@ on:
 jobs:
   golive-pwa:
     name: Kaswise.com PWA go-live smoke
-    runs-on: ubuntu-latest
+    # Playwright 1.59.1 does not support the Ubuntu 26.04 runner image.
+    runs-on: ubuntu-24.04
     environment: golive
     env:
       KASWISE_GOLIVE_BASE_URL: ${{ inputs.base_url }}
       KASWISE_GOLIVE_RUN_ID: ${{ inputs.run_id }}-${{ github.run_number }}
-      KASWISE_GOLIVE_EMAIL: ${{ secrets.KASWISE_GOLIVE_EMAIL }}
-      KASWISE_GOLIVE_PASSWORD: ${{ secrets.KASWISE_GOLIVE_PASSWORD }}
-      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
       CI: "true"
     steps:
       - name: Checkout
@@ -46,11 +47,37 @@ jobs:
         run: pnpm exec playwright install --with-deps chromium
 
       - name: Run Go Live PWA tests
+        if: ${{ !inputs.runner_only }}
         working-directory: apps/mobile
+        env:
+          KASWISE_GOLIVE_EMAIL: ${{ secrets.KASWISE_GOLIVE_EMAIL }}
+          KASWISE_GOLIVE_PASSWORD: ${{ secrets.KASWISE_GOLIVE_PASSWORD }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: pnpm test:golive
 
+      - name: Verify headless Chromium
+        if: ${{ inputs.runner_only }}
+        working-directory: apps/mobile
+        run: |
+          node <<'NODE'
+          const assert = require('node:assert/strict');
+          const { chromium } = require('@playwright/test');
+          (async () => {
+            const browser = await chromium.launch();
+            try {
+              const page = await browser.newPage();
+              await page.setContent('<h1>Playwright runner ready</h1>');
+              assert.equal(await page.locator('h1').textContent(), 'Playwright runner ready');
+              console.log(`Chromium ${browser.version()}: browser smoke passed`);
+            } finally {
+              await browser.close();
+            }
+          })().catch((error) => { console.error(error); process.exitCode = 1; });
+          NODE
+
       - name: Upload Playwright report
-        if: always()
+        if: ${{ always() && !inputs.runner_only }}
         uses: actions/upload-artifact@v4
         with:
           name: golive-pwa-playwright-report
@@ -58,7 +85,7 @@ jobs:
           if-no-files-found: ignore
 
       - name: Upload Playwright traces/results
-        if: always()
+        if: ${{ always() && !inputs.runner_only }}
         uses: actions/upload-artifact@v4
         with:
           name: golive-pwa-test-results
