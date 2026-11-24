@@ -19,8 +19,12 @@ on:
 jobs:
   golive-pwa:
     name: Kaswise.com PWA go-live smoke
-    # Playwright 1.59.1 does not support the Ubuntu 26.04 runner image.
     runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    container:
+      # Keep this matched to the locked Playwright version. Browsers and OS dependencies are preinstalled.
+      image: mcr.microsoft.com/playwright:v1.59.1-noble
+      options: --shm-size=1g
     environment: golive
     env:
       KASWISE_GOLIVE_BASE_URL: ${{ inputs.base_url }}
@@ -41,10 +45,6 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
-
-      - name: Install Playwright Chromium
-        working-directory: apps/mobile
-        run: pnpm exec playwright install --with-deps chromium
 
       - name: Run Go Live PWA tests
         if: ${{ !inputs.runner_only }}
