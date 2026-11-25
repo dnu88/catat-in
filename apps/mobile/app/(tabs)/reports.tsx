@@ -25,6 +25,7 @@ import Svg, {
 
 import { useTheme } from "../../src/theme/theme-context";
 import { financeEditorial as fe } from "../../src/theme/finance-editorial";
+import { isPwaPolish, pwaHeroCaption } from "../../src/theme/pwa-polish";
 import { useSupabase } from "../../src/lib/supabase";
 import { IOSWheelDatePicker } from "../../src/components/date/IOSWheelDatePicker";
 import { featureFlags } from "../../src/config/features";
@@ -278,7 +279,8 @@ export default function ReportsScreen() {
 		selectSavedRule,
 	} = useReportPeriod();
 	const { language } = useI18n();
-	const styles = useMemo(() => createStyles(theme), [theme]);
+	const polish = isPwaPolish();
+	const styles = useMemo(() => createStyles(theme, polish), [theme, polish]);
 	const [activeTab, setActiveTab] = useState<Tab>("overview");
 	const [periodFilter, setPeriodFilter] = useState<PeriodFilter>("month");
 	// T24 (simple premium): lead with one main summary; the date/filter chips move
@@ -2471,7 +2473,7 @@ export default function ReportsScreen() {
 	);
 }
 
-function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
+function createStyles(theme: ReturnType<typeof useTheme>["theme"], polish = false) {
 	const brandText = fe.ink;
 	const brandSoftBg = fe.paper;
 	const brandSoftBorder = "transparent";
@@ -2499,7 +2501,7 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			letterSpacing: theme.typography.letterSpacing.tight,
 		},
 		subtitle: {
-			color: "rgba(255,255,255,0.64)",
+			color: polish ? pwaHeroCaption : "rgba(255,255,255,0.64)",
 			fontSize: theme.typography.fontSize.sm,
 			marginTop: 2,
 		},
@@ -3223,7 +3225,7 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			letterSpacing: -0.4,
 		},
 		ringLabel: {
-			color: "rgba(255,255,255,0.62)",
+			color: polish ? pwaHeroCaption : "rgba(255,255,255,0.62)",
 			fontSize: 11,
 			fontWeight: "700",
 			letterSpacing: 0.5,

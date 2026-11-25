@@ -22,6 +22,7 @@ import {
 } from "../src/services/billing";
 import { useTheme } from "../src/theme/theme-context";
 import { financeEditorial as fe } from "../src/theme/finance-editorial";
+import { isPwaPolish, pwaHeroCaption } from "../src/theme/pwa-polish";
 import { useI18n } from "../src/i18n/i18n-context";
 import { getStoreReleaseConfig } from "../src/config/store-release";
 import { goBackSafely } from "../src/lib/safe-back";
@@ -37,7 +38,8 @@ export default function UpgradeScreen() {
   const { theme } = useTheme();
   const { language } = useI18n();
   const isEn = language === "en";
-  const styles = useMemo(() => createStyles(theme), [theme]);
+  const polish = isPwaPolish();
+  const styles = useMemo(() => createStyles(theme, polish), [theme, polish]);
   const storeReleaseConfig = useMemo(() => getStoreReleaseConfig(), []);
   const allowNativePremiumPurchase = storeReleaseConfig.allowNativePremiumPurchase;
 
@@ -372,7 +374,7 @@ export default function UpgradeScreen() {
   );
 }
 
-function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
+function createStyles(theme: ReturnType<typeof useTheme>["theme"], polish = false) {
   const brandText =
     theme.mode === "light"
       ? theme.colors.brandPrimaryDeep
@@ -419,7 +421,7 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
     },
     subtitle: {
       fontSize: 14,
-      color: "rgba(255,255,255,0.72)",
+      color: polish ? pwaHeroCaption : "rgba(255,255,255,0.72)",
       textAlign: "center",
       lineHeight: 20,
     },

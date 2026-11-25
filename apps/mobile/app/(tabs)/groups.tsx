@@ -26,6 +26,7 @@ import {
 import { useFinanceContext } from "../../src/state/finance-context";
 import { useTheme } from "../../src/theme/theme-context";
 import { financeEditorial as fe } from "../../src/theme/finance-editorial";
+import { isPwaPolish, pwaMinTouch } from "../../src/theme/pwa-polish";
 
 type ActiveForm = "create" | "join" | null;
 
@@ -110,7 +111,8 @@ export default function GroupsScreen() {
 	const tx = copy[language];
 	const { supabase } = useSupabase();
 	const { refreshMemberships } = useFinanceContext();
-	const styles = useMemo(() => createStyles(theme), [theme]);
+	const polish = isPwaPolish();
+	const styles = useMemo(() => createStyles(theme, polish), [theme, polish]);
 	const [memberships, setMemberships] = useState<HouseholdMember[]>([]);
 	const [activeForm, setActiveForm] = useState<ActiveForm>(null);
 	const [householdName, setHouseholdName] = useState("");
@@ -370,7 +372,7 @@ export default function GroupsScreen() {
 	);
 }
 
-function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
+function createStyles(theme: ReturnType<typeof useTheme>["theme"], polish = false) {
 	return StyleSheet.create({
 		screen: { flex: 1, backgroundColor: fe.paper },
 		content: { padding: 20, gap: 12, paddingBottom: 26 },
@@ -441,6 +443,7 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			backgroundColor: theme.colors.brandPrimary,
 			borderRadius: theme.radius.pill,
 			paddingVertical: 10,
+			...(polish ? { minHeight: pwaMinTouch, justifyContent: "center" as const } : null),
 		},
 		submitButtonText: {
 			color: theme.colors.textInverse,

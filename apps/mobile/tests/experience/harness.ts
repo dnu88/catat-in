@@ -163,7 +163,10 @@ export async function stubBackend(page: Page) {
           photo_used: 0,
           photo_limit: 5,
         }
-      : {}
+      : url.includes('/payments/pricing')
+        ? // Matches `Pricing` in src/services/billing.ts; `{}` crashed /upgrade.
+          { tier: 'normal', monthly: 29000, yearly: 290000 }
+        : {}
     await route.fulfill({
       status: 200,
       contentType: 'application/json',

@@ -43,6 +43,18 @@ test("getPricing returns tier + prices", async () => {
   expect(out.tier).toBe("promo");
 });
 
+test.each([
+  ["empty body", {}],
+  ["missing yearly", { tier: "normal", monthly: 29000 }],
+  ["string price", { tier: "normal", monthly: "29000", yearly: 290000 }],
+  ["NaN price", { tier: "normal", monthly: Number.NaN, yearly: 290000 }],
+  ["unknown tier", { tier: "gold", monthly: 29000, yearly: 290000 }],
+  ["null body", null],
+])("getPricing rejects a malformed 200 response (%s) instead of returning it", async (_label, json) => {
+  global.fetch = jest.fn(async () => ({ ok: true, status: 200, json: async () => json })) as any;
+  await expect(getPricing(fakeSupabase)).rejects.toThrow(/pricing/);
+});
+
 test("getPaymentStatus hits status endpoint", async () => {
   global.fetch = jest.fn(async () => ({ ok: true, status: 200,
     json: async () => ({ order_id: "kw-x", status: "paid", provider: "midtrans" }) })) as any;

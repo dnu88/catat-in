@@ -3,6 +3,7 @@ import { Text, View } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient'
 import { useTheme } from '../../theme/theme-context'
 import { financeEditorial as fe } from '../../theme/finance-editorial'
+import { isPwaPolish, pwaHeroCaption } from '../../theme/pwa-polish'
 
 type ScreenHeaderProps = {
   title: string
@@ -12,6 +13,7 @@ type ScreenHeaderProps = {
 
 export function ScreenHeader({ title, subtitle, action }: ScreenHeaderProps) {
   const { theme } = useTheme()
+  const polish = isPwaPolish()
 
   return (
     <LinearGradient
@@ -49,7 +51,7 @@ export function ScreenHeader({ title, subtitle, action }: ScreenHeaderProps) {
         {subtitle ? (
           <Text
             style={{
-              color: 'rgba(255,255,255,0.68)',
+              color: polish ? pwaHeroCaption : 'rgba(255,255,255,0.68)',
               fontSize: theme.typography.fontSize.sm,
               lineHeight: 18,
               marginTop: theme.spacing.xs,
