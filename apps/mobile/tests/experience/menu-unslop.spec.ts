@@ -104,12 +104,24 @@ async function boot(page: Page, premium: boolean) {
 
 /** Alpha of the white text color of the element that owns `text`. */
 async function whiteAlpha(page: Page, text: string) {
-  const node = page.getByText(text, { exact: true }).first()
-  await expect(node).toBeVisible()
-  const color = await node.evaluate((el) => getComputedStyle(el).color)
-  const match = /^rgba?\(255, 255, 255(?:, ([0-9.]+))?\)$/.exec(color)
-  expect(match, `${text} renders white, got ${color}`).not.toBeNull()
-  return Number(match![1] ?? 1)
+  // Some screens (e.g. Tagihan) swap their hero for a loading state right after
+  // the first paint, detaching the node mid-read. Poll with a fresh lookup each
+  // time until it reports a white color; the alpha itself is asserted by callers.
+  await expect(page.getByRole('progressbar')).toHaveCount(0, { timeout: 15_000 })
+  const white = /^rgba?\(255, 255, 255(?:, ([0-9.]+))?\)$/
+  let color = ''
+  await expect
+    .poll(
+      async () => {
+        const node = page.getByText(text, { exact: true }).first()
+        if (!(await node.isVisible())) return ''
+        color = await node.evaluate((el) => (el.isConnected ? getComputedStyle(el).color : ''))
+        return color
+      },
+      { message: `${text} renders white`, timeout: 15_000 },
+    )
+    .toMatch(white)
+  return Number(white.exec(color)![1] ?? 1)
 }
 
 async function overflow(page: Page) {
