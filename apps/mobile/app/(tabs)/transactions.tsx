@@ -35,6 +35,7 @@ import {
 	resolveExperienceTextStyle,
 } from "../../src/theme/experience-tokens";
 import { featureFlags } from "../../src/config/features";
+import { isPwaPolish, pwaHeroCaption } from "../../src/theme/pwa-polish";
 import {
 	filterToggleLabel,
 	shouldShowFilterScroller,
@@ -460,7 +461,8 @@ export default function TransactionsScreen() {
 	// object carries the token values for the active mode. Flag OFF keeps every
 	// value byte-identical to the pre-B1 baseline.
 	const premium = featureFlags.simplePremiumExperience;
-	const styles = useMemo(() => createStyles(theme, premium), [theme, premium]);
+	const polish = isPwaPolish();
+	const styles = useMemo(() => createStyles(theme, premium, polish), [theme, premium, polish]);
 	const activeContextKey =
 		activeContext.type === "household"
 			? `household:${activeContext.householdId}:${activeContext.role}`
@@ -1105,6 +1107,7 @@ export default function TransactionsScreen() {
 function createStyles(
 	theme: ReturnType<typeof useTheme>["theme"],
 	premium: boolean,
+	polish = false,
 ) {
 	const lightBrand = fe.ink;
 
@@ -1116,14 +1119,15 @@ function createStyles(
 		headerRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", gap: 12 },
 		headerCopy: { flex: 1 },
 		headerTitle: { color: fe.white, fontSize: 28, fontWeight: "600", letterSpacing: -0.6 },
-		headerSubtitle: { color: "rgba(255,255,255,0.64)", fontSize: 13, marginTop: 3, lineHeight: 19 },
+		headerSubtitle: { color: polish ? pwaHeroCaption : "rgba(255,255,255,0.64)", fontSize: 13, marginTop: 3, lineHeight: 19 },
 		headerActionRow: {
 			flexDirection: "row",
 			alignItems: "center",
 			gap: theme.spacing.xs,
 			justifyContent: "flex-end",
 		},
-		summaryBadge: { backgroundColor: "rgba(255,255,255,0.14)", borderWidth: 1, borderColor: "rgba(255,255,255,0.22)", borderRadius: 999, paddingHorizontal: 13, paddingVertical: 7 },
+		// PWA polish: the item count is a caption, not a control, so it drops the pill chrome.
+		summaryBadge: polish ? {} : { backgroundColor: "rgba(255,255,255,0.14)", borderWidth: 1, borderColor: "rgba(255,255,255,0.22)", borderRadius: 999, paddingHorizontal: 13, paddingVertical: 7 },
 		summaryBadgeText: { color: fe.white, fontSize: 12, fontWeight: "600" },
 		selectionToolbar: { marginTop: 12, paddingHorizontal: 14, paddingVertical: 12, borderRadius: 16, borderWidth: 0, backgroundColor: fe.white, flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" },
 		selectionCountBlock: {
@@ -1187,7 +1191,7 @@ function createStyles(
 		statCardShell: { flex: 1, minWidth: 0, minHeight: 132 },
 		statCard: { flex: 1, minHeight: 132, padding: 16, borderRadius: 20, backgroundColor: "rgba(255,255,255,0.12)", borderWidth: 1, borderColor: "rgba(255,255,255,0.18)", justifyContent: "space-between" },
 		statCardContent: { gap: 4 },
-		statLabel: { color: "rgba(255,255,255,0.70)", fontSize: 12, fontWeight: "600" },
+		statLabel: { color: polish ? pwaHeroCaption : "rgba(255,255,255,0.70)", fontSize: 12, fontWeight: "600" },
 		statValueText: {
 			color: fe.white,
 			...(premium

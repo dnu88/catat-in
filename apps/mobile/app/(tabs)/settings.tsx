@@ -19,6 +19,7 @@ import { KaswiseIcon } from "../../src/components/icons/kaswise-icons";
 
 import { useTheme } from "../../src/theme/theme-context";
 import { financeEditorial as fe } from "../../src/theme/finance-editorial";
+import { isPwaPolish, pwaHeroCaption } from "../../src/theme/pwa-polish";
 import { useI18n } from "../../src/i18n/i18n-context";
 import { useEntitlements } from "../../src/hooks/useEntitlements";
 import { featureFlags } from "../../src/config/features";
@@ -450,7 +451,8 @@ export default function SettingsScreen() {
 	// B1 (visual foundation): resolve the presentation flag first so flag OFF
 	// keeps every value identical to the pre-B1 baseline.
 	const premium = featureFlags.simplePremiumExperience;
-	const styles = useMemo(() => createStyles(theme, premium), [theme, premium]);
+	const polish = isPwaPolish();
+	const styles = useMemo(() => createStyles(theme, premium, polish), [theme, premium, polish]);
 	const storeReleaseConfig = useMemo(() => getStoreReleaseConfig(), []);
 	const allowNativePremiumPurchase = storeReleaseConfig.allowNativePremiumPurchase;
 	const { data: entitlements, loading: entitlementsLoading } = useEntitlements();
@@ -1923,6 +1925,7 @@ function ToggleRow({
 function createStyles(
 	theme: ReturnType<typeof useTheme>["theme"],
 	premium: boolean,
+	polish = false,
 ) {
 	return StyleSheet.create({
 		screen: { flex: 1, backgroundColor: fe.paper },
@@ -1965,7 +1968,7 @@ function createStyles(
 		profileAvatarText: { color: fe.ink, fontSize: 16, fontWeight: "700" },
 		profileInfo: { flex: 1 },
 		profileName: { color: fe.white, fontSize: 17, fontWeight: theme.typography.fontWeight.semibold },
-		profileEmail: { color: "rgba(255,255,255,0.68)", fontSize: 12, marginTop: 2 },
+		profileEmail: { color: polish ? pwaHeroCaption : "rgba(255,255,255,0.68)", fontSize: 12, marginTop: 2 },
 		// Bare text link: give it a real 44x44 interaction box without moving the
 		// label or growing the row. The 15px ring is cancelled by negative margins.
 		profilePhotoButton: {

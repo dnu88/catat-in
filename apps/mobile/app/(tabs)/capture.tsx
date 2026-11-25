@@ -23,6 +23,7 @@ import { useSupabase } from "../../src/lib/supabase";
 import { Sentry } from "../../src/lib/sentry";
 import { useTheme } from "../../src/theme/theme-context";
 import { financeEditorial as fe } from "../../src/theme/finance-editorial";
+import { isPwaPolish, pwaHeroCaption } from "../../src/theme/pwa-polish";
 import { IconBubble } from "../../src/components/ui";
 import {
 	FinanceContextSwitcher,
@@ -508,7 +509,8 @@ export default function CaptureScreen() {
 					},
 		[isEn],
 	);
-	const styles = useMemo(() => createStyles(theme), [theme]);
+	const polish = isPwaPolish();
+	const styles = useMemo(() => createStyles(theme, polish), [theme, polish]);
 
 	const simple = featureFlags.simpleNavigation;
 	// Review-first entry flow. Off by default so every legacy branch below stays
@@ -2779,7 +2781,7 @@ export default function CaptureScreen() {
 	);
 }
 
-function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
+function createStyles(theme: ReturnType<typeof useTheme>["theme"], polish = false) {
 	return StyleSheet.create({
 		screen: { flex: 1, backgroundColor: fe.paper },
 		undoErrorBar: {
@@ -2806,7 +2808,7 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			shadowRadius: 24, shadowOffset: { width: 0, height: 12 }, elevation: 8,
 		},
 		title: { color: fe.white, fontSize: 28, fontWeight: theme.typography.fontWeight.semibold, letterSpacing: -0.6 },
-		subtitle: { color: "rgba(255,255,255,0.72)", fontSize: 13, marginTop: 4 },
+		subtitle: { color: polish ? pwaHeroCaption : "rgba(255,255,255,0.72)", fontSize: 13, marginTop: 4 },
 		inputArea: {
 			backgroundColor: "transparent",
 			borderRadius: 0,
@@ -2820,7 +2822,7 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			fontSize: 16,
 			fontWeight: "800",
 		},
-		heroHelper: { color: "rgba(255,255,255,0.72)", fontSize: 12, marginTop: 8 },
+		heroHelper: { color: polish ? pwaHeroCaption : "rgba(255,255,255,0.72)", fontSize: 12, marginTop: 8 },
 		inputHelper: { color: fe.muted, fontSize: 12 },
 		modeGrid: {
 			flexDirection: "row", gap: 0, padding: 4, borderRadius: 16, backgroundColor: fe.white,

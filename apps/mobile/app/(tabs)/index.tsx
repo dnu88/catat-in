@@ -6,6 +6,7 @@ import { LinearGradient } from "expo-linear-gradient";
 
 import { FinanceContextSwitcher } from "../../src/components/FinanceContextSwitcher";
 import { featureFlags } from "../../src/config/features";
+import { isPwaPolish, pwaHeroCaption } from "../../src/theme/pwa-polish";
 import { recentEmptyStateCopy } from "../../src/features/home/empty-state-copy";
 import { PageEntrance, StaggeredEntrance } from "../../src/components/motion";
 import {
@@ -104,6 +105,7 @@ export default function DashboardScreen() {
 	// exactly ONE record CTA. The decorative wallet stack and every existing
 	// section (attention, recent, budget, review) stay untouched.
 	const premium = featureFlags.simplePremiumExperience;
+	const polishWebHome = isPwaPolish();
 	const tx = useMemo(
 		() =>
 			isEn
@@ -128,6 +130,7 @@ export default function DashboardScreen() {
 						quickActionA11y: (label: string) => `Quick action ${label}`,
 						budgetActionA11y: "View all budgets",
 						recentTitle: "Recent",
+						recentTransactionsTitle: "Recent transactions",
 						allTransactions: "All →",
 						allTransactionsA11y: "View all transactions",
 						overUntilHidden: (day: string, month: string) => `Amount hidden until ${day}/${month}`,
@@ -169,6 +172,7 @@ export default function DashboardScreen() {
 						quickActionA11y: (label: string) => `Aksi cepat ${label}`,
 						budgetActionA11y: "Lihat semua budget",
 						recentTitle: "Terakhir",
+						recentTransactionsTitle: "Transaksi terbaru",
 						allTransactions: "Semua →",
 						allTransactionsA11y: "Lihat semua transaksi",
 						overUntilHidden: (day: string, month: string) => `Nominal disembunyikan sampai ${day}/${month}`,
@@ -193,7 +197,7 @@ export default function DashboardScreen() {
 	);
 	// B1 (visual foundation): the presentation flag is resolved before the styles
 	// object so flag OFF keeps every value identical to the pre-B1 baseline.
-	const styles = useMemo(() => createStyles(theme, premium), [theme, premium]);
+	const styles = useMemo(() => createStyles(theme, premium, polishWebHome), [theme, premium, polishWebHome]);
 	const [envelopeAlerts, setEnvelopeAlerts] = useState<EnvelopeSummary[]>([]);
 	const [auxiliaryScope, setAuxiliaryScope] = useState<string | null>(null);
 	const [loadedWallets, setWallets] = useState<Wallet[]>([]);
@@ -583,7 +587,7 @@ export default function DashboardScreen() {
 											name={isNominalHidden ? "eyeSlash" : "eye"}
 											size={17}
 											weight="bold"
-											color={theme.colors.textSecondary}
+											color={polishWebHome ? fe.white : theme.colors.textSecondary}
 										/>
 									</View>
 								</Pressable>
@@ -633,14 +637,14 @@ export default function DashboardScreen() {
 								<Text testID="home-monthly-remaining" style={[styles.heroMetricValue, monthlyRemainingTone === "danger" && styles.heroAmountDanger]}>
 									{hideUnloadedData ? "—" : displayAmount(formatSignedCurrency(monthlyRemaining))}
 								</Text>
-								<Text style={styles.heroMetricSub}>{activePeriodLabel}</Text>
+								{!polishWebHome ? <Text style={styles.heroMetricSub}>{activePeriodLabel}</Text> : null}
 							</View>
 							<View style={styles.heroMetricCard}>
 								<Text style={styles.heroMetricLabel}>{tx.monthlyExpense}</Text>
 								<Text testID="home-monthly-expense" style={styles.heroMetricValue}>
 									{hideUnloadedData ? "—" : displayAmount(formatCurrency(monthlyExpense))}
 								</Text>
-								<Text style={styles.heroMetricSub}>{isCurrentMonth ? tx.monthlyExpenseSub : tx.monthlyExpensePeriodSub}</Text>
+								{!polishWebHome ? <Text style={styles.heroMetricSub}>{isCurrentMonth ? tx.monthlyExpenseSub : tx.monthlyExpensePeriodSub}</Text> : null}
 							</View>
 						</View>
 						{wallets.length > 0 ? (
@@ -722,7 +726,7 @@ export default function DashboardScreen() {
 				<StaggeredEntrance index={simpleNavigation && hasAttention ? (hasReview && primaryEnvelopeAlert ? 3 : 2) : 1} testID="home-entrance-recent">
 					<View style={styles.sectionCard}>
 						<View style={styles.sectionTopRow}>
-							<Text style={styles.sectionTitle}>{tx.recentTitle}</Text>
+							<Text style={styles.sectionTitle}>{polishWebHome ? tx.recentTransactionsTitle : tx.recentTitle}</Text>
 						<Pressable
 							testID="home-recent-all-target"
 							accessibilityRole="button"
@@ -887,7 +891,10 @@ export default function DashboardScreen() {
 function createStyles(
 	theme: ReturnType<typeof useTheme>["theme"],
 	premium: boolean,
+	polishWebHome: boolean,
 ) {
+	const heroCaptionColor = pwaHeroCaption;
+	const heroCaptionSize = resolveExperienceTextStyle("rowMeta").fontSize;
 	return StyleSheet.create({
 		screen: { flex: 1, backgroundColor: fe.navySurface },
 		scrollView: {
@@ -949,7 +956,7 @@ function createStyles(
 		heroStage: { backgroundColor: fe.paper },
 		heroCard: {
 			backgroundColor: fe.blue, borderRadius: 0, paddingHorizontal: 20, paddingTop: 18,
-			paddingBottom: 38, borderWidth: 0, overflow: "hidden",
+			paddingBottom: polishWebHome ? experienceTokens.spacing[6] : 38, borderWidth: 0, overflow: "hidden",
 			borderBottomLeftRadius: 42,
 			borderBottomRightRadius: 42,
 		},
@@ -1000,7 +1007,7 @@ function createStyles(
 			marginBottom: 16,
 		},
 		heroLabel: {
-			color: "rgba(255,255,255,0.54)", fontSize: 13, fontWeight: theme.typography.fontWeight.medium,
+			color: polishWebHome ? heroCaptionColor : "rgba(255,255,255,0.54)", fontSize: 13, fontWeight: theme.typography.fontWeight.medium,
 			marginBottom: 6,
 		},
 		amountRow: {
@@ -1029,11 +1036,11 @@ function createStyles(
 			marginBottom: 12,
 			flexWrap: "wrap",
 		},
-		heroPeriodChip: {
+		heroPeriodChip: polishWebHome ? {} : {
 			borderWidth: 1, borderColor: fe.glassStrong, borderRadius: 999, backgroundColor: fe.glass,
 			paddingHorizontal: 11, paddingVertical: 6,
 		},
-		heroPeriodText: { color: "rgba(255,255,255,0.72)", fontSize: 11, fontWeight: theme.typography.fontWeight.medium },
+		heroPeriodText: { color: polishWebHome ? heroCaptionColor : "rgba(255,255,255,0.72)", fontSize: polishWebHome ? heroCaptionSize : 11, fontWeight: theme.typography.fontWeight.medium },
 		heroPeriodReset: {
 			minHeight: premium ? 44 : 30,
 			...(premium ? { minWidth: 44 } : {}),
@@ -1062,7 +1069,7 @@ function createStyles(
 			paddingHorizontal: 0,
 			gap: 3,
 		},
-		heroMetricLabel: { color: "rgba(255,255,255,0.54)", fontSize: 11, fontWeight: theme.typography.fontWeight.medium },
+		heroMetricLabel: { color: polishWebHome ? heroCaptionColor : "rgba(255,255,255,0.54)", fontSize: polishWebHome ? heroCaptionSize : 11, fontWeight: theme.typography.fontWeight.medium },
 		heroMetricValue: {
 			color: fe.white,
 			...(premium
@@ -1076,16 +1083,16 @@ function createStyles(
 		walletStackFront: { position: "absolute", left: 0, right: 0, top: 22, height: 56, borderRadius: 18, backgroundColor: fe.navySurface, paddingHorizontal: 18, flexDirection: "row", alignItems: "center", justifyContent: "space-between", shadowColor: fe.navy, shadowOpacity: 0.28, shadowRadius: 14, shadowOffset: { width: 0, height: 8 } },
 		walletStackBrand: { color: fe.white, fontSize: 12, fontWeight: theme.typography.fontWeight.bold, letterSpacing: 1.2 },
 		walletStackMeta: { color: "rgba(255,255,255,0.68)", fontSize: 11 },
-		paperSheet: { backgroundColor: fe.paper, borderTopLeftRadius: 0, borderTopRightRadius: 0, paddingHorizontal: 20, paddingTop: 26, paddingBottom: 20, gap: 18, minHeight: 420 },
+		paperSheet: { backgroundColor: fe.paper, borderTopLeftRadius: 0, borderTopRightRadius: 0, paddingHorizontal: 20, paddingTop: polishWebHome ? experienceTokens.spacing[5] : 26, paddingBottom: 20, gap: 18, minHeight: 420 },
 		sectionCard: { backgroundColor: "transparent", borderWidth: 0, borderRadius: 0, padding: 0, gap: 12 },
 		premiumCaptureCta: {
 			minHeight: 48,
 			borderRadius: 14,
-			backgroundColor: fe.blue,
+			backgroundColor: polishWebHome ? fe.ink : fe.blue,
 			alignItems: "center",
 			justifyContent: "center",
-			marginTop: 4,
-			marginBottom: 14,
+			marginTop: polishWebHome ? 0 : 4,
+			marginBottom: polishWebHome ? 0 : 14,
 		},
 		premiumCaptureCtaText: { color: fe.white, fontSize: 15, fontWeight: "700" },
 		attentionSection: { gap: 0, borderBottomWidth: 1, borderBottomColor: fe.line },

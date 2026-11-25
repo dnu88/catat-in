@@ -26,6 +26,7 @@ import {
 import { useFinanceContext } from "../../src/state/finance-context";
 import { useTheme } from "../../src/theme/theme-context";
 import { financeEditorial as fe } from "../../src/theme/finance-editorial";
+import { isPwaPolish, pwaHeroCaption } from "../../src/theme/pwa-polish";
 import { subscribeWalletChanges } from "../../src/services/wallet-events";
 import { featureFlags } from "../../src/config/features";
 import {
@@ -151,7 +152,8 @@ export default function WalletsScreen() {
 	// B1 (visual foundation): resolve the presentation flag first so flag OFF
 	// keeps every value identical to the pre-B1 baseline.
 	const premium = featureFlags.simplePremiumExperience;
-	const styles = useMemo(() => createStyles(theme, premium), [theme, premium]);
+	const polish = isPwaPolish();
+	const styles = useMemo(() => createStyles(theme, premium, polish), [theme, premium, polish]);
 	const [filter, setFilter] = useState<FilterType>("all");
 	const [wallets, setWallets] = useState<ScopedWallet[]>([]);
 	const [loading, setLoading] = useState(true);
@@ -801,6 +803,7 @@ export default function WalletsScreen() {
 function createStyles(
 	theme: ReturnType<typeof useTheme>["theme"],
 	premium: boolean,
+	polish = false,
 ) {
 	return StyleSheet.create({
 		screen: { flex: 1, backgroundColor: fe.paper },
@@ -821,7 +824,7 @@ function createStyles(
 			letterSpacing: theme.typography.letterSpacing.tight,
 		},
 		subtitle: {
-			color: "rgba(255,255,255,0.64)",
+			color: polish ? pwaHeroCaption : "rgba(255,255,255,0.64)",
 			fontSize: theme.typography.fontSize.sm,
 			marginTop: 2,
 		},
@@ -938,7 +941,7 @@ function createStyles(
 			overflow: "hidden",
 		},
 		totalLabel: {
-			color: "rgba(255,255,255,0.62)",
+			color: polish ? pwaHeroCaption : "rgba(255,255,255,0.62)",
 			fontSize: theme.typography.fontSize.sm,
 			fontWeight: theme.typography.fontWeight.semibold,
 		},
@@ -953,21 +956,25 @@ function createStyles(
 					}),
 		},
 		totalRow: { marginTop: 6 },
-		totalChip: {
-			backgroundColor: "rgba(255,255,255,0.12)",
-			borderWidth: 1,
-			borderColor: "rgba(255,255,255,0.20)",
-			borderRadius: 999,
-			paddingHorizontal: 12,
-			paddingVertical: 5,
-			alignSelf: "flex-start",
-		},
+		// PWA polish: the active-wallet count is a caption, so it drops the pill chrome.
+		totalChip: polish
+			? { paddingVertical: 5, alignSelf: "flex-start" }
+			: {
+					backgroundColor: "rgba(255,255,255,0.12)",
+					borderWidth: 1,
+					borderColor: "rgba(255,255,255,0.20)",
+					borderRadius: 999,
+					paddingHorizontal: 12,
+					paddingVertical: 5,
+					alignSelf: "flex-start",
+				},
 		totalChipText: {
-			color: "rgba(255,255,255,0.76)",
+			color: polish ? pwaHeroCaption : "rgba(255,255,255,0.76)",
 			fontSize: theme.typography.fontSize.sm,
 			fontWeight: theme.typography.fontWeight.semibold,
 		},
-		contextPill: {
+		// PWA polish: the context label shares the caption treatment of the count below it.
+		contextPill: polish ? { marginTop: 6, alignSelf: "flex-start", paddingVertical: 5 } : {
 			marginTop: 6,
 			alignSelf: "flex-start",
 			backgroundColor: "rgba(255,255,255,0.10)",
@@ -978,7 +985,7 @@ function createStyles(
 			paddingVertical: 5,
 		},
 		contextPillText: {
-			color: "rgba(255,255,255,0.86)",
+			color: polish ? pwaHeroCaption : "rgba(255,255,255,0.86)",
 			fontSize: theme.typography.fontSize.sm,
 			fontWeight: theme.typography.fontWeight.bold,
 		},

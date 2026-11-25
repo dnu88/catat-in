@@ -18,6 +18,7 @@ import { featureFlags } from "../../src/config/features";
 import { useSupabase } from "../../src/lib/supabase";
 import { useTheme } from "../../src/theme/theme-context";
 import { financeEditorial as fe } from "../../src/theme/finance-editorial";
+import { isPwaPolish, pwaHeroCaption } from "../../src/theme/pwa-polish";
 import { useFinanceContext } from "../../src/state/finance-context";
 import { listWallets, type Wallet } from "../../src/services/wallets";
 import {
@@ -242,7 +243,7 @@ export default function ImportsScreen() {
 				style={[styles.card, styles.heroCard]}
 			>
 				<Text style={[styles.title, { color: fe.white }]}>{c.title}</Text>
-				<Text style={[styles.helper, { color: "rgba(255,255,255,0.72)" }]}>{c.intro}</Text>
+				<Text style={[styles.helper, { color: isPwaPolish() ? pwaHeroCaption : "rgba(255,255,255,0.72)" }]}>{c.intro}</Text>
 			</LinearGradient>
 
 			<View key="import-methods" style={[styles.card, { backgroundColor: fe.white }]}>

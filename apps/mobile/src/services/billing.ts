@@ -56,7 +56,20 @@ export async function getPricing(supabase: SupabaseClient): Promise<Pricing> {
     headers: { ...(await authHeader(supabase)) },
   });
   if (!res.ok) throw new Error(`pricing gagal (${res.status})`);
-  return res.json();
+  const body: unknown = await res.json();
+  // A 200 with a partial body used to reach `rp(undefined)` and crash /upgrade.
+  // Reject it here so the screen shows its existing retry state instead.
+  if (!isPricing(body)) throw new Error("pricing tidak valid");
+  return body;
+}
+
+const isPrice = (value: unknown): value is number =>
+  typeof value === "number" && Number.isFinite(value);
+
+function isPricing(value: unknown): value is Pricing {
+  if (typeof value !== "object" || value === null) return false;
+  const { tier, monthly, yearly } = value as Record<string, unknown>;
+  return (tier === "promo" || tier === "normal") && isPrice(monthly) && isPrice(yearly);
 }
 
 export async function createPayment(

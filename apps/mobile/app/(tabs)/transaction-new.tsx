@@ -22,6 +22,7 @@ import { IconBubble } from "../../src/components/ui";
 import { LoadingState } from "../../src/components/ui/LoadingState";
 import { useTheme } from "../../src/theme/theme-context";
 import { financeEditorial as fe } from "../../src/theme/finance-editorial";
+import { isPwaPolish, pwaHeroCaption } from "../../src/theme/pwa-polish";
 import { useI18n } from "../../src/i18n/i18n-context";
 import { useFinanceContext } from "../../src/state/finance-context";
 import {
@@ -233,7 +234,8 @@ export default function TransactionNewScreen() {
 		: rawParams.transactionId;
 	const isEditMode =
 		typeof transactionId === "string" && transactionId.length > 0;
-	const styles = useMemo(() => createStyles(theme), [theme]);
+	const polish = isPwaPolish();
+	const styles = useMemo(() => createStyles(theme, polish), [theme, polish]);
 	const activeContextKey =
 		activeContext.type === "household"
 			? `household:${activeContext.householdId}:${activeContext.role}`
@@ -1299,7 +1301,7 @@ export default function TransactionNewScreen() {
 	);
 }
 
-function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
+function createStyles(theme: ReturnType<typeof useTheme>["theme"], polish = false) {
 	return StyleSheet.create({
 		screen: { flex: 1, backgroundColor: fe.paper },
 		content: { padding: 20, gap: 16, paddingBottom: 30 },
@@ -1324,7 +1326,7 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			fontWeight: "800",
 			letterSpacing: -0.4,
 		},
-		subtitle: { color: "rgba(255,255,255,0.68)", fontSize: 13, marginTop: 4 },
+		subtitle: { color: polish ? pwaHeroCaption : "rgba(255,255,255,0.68)", fontSize: 13, marginTop: 4 },
 		closeBtn: {
 			minWidth: 44,
 			minHeight: 44,

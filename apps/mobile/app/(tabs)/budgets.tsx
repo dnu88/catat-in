@@ -51,6 +51,7 @@ import {
 } from "../../src/services/categories";
 import { useTheme } from "../../src/theme/theme-context";
 import { financeEditorial as fe } from "../../src/theme/finance-editorial";
+import { isPwaPolish, pwaMinTouch } from "../../src/theme/pwa-polish";
 import { budgetEnvelopePalette } from "../../src/theme/report-palettes";
 import { resolveCategoryVisual } from "../../src/theme/category-visuals";
 import { areCategoryNamesEquivalent, getLocalizedCategoryHelper, getLocalizedCategoryName } from "../../src/services/category-taxonomy";
@@ -420,7 +421,8 @@ export default function BudgetsScreen() {
 					},
 		[isEn],
 	);
-	const styles = useMemo(() => createStyles(theme), [theme]);
+	const polish = isPwaPolish();
+	const styles = useMemo(() => createStyles(theme, polish), [theme, polish]);
 	const [activeSummaries, setActiveSummaries] = useState<EnvelopeSummary[]>([]);
 	const [archivedSummaries, setArchivedSummaries] = useState<EnvelopeSummary[]>(
 		[],
@@ -1245,7 +1247,7 @@ export default function BudgetsScreen() {
 	);
 }
 
-function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
+function createStyles(theme: ReturnType<typeof useTheme>["theme"], polish = false) {
 	return StyleSheet.create({
 		screen: { flex: 1, backgroundColor: theme.colors.background },
 		content: { padding: 20, gap: 8, paddingBottom: 26 },
@@ -1540,7 +1542,7 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 		},
 		budgetActionRow: { flexDirection: "row", gap: 8 },
 		editButton: {
-			minHeight: 36,
+			minHeight: polish ? pwaMinTouch : 36,
 			justifyContent: "center",
 			borderRadius: 999,
 			borderWidth: 1,
@@ -1555,7 +1557,7 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			fontWeight: "800",
 		},
 		deleteButton: {
-			minHeight: 36,
+			minHeight: polish ? pwaMinTouch : 36,
 			justifyContent: "center",
 			borderRadius: 999,
 			borderWidth: 1,

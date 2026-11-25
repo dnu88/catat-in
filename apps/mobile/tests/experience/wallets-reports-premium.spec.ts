@@ -99,7 +99,10 @@ test.describe('T24 — reports period picker (local preview)', () => {
         }),
     )
     await expect(page.getByTestId('reports-period-chips')).toHaveCount(0)
-    await expect(page.getByTestId('reports-active-period-card')).toBeVisible()
+    // Since 9c70223 ("periode tunggal") premium keeps a single period authority:
+    // the status line replaces the legacy active-period card.
+    await expect(page.getByTestId('reports-active-period-card')).toHaveCount(0)
+    await expect(page.getByTestId('reports-period-status')).toBeVisible()
 
     await page.getByTestId('reports-period-toggle').click()
     await expect(page.getByTestId('reports-period-chips')).toBeVisible()
