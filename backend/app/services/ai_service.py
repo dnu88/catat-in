@@ -9,6 +9,8 @@ Wrapper untuk Anthropic Claude API:
 import base64
 import html
 import json
+import logging
+import math
 import re
 from functools import lru_cache
 from datetime import datetime, timedelta, timezone
@@ -17,6 +19,9 @@ import anthropic
 import httpx
 
 from app.core.config import settings
+from app.services.glm_receipt import extract_glm_receipt
+
+logger = logging.getLogger(__name__)
 
 
 TRANSACTION_EXTRACT_PROMPT = """Kamu adalah asisten pencatatan keuangan untuk aplikasi Catat.in.
@@ -160,23 +165,75 @@ def _strip_json_code_block(raw: str) -> str:
     return cleaned.strip()
 
 
-async def extract_transaction_from_text(user_text: str) -> dict:
+async def _glm_extract_json(system_prompt: str, user_text: str) -> str:
+    """Ekstraksi JSON lewat GLM (Z.ai), cadangan saat DeepSeek/Anthropic habis.
+
+    glm-5.3-flash adalah model reasoning: sebagian token terpakai untuk
+    `reasoning_content`, jadi anggaran token dibuat lega agar `content` terisi.
+    """
+    key = settings.ZAI_OCR_API_KEY
+    if not key:
+        raise RuntimeError("GLM tidak tersedia: ZAI_OCR_API_KEY kosong")
+
+    async with httpx.AsyncClient(
+        base_url="https://api.z.ai/api/paas/v4/",
+        headers={"Authorization": f"Bearer {key}"},
+        timeout=httpx.Timeout(45, connect=8),
+        trust_env=False,
+    ) as client:
+        response = await client.post(
+            "chat/completions",
+            json={
+                "model": settings.ZAI_TEXT_MODEL,
+                "response_format": {"type": "json_object"},
+                "temperature": 0,
+                "max_tokens": 1200,
+                "messages": [
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_text},
+                ],
+            },
+        )
+        if not response.is_success:
+            raise RuntimeError(f"GLM error {response.status_code}: {response.text[:200]}")
+
+        choices = response.json().get("choices") or []
+        content = (choices[0].get("message") or {}).get("content") if choices else None
+        if not isinstance(content, str) or not content.strip():
+            raise RuntimeError("GLM tidak mengembalikan pilihan jawaban.")
+        return content
+
+
+async def extract_transaction_from_text(
+    user_text: str, *, allow_local_review: bool = False
+) -> dict:
     """Ekstraksi transaksi dari teks bebas.
 
-    Urutan: DeepSeek (murah) -> Anthropic (cadangan) -> parser lokal.
+    Urutan: DeepSeek (murah) -> GLM (Z.ai) -> Anthropic -> parser lokal.
     Bila provider utama gagal, provider berikutnya dicoba otomatis supaya satu
-    akun yang bermasalah tidak mematikan seluruh fitur pencatatan.
+    akun yang bermasalah tidak mematikan seluruh fitur pencatatan. GLM ikut
+    dirantai karena kredit DeepSeek dan Anthropic bisa habis bersamaan.
+
+    `allow_local_review` hanya dipakai klien yang MEWAJIBKAN konfirmasi manusia
+    (Capture). Tanpa opt-in, kegagalan seluruh provider tetap menjadi
+    RuntimeError -> 502, sehingga klien lama tidak mengubah arti 502 menjadi
+    simpan otomatis.
     """
-    if not (settings.DEEPSEEK_API_KEY or settings.ANTHROPIC_API_KEY):
+    if not (
+        settings.DEEPSEEK_API_KEY or settings.ANTHROPIC_API_KEY or settings.ZAI_OCR_API_KEY
+    ):
+        if allow_local_review:
+            return _outage_fallback_extraction(user_text)
         return _extract_transaction_locally(user_text)
 
     providers = []
     if settings.DEEPSEEK_API_KEY:
         providers.append(("deepseek", _deepseek_extract_json))
+    if settings.ZAI_OCR_API_KEY:
+        providers.append(("glm", _glm_extract_json))
     if settings.ANTHROPIC_API_KEY:
         providers.append(("anthropic", _anthropic_extract_json))
 
-    last_error: Exception | None = None
     for name, call in providers:
         try:
             raw = _strip_json_code_block(await call(TRANSACTION_EXTRACT_PROMPT, user_text))
@@ -187,10 +244,13 @@ async def extract_transaction_from_text(user_text: str) -> dict:
                 "unclear": "Maaf, saya tidak bisa memproses input ini. Coba lebih spesifik.",
             }
         except Exception as exc:  # provider bermasalah -> coba berikutnya
-            last_error = exc
+            logger.warning("Text extraction provider %s failed (%s)", name, type(exc).__name__)
             continue
 
-    raise RuntimeError(f"Semua provider AI gagal: {last_error}") from last_error
+    if not allow_local_review:
+        # Pesan sengaja generik: detail provider tidak boleh bocor ke klien/log.
+        raise RuntimeError("Semua provider ekstraksi teks gagal")
+    return _outage_fallback_extraction(user_text)
 
 
 RECEIPT_ANALYSIS_USER_TEXT = (
@@ -206,6 +266,7 @@ _RECEIPT_MAX_TOKENS = 2500
 DEFAULT_VISION_PROVIDER_ORDER = ("deepseek", "gemini", "anthropic")
 
 _VISION_KEY_BY_PROVIDER = {
+    "glm-ocr": "ZAI_OCR_API_KEY",
     "deepseek": "DEEPSEEK_API_KEY",
     "gemini": "GEMINI_API_KEY",
     "anthropic": "ANTHROPIC_API_KEY",
@@ -465,6 +526,10 @@ async def analyze_receipt_image(
 
     for provider in providers:
         try:
+            if provider == "glm-ocr":
+                result = await extract_glm_receipt(image_b64, media_type, RECEIPT_ANALYSIS_PROMPT)
+                logger.info("Receipt provider=glm-ocr readable=%s", result["readable"])
+                return result
             if provider == "deepseek":
                 raw = await _deepseek_receipt_json(image_b64, media_type)
             elif provider == "gemini":
@@ -881,6 +946,118 @@ def _build_local_insight_payload(user_data: dict, period: str) -> dict:
 def _format_rupiah(value: float) -> str:
     amount = int(round(value))
     return f"Rp {amount:,}".replace(",", ".")
+
+
+OUTAGE_MAX_AMOUNT = 1_000_000_000_000
+OUTAGE_FALLBACK_CONFIDENCE = 0.5
+
+
+def _parse_outage_amount(raw: str, suffix: str) -> float | None:
+    """Ubah nominal tertulis yang eksplisit menjadi angka, atau None bila ambigu."""
+    if not re.fullmatch(r"\d[\d.,]*", raw or ""):
+        return None
+    if "," in raw and "." in raw:
+        return None
+    separator = "," if "," in raw else ("." if "." in raw else None)
+    if separator is None:
+        number = raw
+    else:
+        groups = raw.split(separator)
+        if any(not group for group in groups):
+            return None
+        if not suffix and separator == "." and len(groups[0]) <= 3 and all(
+            len(group) == 3 for group in groups[1:]
+        ):
+            number = "".join(groups)
+        elif len(groups) == 2 and suffix and len(groups[1]) <= 2:
+            number = f"{groups[0]}.{groups[1]}"
+        else:
+            return None
+    try:
+        base = float(number)
+    except ValueError:
+        return None
+    if suffix in {"rb", "ribu"}:
+        base *= 1_000
+    elif suffix in {"jt", "juta"}:
+        base *= 1_000_000
+    if not math.isfinite(base) or base <= 0 or base > OUTAGE_MAX_AMOUNT:
+        return None
+    return float(round(base, 2))
+
+
+def _outage_explicit_amount(user_text: str) -> float | None:
+    """Satu nominal rupiah yang benar-benar tertulis, atau None bila ambigu.
+
+    Batasan ini khusus jalur outage: kuantitas ("2 kopi"), nomor identitas, dan
+    nominal campur tidak boleh berubah menjadi transaksi keuangan.
+    """
+    text = (user_text or "").lower()
+    # Date cleanup strips boundary punctuation, so check signed money first.
+    if re.search(r"[-−]\s*(?:rp\.?\s*)?\d|\brp\.?\s*[-−]\s*\d", text):
+        return None
+    without_dates = _remove_date_mentions(text)
+    pattern = re.compile(
+        r"(?<![\w.,])(?:rp\.?\s*(\d(?:[\d.,]*\d)?)|"
+        r"(\d(?:[\d.,]*\d)?)\s*(rb|ribu|jt|juta))(?!\w|[.,]\d)"
+    )
+    matches = list(pattern.finditer(without_dates))
+    if len(matches) != 1:
+        return None
+    match = matches[0]
+    # Do not return the Rp prefix amount if a scale token follows it.
+    if match.group(1) and re.match(
+        r"\s*(?:rb|ribu|jt|juta|k|m)\b", without_dates[match.end():]
+    ):
+        return None
+    remainder = f"{without_dates[: match.start()]} {without_dates[match.end():]}"
+    if re.search(r"\d", remainder):
+        return None
+    return _parse_outage_amount(
+        (match.group(1) or match.group(2) or "").strip(),
+        (match.group(3) or "").lower(),
+    )
+
+
+def _outage_fallback_extraction(user_text: str) -> dict:
+    """Draf konservatif saat semua provider gagal; selalu wajib dikonfirmasi."""
+    amount = _outage_explicit_amount(user_text)
+    if amount is None:
+        return {
+            "transactions": [],
+            "unclear": (
+                "Nominal belum terbaca jelas. Tulis nominalnya, misalnya 45rb "
+                "atau Rp 45.000."
+            ),
+            "local_review_fallback": True,
+        }
+
+    local = _extract_transaction_locally(user_text)
+    matches = [
+        tx for tx in local.get("transactions", [])
+        if float(tx.get("amount") or 0) == amount
+    ]
+    draft = matches[0] if len(matches) == 1 else {
+        "type": "expense",
+        "amount": amount,
+        "category": "other",
+        "merchant": None,
+        "note": None,
+        "wallet_hint": None,
+        "date": None,
+        "confidence": OUTAGE_FALLBACK_CONFIDENCE,
+    }
+    draft = {
+        **draft,
+        "confidence": min(
+            float(draft.get("confidence") or 0.0), OUTAGE_FALLBACK_CONFIDENCE
+        ),
+    }
+    return {
+        "transactions": [draft],
+        "unclear": "Nominal terbaca otomatis. Periksa dulu sebelum menyimpan.",
+        "local_review_fallback": True,
+    }
 
 
 def _extract_transaction_locally(user_text: str) -> dict:
