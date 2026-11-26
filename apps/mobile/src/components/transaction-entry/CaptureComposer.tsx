@@ -12,6 +12,7 @@ import {
 
 import type { Language } from "../../i18n/i18n-context";
 import { financeEditorial as fe } from "../../theme/finance-editorial";
+import { isPwaPolish } from "../../theme/pwa-polish";
 import { experienceTokens } from "../../theme/experience-tokens";
 
 /**
@@ -164,7 +165,9 @@ export function CaptureComposer({
 	walletLabel,
 	helperText,
 }: CaptureComposerProps) {
-	const styles = useMemo(() => createStyles(), []);
+	// Polish PWA: premium + web. Flag OFF tetap memakai nilai baseline.
+	const polishWebCapture = isPwaPolish();
+	const styles = useMemo(() => createStyles(polishWebCapture), [polishWebCapture]);
 	const [walletPickerOpen, setWalletPickerOpen] = useState(false);
 
 	const editable = canCreate && !processing;
@@ -393,7 +396,7 @@ export function CaptureComposer({
 const HERO = fe.navySurface;
 const BRAND = fe.blueBright;
 
-function createStyles(): Record<string, ViewStyle | TextStyle> {
+function createStyles(polishWebCapture = false): Record<string, ViewStyle | TextStyle> {
 	return StyleSheet.create({
 		root: {
 			flex: 1,
@@ -410,7 +413,7 @@ function createStyles(): Record<string, ViewStyle | TextStyle> {
 		heroTitle: {
 			color: fe.white,
 			fontSize: experienceTokens.type.title,
-			fontWeight: "800",
+			fontWeight: polishWebCapture ? "600" : "800",
 		},
 		heroPromise: {
 			color: "rgba(255,255,255,0.78)",
@@ -437,13 +440,19 @@ function createStyles(): Record<string, ViewStyle | TextStyle> {
 			minWidth: 0,
 			gap: 1,
 		},
-		contextCaption: {
-			color: fe.textMuted,
-			fontSize: experienceTokens.type.caption,
-			fontWeight: "700",
-			letterSpacing: 0.6,
-			textTransform: "uppercase",
-		},
+		contextCaption: polishWebCapture
+			? {
+					color: fe.textMuted,
+					fontSize: experienceTokens.type.sectionLabel,
+					fontWeight: "600",
+				}
+			: {
+					color: fe.textMuted,
+					fontSize: experienceTokens.type.caption,
+					fontWeight: "700",
+					letterSpacing: 0.6,
+					textTransform: "uppercase",
+				},
 		contextText: {
 			color: fe.ink,
 			fontSize: experienceTokens.type.body,
@@ -454,7 +463,7 @@ function createStyles(): Record<string, ViewStyle | TextStyle> {
 			minWidth: 0,
 			color: fe.navy,
 			fontSize: experienceTokens.type.body,
-			fontWeight: "700",
+			fontWeight: (polishWebCapture ? "600" : "700"),
 		},
 		walletMuted: {
 			color: fe.textMuted,
@@ -479,7 +488,7 @@ function createStyles(): Record<string, ViewStyle | TextStyle> {
 		walletActionText: {
 			color: fe.navy,
 			fontSize: experienceTokens.type.body,
-			fontWeight: "700",
+			fontWeight: (polishWebCapture ? "600" : "700"),
 		},
 		walletChange: {
 			flexShrink: 0,
@@ -510,15 +519,15 @@ function createStyles(): Record<string, ViewStyle | TextStyle> {
 		},
 		walletOptionActive: {
 			borderColor: fe.blueBright,
-			backgroundColor: "#EEF4FF",
+			backgroundColor: polishWebCapture ? "rgba(23,139,208,0.08)" : "#EEF4FF",
 		},
 		walletOptionText: {
 			color: fe.navy,
-			fontSize: 12.5,
+			fontSize: polishWebCapture ? experienceTokens.type.body : 12.5,
 			fontWeight: "600",
 		},
 		feedbackCard: {
-			backgroundColor: "#EEF4FF",
+			backgroundColor: polishWebCapture ? "rgba(23,139,208,0.08)" : "#EEF4FF",
 			borderColor: "rgba(12,78,145,0.22)",
 			borderWidth: 1,
 			borderRadius: experienceTokens.radius[2],
@@ -528,14 +537,14 @@ function createStyles(): Record<string, ViewStyle | TextStyle> {
 		feedbackTitle: {
 			color: fe.navySurface,
 			fontSize: experienceTokens.type.body,
-			fontWeight: "700",
+			fontWeight: (polishWebCapture ? "600" : "700"),
 		},
 		feedbackBody: {
 			color: fe.navySurface,
 			fontSize: experienceTokens.type.helper,
 		},
 		unknownCard: {
-			backgroundColor: "#FDEEEC",
+			backgroundColor: polishWebCapture ? "rgba(180,35,24,0.06)" : "#FDEEEC",
 			borderColor: "rgba(180,35,24,0.28)",
 			borderWidth: 1,
 			borderRadius: experienceTokens.radius[2],
@@ -545,7 +554,7 @@ function createStyles(): Record<string, ViewStyle | TextStyle> {
 		unknownTitle: {
 			color: fe.danger,
 			fontSize: experienceTokens.type.body,
-			fontWeight: "700",
+			fontWeight: (polishWebCapture ? "600" : "700"),
 		},
 		unknownBody: {
 			color: fe.danger,
@@ -555,7 +564,7 @@ function createStyles(): Record<string, ViewStyle | TextStyle> {
 		input: {
 			backgroundColor: fe.white,
 			borderColor: BRAND,
-			borderWidth: 1.5,
+			borderWidth: polishWebCapture ? 1 : 1.5,
 			borderRadius: experienceTokens.radius[3],
 			padding: experienceTokens.spacing[3],
 			minHeight: 120,
@@ -569,18 +578,18 @@ function createStyles(): Record<string, ViewStyle | TextStyle> {
 		},
 		submit: {
 			backgroundColor: fe.navy,
-			borderRadius: experienceTokens.radius[3],
+			borderRadius: polishWebCapture ? experienceTokens.radius[2] : experienceTokens.radius[3],
 			minHeight: experienceTokens.target.ctaHeight,
 			alignItems: "center",
 			justifyContent: "center",
 		},
 		submitDisabled: {
-			backgroundColor: "#C6D6EA",
+			backgroundColor: polishWebCapture ? "rgba(12,78,145,0.18)" : "#C6D6EA",
 		},
 		submitText: {
 			color: fe.white,
 			fontSize: 14,
-			fontWeight: "700",
+			fontWeight: polishWebCapture ? "600" : "700",
 		},
 		secondaryRow: {
 			flexDirection: "row",
@@ -598,7 +607,7 @@ function createStyles(): Record<string, ViewStyle | TextStyle> {
 		},
 		secondaryText: {
 			color: fe.navy,
-			fontSize: 12.5,
+			fontSize: polishWebCapture ? experienceTokens.type.body : 12.5,
 			fontWeight: "600",
 		},
 		voiceRow: {
@@ -613,7 +622,7 @@ function createStyles(): Record<string, ViewStyle | TextStyle> {
 		voiceText: {
 			color: fe.navy,
 			fontSize: experienceTokens.type.body,
-			fontWeight: "700",
+			fontWeight: (polishWebCapture ? "600" : "700"),
 		},
 		voiceHint: {
 			color: fe.textMuted,
