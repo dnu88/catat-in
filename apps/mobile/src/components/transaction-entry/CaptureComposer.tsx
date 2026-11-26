@@ -527,7 +527,7 @@ function createStyles(polishWebCapture = false): Record<string, ViewStyle | Text
 			fontWeight: "600",
 		},
 		feedbackCard: {
-			backgroundColor: "#EEF4FF",
+			backgroundColor: polishWebCapture ? "rgba(23,139,208,0.08)" : "#EEF4FF",
 			borderColor: "rgba(12,78,145,0.22)",
 			borderWidth: 1,
 			borderRadius: experienceTokens.radius[2],
