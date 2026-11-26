@@ -149,6 +149,7 @@ export default function WalletsScreen() {
 	const { language } = useI18n();
 	const { activeContext, memberships, canCreate } = useFinanceContext();
 	const tx = copy[language];
+	const isEn = language === "en";
 	// B1 (visual foundation): resolve the presentation flag first so flag OFF
 	// keeps every value identical to the pre-B1 baseline.
 	const premium = featureFlags.simplePremiumExperience;
@@ -220,7 +221,7 @@ export default function WalletsScreen() {
 						scopeType: "personal" as const,
 					})),
 					...householdRows.flat(),
-				].filter((wallet) => wallet.is_active !== false),
+				],
 			);
 		} catch (err) {
 			console.error("Error loading wallets:", err);
@@ -364,6 +365,18 @@ export default function WalletsScreen() {
 			? wallets
 			: wallets.filter((wallet) => wallet.type === filter);
 	const totalBalance = wallets.reduce(
+		(sum, wallet) => sum + Number(wallet.balance ?? 0),
+		0,
+	);
+	// Dompet nonaktif tetap menyimpan uang: hitung terpisah supaya angka total
+	// tidak pernah menyembunyikan saldo yang tidak bisa dipakai transaksi baru.
+	const activeWallets = wallets.filter((wallet) => wallet.is_active !== false);
+	const inactiveWallets = wallets.filter((wallet) => wallet.is_active === false);
+	const activeBalance = activeWallets.reduce(
+		(sum, wallet) => sum + Number(wallet.balance ?? 0),
+		0,
+	);
+	const inactiveBalance = inactiveWallets.reduce(
 		(sum, wallet) => sum + Number(wallet.balance ?? 0),
 		0,
 	);
@@ -655,9 +668,29 @@ export default function WalletsScreen() {
 					) : null}
 					<View style={styles.totalRow}>
 						<View testID="wallets-active-count" style={styles.totalChip}>
-							<Text style={styles.totalChipText}>{wallets.length} {tx.active}</Text>
+							<Text style={styles.totalChipText}>
+								{isEn
+									? `${activeWallets.length} active`
+									: `${activeWallets.length} ${tx.active}`}
+							</Text>
 						</View>
+						{inactiveWallets.length > 0 ? (
+							<View testID="wallets-inactive-count" style={styles.totalChip}>
+								<Text style={styles.totalChipText}>
+									{isEn
+										? `${inactiveWallets.length} inactive`
+										: `${inactiveWallets.length} nonaktif`}
+								</Text>
+							</View>
+						) : null}
 					</View>
+					{inactiveBalance > 0 ? (
+						<Text testID="wallets-split-balance" style={styles.totalSplit}>
+							{isEn
+								? `Active ${formatCurrency(activeBalance)} · Inactive ${formatCurrency(inactiveBalance)}`
+								: `Aktif ${formatCurrency(activeBalance)} · Nonaktif ${formatCurrency(inactiveBalance)}`}
+						</Text>
+					) : null}
 					<View testID="wallets-card-stack" style={styles.walletStack}>
 						<View style={styles.walletStackBack} />
 						<View style={styles.walletStackMiddle} />
@@ -703,7 +736,14 @@ export default function WalletsScreen() {
 								</Text>
 							</View>
 							<View style={styles.walletInfo}>
-								<Text style={styles.walletName}>{wallet.name}</Text>
+								<View style={styles.walletNameRow}>
+									<Text style={styles.walletName}>{wallet.name}</Text>
+									{wallet.is_active === false ? (
+										<View testID={`wallet-inactive-badge-${wallet.id}`} style={styles.inactiveBadge}>
+											<Text style={styles.inactiveBadgeText}>{isEn ? "Inactive" : "Nonaktif"}</Text>
+										</View>
+									) : null}
+								</View>
 								<View style={styles.walletMeta}>
 									<View
 										style={[
@@ -955,7 +995,8 @@ function createStyles(
 						letterSpacing: theme.typography.letterSpacing.tight,
 					}),
 		},
-		totalRow: { marginTop: 6 },
+		totalRow: { marginTop: 6, flexDirection: "row", gap: 8, flexWrap: "wrap" },
+		totalSplit: { marginTop: 6, color: theme.colors.textSecondary, fontSize: theme.typography.fontSize.sm },
 		// PWA polish: the active-wallet count is a caption, so it drops the pill chrome.
 		totalChip: polish
 			? { paddingVertical: 5, alignSelf: "flex-start" }
@@ -1064,9 +1105,23 @@ function createStyles(
 		},
 		walletIconText: { fontSize: 22 },
 		walletInfo: { flex: 1, gap: 4 },
+		walletNameRow: { flexDirection: "row", alignItems: "center", gap: 8, flexWrap: "wrap" },
 		walletName: {
 			color: theme.colors.textPrimary,
 			fontSize: theme.typography.fontSize.lg,
+			fontWeight: theme.typography.fontWeight.bold,
+		},
+		inactiveBadge: {
+			paddingHorizontal: 8,
+			paddingVertical: 2,
+			borderRadius: theme.radius.pill,
+			backgroundColor: theme.colors.mutedSurface,
+			borderWidth: 1,
+			borderColor: theme.colors.borderBase,
+		},
+		inactiveBadgeText: {
+			color: theme.colors.textMuted,
+			fontSize: theme.typography.fontSize.xs,
 			fontWeight: theme.typography.fontWeight.bold,
 		},
 		walletMeta: {

@@ -218,6 +218,24 @@ describe("WalletsScreen", () => {
 		});
 	});
 
+	it("keeps inactive wallets visible with a badge and splits the balance", async () => {
+		mockListWallets.mockImplementation(async (context: any) => {
+			if (context?.type === "household") return [];
+			return [
+				{ id: "w1", user_id: "u1", household_id: null, name: "BCA Utama", type: "bank", balance: 1000000, currency: "IDR", is_active: true },
+				{ id: "w2", user_id: "u1", household_id: null, name: "Tunai lama", type: "cash", balance: 250000, currency: "IDR", is_active: false },
+			];
+		});
+		renderWallets();
+
+		expect(await screen.findByText("Tunai lama")).toBeTruthy();
+		expect(screen.getByTestId("wallet-inactive-badge-w2")).toBeTruthy();
+		expect(screen.getByTestId("wallets-total-value").props.children).toContain("1.250.000");
+		const split = String(screen.getByTestId("wallets-split-balance").props.children);
+		expect(split).toContain("Nonaktif");
+		expect(split).toContain("250.000");
+	});
+
 	it("opens create wallet form and creates in the active context", async () => {
 		mockActiveContext = {
 			type: "household",

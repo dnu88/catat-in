@@ -211,6 +211,10 @@ export default function DashboardScreen() {
 	const hasCurrentData = loadedScope === scopeKey;
 	const hideUnloadedData = premium && !hasCurrentData;
 	const wallets = hideUnloadedData ? [] : loadedWallets;
+	const activeWallets = useMemo(
+		() => wallets.filter((wallet) => wallet.is_active !== false),
+		[wallets],
+	);
 	const recentTransactions = hideUnloadedData ? [] : loadedTransactions;
 	const dataLoading = loadState.scope !== scopeKey || loadState.loading;
 	const dataError = loadState.scope === scopeKey && loadState.error;
@@ -314,9 +318,10 @@ export default function DashboardScreen() {
 						listCategories().catch(() => [] as Category[]),
 					]);
 				if (isMounted()) {
-					setWallets(
-						scopedWallets.filter((wallet) => wallet.is_active !== false),
-					);
+					// Simpan semua dompet: total saldo harus mencerminkan uang yang
+					// benar-benar ada, termasuk dompet yang dinonaktifkan. Filter
+					// aktif hanya dipakai untuk label dan pemilih transaksi.
+					setWallets(scopedWallets);
 					setRecentTransactions(scopedTransactions);
 					setCategoryOptions(categories);
 					setLoadedScope(scopeKey);
@@ -659,7 +664,9 @@ export default function DashboardScreen() {
 								>
 									<Text style={styles.walletStackBrand}>KASWISE</Text>
 									<Text style={styles.walletStackMeta}>
-										{wallets.length} {isEn ? "active wallets" : "dompet aktif"}
+										{isEn
+										? `${wallets.length} wallets · ${activeWallets.length} active`
+										: `${wallets.length} dompet · ${activeWallets.length} aktif`}
 									</Text>
 								</LinearGradient>
 							</View>
