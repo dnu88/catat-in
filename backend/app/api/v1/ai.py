@@ -31,6 +31,9 @@ MAX_FILE_SIZE = settings.MAX_UPLOAD_SIZE_MB * 1024 * 1024
 class ChatInputRequest(BaseModel):
     text: str
     conversation_history: list[dict] = []
+    # Hanya klien yang mewajibkan konfirmasi manusia (Capture premium) yang
+    # meminta draf lokal saat seluruh provider AI gagal.
+    allow_local_review: bool = False
 
 
 class InsightRequest(BaseModel):
@@ -113,7 +116,12 @@ async def chat_input(body: ChatInputRequest, current_user=Depends(get_current_us
     state = _enforce_ai_quota(current_user, "chat")
 
     try:
-        result = await extract_transaction_from_text(body.text)
+        if body.allow_local_review:
+            result = await extract_transaction_from_text(
+                body.text, allow_local_review=True
+            )
+        else:
+            result = await extract_transaction_from_text(body.text)
     except RuntimeError as exc:
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,

@@ -116,6 +116,10 @@ class Settings(BaseSettings):
     # berguna saat kredit salah satu akun habis (pernah terjadi: Gemini & Claude
     # sama-sama kehabisan kredit, sementara deepseek-flash sanggup membaca gambar).
     VISION_PROVIDER_ORDER: str = "deepseek,gemini,anthropic"
+    ZAI_OCR_API_KEY: str | None = None
+    # Model teks GLM (Z.ai). Dipakai sebagai cadangan ekstraksi teks supaya
+    # pencatatan tetap jalan saat kredit DeepSeek/Anthropic habis.
+    ZAI_TEXT_MODEL: str = "glm-5.3-flash"
 
     # Urutan provider AI Insight (analisis keuangan), dipisah koma. Sama seperti
     # VISION_PROVIDER_ORDER: hanya provider yang kuncinya terisi yang dipakai, dan
