@@ -151,5 +151,12 @@
       "apps/mobile/__tests__/capture-autosave.test.tsx"
     ],
     "verification": "Input 'beli kopi 35rb' must be written immediately and show the undo notice; 'bayar listrik' (no amount) or a two-transaction sentence must stop at review with a reason; a receipt scan must never auto-save."
+  },
+  {
+    "id": "home.unslop_polish_web",
+    "description": "Beranda PWA (web + simplePremiumExperience) memakai sapaan 14px, logo Kaswise di wallet stack, CTA radius kontrol, metric sub terbaca, dan nominal income kontras-aman. Flag OFF tetap baseline.",
+    "critical": false,
+    "markers": ["home-wallet-stack-logo"],
+    "tests": ["apps/mobile/tests/experience/home-unslop.spec.ts"]
   }
 ]

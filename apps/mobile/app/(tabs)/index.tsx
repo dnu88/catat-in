@@ -1,10 +1,11 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Image, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Image, Platform, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useFocusEffect, useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
 
 import { FinanceContextSwitcher } from "../../src/components/FinanceContextSwitcher";
+import { KaswiseLogoMark } from "../../src/components/brand/KaswiseLogoMark";
 import { featureFlags } from "../../src/config/features";
 import { isPwaPolish, pwaHeroCaption } from "../../src/theme/pwa-polish";
 import { recentEmptyStateCopy } from "../../src/features/home/empty-state-copy";
@@ -642,14 +643,14 @@ export default function DashboardScreen() {
 								<Text testID="home-monthly-remaining" style={[styles.heroMetricValue, monthlyRemainingTone === "danger" && styles.heroAmountDanger]}>
 									{hideUnloadedData ? "—" : displayAmount(formatSignedCurrency(monthlyRemaining))}
 								</Text>
-								{!polishWebHome ? <Text style={styles.heroMetricSub}>{activePeriodLabel}</Text> : null}
+								<Text testID="home-monthly-remaining-sub" style={styles.heroMetricSub}>{activePeriodLabel}</Text>
 							</View>
 							<View style={styles.heroMetricCard}>
 								<Text style={styles.heroMetricLabel}>{tx.monthlyExpense}</Text>
 								<Text testID="home-monthly-expense" style={styles.heroMetricValue}>
 									{hideUnloadedData ? "—" : displayAmount(formatCurrency(monthlyExpense))}
 								</Text>
-								{!polishWebHome ? <Text style={styles.heroMetricSub}>{isCurrentMonth ? tx.monthlyExpenseSub : tx.monthlyExpensePeriodSub}</Text> : null}
+								<Text testID="home-monthly-expense-sub" style={styles.heroMetricSub}>{isCurrentMonth ? tx.monthlyExpenseSub : tx.monthlyExpensePeriodSub}</Text>
 							</View>
 						</View>
 						{wallets.length > 0 ? (
@@ -662,7 +663,11 @@ export default function DashboardScreen() {
 									end={{ x: 1, y: 1 }}
 									style={styles.walletStackFront}
 								>
-									<Text style={styles.walletStackBrand}>KASWISE</Text>
+									{polishWebHome ? (
+										<KaswiseLogoMark size={14} testID="home-wallet-stack-logo" onDark />
+									) : (
+										<Text style={styles.walletStackBrand}>KASWISE</Text>
+									)}
 									<Text style={styles.walletStackMeta}>
 										{isEn
 										? `${wallets.length} wallets · ${activeWallets.length} active`
@@ -910,14 +915,19 @@ function createStyles(
 		content: { padding: 0, paddingBottom: 110, gap: 0 },
 		headerRow: {
 			flexDirection: "row", justifyContent: "space-between", alignItems: "center",
-			paddingHorizontal: 20, paddingTop: 18, paddingBottom: 8, gap: 8,
+			paddingHorizontal: 20, paddingTop: polishWebHome ? 14 : 18, paddingBottom: 8, gap: 8,
 		},
 		headerCopy: {
 			flexShrink: 1,
 			minWidth: 0,
 		},
-		greeting: { color: fe.white, fontSize: 22, fontWeight: theme.typography.fontWeight.semibold, letterSpacing: -0.3 },
-		dateText: { color: "rgba(255,255,255,0.58)", fontSize: 13, marginTop: 2 },
+		// Sapaan berhenti jadi judul saat polish web aktif: 14px medium, bukan 22px.
+		greeting: polishWebHome
+			? { color: "rgba(255,255,255,0.8)", fontSize: 14, fontWeight: theme.typography.fontWeight.medium, letterSpacing: 0 }
+			: { color: fe.white, fontSize: 22, fontWeight: theme.typography.fontWeight.semibold, letterSpacing: -0.3 },
+		dateText: polishWebHome
+			? { color: "rgba(255,255,255,0.74)", fontSize: 12, marginTop: 2 }
+			: { color: "rgba(255,255,255,0.58)", fontSize: 13, marginTop: 2 },
 		headerActions: {
 			flexDirection: "row",
 			alignItems: "center",
@@ -958,7 +968,7 @@ function createStyles(
 		bellBadgeText: {
 			color: "#FFFFFF",
 			fontSize: 10,
-			fontWeight: "bold",
+			fontWeight: polishWebHome ? theme.typography.fontWeight.semibold : "bold",
 		},
 		heroStage: { backgroundColor: fe.paper },
 		heroCard: {
@@ -1062,7 +1072,7 @@ function createStyles(
 		heroPeriodResetText: {
 			color: fe.white,
 			fontSize: 11,
-			fontWeight: theme.typography.fontWeight.extrabold,
+			fontWeight: polishWebHome ? theme.typography.fontWeight.semibold : theme.typography.fontWeight.extrabold,
 		},
 		heroMetricRow: {
 			flexDirection: "row", gap: 24, paddingTop: 14, borderTopWidth: 1, borderTopColor: fe.glass,
@@ -1083,7 +1093,11 @@ function createStyles(
 				? resolveExperienceTextStyle("metricAmount")
 				: { fontSize: 15, fontWeight: theme.typography.fontWeight.semibold }),
 		},
-		heroMetricSub: { color: "rgba(255,255,255,0.42)", fontSize: 10, fontWeight: theme.typography.fontWeight.medium },
+		heroMetricSub: {
+			color: polishWebHome ? "rgba(255,255,255,0.70)" : "rgba(255,255,255,0.42)",
+			fontSize: polishWebHome ? 11 : 10,
+			fontWeight: theme.typography.fontWeight.medium,
+		},
 		walletStack: { height: 84, marginTop: 20, marginBottom: 4, position: "relative" },
 		walletStackBack: { position: "absolute", left: 30, right: 30, top: 0, height: 50, borderRadius: 18, backgroundColor: "rgba(6,30,87,0.22)" },
 		walletStackMiddle: { position: "absolute", left: 15, right: 15, top: 11, height: 52, borderRadius: 18, backgroundColor: "rgba(6,30,87,0.38)" },
@@ -1094,14 +1108,14 @@ function createStyles(
 		sectionCard: { backgroundColor: "transparent", borderWidth: 0, borderRadius: 0, padding: 0, gap: 12 },
 		premiumCaptureCta: {
 			minHeight: 48,
-			borderRadius: 14,
-			backgroundColor: polishWebHome ? fe.ink : fe.blue,
+			borderRadius: polishWebHome ? experienceTokens.radius[2] : 14,
+			backgroundColor: fe.blue,
 			alignItems: "center",
 			justifyContent: "center",
 			marginTop: polishWebHome ? 0 : 4,
 			marginBottom: polishWebHome ? 0 : 14,
 		},
-		premiumCaptureCtaText: { color: fe.white, fontSize: 15, fontWeight: "700" },
+		premiumCaptureCtaText: { color: fe.white, fontSize: 15, fontWeight: polishWebHome ? theme.typography.fontWeight.semibold : "700" },
 		attentionSection: { gap: 0, borderBottomWidth: 1, borderBottomColor: fe.line },
 		attentionRow: {
 			flexDirection: "row",
@@ -1160,7 +1174,7 @@ function createStyles(
 		budgetPercent: {
 			color: theme.colors.warning,
 			fontSize: 12,
-			fontWeight: theme.typography.fontWeight.extrabold,
+			fontWeight: polishWebHome ? theme.typography.fontWeight.semibold : theme.typography.fontWeight.extrabold,
 		},
 		budgetMeta: { color: fe.slate, fontSize: 11 },
 		progressTrack: {
@@ -1198,7 +1212,7 @@ function createStyles(
 		},
 		txBubbleText: {
 			fontSize: 12,
-			fontWeight: theme.typography.fontWeight.extrabold,
+			fontWeight: polishWebHome ? theme.typography.fontWeight.semibold : theme.typography.fontWeight.extrabold,
 		},
 		txInfo: {
 			flex: 1,
@@ -1210,7 +1224,7 @@ function createStyles(
 				? resolveExperienceTextStyle("recentAmount")
 				: { fontSize: 13, fontWeight: theme.typography.fontWeight.semibold }),
 		},
-		txAmountIncome: { color: fe.financialIncome },
+		txAmountIncome: { color: polishWebHome ? fe.financialIncomeDeep : fe.financialIncome },
 		txAmountExpense: { color: fe.financialExpense },
 		});
 }
