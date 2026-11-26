@@ -146,7 +146,7 @@ async def analyze_receipt(
     except RuntimeError as exc:
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
-            detail="Layanan OCR sedang tidak tersedia. Coba lagi.",
+            detail="OCR sedang tidak tersedia (kredit provider AI habis atau gangguan layanan). Catat manual atau ketik transaksinya dulu.",
         ) from exc
 
     if state is not None:

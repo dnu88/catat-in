@@ -7,8 +7,6 @@ sehingga satu akun bermasalah tidak mematikan pencatatan.
 
 import asyncio
 
-import pytest
-
 from app.core.config import settings
 from app.services import ai_service
 
@@ -53,18 +51,23 @@ def test_uses_local_parser_when_no_provider_configured(monkeypatch):
     assert isinstance(out, dict)
 
 
-def test_raises_when_every_provider_fails(monkeypatch):
+def test_falls_back_to_local_parser_when_every_provider_fails(monkeypatch):
+    """Kredit semua provider bisa habis bersamaan; mencatat harus tetap jalan."""
     monkeypatch.setattr(settings, "DEEPSEEK_API_KEY", "sk-test", raising=False)
     monkeypatch.setattr(settings, "ANTHROPIC_API_KEY", "sk-ant", raising=False)
 
     async def boom(system_prompt, user_text):
-        raise RuntimeError("down")
+        raise RuntimeError("402 Insufficient Balance")
 
     monkeypatch.setattr(ai_service, "_deepseek_extract_json", boom)
     monkeypatch.setattr(ai_service, "_anthropic_extract_json", boom)
 
-    with pytest.raises(RuntimeError):
-        _run(ai_service.extract_transaction_from_text("apa saja"))
+    out = _run(ai_service.extract_transaction_from_text("beli kopi 35000 cash"))
+
+    assert out["degraded"] is True
+    assert out["degraded_reason"] == "provider_unavailable"
+    assert out["transactions"][0]["amount"] == 35000
+    assert out["transactions"][0]["type"] == "expense"
 
 
 def test_deepseek_payload_disables_thinking_and_requests_json(monkeypatch):

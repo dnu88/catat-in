@@ -9,6 +9,7 @@ Wrapper untuk Anthropic Claude API:
 import base64
 import html
 import json
+import logging
 import re
 from functools import lru_cache
 from datetime import datetime, timedelta, timezone
@@ -190,7 +191,16 @@ async def extract_transaction_from_text(user_text: str) -> dict:
             last_error = exc
             continue
 
-    raise RuntimeError(f"Semua provider AI gagal: {last_error}") from last_error
+    # Semua provider gagal (kredit habis, key dicabut, jaringan). Parser lokal
+    # berbasis aturan dan tanpa biaya, jadi pencatatan tetap jalan alih-alih
+    # menjawab 502. Hasilnya ditandai `degraded` supaya klien meminta pengguna
+    # memeriksa ulang nominal/kategori/dompet sebelum menyimpan.
+    logger = logging.getLogger(__name__)
+    logger.warning("semua provider AI gagal, memakai parser lokal: %s", last_error)
+    fallback = _extract_transaction_locally(user_text)
+    fallback["degraded"] = True
+    fallback["degraded_reason"] = "provider_unavailable"
+    return fallback
 
 
 RECEIPT_ANALYSIS_USER_TEXT = (
