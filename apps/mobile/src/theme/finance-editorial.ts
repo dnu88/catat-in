@@ -25,6 +25,9 @@ export const financeEditorial = {
   expense: '#111827',
   financialTotal: '#071B4F',
   financialIncome: '#168FA8',
+  // Teks nominal pemasukan di permukaan terang (paper). #168FA8 hanya 3,54:1
+  // di atas paper; #0F7089 mencapai 5,29:1. Ikon tetap financialIncome (3:1).
+  financialIncomeDeep: '#0F7089',
   financialExpense: '#263246',
   financialTransfer: '#0C4E91',
   financialExpenseAlert: '#B64B55',
