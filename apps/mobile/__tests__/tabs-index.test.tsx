@@ -343,7 +343,7 @@ describe("DashboardScreen dark luxury Home parity", () => {
 		jest.spyOn(featureFlags, "simpleNavigation", "get").mockReturnValue(true);
 		mockWallets = [{ id: "wallet-1", name: "Cash", balance: 100000, is_active: true }];
 		const screen = renderDashboard();
-		await screen.findByText("1 dompet aktif");
+		await screen.findByText("1 dompet · 1 aktif");
 		expect(screen.getByText("KASWISE")).toBeTruthy();
 		expect(screen.getByTestId("finance-context-switcher")).toBeTruthy();
 		expect(screen.getByTestId("home-total-balance").props.children).toBe("Rp 100.000");
@@ -351,6 +351,17 @@ describe("DashboardScreen dark luxury Home parity", () => {
 		expect(screen.queryByLabelText("Kelola dompet")).toBeNull();
 		fireEvent.press(screen.getByLabelText("Buka pengaturan"));
 		expect(mockPush).toHaveBeenLastCalledWith("/(tabs)/settings");
+	});
+
+	it("counts inactive wallets in the Home total instead of hiding their money", async () => {
+		jest.spyOn(featureFlags, "simpleNavigation", "get").mockReturnValue(true);
+		mockWallets = [
+			{ id: "wallet-1", name: "Cash", balance: 100000, is_active: true },
+			{ id: "wallet-2", name: "Tunai lama", balance: 250000, is_active: false },
+		];
+		const screen = renderDashboard();
+		await screen.findByText("2 dompet · 1 aktif");
+		expect(screen.getByTestId("home-total-balance").props.children).toBe("Rp 350.000");
 	});
 
 	it("simple Home places one concise attention rail before Recent with review first and budget second", async () => {
