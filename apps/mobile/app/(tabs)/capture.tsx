@@ -2883,7 +2883,7 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"], polish = fals
 		receiptModeChipText: {
 			color: fe.ink,
 			fontSize: 12,
-			fontWeight: "800",
+			fontWeight: polish ? "600" : "800",
 		},
 		receiptModeChipTextActive: { color: fe.white },
 		receiptDiscrepancy: {
@@ -2913,7 +2913,7 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"], polish = fals
 		receiptDiscrepancyAckText: {
 			color: fe.blueDeep,
 			fontSize: 13,
-			fontWeight: "800",
+			fontWeight: polish ? "600" : "800",
 		},
 		textArea: {
 			minHeight: 130, borderWidth: 0, borderRadius: 18, color: fe.ink,
@@ -2944,9 +2944,11 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"], polish = fals
 		destinationRow: {
 			backgroundColor: fe.white, borderRadius: 18, padding: 12, gap: 8,
 		},
-		destinationLabel: {
-			color: fe.muted, fontSize: 11, fontWeight: "700", textTransform: "uppercase", letterSpacing: 0.4,
-		},
+		destinationLabel: polish
+			? { color: fe.muted, fontSize: 11, fontWeight: "600" }
+			: {
+					color: fe.muted, fontSize: 11, fontWeight: "700", textTransform: "uppercase", letterSpacing: 0.4,
+				},
 		destinationControls: { gap: 8 },
 		secondaryActions: { gap: 8 },
 		comingSoonText: { color: fe.muted, fontSize: 12, textAlign: "center", marginTop: 8 },
