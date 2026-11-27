@@ -216,9 +216,15 @@ export async function getTransaction(id: string): Promise<Transaction | null> {
 	return data ? normalizeTransaction(data) : null;
 }
 
+export type CaptureWriteGuard = Readonly<{
+	expectedUserId: string;
+	ownsWrite: () => boolean;
+}>;
+
 export async function createTransaction(
 	tx: TransactionCreate,
 	context: FinanceContext = defaultContext,
+	captureGuard?: CaptureWriteGuard,
 ): Promise<Transaction> {
 	if (!canCreateInContext(context)) throw new Error("Akses lihat saja");
 
@@ -228,6 +234,11 @@ export async function createTransaction(
 		...buildFinanceInsertAudit(context, userId),
 	};
 
+	// Capture opts in to a pre-dispatch check after the async principal lookup.
+	// A later scope change does not cancel or roll back an already sent insert.
+	if (captureGuard && (userId !== captureGuard.expectedUserId || !captureGuard.ownsWrite())) {
+		throw new Error("Capture write no longer matches the current scope");
+	}
 	const { data, error } = await supabase
 		.from("transactions")
 		.insert(payload)
