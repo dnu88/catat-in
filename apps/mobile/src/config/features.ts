@@ -1,3 +1,5 @@
+import { Platform } from "react-native";
+
 const processEnv = (
 	globalThis as { process?: { env?: Record<string, string | undefined> } }
 ).process?.env;
@@ -61,13 +63,27 @@ export const featureFlags = {
 	 * Presentation only: it never changes what is persisted, the autosave
 	 * decision, entitlements, permissions, or payment. Kept independent from
 	 * `transactionEntryV2` / `aiAutosaveText` so a visual rollout can be
-	 * reverted on its own. Default OFF, so the legacy surfaces stay intact
-	 * until it is explicitly rolled out.
+	 * reverted on its own.
+	 *
+	 * Resolution (tri-state, strict order — approved Danu 26 Nov):
+	 * 1. runtime/test override wins (including explicit `false`);
+	 * 2. an env key that is PRESENT (existence check, not truthy — so `=0`
+	 *    can still override the web default) resolves via `flagEnabled`;
+	 * 3. web defaults to ON (premium experience is the default web surface);
+	 * 4. native without env stays OFF (native baseline unchanged).
 	 */
 	get simplePremiumExperience() {
-		return (
-			featureOverrides()?.simplePremiumExperience ??
-			flagEnabled(processEnv?.EXPO_PUBLIC_FEATURE_SIMPLE_PREMIUM_EXPERIENCE)
-		);
+		const override = featureOverrides()?.simplePremiumExperience;
+		if (override !== undefined) {
+			return override;
+		}
+		const envKey = "EXPO_PUBLIC_FEATURE_SIMPLE_PREMIUM_EXPERIENCE";
+		if (processEnv && envKey in processEnv) {
+			return flagEnabled(processEnv[envKey]);
+		}
+		if (Platform.OS === "web") {
+			return true;
+		}
+		return false;
 	},
 };
