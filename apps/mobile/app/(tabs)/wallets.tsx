@@ -27,6 +27,8 @@ import { useFinanceContext } from "../../src/state/finance-context";
 import { useTheme } from "../../src/theme/theme-context";
 import { financeEditorial as fe } from "../../src/theme/finance-editorial";
 import { isPwaPolish, pwaHeroCaption } from "../../src/theme/pwa-polish";
+import { KaswiseIcon, type KaswiseIconName } from "../../src/components/icons/kaswise-icons";
+import { KaswiseLogoMark } from "../../src/components/brand/KaswiseLogoMark";
 import { subscribeWalletChanges } from "../../src/services/wallet-events";
 import { featureFlags } from "../../src/config/features";
 import {
@@ -121,11 +123,11 @@ const copy = {
 	},
 } as const;
 
-const typeIcons: Record<WalletType, string> = {
-	bank: "🏦",
-	ewallet: "💳",
-	cash: "💵",
-	investment: "📈",
+const typeIcons: Record<WalletType, KaswiseIconName> = {
+	bank: "bank",
+	ewallet: "creditCard",
+	cash: "wallets",
+	investment: "investment",
 };
 
 function getTypeColor(
@@ -696,7 +698,7 @@ export default function WalletsScreen() {
 						<View style={styles.walletStackMiddle} />
 						<View style={styles.walletStackFront}>
 							<View>
-								<Text style={styles.walletStackLabel}>{wallets[0]?.name ?? tx.title}</Text>
+								<KaswiseLogoMark size={14} onDark testID="wallets-stack-logo" />
 								<Text style={styles.walletStackMeta}>{wallets[0] ? tx.types[wallets[0].type as WalletType] : tx.subtitle}</Text>
 							</View>
 							<Text testID="wallets-stack-balance" style={styles.walletStackBalance}>{wallets[0] ? formatCurrency(Number(wallets[0].balance ?? 0)) : "—"}</Text>
@@ -731,9 +733,11 @@ export default function WalletsScreen() {
 									},
 								]}
 							>
-								<Text style={styles.walletIconText}>
-									{typeIcons[wallet.type as WalletType]}
-								</Text>
+								<KaswiseIcon
+									name={typeIcons[wallet.type as WalletType]}
+									size={22}
+									color={getTypeColor(wallet.type as WalletType)}
+								/>
 							</View>
 							<View style={styles.walletInfo}>
 								<View style={styles.walletNameRow}>
@@ -860,8 +864,8 @@ function createStyles(
 		title: {
 			color: fe.white,
 			fontSize: theme.typography.fontSize["4xl"],
-			fontWeight: theme.typography.fontWeight.extrabold,
-			letterSpacing: theme.typography.letterSpacing.tight,
+			fontWeight: polish ? "600" : theme.typography.fontWeight.extrabold,
+			letterSpacing: polish ? -0.6 : theme.typography.letterSpacing.tight,
 		},
 		subtitle: {
 			color: polish ? pwaHeroCaption : "rgba(255,255,255,0.64)",
@@ -896,7 +900,7 @@ function createStyles(
 		formTitle: {
 			color: theme.colors.textPrimary,
 			fontSize: 14,
-			fontWeight: "800",
+			fontWeight: polish ? "600" : "800",
 		},
 		input: {
 			backgroundColor: theme.colors.card,
@@ -939,7 +943,7 @@ function createStyles(
 		submitButtonText: {
 			color: fe.white,
 			fontSize: 14,
-			fontWeight: "800",
+			fontWeight: polish ? "600" : "800",
 		},
 		addCta: {
 			marginHorizontal: 20,
@@ -953,7 +957,7 @@ function createStyles(
 		addCtaText: {
 			color: fe.white,
 			fontSize: 15,
-			fontWeight: "800",
+			fontWeight: polish ? "600" : "800",
 		},
 		editActionRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
 		editSubmitButton: { flexGrow: 1, paddingHorizontal: 14 },
@@ -970,7 +974,7 @@ function createStyles(
 		cancelButtonText: {
 			color: theme.colors.textSecondary,
 			fontSize: 14,
-			fontWeight: "800",
+			fontWeight: polish ? "600" : "800",
 		},
 		totalCard: {
 			backgroundColor: "transparent",
@@ -988,7 +992,7 @@ function createStyles(
 		totalValue: {
 			color: fe.white,
 			...(premium
-				? resolveExperienceTextStyle("walletTotal")
+				? { ...resolveExperienceTextStyle("walletTotal"), ...(polish ? { fontWeight: "600" as const } : null) }
 				: {
 						fontSize: theme.typography.fontSize["4xl"],
 						fontWeight: theme.typography.fontWeight.extrabold,
@@ -1046,12 +1050,11 @@ function createStyles(
 		walletStackBack: { position: "absolute", left: 30, right: 30, top: 0, height: 70, borderRadius: 22, backgroundColor: "rgba(255,255,255,0.10)" },
 		walletStackMiddle: { position: "absolute", left: 15, right: 15, top: 12, height: 74, borderRadius: 22, backgroundColor: "rgba(45,130,212,0.35)" },
 		walletStackFront: { position: "absolute", left: 0, right: 0, top: 25, minHeight: 76, borderRadius: 22, backgroundColor: "rgba(72,151,211,0.34)", borderWidth: 1, borderColor: "rgba(255,255,255,0.18)", paddingHorizontal: 16, flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-		walletStackLabel: { color: fe.white, fontSize: 13, fontWeight: "800" },
 		walletStackMeta: { color: "rgba(255,255,255,0.64)", fontSize: 11, marginTop: 3 },
 		walletStackBalance: {
 			color: fe.white,
 			fontSize: 14,
-			fontWeight: "800",
+			fontWeight: polish ? "600" : "800",
 			...(premium ? { fontVariant: [...experienceTabularNumerals] } : null),
 		},
 		filterRow: { gap: 8, paddingVertical: 2, paddingHorizontal: 20 },
@@ -1059,7 +1062,7 @@ function createStyles(
 		filterSecondaryLabel: {
 			color: theme.colors.textMuted,
 			fontSize: 11,
-			fontWeight: "800",
+			fontWeight: polish ? "600" : "800",
 			paddingHorizontal: 20,
 		},
 		filterChip: {
@@ -1103,7 +1106,6 @@ function createStyles(
 			alignItems: "center",
 			justifyContent: "center",
 		},
-		walletIconText: { fontSize: 22 },
 		walletInfo: { flex: 1, gap: 4 },
 		walletNameRow: { flexDirection: "row", alignItems: "center", gap: 8, flexWrap: "wrap" },
 		walletName: {
@@ -1154,7 +1156,7 @@ function createStyles(
 		scopeBadgeText: {
 			color: theme.colors.textMuted,
 			fontSize: 11,
-			fontWeight: "800",
+			fontWeight: polish ? "600" : "800",
 		},
 		scopeBadgeTextHousehold: { color: theme.colors.info },
 		walletBottom: {
@@ -1166,7 +1168,7 @@ function createStyles(
 		walletBalance: {
 			color: fe.financialTotal,
 			fontSize: 18,
-			fontWeight: "800",
+			fontWeight: polish ? "600" : "800",
 			...(premium ? { fontVariant: [...experienceTabularNumerals] } : null),
 		},
 		walletActions: { flexDirection: "row", gap: 8, flexWrap: "wrap" },
@@ -1187,7 +1189,7 @@ function createStyles(
 		walletActionText: {
 			color: theme.colors.textSecondary,
 			fontSize: 12,
-			fontWeight: "800",
+			fontWeight: polish ? "600" : "800",
 		},
 		walletDeleteText: { color: theme.colors.danger },
 		errorText: { color: theme.colors.danger, fontSize: 12, fontWeight: "700" },

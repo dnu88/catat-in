@@ -1827,7 +1827,7 @@ function ProfilePhotoAction({
 			>
 				<KaswiseIcon name={icon} color={fe.blue} size={22} />
 			</View>
-			<Text style={{ color: theme.colors.textSecondary, fontSize: 11, fontWeight: "800", textAlign: "center" }}>{label}</Text>
+			<Text style={{ color: theme.colors.textSecondary, fontSize: 11, fontWeight: isPwaPolish() ? "600" : "800", textAlign: "center" }}>{label}</Text>
 		</Pressable>
 	);
 }
@@ -1989,8 +1989,9 @@ function createStyles(
 		inlineMessageError: { color: theme.colors.danger },
 		sectionCard: { backgroundColor: "transparent", borderRadius: 0, borderWidth: 0, padding: 0, gap: 8 },
 		sectionTitle: {
-			color: fe.muted, fontSize: 12, fontWeight: "700", textTransform: "uppercase",
-			letterSpacing: 0.8, paddingHorizontal: 4,
+			color: fe.muted, fontSize: 12, fontWeight: polish ? "600" : "700",
+			textTransform: polish ? "none" : "uppercase",
+			letterSpacing: polish ? 0 : 0.8, paddingHorizontal: 4,
 		},
 		sectionSub: { display: "none" },
 		themeGrid: { flexDirection: "row", gap: 8 },
@@ -2060,7 +2061,7 @@ function createStyles(
 		seedButtonText: {
 			color: theme.colors.textInverse,
 			fontSize: 14,
-			fontWeight: "800",
+			fontWeight: polish ? "600" : "800",
 		},
 		seedResult: {
 			color: theme.colors.success,
@@ -2093,7 +2094,7 @@ function createStyles(
 		sheetTitle: {
 			color: theme.colors.textPrimary,
 			fontSize: 18,
-			fontWeight: "800",
+			fontWeight: polish ? "600" : "800",
 		},
 		closeButton: {
 			width: 36,
@@ -2120,15 +2121,15 @@ function createStyles(
 			overflow: "hidden",
 		},
 		sheetPreviewImage: { width: 76, height: 76, borderRadius: 38 },
-		sheetPreviewText: { color: theme.colors.textMuted, fontSize: 11, fontWeight: "700" },
+		sheetPreviewText: { color: theme.colors.textMuted, fontSize: 11, fontWeight: polish ? "500" : "700" },
 		avatarSectionTitle: {
 			color: theme.colors.textPrimary,
 			fontSize: 15,
-			fontWeight: "800",
+			fontWeight: polish ? "600" : "800",
 		},
 		avatarTabs: { flexDirection: "row", alignItems: "flex-end", gap: 12 },
 		avatarTab: { paddingBottom: 6, gap: 6 },
-		avatarTabText: { color: theme.colors.textMuted, fontSize: 12, fontWeight: "800" },
+		avatarTabText: { color: theme.colors.textMuted, fontSize: 12, fontWeight: polish ? "600" : "800" },
 		avatarTabTextActive: { color: theme.colors.textPrimary },
 		avatarTabUnderline: { height: 2, borderRadius: 999, backgroundColor: "transparent" },
 		avatarTabUnderlineActive: { backgroundColor: fe.blue },
