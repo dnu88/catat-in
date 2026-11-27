@@ -606,11 +606,9 @@ def create_other_for_gap_users(client, report: dict) -> int:
                                 "is_default": False,
                             }
                         )
-                        .select("id,name")
-                        .single()
                         .execute()
                     )
-                    other = resp.data
+                    other = resp.data[0] if isinstance(resp.data, list) else resp.data
                     created += 1
                     log.info("Created Other expenses for gap user %s", u["user_id"])
                 t["target_category_id"] = other["id"]
