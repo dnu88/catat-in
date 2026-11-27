@@ -3,6 +3,7 @@ import logging
 import secrets
 import time
 from datetime import datetime, timedelta, timezone
+from decimal import Decimal, InvalidOperation
 
 from app.core.config import settings
 
@@ -94,17 +95,22 @@ def activate_premium_from_notification(
     row = repository_module.get_payment_by_order_id(order_id, client=client)
     if row is None:
         return new_status
+    # Legacy rows without a provider belong to Midtrans. Never let one
+    # provider's notification activate or rewrite another provider's payment.
+    if (row.get("provider") or "midtrans") != provider.name:
+        return row["status"]
     if row["status"] in TERMINAL_PAYMENT_STATUSES:
         return row["status"]
 
     gross_amount = provider.extract_gross_amount(payload)
     if gross_amount is not None:
         try:
-            expected_amount = int(row.get("amount") or 0)
-            received_amount = int(float(str(gross_amount)))
-        except (TypeError, ValueError):
+            expected_amount = Decimal(str(row.get("amount") or 0))
+            received_amount = Decimal(str(gross_amount))
+        except (TypeError, ValueError, InvalidOperation):
             return row["status"]
-        if expected_amount != received_amount:
+        if (not expected_amount.is_finite() or not received_amount.is_finite()
+                or expected_amount != received_amount):
             return row["status"]
 
     internal_status = new_status

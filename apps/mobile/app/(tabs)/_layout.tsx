@@ -1,4 +1,5 @@
-import { Redirect, Tabs, useRouter } from "expo-router";
+import { Redirect, Tabs, useRouter, useSegments } from "expo-router";
+import { DraftExitProvider, useScopedDraftExit } from "../../src/features/capture/DraftExitProvider";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useEffect, useState } from "react";
 import {
@@ -13,15 +14,51 @@ import { KaswiseIcon } from "../../src/components/icons/kaswise-icons";
 import { useI18n } from "../../src/i18n/i18n-context";
 import { useSupabase } from "../../src/lib/supabase";
 import { useTheme } from "../../src/theme/theme-context";
+import { financeEditorial as fe } from "../../src/theme/finance-editorial";
+import { featureFlags } from "../../src/config/features";
+import { goBackSafely } from "../../src/lib/safe-back";
+
+const BASE_PRIMARY_TAB_ROUTES = ["index", "transactions", "capture", "reports"] as const;
+
+// Cold deep links into a hidden route have no history, so the shared back
+// control needs an explicit primary destination per route.
+export const HIDDEN_ROUTE_BACK_FALLBACKS: Record<string, string> = {
+	settings: "/(tabs)",
+	wallets: "/(tabs)",
+	budgets: "/(tabs)/settings",
+	bills: "/(tabs)/settings",
+	groups: "/(tabs)/settings",
+	imports: "/(tabs)/settings",
+	"transaction-new": "/(tabs)/capture",
+};
+const DEFAULT_HIDDEN_BACK_FALLBACK = "/(tabs)";
 
 export default function TabsLayout() {
+	return <DraftExitProvider><TabsLayoutContent /></DraftExitProvider>;
+}
+
+function TabsLayoutContent() {
+	const draftExit = useScopedDraftExit();
 	const { supabase } = useSupabase();
 	const { theme } = useTheme();
 	const { t } = useI18n();
 	const router = useRouter();
+	const segments = useSegments();
+	// `useSegments()` reports the route group itself (e.g. `["(tabs)"]`) when the
+	// user is on the group's index route — i.e. Home at `/`. Treat a trailing
+	// group segment (or no segment at all) as the index route so Home is still
+	// recognised as a primary tab destination.
+	const lastSegment = segments[segments.length - 1];
+	const activeRoute =
+		!lastSegment || /^\(.*\)$/.test(lastSegment) ? "index" : lastSegment;
+	const simpleNavigation = featureFlags.simpleNavigation;
+	const primaryTabRoutes = new Set([
+		...BASE_PRIMARY_TAB_ROUTES,
+		simpleNavigation ? "wallets" : "settings",
+	]);
+	const isPrimaryTabRoute = primaryTabRoutes.has(activeRoute);
 	const insets = useSafeAreaInsets();
-	const tabBottomPadding = Math.max(18, insets.bottom + 8);
-	const tabBarHeight = 56 + tabBottomPadding;
+	const tabBottomOffset = Math.max(10, insets.bottom);
 	const [session, setSession] = useState<unknown>(null);
 	const [loading, setLoading] = useState(true);
 
@@ -56,7 +93,7 @@ export default function TabsLayout() {
 			<View
 				style={[
 					styles.loadingWrap,
-					{ backgroundColor: theme.colors.background },
+					{ backgroundColor: fe.paper },
 				]}
 			>
 				<ActivityIndicator color={theme.colors.brandPrimary} />
@@ -74,7 +111,16 @@ export default function TabsLayout() {
 			<Pressable
 				accessibilityRole="button"
 				accessibilityLabel={t("back")}
-				onPress={() => router.back()}
+				onPress={() => {
+					const leave = () =>
+					goBackSafely(
+						router,
+						HIDDEN_ROUTE_BACK_FALLBACKS[activeRoute] ??
+							DEFAULT_HIDDEN_BACK_FALLBACK,
+					);
+					if (draftExit?.current) draftExit.current(leave);
+					else leave();
+				}}
 				style={styles.headerBackButton}
 			>
 				<KaswiseIcon
@@ -94,22 +140,39 @@ export default function TabsLayout() {
 
 	return (
 		<Tabs
+			screenListeners={({ navigation }) => ({
+				tabPress: (event) => {
+					const state = navigation.getState();
+					if (!draftExit?.current || event.target === state.routes[state.index].key) return;
+					const route = state.routes.find((item) => item.key === event.target);
+					if (!route) return;
+					event.preventDefault();
+					draftExit.current(() => navigation.navigate(route.name));
+				},
+			})}
 			screenOptions={{
 				headerShown: true,
-				tabBarStyle: {
-					backgroundColor: theme.colors.tabBarBackground,
-					borderTopColor: theme.colors.borderSoft,
-					borderTopWidth: 1,
-					height: tabBarHeight,
-					paddingBottom: tabBottomPadding,
-					paddingTop: 4,
-					elevation: theme.mode === "dark" ? 0 : 4,
-				},
-				tabBarActiveTintColor:
-					theme.mode === "light"
-						? theme.colors.brandPrimaryDeep
-						: theme.colors.brandPrimary,
-				tabBarInactiveTintColor: theme.colors.textMuted,
+				tabBarShowLabel: false,
+				tabBarStyle: isPrimaryTabRoute
+					? {
+							position: "absolute",
+							left: 20,
+							right: 20,
+							bottom: tabBottomOffset,
+							backgroundColor: fe.paper,
+							borderTopWidth: 0,
+							height: 64,
+							paddingBottom: 6,
+							paddingTop: 6,
+							borderRadius: 28,
+							elevation: 12,
+							shadowColor: fe.navy,
+							shadowOpacity: 0.16,
+							shadowRadius: 22,
+						}
+					: { display: "none" },
+				tabBarActiveTintColor: fe.white,
+				tabBarInactiveTintColor: fe.slate,
 				tabBarLabelStyle: {
 					fontSize: 11,
 					fontWeight: "700",
@@ -119,11 +182,11 @@ export default function TabsLayout() {
 					paddingVertical: 0,
 				},
 				headerStyle: {
-					backgroundColor: theme.colors.headerBackground,
-					borderBottomColor: theme.colors.borderSoft,
+					backgroundColor: fe.white,
+					borderBottomColor: fe.line,
 					borderBottomWidth: 1,
 				},
-				headerTintColor: theme.colors.textPrimary,
+				headerTintColor: fe.ink,
 				headerTitleStyle: {
 					fontWeight: "800",
 					fontSize: 18,
@@ -135,14 +198,13 @@ export default function TabsLayout() {
 				name="index"
 				options={{
 					title: t("tabDashboard"),
+					tabBarAccessibilityLabel: t("tabDashboard"),
 					headerTitle: t("headerKaswise"),
+					headerShown: false,
 					tabBarIcon: ({ color, focused }) => (
-						<KaswiseIcon
-							name="home"
-							color={color}
-							size={focused ? 22 : 20}
-							weight={focused ? "fill" : "regular"}
-						/>
+						<View style={[styles.tabIconWrap, focused && styles.tabIconActive]}>
+							<KaswiseIcon name="home" color={color} size={20} weight={focused ? "fill" : "regular"} />
+						</View>
 					),
 				}}
 			/>
@@ -150,13 +212,12 @@ export default function TabsLayout() {
 				name="transactions"
 				options={{
 					title: t("tabTransactions"),
+					tabBarAccessibilityLabel: t("tabTransactions"),
+					headerShown: false,
 					tabBarIcon: ({ color, focused }) => (
-						<KaswiseIcon
-							name="transactions"
-							color={color}
-							size={focused ? 22 : 20}
-							weight={focused ? "fill" : "regular"}
-						/>
+						<View style={[styles.tabIconWrap, focused && styles.tabIconActive]}>
+							<KaswiseIcon name="transactions" color={color} size={20} weight={focused ? "fill" : "regular"} />
+						</View>
 					),
 				}}
 			/>
@@ -164,23 +225,22 @@ export default function TabsLayout() {
 			  name="capture"
 				options={{
 					title: t("tabCapture"),
+					tabBarAccessibilityLabel: t("tabCapture"),
+					headerShown: false,
 					tabBarLabel: "",
 					tabBarIcon: ({ focused }) => (
 						<View
 							style={[
 								styles.captureTabIcon,
 								{
-									backgroundColor:
-										theme.mode === "light"
-											? theme.colors.brandPrimaryDeep
-											: theme.colors.brandPrimary,
-									borderColor: theme.colors.background,
+									backgroundColor: fe.ink,
+									borderColor: fe.paper,
 								},
 							]}
 						>
 							<KaswiseIcon
 								name="capture"
-								color={theme.colors.textInverse}
+								color={fe.white}
 								size={22}
 								weight={focused ? "fill" : "bold"}
 							/>
@@ -192,27 +252,26 @@ export default function TabsLayout() {
 				name="reports"
 				options={{
 					title: t("tabReports"),
+					tabBarAccessibilityLabel: t("tabReports"),
+					headerShown: false,
 					tabBarIcon: ({ color, focused }) => (
-						<KaswiseIcon
-							name="reports"
-							color={color}
-							size={focused ? 22 : 20}
-							weight={focused ? "fill" : "regular"}
-						/>
+						<View style={[styles.tabIconWrap, focused && styles.tabIconActive]}>
+							<KaswiseIcon name="reports" color={color} size={20} weight={focused ? "fill" : "regular"} />
+						</View>
 					),
 				}}
 			/>
 			<Tabs.Screen
 				name="settings"
 				options={{
+					...(simpleNavigation ? hiddenScreenOptions : {}),
 					title: t("tabSettings"),
+					tabBarAccessibilityLabel: t("tabSettings"),
+					headerShown: simpleNavigation ? undefined : false,
 					tabBarIcon: ({ color, focused }) => (
-						<KaswiseIcon
-							name="settings"
-							color={color}
-							size={focused ? 22 : 20}
-							weight={focused ? "fill" : "regular"}
-						/>
+						<View style={[styles.tabIconWrap, focused && styles.tabIconActive]}>
+							<KaswiseIcon name="settings" color={color} size={20} weight={focused ? "fill" : "regular"} />
+						</View>
 					),
 				}}
 			/>
@@ -220,9 +279,16 @@ export default function TabsLayout() {
 			<Tabs.Screen
 				name="wallets"
 				options={{
-					...hiddenScreenOptions,
-					title: "Wallets",
+					...(simpleNavigation ? {} : hiddenScreenOptions),
+					title: t("tabWallets"),
+					tabBarAccessibilityLabel: t("tabWallets"),
+					headerShown: simpleNavigation ? false : undefined,
 					headerTitle: t("headerWallets"),
+					tabBarIcon: ({ color, focused }) => (
+						<View style={[styles.tabIconWrap, focused && styles.tabIconActive]}>
+							<KaswiseIcon name="wallets" color={color} size={20} weight={focused ? "fill" : "regular"} />
+						</View>
+					),
 				}}
 			/>
 			<Tabs.Screen
@@ -263,6 +329,7 @@ export default function TabsLayout() {
 					...hiddenScreenOptions,
 					title: "Manual",
 					headerTitle: t("headerManualTransaction"),
+					headerShown: false,
 				}}
 			/>
 		</Tabs>
@@ -275,6 +342,16 @@ const styles = StyleSheet.create({
 		alignItems: "center",
 		justifyContent: "center",
 	},
+	tabIconWrap: {
+		width: 40,
+		height: 40,
+		borderRadius: 20,
+		alignItems: "center",
+		justifyContent: "center",
+	},
+	tabIconActive: {
+		backgroundColor: fe.navySurface,
+	},
 	captureTabIcon: {
 		width: 44,
 		height: 44,
@@ -282,7 +359,7 @@ const styles = StyleSheet.create({
 		borderWidth: 3,
 		alignItems: "center",
 		justifyContent: "center",
-		marginTop: -20,
+		marginTop: 0,
 	},
 	headerBackButton: {
 		minHeight: 44,

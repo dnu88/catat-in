@@ -18,8 +18,15 @@ jest.mock("expo-web-browser", () => ({
 }));
 
 const mockBack = jest.fn();
+const mockReplace = jest.fn();
+let mockCanGoBack = true;
 jest.mock("expo-router", () => ({
-  router: { back: () => mockBack(), push: jest.fn() },
+  router: {
+    back: () => mockBack(),
+    replace: (href: string) => mockReplace(href),
+    canGoBack: () => mockCanGoBack,
+    push: jest.fn(),
+  },
 }));
 
 const mockCreate = jest.fn(async (_supabase: unknown, _plan: string) => ({
@@ -71,23 +78,23 @@ jest.mock("../src/theme/theme-context", () => ({
         borderSoft: "rgba(10,10,10,0.06)",
         borderBase: "rgba(10,10,10,0.10)",
         borderStrong: "rgba(10,10,10,0.16)",
-        brandPrimary: "#3F6212",
-        brandPrimaryDeep: "#3F6212",
+        brandPrimary: "#178BD0",
+        brandPrimaryDeep: "#0A3D78",
         brandSecondary: "#4A80F0",
         brandAccent: "#4A80F0",
-        buttonPrimaryBg: "#3F6212",
+        buttonPrimaryBg: "#0A3D78",
         buttonPrimaryText: "#FFFFFF",
-        success: "#65A30D",
+        success: "#22C55E",
         danger: "#DC2626",
         warning: "#B45309",
         info: "#0284C7",
         glass: { background: "rgba(255,255,255,0.60)", border: "rgba(10,10,10,0.08)" },
       },
       iconBubbles: {
-        primary: { background: "", border: "", color: "#65A30D" },
+        primary: { background: "", border: "", color: "#0C4E91" },
         navy: { background: "", border: "", color: "#2A5DD0" },
         accent: { background: "", border: "", color: "#2A5DD0" },
-        success: { background: "", border: "", color: "#65A30D" },
+        success: { background: "", border: "", color: "#22C55E" },
         warning: { background: "", border: "", color: "#B45309" },
         danger: { background: "", border: "", color: "#DC2626" },
         info: { background: "", border: "", color: "#0284C7" },
@@ -107,7 +114,7 @@ jest.mock("../src/theme/theme-context", () => ({
         sm: { shadowColor: "#0A0A0A", shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.04, shadowRadius: 2, elevation: 1 },
         md: { shadowColor: "#0A0A0A", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.08, shadowRadius: 12, elevation: 3 },
         lg: { shadowColor: "#0A0A0A", shadowOffset: { width: 0, height: 12 }, shadowOpacity: 0.10, shadowRadius: 30, elevation: 8 },
-        neon: { shadowColor: "#65A30D", shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.35, shadowRadius: 22, elevation: 12 },
+        accent: { shadowColor: "#178BD0", shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.35, shadowRadius: 22, elevation: 12 },
       },
     },
   }),
@@ -120,6 +127,7 @@ jest.mock("../src/i18n/i18n-context", () => ({
 beforeEach(() => {
   jest.clearAllMocks();
   jest.useFakeTimers();
+  mockCanGoBack = true;
   mockGetStoreReleaseConfig.mockReturnValue({
     isNativeStoreBuildCandidate: false,
     allowNativePremiumPurchase: true,
@@ -210,4 +218,213 @@ test("shows retry button during polling", async () => {
   });
 
   expect(getByText("Saya sudah bayar")).toBeTruthy();
+});
+
+test("falls back to settings when upgrade opens cold without history", async () => {
+  mockCanGoBack = false;
+  mockGetStatus.mockResolvedValue({ order_id: "kw-test-123", status: "paid" });
+
+  const { getByText, getByTestId } = render(<UpgradeScreen />);
+  await waitFor(() => getByText(/29.000/));
+
+  fireEvent.press(getByTestId("upgrade-monthly"));
+  await waitFor(() => expect(mockOpen).toHaveBeenCalled());
+
+  await act(async () => {
+    jest.advanceTimersByTime(2100);
+  });
+
+  await waitFor(() => expect(getByTestId("upgrade-success")).toBeTruthy());
+
+  await act(async () => {
+    jest.advanceTimersByTime(1600);
+  });
+
+  expect(mockReplace).toHaveBeenCalledWith("/(tabs)/settings");
+  expect(mockBack).not.toHaveBeenCalled();
+});
+
+test("uses history back for upgrade when history exists", async () => {
+  mockCanGoBack = true;
+  mockGetStatus.mockResolvedValue({ order_id: "kw-test-123", status: "paid" });
+
+  const { getByText, getByTestId } = render(<UpgradeScreen />);
+  await waitFor(() => getByText(/29.000/));
+
+  fireEvent.press(getByTestId("upgrade-monthly"));
+  await waitFor(() => expect(mockOpen).toHaveBeenCalled());
+
+  await act(async () => {
+    jest.advanceTimersByTime(2100);
+  });
+
+  await waitFor(() => expect(getByTestId("upgrade-success")).toBeTruthy());
+
+  await act(async () => {
+    jest.advanceTimersByTime(1600);
+  });
+
+  expect(mockBack).toHaveBeenCalledTimes(1);
+  expect(mockReplace).not.toHaveBeenCalled();
+});
+
+test("retry-check drives the poll path to paid and falls back to settings without history", async () => {
+  mockCanGoBack = false;
+  mockGetStatus.mockResolvedValue({ order_id: "kw-test-123", status: "paid" });
+
+  const { getByText, getByTestId } = render(<UpgradeScreen />);
+  await waitFor(() => getByText(/29.000/));
+
+  fireEvent.press(getByTestId("upgrade-monthly"));
+  await waitFor(() => expect(mockOpen).toHaveBeenCalled());
+
+  // The polling interval has not ticked yet, so whatever reports "paid" below
+  // has to come from pressing the retry check itself.
+  await act(async () => {
+    jest.advanceTimersByTime(100);
+  });
+  expect(mockGetStatus).not.toHaveBeenCalled();
+
+  fireEvent.press(getByTestId("upgrade-retry-check"));
+  await waitFor(() => expect(getByTestId("upgrade-success")).toBeTruthy());
+
+  await act(async () => {
+    jest.advanceTimersByTime(1600);
+  });
+
+  expect(mockReplace).toHaveBeenCalledWith("/(tabs)/settings");
+  expect(mockBack).not.toHaveBeenCalled();
+});
+
+test("retry-check drives the poll path to paid and uses history back when it exists", async () => {
+  mockCanGoBack = true;
+  mockGetStatus.mockResolvedValue({ order_id: "kw-test-123", status: "paid" });
+
+  const { getByText, getByTestId } = render(<UpgradeScreen />);
+  await waitFor(() => getByText(/29.000/));
+
+  fireEvent.press(getByTestId("upgrade-monthly"));
+  await waitFor(() => expect(mockOpen).toHaveBeenCalled());
+
+  await act(async () => {
+    jest.advanceTimersByTime(100);
+  });
+  expect(mockGetStatus).not.toHaveBeenCalled();
+
+  fireEvent.press(getByTestId("upgrade-retry-check"));
+  await waitFor(() => expect(getByTestId("upgrade-success")).toBeTruthy());
+
+  await act(async () => {
+    jest.advanceTimersByTime(1600);
+  });
+
+  expect(mockBack).toHaveBeenCalledTimes(1);
+  expect(mockReplace).not.toHaveBeenCalled();
+});
+
+test("shows the reason when checkout is refused for this account (403)", async () => {
+  mockCreate.mockRejectedValueOnce(Object.assign(new Error("pembayaran gagal (403)"), { status: 403 }));
+
+  const { getByText, getByTestId } = render(<UpgradeScreen />);
+  await waitFor(() => getByText(/29.000/));
+
+  fireEvent.press(getByTestId("upgrade-monthly"));
+
+  await waitFor(() => expect(getByTestId("upgrade-purchase-error")).toBeTruthy());
+  expect(
+    getByText(
+      "Metode pembayaran ini belum tersedia untuk akun Anda. Hubungi dukungan atau pakai metode lain.",
+    ),
+  ).toBeTruthy();
+  expect(mockOpen).not.toHaveBeenCalled();
+});
+
+test("shows a retry message when checkout fails for any other reason", async () => {
+  mockCreate.mockRejectedValueOnce(Object.assign(new Error("pembayaran gagal (502)"), { status: 502 }));
+
+  const { getByText, getByTestId } = render(<UpgradeScreen />);
+  await waitFor(() => getByText(/29.000/));
+
+  fireEvent.press(getByTestId("upgrade-monthly"));
+
+  await waitFor(() =>
+    expect(
+      getByText("Halaman pembayaran gagal dibuka. Coba lagi sebentar lagi."),
+    ).toBeTruthy(),
+  );
+  expect(mockOpen).not.toHaveBeenCalled();
+});
+
+test("clears the checkout error on the next attempt", async () => {
+  mockCreate.mockRejectedValueOnce(Object.assign(new Error("pembayaran gagal (502)"), { status: 502 }));
+
+  const { getByText, getByTestId, queryByTestId } = render(<UpgradeScreen />);
+  await waitFor(() => getByText(/29.000/));
+
+  fireEvent.press(getByTestId("upgrade-monthly"));
+  await waitFor(() => expect(getByTestId("upgrade-purchase-error")).toBeTruthy());
+
+  fireEvent.press(getByTestId("upgrade-monthly"));
+  await waitFor(() => expect(mockOpen).toHaveBeenCalled());
+  expect(queryByTestId("upgrade-purchase-error")).toBeNull();
+});
+
+// Leaving during the 1500 ms paid-exit delay must not navigate afterwards:
+// with history the stale timer pops an extra level, and without history the
+// replace branch would teleport the user to /(tabs)/settings.
+test.each([true, false])(
+  "performs no navigation when the screen unmounts during the paid exit delay (canGoBack: %s)",
+  async (canGoBack) => {
+    mockCanGoBack = canGoBack;
+    mockGetStatus.mockResolvedValue({ order_id: "kw-test-123", status: "paid" });
+
+    const { getByText, getByTestId, unmount } = render(<UpgradeScreen />);
+    await waitFor(() => getByText(/29.000/));
+
+    fireEvent.press(getByTestId("upgrade-monthly"));
+    await waitFor(() => expect(mockOpen).toHaveBeenCalled());
+
+    await act(async () => {
+      jest.advanceTimersByTime(2100);
+    });
+    await waitFor(() => expect(getByTestId("upgrade-success")).toBeTruthy());
+
+    unmount();
+
+    await act(async () => {
+      jest.advanceTimersByTime(1600);
+    });
+
+    expect(mockBack).not.toHaveBeenCalled();
+    expect(mockReplace).not.toHaveBeenCalled();
+  },
+);
+
+test("performs exactly one navigation when the user stays on the paid screen", async () => {
+  mockCanGoBack = true;
+  mockGetStatus.mockResolvedValue({ order_id: "kw-test-123", status: "paid" });
+
+  const { getByText, getByTestId } = render(<UpgradeScreen />);
+  await waitFor(() => getByText(/29.000/));
+
+  fireEvent.press(getByTestId("upgrade-monthly"));
+  await waitFor(() => expect(mockOpen).toHaveBeenCalled());
+
+  await act(async () => {
+    jest.advanceTimersByTime(2100);
+  });
+  await waitFor(() => expect(getByTestId("upgrade-success")).toBeTruthy());
+
+  await act(async () => {
+    jest.advanceTimersByTime(1600);
+  });
+
+  expect(mockBack).toHaveBeenCalledTimes(1);
+  expect(mockReplace).not.toHaveBeenCalled();
+
+  // The exit timer must not stay armed behind the paid screen.
+  await act(async () => {
+    jest.advanceTimersByTime(60000);
+  });
+  expect(mockBack).toHaveBeenCalledTimes(1);
 });

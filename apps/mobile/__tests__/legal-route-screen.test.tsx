@@ -1,5 +1,7 @@
 import { render, screen } from "@testing-library/react-native";
 
+import { I18nProvider } from "../src/i18n/i18n-context";
+
 import PrivacyPage from "../app/privacy";
 import AccountDeletionPage from "../app/account-deletion";
 
@@ -12,8 +14,8 @@ jest.mock("../src/theme/theme-context", () => ({
         background: "#F5F5F0",
         surface: "#FFFFFF",
         borderSoft: "#E5E7EB",
-        brandPrimary: "#65A30D",
-        brandPrimaryDeep: "#3F6212",
+        brandPrimary: "#178BD0",
+        brandPrimaryDeep: "#0A3D78",
         textPrimary: "#111827",
         textSecondary: "#4B5563",
         textMuted: "#6B7280",
@@ -29,13 +31,13 @@ jest.mock("expo-linking", () => ({
 
 describe("public legal mobile routes", () => {
   it("renders the privacy route content", () => {
-    render(<PrivacyPage />);
+    render(<I18nProvider><PrivacyPage /></I18nProvider>);
     expect(screen.getByTestId("legal-screen-privacy")).toBeTruthy();
     expect(screen.getByRole("header", { name: /Kebijakan Privasi Kaswise/i })).toBeTruthy();
   });
 
   it("renders the account deletion route content", () => {
-    render(<AccountDeletionPage />);
+    render(<I18nProvider><AccountDeletionPage /></I18nProvider>);
     expect(screen.getByTestId("legal-screen-accountDeletion")).toBeTruthy();
     expect(screen.getByRole("header", { name: /Penghapusan Akun Kaswise/i })).toBeTruthy();
     expect(screen.getByText(/hingga 30 hari/i)).toBeTruthy();

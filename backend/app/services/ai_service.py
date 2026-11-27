@@ -9,13 +9,19 @@ Wrapper untuk Anthropic Claude API:
 import base64
 import html
 import json
+import logging
+import math
 import re
 from functools import lru_cache
 from datetime import datetime, timedelta, timezone
 
 import anthropic
+import httpx
 
 from app.core.config import settings
+from app.services.glm_receipt import extract_glm_receipt
+
+logger = logging.getLogger(__name__)
 
 
 TRANSACTION_EXTRACT_PROMPT = """Kamu adalah asisten pencatatan keuangan untuk aplikasi Catat.in.
@@ -83,8 +89,71 @@ def _get_async_anthropic_client() -> anthropic.AsyncAnthropic:
 
 
 def ensure_ai_configured():
-    if not settings.ANTHROPIC_API_KEY:
+    """Fitur AI dianggap siap bila minimal satu provider punya kunci."""
+    if not (settings.DEEPSEEK_API_KEY or settings.ANTHROPIC_API_KEY):
         raise RuntimeError("Fitur AI belum dikonfigurasi di server.")
+
+
+def active_ai_provider() -> str:
+    """Provider utama yang akan dicoba lebih dulu."""
+    if settings.DEEPSEEK_API_KEY:
+        return "deepseek"
+    if settings.ANTHROPIC_API_KEY:
+        return "anthropic"
+    return "none"
+
+
+async def _deepseek_extract_json(system_prompt: str, user_text: str) -> str:
+    """Ekstraksi JSON lewat DeepSeek (murah). Thinking dimatikan agar output
+    singkat, cepat, dan biayanya tidak membengkak untuk tugas ekstraksi."""
+    if not settings.DEEPSEEK_API_KEY:
+        raise RuntimeError("DEEPSEEK_API_KEY belum dikonfigurasi di server.")
+
+    payload = {
+        "model": settings.DEEPSEEK_MODEL,
+        "max_tokens": 900,
+        "response_format": {"type": "json_object"},
+        "thinking": {"type": "disabled"},
+        "messages": [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_text},
+        ],
+    }
+    async with httpx.AsyncClient(timeout=60) as client:
+        response = await client.post(
+            f"{settings.DEEPSEEK_BASE_URL.rstrip('/')}/chat/completions",
+            headers={
+                "Authorization": f"Bearer {settings.DEEPSEEK_API_KEY}",
+                "Content-Type": "application/json",
+            },
+            json=payload,
+        )
+
+    if response.status_code >= 400:
+        raise RuntimeError(f"DeepSeek error {response.status_code}: {response.text[:200]}")
+
+    data = response.json()
+    choices = data.get("choices") or []
+    if not choices:
+        raise RuntimeError("DeepSeek tidak mengembalikan pilihan jawaban.")
+    return choices[0].get("message", {}).get("content") or ""
+
+
+async def _anthropic_extract_json(system_prompt: str, user_text: str) -> str:
+    client = _get_async_anthropic_client()
+    response = await client.messages.create(
+        model=settings.ANTHROPIC_MODEL_EXTRACT,
+        max_tokens=2048,
+        system=[
+            {
+                "type": "text",
+                "text": system_prompt,
+                "cache_control": {"type": "ephemeral"},
+            }
+        ],
+        messages=[{"role": "user", "content": user_text}],
+    )
+    return response.content[0].text
 
 
 def _strip_json_code_block(raw: str) -> str:
@@ -96,91 +165,493 @@ def _strip_json_code_block(raw: str) -> str:
     return cleaned.strip()
 
 
-async def extract_transaction_from_text(user_text: str) -> dict:
-    if not settings.ANTHROPIC_API_KEY:
+async def _glm_extract_json(system_prompt: str, user_text: str) -> str:
+    """Ekstraksi JSON lewat GLM (Z.ai), cadangan saat DeepSeek/Anthropic habis.
+
+    glm-5.3-flash adalah model reasoning: sebagian token terpakai untuk
+    `reasoning_content`, jadi anggaran token dibuat lega agar `content` terisi.
+    """
+    key = settings.ZAI_OCR_API_KEY
+    if not key:
+        raise RuntimeError("GLM tidak tersedia: ZAI_OCR_API_KEY kosong")
+
+    async with httpx.AsyncClient(
+        base_url="https://api.z.ai/api/paas/v4/",
+        headers={"Authorization": f"Bearer {key}"},
+        timeout=httpx.Timeout(45, connect=8),
+        trust_env=False,
+    ) as client:
+        response = await client.post(
+            "chat/completions",
+            json={
+                "model": settings.ZAI_TEXT_MODEL,
+                "response_format": {"type": "json_object"},
+                "temperature": 0,
+                "max_tokens": 1200,
+                "messages": [
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_text},
+                ],
+            },
+        )
+        if not response.is_success:
+            raise RuntimeError(f"GLM error {response.status_code}: {response.text[:200]}")
+
+        choices = response.json().get("choices") or []
+        content = (choices[0].get("message") or {}).get("content") if choices else None
+        if not isinstance(content, str) or not content.strip():
+            raise RuntimeError("GLM tidak mengembalikan pilihan jawaban.")
+        return content
+
+
+async def extract_transaction_from_text(
+    user_text: str, *, allow_local_review: bool = False
+) -> dict:
+    """Ekstraksi transaksi dari teks bebas.
+
+    Urutan: DeepSeek (murah) -> GLM (Z.ai) -> Anthropic -> parser lokal.
+    Bila provider utama gagal, provider berikutnya dicoba otomatis supaya satu
+    akun yang bermasalah tidak mematikan seluruh fitur pencatatan. GLM ikut
+    dirantai karena kredit DeepSeek dan Anthropic bisa habis bersamaan.
+
+    `allow_local_review` hanya dipakai klien yang MEWAJIBKAN konfirmasi manusia
+    (Capture). Tanpa opt-in, kegagalan seluruh provider tetap menjadi
+    RuntimeError -> 502, sehingga klien lama tidak mengubah arti 502 menjadi
+    simpan otomatis.
+    """
+    if not (
+        settings.DEEPSEEK_API_KEY or settings.ANTHROPIC_API_KEY or settings.ZAI_OCR_API_KEY
+    ):
+        if allow_local_review:
+            return _outage_fallback_extraction(user_text)
         return _extract_transaction_locally(user_text)
 
-    try:
-        client = _get_async_anthropic_client()
-        response = await client.messages.create(
-            model=settings.ANTHROPIC_MODEL_EXTRACT,
-            max_tokens=2048,
-            system=[{"type": "text", "text": TRANSACTION_EXTRACT_PROMPT, "cache_control": {"type": "ephemeral"}}],
-            messages=[{"role": "user", "content": user_text}],
+    providers = []
+    if settings.DEEPSEEK_API_KEY:
+        providers.append(("deepseek", _deepseek_extract_json))
+    if settings.ZAI_OCR_API_KEY:
+        providers.append(("glm", _glm_extract_json))
+    if settings.ANTHROPIC_API_KEY:
+        providers.append(("anthropic", _anthropic_extract_json))
+
+    for name, call in providers:
+        try:
+            raw = _strip_json_code_block(await call(TRANSACTION_EXTRACT_PROMPT, user_text))
+            return json.loads(raw)
+        except json.JSONDecodeError:
+            return {
+                "transactions": [],
+                "unclear": "Maaf, saya tidak bisa memproses input ini. Coba lebih spesifik.",
+            }
+        except Exception as exc:  # provider bermasalah -> coba berikutnya
+            logger.warning("Text extraction provider %s failed (%s)", name, type(exc).__name__)
+            continue
+
+    if not allow_local_review:
+        # Pesan sengaja generik: detail provider tidak boleh bocor ke klien/log.
+        raise RuntimeError("Semua provider ekstraksi teks gagal")
+    return _outage_fallback_extraction(user_text)
+
+
+RECEIPT_ANALYSIS_USER_TEXT = (
+    "Tolong analisis struk belanja ini dan ekstrak informasi transaksinya."
+)
+
+# deepseek-flash adalah model reasoning: sebagian token habis untuk
+# reasoning_content sebelum menulis jawaban. Anggaran terlalu kecil membuat
+# `content` kosong walau HTTP 200, jadi beri ruang lega.
+_RECEIPT_MAX_TOKENS = 2500
+
+# Urutan provider gambar bawaan bila VISION_PROVIDER_ORDER tidak diisi.
+DEFAULT_VISION_PROVIDER_ORDER = ("deepseek", "gemini", "anthropic")
+
+_VISION_KEY_BY_PROVIDER = {
+    "glm-ocr": "ZAI_OCR_API_KEY",
+    "deepseek": "DEEPSEEK_API_KEY",
+    "gemini": "GEMINI_API_KEY",
+    "anthropic": "ANTHROPIC_API_KEY",
+}
+
+
+def vision_provider_order() -> list[str]:
+    """Urutan provider gambar yang benar-benar tersedia (kuncinya terisi).
+
+    Mengikuti VISION_PROVIDER_ORDER (dipisah koma). Nama yang tidak dikenal
+    diabaikan supaya salah tulis konfigurasi tidak mematikan fitur scan struk,
+    dan satu akun yang bermasalah tidak menghapus provider lain dari daftar.
+    """
+    raw = (getattr(settings, "VISION_PROVIDER_ORDER", "") or "").strip()
+    names = [n.strip().lower() for n in raw.split(",") if n.strip()]
+    if not names:
+        names = list(DEFAULT_VISION_PROVIDER_ORDER)
+
+    order: list[str] = []
+    for name in names:
+        attr = _VISION_KEY_BY_PROVIDER.get(name)
+        if attr is None:
+            continue
+        if getattr(settings, attr, None) and name not in order:
+            order.append(name)
+    return order
+
+
+def active_vision_provider() -> str:
+    """Provider gambar yang dicoba lebih dulu (bawaan: DeepSeek)."""
+    order = vision_provider_order()
+    return order[0] if order else "none"
+
+
+def _vision_providers() -> list[str]:
+    return vision_provider_order()
+
+
+def _unreadable_receipt(confidence: float = 0.2) -> dict:
+    """Bentuk balasan yang sama seperti sebelumnya saat struk tidak terbaca."""
+    return {
+        "total_amount": None,
+        "merchant": None,
+        "date": datetime.now(timezone.utc).date().isoformat(),
+        "category": "other",
+        "items": [],
+        "confidence": confidence,
+        "readable": False,
+    }
+
+
+class _GeminiModelUnavailable(RuntimeError):
+    """Model Gemini yang dipakai sudah tidak tersedia untuk kunci ini.
+
+    Google memensiunkan model untuk akun baru (mis. gemini-2.5-flash →
+    "no longer available to new users"), jadi model cadangan dicoba otomatis
+    sebelum menyerah ke provider berikutnya.
+    """
+
+
+def gemini_models_to_try() -> list[str]:
+    """Model utama dulu, lalu model cadangan bila berbeda."""
+    models = [settings.GEMINI_MODEL]
+    fallback = (settings.GEMINI_FALLBACK_MODEL or "").strip()
+    if fallback and fallback not in models:
+        models.append(fallback)
+    return models
+
+
+async def _gemini_chat_once(model: str, image_b64: str, media_type: str) -> str:
+    """Satu panggilan ke endpoint kompatibel-OpenAI milik Google."""
+    payload = {
+        "model": model,
+        "max_tokens": 2048,
+        "temperature": 0,
+        "messages": [
+            {"role": "system", "content": RECEIPT_ANALYSIS_PROMPT},
+            {
+                "role": "user",
+                "content": [
+                    {
+                        "type": "image_url",
+                        "image_url": {
+                            "url": f"data:{media_type};base64,{image_b64}",
+                        },
+                    },
+                    {"type": "text", "text": RECEIPT_ANALYSIS_USER_TEXT},
+                ],
+            },
+        ],
+    }
+    async with httpx.AsyncClient(timeout=90) as client:
+        response = await client.post(
+            f"{settings.GEMINI_BASE_URL.rstrip('/')}/chat/completions",
+            headers={
+                "Authorization": f"Bearer {settings.GEMINI_API_KEY}",
+                "Content-Type": "application/json",
+            },
+            json=payload,
         )
 
-        raw = _strip_json_code_block(response.content[0].text)
-        return json.loads(raw)
-    except json.JSONDecodeError:
-        return {
-            "transactions": [],
-            "unclear": "Maaf, saya tidak bisa memproses input ini. Coba lebih spesifik.",
-        }
-    except anthropic.APIError as exc:
-        raise RuntimeError(f"Claude API error: {exc}") from exc
+    if response.status_code >= 400:
+        body = response.text[:200]
+        if response.status_code == 404 and (
+            "no longer available" in body.lower() or "not found" in body.lower()
+        ):
+            raise _GeminiModelUnavailable(body)
+        raise RuntimeError(f"Gemini error {response.status_code}: {body}")
+
+    data = response.json()
+    choices = data.get("choices") or []
+    if not choices:
+        raise RuntimeError("Gemini tidak mengembalikan pilihan jawaban.")
+    return choices[0].get("message", {}).get("content") or ""
 
 
-async def analyze_receipt_image(image_data: bytes, media_type: str = "image/jpeg") -> dict:
-    if not settings.ANTHROPIC_API_KEY:
-        return {
-            "total_amount": None,
-            "merchant": None,
-            "date": datetime.utcnow().date().isoformat(),
-            "category": "other",
-            "items": [],
-            "confidence": 0.2,
-            "readable": False,
-        }
+async def _gemini_receipt_json(image_b64: str, media_type: str) -> str:
+    """Baca struk lewat Gemini (endpoint kompatibel-OpenAI Google AI Studio).
 
-    try:
-        image_b64 = base64.standard_b64encode(image_data).decode("utf-8")
-        client = _get_async_anthropic_client()
-        response = await client.messages.create(
-            model=settings.ANTHROPIC_MODEL_EXTRACT,
-            max_tokens=800,
-            system=[{"type": "text", "text": RECEIPT_ANALYSIS_PROMPT, "cache_control": {"type": "ephemeral"}}],
-            messages=[
-                {
-                    "role": "user",
-                    "content": [
-                        {
-                            "type": "image",
-                            "source": {
-                                "type": "base64",
-                                "media_type": media_type,
-                                "data": image_b64,
-                            },
-                        },
-                        {
-                            "type": "text",
-                            "text": "Tolong analisis struk belanja ini dan ekstrak informasi transaksinya.",
-                        },
-                    ],
-                }
-            ],
+    Gemini adalah cadangan: provider utama kini DeepSeek, yang ternyata sanggup
+    membaca gambar (dibuktikan dengan probe dua struk berbeda + kontrol tanpa
+    gambar). Model diatur lewat GEMINI_MODEL, dan bila model itu sudah
+    dipensiunkan untuk kunci baru, GEMINI_FALLBACK_MODEL dicoba otomatis
+    sebelum menyerah.
+    """
+    if not settings.GEMINI_API_KEY:
+        raise RuntimeError("GEMINI_API_KEY belum dikonfigurasi di server.")
+
+    last_error: Exception | None = None
+    for model in gemini_models_to_try():
+        try:
+            return await _gemini_chat_once(model, image_b64, media_type)
+        except _GeminiModelUnavailable as exc:
+            last_error = exc
+            continue
+
+    raise RuntimeError(f"Model Gemini tidak tersedia: {last_error}") from last_error
+
+
+async def _deepseek_receipt_json(image_b64: str, media_type: str) -> str:
+    """Baca struk lewat DeepSeek (endpoint kompatibel-OpenAI).
+
+    DeepSeek dianggap hanya bisa teks sampai probe 2026-10-10 membuktikan
+    sebaliknya: `deepseek-flash` mengiklankan input_modalities ['text','image']
+    dan benar-benar membaca dua struk berbeda (kode nota acak ikut terbaca).
+
+    Catatan: `deepseek-flash` adalah model *reasoning*, jadi sebagian token
+    habis untuk reasoning_content sebelum jawaban ditulis. Bila anggaran token
+    terlalu kecil, `content` bisa kosong meski statusnya HTTP 200 — kondisi itu
+    dilempar sebagai error supaya provider berikutnya dicoba, bukan dianggap
+    "struk tidak terbaca".
+    """
+    if not settings.DEEPSEEK_API_KEY:
+        raise RuntimeError("DEEPSEEK_API_KEY belum dikonfigurasi di server.")
+
+    payload = {
+        "model": settings.DEEPSEEK_MODEL,
+        "max_tokens": _RECEIPT_MAX_TOKENS,
+        "temperature": 0,
+        "messages": [
+            {"role": "system", "content": RECEIPT_ANALYSIS_PROMPT},
+            {
+                "role": "user",
+                "content": [
+                    {
+                        "type": "image_url",
+                        "image_url": {"url": f"data:{media_type};base64,{image_b64}"},
+                    },
+                    {"type": "text", "text": RECEIPT_ANALYSIS_USER_TEXT},
+                ],
+            },
+        ],
+    }
+
+    async with httpx.AsyncClient(timeout=120) as client:
+        response = await client.post(
+            f"{settings.DEEPSEEK_BASE_URL.rstrip('/')}/chat/completions",
+            headers={
+                "Authorization": f"Bearer {settings.DEEPSEEK_API_KEY}",
+                "Content-Type": "application/json",
+            },
+            json=payload,
         )
 
-        raw = _strip_json_code_block(response.content[0].text)
-        return json.loads(raw)
-    except json.JSONDecodeError:
-        return {
-            "total_amount": None,
-            "merchant": None,
-            "date": None,
-            "category": "other",
-            "items": [],
-            "confidence": 0.0,
-            "readable": False,
-        }
-    except anthropic.APIError as exc:
-        raise RuntimeError(f"Claude API error: {exc}") from exc
+    if response.status_code >= 400:
+        raise RuntimeError(
+            f"DeepSeek error {response.status_code}: {response.text[:200]}"
+        )
+
+    choices = response.json().get("choices") or []
+    if not choices:
+        raise RuntimeError("DeepSeek tidak mengembalikan pilihan jawaban.")
+
+    message = choices[0].get("message", {}) or {}
+    content = message.get("content") or ""
+    if not content.strip():
+        hint = (
+            " (token habis untuk reasoning; naikkan _RECEIPT_MAX_TOKENS)"
+            if message.get("reasoning_content")
+            else ""
+        )
+        raise RuntimeError(f"DeepSeek mengembalikan jawaban kosong{hint}")
+    return content
+
+
+async def _anthropic_receipt_json(image_b64: str, media_type: str) -> str:
+    """Baca struk lewat Claude (cadangan bila Gemini tidak tersedia)."""
+    client = _get_async_anthropic_client()
+    response = await client.messages.create(
+        model=settings.ANTHROPIC_MODEL_EXTRACT,
+        max_tokens=800,
+        system=[
+            {
+                "type": "text",
+                "text": RECEIPT_ANALYSIS_PROMPT,
+                "cache_control": {"type": "ephemeral"},
+            }
+        ],
+        messages=[
+            {
+                "role": "user",
+                "content": [
+                    {
+                        "type": "image",
+                        "source": {
+                            "type": "base64",
+                            "media_type": media_type,
+                            "data": image_b64,
+                        },
+                    },
+                    {"type": "text", "text": RECEIPT_ANALYSIS_USER_TEXT},
+                ],
+            }
+        ],
+    )
+    return response.content[0].text
+
+
+async def analyze_receipt_image(
+    image_data: bytes, media_type: str = "image/jpeg"
+) -> dict:
+    """Baca struk dari gambar.
+
+    Urutan provider mengikuti VISION_PROVIDER_ORDER (bawaan: DeepSeek -> Gemini
+    -> Claude). Satu akun yang bermasalah tidak boleh mematikan seluruh fitur
+    scan struk. Kalau tidak ada provider gambar sama sekali, balasannya sama
+    seperti sebelumnya: struk dianggap tidak terbaca (bukan error) supaya
+    aplikasi tetap jalan.
+    """
+    providers = _vision_providers()
+    if not providers:
+        return _unreadable_receipt()
+
+    image_b64 = base64.standard_b64encode(image_data).decode("utf-8")
+    malformed_json = False
+    last_error: Exception | None = None
+
+    for provider in providers:
+        try:
+            if provider == "glm-ocr":
+                result = await extract_glm_receipt(image_b64, media_type, RECEIPT_ANALYSIS_PROMPT)
+                logger.info("Receipt provider=glm-ocr readable=%s", result["readable"])
+                return result
+            if provider == "deepseek":
+                raw = await _deepseek_receipt_json(image_b64, media_type)
+            elif provider == "gemini":
+                raw = await _gemini_receipt_json(image_b64, media_type)
+            else:
+                raw = await _anthropic_receipt_json(image_b64, media_type)
+        except Exception as exc:  # provider bermasalah -> coba berikutnya
+            last_error = exc
+            continue
+
+        try:
+            return json.loads(_strip_json_code_block(raw))
+        except json.JSONDecodeError:
+            # Jawaban provider tidak berbentuk JSON: coba provider berikutnya,
+            # dan kalau semuanya begitu, balas "tidak terbaca" (bukan 500).
+            malformed_json = True
+            continue
+
+    if malformed_json and last_error is None:
+        return _unreadable_receipt(0.0)
+    if last_error is not None:
+        raise RuntimeError(f"Semua provider gambar gagal: {last_error}") from last_error
+    return _unreadable_receipt()
+
+
+# Urutan provider AI Insight bawaan bila INSIGHT_PROVIDER_ORDER tidak diisi.
+DEFAULT_INSIGHT_PROVIDER_ORDER = ("deepseek", "anthropic")
+
+_INSIGHT_KEY_BY_PROVIDER = {
+    "deepseek": "DEEPSEEK_API_KEY",
+    "anthropic": "ANTHROPIC_API_KEY",
+}
+
+
+def insight_provider_order() -> list[str]:
+    """Urutan provider AI Insight yang tersedia (kuncinya terisi).
+
+    Sejalan dengan vision_provider_order(): satu akun yang kreditnya habis tidak
+    boleh mematikan fitur Insight, dan perpindahan akun cukup lewat env tanpa
+    deploy ulang. Nama provider yang tidak dikenal diabaikan.
+    """
+    raw = (getattr(settings, "INSIGHT_PROVIDER_ORDER", "") or "").strip()
+    names = [n.strip().lower() for n in raw.split(",") if n.strip()]
+    if not names:
+        names = list(DEFAULT_INSIGHT_PROVIDER_ORDER)
+
+    order: list[str] = []
+    for name in names:
+        attr = _INSIGHT_KEY_BY_PROVIDER.get(name)
+        if attr is None:
+            continue
+        if getattr(settings, attr, None) and name not in order:
+            order.append(name)
+    return order
+
+
+async def _deepseek_insight_json(prompt: str) -> str:
+    """AI Insight lewat DeepSeek (endpoint kompatibel-OpenAI).
+
+    Insight butuh penalaran, dan `deepseek-flash` adalah model reasoning: token
+    untuk reasoning_content diambil dari anggaran yang sama, jadi max_tokens
+    harus lega (INSIGHT_MAX_TOKENS). Jawaban kosong pada HTTP 200 diperlakukan
+    sebagai kegagalan supaya provider berikutnya dicoba.
+    """
+    if not settings.DEEPSEEK_API_KEY:
+        raise RuntimeError("DEEPSEEK_API_KEY belum dikonfigurasi di server.")
+
+    payload = {
+        "model": settings.DEEPSEEK_MODEL,
+        "max_tokens": settings.INSIGHT_MAX_TOKENS,
+        "temperature": 0,
+        "messages": [{"role": "user", "content": prompt}],
+    }
+
+    async with httpx.AsyncClient(timeout=180) as client:
+        response = await client.post(
+            f"{settings.DEEPSEEK_BASE_URL.rstrip('/')}/chat/completions",
+            headers={
+                "Authorization": f"Bearer {settings.DEEPSEEK_API_KEY}",
+                "Content-Type": "application/json",
+            },
+            json=payload,
+        )
+
+    if response.status_code >= 400:
+        raise RuntimeError(
+            f"DeepSeek error {response.status_code}: {response.text[:200]}"
+        )
+
+    choices = response.json().get("choices") or []
+    if not choices:
+        raise RuntimeError("DeepSeek tidak mengembalikan pilihan jawaban.")
+
+    message = choices[0].get("message", {}) or {}
+    content = (message.get("content") or "").strip()
+    if not content:
+        hint = (
+            " (token habis untuk reasoning; naikkan INSIGHT_MAX_TOKENS)"
+            if message.get("reasoning_content")
+            else ""
+        )
+        raise RuntimeError(f"DeepSeek mengembalikan jawaban kosong{hint}")
+    return content
+
+
+async def _anthropic_insight_json(prompt: str) -> str:
+    """AI Insight lewat Claude (cadangan)."""
+    client = _get_async_anthropic_client()
+    response = await client.messages.create(
+        model=settings.ANTHROPIC_MODEL_INSIGHT,
+        max_tokens=2048,
+        messages=[{"role": "user", "content": prompt}],
+    )
+    return response.content[0].text
 
 
 async def generate_financial_insight(user_data: dict, period: str = "monthly") -> dict:
-    """Generate a structured financial insight dict from Claude.
+    """Generate a structured financial insight dict.
 
-    Always returns a dict with all required keys. If the API key is missing or
-    Claude fails, a graceful fallback dict is returned — never raises.
+    Provider mengikuti INSIGHT_PROVIDER_ORDER (bawaan: DeepSeek -> Claude).
+    Always returns a dict with all required keys: kalau kunci tidak ada atau
+    semua provider gagal, ringkasan lokal dikembalikan — never raises.
     """
     user_data = user_data or {}
     context = {
@@ -190,8 +661,11 @@ async def generate_financial_insight(user_data: dict, period: str = "monthly") -
         "other_category_percent": user_data.get("other_category_percent"),
     }
 
-    if not settings.ANTHROPIC_API_KEY:
-        return normalize_insight_response(_build_local_insight_payload(user_data, period), context)
+    providers = insight_provider_order()
+    if not providers:
+        return normalize_insight_response(
+            _build_local_insight_payload(user_data, period), context
+        )
 
     prompt = f"""Kamu adalah financial advisor AI untuk aplikasi Catat.in.
 Tugasmu: analisis data keuangan pengguna dan berikan insight yang actionable.
@@ -218,30 +692,37 @@ FORMAT JSON yang harus dikembalikan:
 
 INGAT: HANYA kembalikan JSON. Tidak boleh ada teks lain."""
 
-    try:
-        client = _get_async_anthropic_client()
-        response = await client.messages.create(
-            model=settings.ANTHROPIC_MODEL_INSIGHT,
-            max_tokens=2048,
-            messages=[{"role": "user", "content": prompt}],
-        )
-        raw_text = response.content[0].text.strip()
-        cleaned = _strip_json_code_block(raw_text)
-        parsed = json.loads(cleaned)
-        return normalize_insight_response(parsed, context)
+    last_error: Exception | None = None
+    for provider in providers:
+        try:
+            if provider == "deepseek":
+                raw_text = await _deepseek_insight_json(prompt)
+            else:
+                raw_text = await _anthropic_insight_json(prompt)
+            cleaned = _strip_json_code_block(raw_text.strip())
+            parsed = json.loads(cleaned)
+            return normalize_insight_response(parsed, context)
+        except Exception as exc:  # provider bermasalah -> coba berikutnya
+            last_error = exc
+            continue
 
-    except (json.JSONDecodeError, anthropic.APIError, Exception) as exc:
-        import logging
-        logging.getLogger("app.services.ai_service").exception(
-            "generate_financial_insight failed for period=%s", period
-        )
-        error_msg = (
-            "Maaf, insight AI gagal diproses. "
-            "Silakan coba lagi nanti atau gunakan laporan dashboard."
-        )
-        fallback = _build_local_insight_payload(user_data, period)
-        fallback["summary"] = f"{error_msg} Berikut ringkasan lokal dari data yang tersedia."
-        return normalize_insight_response(fallback, context)
+    # Semua provider gagal: jangan 500 — balas ringkasan lokal dengan pesan jujur.
+    import logging
+
+    logging.getLogger("app.services.ai_service").exception(
+        "generate_financial_insight gagal untuk provider=%s (error terakhir: %s)",
+        providers,
+        last_error,
+    )
+    error_msg = (
+        "Maaf, insight AI gagal diproses. "
+        "Silakan coba lagi nanti atau gunakan laporan dashboard."
+    )
+    fallback = _build_local_insight_payload(user_data, period)
+    fallback["summary"] = (
+        f"{error_msg} Berikut ringkasan lokal dari data yang tersedia."
+    )
+    return normalize_insight_response(fallback, context)
 
 
 def period_keterangan(period: str) -> str:
@@ -282,12 +763,12 @@ def normalize_insight_response(raw: dict, context: dict) -> dict:
     risk_flags = _clean_array(raw.get("risk_flags"), max_items=2, max_item_len=200)
 
     # --- data_quality ------------------------------------------------------
-    raw_dq = raw.get("data_quality") if isinstance(raw.get("data_quality"), dict) else {}
+    raw_dq = (
+        raw.get("data_quality") if isinstance(raw.get("data_quality"), dict) else {}
+    )
     data_quality = {
         "transaction_count": int(
-            context.get("transaction_count")
-            or raw_dq.get("transaction_count")
-            or 0
+            context.get("transaction_count") or raw_dq.get("transaction_count") or 0
         ),
         "has_previous_period": bool(
             context.get("has_previous_period")
@@ -315,6 +796,7 @@ def normalize_insight_response(raw: dict, context: dict) -> dict:
 # ---------------------------------------------------------------------------
 # Internal helpers for normalize_insight_response
 # ---------------------------------------------------------------------------
+
 
 def _sanitize_string(value: str, max_len: int = 500) -> str:
     """Strip HTML tags, unescape HTML entities, and cap length."""
@@ -393,8 +875,14 @@ def _build_local_insight_payload(user_data: dict, period: str) -> dict:
         }
 
     top_category = top_categories[0] if top_categories else None
-    top_category_name = top_category.get("category") if isinstance(top_category, dict) else None
-    top_category_percent = _safe_float(top_category.get("percent")) if isinstance(top_category, dict) else None
+    top_category_name = (
+        top_category.get("category") if isinstance(top_category, dict) else None
+    )
+    top_category_percent = (
+        _safe_float(top_category.get("percent"))
+        if isinstance(top_category, dict)
+        else None
+    )
 
     summary = (
         f"Periode ini mencatat {transaction_count} transaksi dengan cashflow bersih {_format_rupiah(net_total)}. "
@@ -403,7 +891,9 @@ def _build_local_insight_payload(user_data: dict, period: str) -> dict:
 
     highlights = [f"Total pengeluaran periode ini {_format_rupiah(expense_total)}."]
     if income_total > 0:
-        highlights.append(f"Total pemasukan periode ini {_format_rupiah(income_total)}.")
+        highlights.append(
+            f"Total pemasukan periode ini {_format_rupiah(income_total)}."
+        )
     if top_category_name and top_category_percent is not None:
         highlights.append(
             f"Kategori terbesar adalah {top_category_name}, sekitar {top_category_percent:.1f}% dari pengeluaran."
@@ -413,22 +903,36 @@ def _build_local_insight_payload(user_data: dict, period: str) -> dict:
         if prev_expense > 0:
             change = ((expense_total - prev_expense) / prev_expense) * 100
             arah = "naik" if change >= 0 else "turun"
-            highlights.append(f"Pengeluaran {arah} {abs(change):.1f}% dibanding periode sebelumnya.")
+            highlights.append(
+                f"Pengeluaran {arah} {abs(change):.1f}% dibanding periode sebelumnya."
+            )
 
     recommendations = []
     if top_category_name:
-        recommendations.append(f"Cek ulang pengeluaran {top_category_name} dan tetapkan batas mingguan agar tetap terkendali.")
-    recommendations.append("Rapikan kategori Lainnya atau transaksi tanpa merchant supaya laporan berikutnya lebih detail.")
+        recommendations.append(
+            f"Cek ulang pengeluaran {top_category_name} dan tetapkan batas mingguan agar tetap terkendali."
+        )
+    recommendations.append(
+        "Rapikan kategori Lainnya atau transaksi tanpa merchant supaya laporan berikutnya lebih detail."
+    )
     if net_total < 0:
-        recommendations.append("Prioritaskan pengeluaran wajib dan tunda belanja non-esensial sampai cashflow kembali positif.")
+        recommendations.append(
+            "Prioritaskan pengeluaran wajib dan tunda belanja non-esensial sampai cashflow kembali positif."
+        )
     else:
-        recommendations.append("Sisihkan sebagian surplus ke tabungan atau budget wallet sebelum dipakai untuk belanja variabel.")
+        recommendations.append(
+            "Sisihkan sebagian surplus ke tabungan atau budget wallet sebelum dipakai untuk belanja variabel."
+        )
 
     risk_flags = []
     if net_total < 0:
-        risk_flags.append("Cashflow periode ini negatif; pengeluaran lebih besar dari pemasukan.")
+        risk_flags.append(
+            "Cashflow periode ini negatif; pengeluaran lebih besar dari pemasukan."
+        )
     if other_category_percent >= 10:
-        risk_flags.append(f"Kategori di luar top kategori masih {other_category_percent:.1f}%, laporan bisa kurang tajam.")
+        risk_flags.append(
+            f"Kategori di luar top kategori masih {other_category_percent:.1f}%, laporan bisa kurang tajam."
+        )
 
     return {
         "period": period,
@@ -442,6 +946,118 @@ def _build_local_insight_payload(user_data: dict, period: str) -> dict:
 def _format_rupiah(value: float) -> str:
     amount = int(round(value))
     return f"Rp {amount:,}".replace(",", ".")
+
+
+OUTAGE_MAX_AMOUNT = 1_000_000_000_000
+OUTAGE_FALLBACK_CONFIDENCE = 0.5
+
+
+def _parse_outage_amount(raw: str, suffix: str) -> float | None:
+    """Ubah nominal tertulis yang eksplisit menjadi angka, atau None bila ambigu."""
+    if not re.fullmatch(r"\d[\d.,]*", raw or ""):
+        return None
+    if "," in raw and "." in raw:
+        return None
+    separator = "," if "," in raw else ("." if "." in raw else None)
+    if separator is None:
+        number = raw
+    else:
+        groups = raw.split(separator)
+        if any(not group for group in groups):
+            return None
+        if not suffix and separator == "." and len(groups[0]) <= 3 and all(
+            len(group) == 3 for group in groups[1:]
+        ):
+            number = "".join(groups)
+        elif len(groups) == 2 and suffix and len(groups[1]) <= 2:
+            number = f"{groups[0]}.{groups[1]}"
+        else:
+            return None
+    try:
+        base = float(number)
+    except ValueError:
+        return None
+    if suffix in {"rb", "ribu"}:
+        base *= 1_000
+    elif suffix in {"jt", "juta"}:
+        base *= 1_000_000
+    if not math.isfinite(base) or base <= 0 or base > OUTAGE_MAX_AMOUNT:
+        return None
+    return float(round(base, 2))
+
+
+def _outage_explicit_amount(user_text: str) -> float | None:
+    """Satu nominal rupiah yang benar-benar tertulis, atau None bila ambigu.
+
+    Batasan ini khusus jalur outage: kuantitas ("2 kopi"), nomor identitas, dan
+    nominal campur tidak boleh berubah menjadi transaksi keuangan.
+    """
+    text = (user_text or "").lower()
+    # Date cleanup strips boundary punctuation, so check signed money first.
+    if re.search(r"[-−]\s*(?:rp\.?\s*)?\d|\brp\.?\s*[-−]\s*\d", text):
+        return None
+    without_dates = _remove_date_mentions(text)
+    pattern = re.compile(
+        r"(?<![\w.,])(?:rp\.?\s*(\d(?:[\d.,]*\d)?)|"
+        r"(\d(?:[\d.,]*\d)?)\s*(rb|ribu|jt|juta))(?!\w|[.,]\d)"
+    )
+    matches = list(pattern.finditer(without_dates))
+    if len(matches) != 1:
+        return None
+    match = matches[0]
+    # Do not return the Rp prefix amount if a scale token follows it.
+    if match.group(1) and re.match(
+        r"\s*(?:rb|ribu|jt|juta|k|m)\b", without_dates[match.end():]
+    ):
+        return None
+    remainder = f"{without_dates[: match.start()]} {without_dates[match.end():]}"
+    if re.search(r"\d", remainder):
+        return None
+    return _parse_outage_amount(
+        (match.group(1) or match.group(2) or "").strip(),
+        (match.group(3) or "").lower(),
+    )
+
+
+def _outage_fallback_extraction(user_text: str) -> dict:
+    """Draf konservatif saat semua provider gagal; selalu wajib dikonfirmasi."""
+    amount = _outage_explicit_amount(user_text)
+    if amount is None:
+        return {
+            "transactions": [],
+            "unclear": (
+                "Nominal belum terbaca jelas. Tulis nominalnya, misalnya 45rb "
+                "atau Rp 45.000."
+            ),
+            "local_review_fallback": True,
+        }
+
+    local = _extract_transaction_locally(user_text)
+    matches = [
+        tx for tx in local.get("transactions", [])
+        if float(tx.get("amount") or 0) == amount
+    ]
+    draft = matches[0] if len(matches) == 1 else {
+        "type": "expense",
+        "amount": amount,
+        "category": "other",
+        "merchant": None,
+        "note": None,
+        "wallet_hint": None,
+        "date": None,
+        "confidence": OUTAGE_FALLBACK_CONFIDENCE,
+    }
+    draft = {
+        **draft,
+        "confidence": min(
+            float(draft.get("confidence") or 0.0), OUTAGE_FALLBACK_CONFIDENCE
+        ),
+    }
+    return {
+        "transactions": [draft],
+        "unclear": "Nominal terbaca otomatis. Periksa dulu sebelum menyimpan.",
+        "local_review_fallback": True,
+    }
 
 
 def _extract_transaction_locally(user_text: str) -> dict:
@@ -492,13 +1108,20 @@ def _extract_transaction_locally(user_text: str) -> dict:
     has_wallet_hint = any(tx.get("wallet_hint") for tx in transactions)
     return {
         "transactions": transactions,
-        "unclear": None if has_wallet_hint else "Wallet belum terbaca otomatis. Pilih wallet saat review.",
+        "unclear": None
+        if has_wallet_hint
+        else "Wallet belum terbaca otomatis. Pilih wallet saat review.",
     }
 
 
 def _amount_matches(text: str) -> list[re.Match[str]]:
     spans = _date_spans(text)
-    matches = list(re.finditer(r"(?:rp\s*)?\d+(?:[.,]\d+)?\s*(?:rb|ribu|jt|juta|k|m)\b|rp\s*[\d.,]+|\b\d[\d.]{3,}\b|\b\d{4,}\b", text))
+    matches = list(
+        re.finditer(
+            r"(?:rp\s*)?\d+(?:[.,]\d+)?\s*(?:rb|ribu|jt|juta|k|m)\b|rp\s*[\d.,]+|\b\d[\d.]{3,}\b|\b\d{4,}\b",
+            text,
+        )
+    )
     return [
         match
         for match in matches
@@ -579,8 +1202,10 @@ def _parse_year(value: str | None, fallback_year: int) -> int:
     return 2000 + int(value) if len(value) == 2 else int(value)
 
 
-def _find_date_span(text: str, fallback_year: int | None = None) -> tuple[str, int, int] | None:
-    year = fallback_year or datetime.utcnow().date().year
+def _find_date_span(
+    text: str, fallback_year: int | None = None
+) -> tuple[str, int, int] | None:
+    year = fallback_year or datetime.now(timezone.utc).date().year
     month_names = "|".join(MONTH_ALIASES)
     named_match = re.search(
         rf"\b(?:tanggal|tgl|pada)?\s*(\d{{1,2}})\s+({month_names})\s*(\d{{2,4}})?\b",
@@ -596,12 +1221,21 @@ def _find_date_span(text: str, fallback_year: int | None = None) -> tuple[str, i
         if parsed:
             return parsed, named_match.start(), named_match.end()
 
-    numeric_full_match = re.search(r"\b(?:tanggal|tgl|pada)?\s*(\d{1,2})[/-](\d{1,2})[/-](\d{2,4})\b", text, flags=re.IGNORECASE)
-    numeric_short_match = re.search(r"\b(?:tanggal|tgl|pada)\s*(\d{1,2})[/-](\d{1,2})\b", text, flags=re.IGNORECASE)
+    numeric_full_match = re.search(
+        r"\b(?:tanggal|tgl|pada)?\s*(\d{1,2})[/-](\d{1,2})[/-](\d{2,4})\b",
+        text,
+        flags=re.IGNORECASE,
+    )
+    numeric_short_match = re.search(
+        r"\b(?:tanggal|tgl|pada)\s*(\d{1,2})[/-](\d{1,2})\b", text, flags=re.IGNORECASE
+    )
     numeric_match = numeric_full_match or numeric_short_match
     if numeric_match:
         parsed = _safe_iso_date(
-            _parse_year(numeric_match.group(3) if len(numeric_match.groups()) >= 3 else None, year),
+            _parse_year(
+                numeric_match.group(3) if len(numeric_match.groups()) >= 3 else None,
+                year,
+            ),
             int(numeric_match.group(2)),
             int(numeric_match.group(1)),
         )
@@ -610,7 +1244,9 @@ def _find_date_span(text: str, fallback_year: int | None = None) -> tuple[str, i
 
     iso_match = re.search(r"\b(20\d{2})-(\d{2})-(\d{2})\b", text)
     if iso_match:
-        parsed = _safe_iso_date(int(iso_match.group(1)), int(iso_match.group(2)), int(iso_match.group(3)))
+        parsed = _safe_iso_date(
+            int(iso_match.group(1)), int(iso_match.group(2)), int(iso_match.group(3))
+        )
         if parsed:
             return parsed, iso_match.start(), iso_match.end()
 
@@ -666,8 +1302,18 @@ def _extract_amount(text: str) -> float:
 
 
 def _infer_type(text: str) -> str:
-    income_keywords = ["gaji", "bonus", "masuk", "pemasukan", "dibayar", "refund", "transfer masuk"]
-    return "income" if any(keyword in text for keyword in income_keywords) else "expense"
+    income_keywords = [
+        "gaji",
+        "bonus",
+        "masuk",
+        "pemasukan",
+        "dibayar",
+        "refund",
+        "transfer masuk",
+    ]
+    return (
+        "income" if any(keyword in text for keyword in income_keywords) else "expense"
+    )
 
 
 def _infer_category(text: str, tx_type: str) -> str:
@@ -705,7 +1351,9 @@ def _extract_wallet_hint(text: str) -> str | None:
 
 
 def _extract_merchant(text: str) -> str | None:
-    match = re.search(r"(?:di|ke)\s+([a-z0-9\s._-]+?)(?:\s+(?:pakai|lewat|via|dengan)\s+|$)", text)
+    match = re.search(
+        r"(?:di|ke)\s+([a-z0-9\s._-]+?)(?:\s+(?:pakai|lewat|via|dengan)\s+|$)", text
+    )
     if not match:
         return None
     merchant = match.group(1).strip()
@@ -713,7 +1361,7 @@ def _extract_merchant(text: str) -> str | None:
 
 
 def _extract_relative_date(text: str, fallback_text: str | None = None) -> str:
-    today = datetime.utcnow().date()
+    today = datetime.now(timezone.utc).date()
     found = _find_date_span(text, today.year)
     if found:
         return found[0]

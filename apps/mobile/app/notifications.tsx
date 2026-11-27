@@ -9,10 +9,13 @@ import {
 import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { LinearGradient } from "expo-linear-gradient";
 import { useTheme } from "../src/theme/theme-context";
+import { financeEditorial as fe } from "../src/theme/finance-editorial";
 import { useI18n } from "../src/i18n/i18n-context";
 import { useSupabase } from "../src/lib/supabase";
 import { KaswiseIcon } from "../src/components/icons/kaswise-icons";
+import { goBackSafely } from "../src/lib/safe-back";
 import {
   listNotifications,
   markNotificationRead,
@@ -46,7 +49,7 @@ function NotificationIcon({ type }: { type: string }) {
     case "ai_insight_ready":
       return <KaswiseIcon name="insight" size={20} weight="bold" />;
     default:
-      return <KaswiseIcon name="home" size={20} weight="bold" />;
+      return <KaswiseIcon name="notification" size={20} weight="bold" />;
   }
 }
 
@@ -61,16 +64,18 @@ export default function NotificationsScreen() {
 
   const [items, setItems] = useState<NotificationItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
 
   const load = useCallback(async () => {
     try {
       setLoading(true);
+      setError(false);
       const data = await listNotifications(supabase, { limit: 100 });
       setItems(data.items);
       setUnreadCount(data.unread_count);
     } catch {
-      // silently ignore
+      setError(true);
     } finally {
       setLoading(false);
     }
@@ -111,19 +116,27 @@ export default function NotificationsScreen() {
   return (
     <View style={s.container}>
       {/* Header */}
-      <View style={s.header}>
+      <LinearGradient
+        colors={[fe.navySurface, fe.blueDeep, fe.blueBright]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={s.header}
+      >
         <Pressable
           testID="notifications-back"
           accessibilityRole="button"
-          onPress={() => router.back()}
-          style={s.backBtn}
+          accessibilityLabel={isEn ? "Back" : "Kembali"}
+          onPress={() => goBackSafely(router, "/(tabs)")}
+          style={s.backBtnTouch}
         >
-          <KaswiseIcon
-            name="back"
-            size={18}
-            color={theme.colors.textPrimary}
-            weight="bold"
-          />
+          <View style={s.backBtn}>
+            <KaswiseIcon
+              name="back"
+              size={18}
+              color={fe.white}
+              weight="bold"
+            />
+          </View>
         </Pressable>
         <Text style={s.title}>{isEn ? "Notifications" : "Notifikasi"}</Text>
         {unreadCount > 0 && (
@@ -136,17 +149,38 @@ export default function NotificationsScreen() {
             <Text style={s.markAllText}>{isEn ? "Mark all read" : "Tandai semua dibaca"}</Text>
           </Pressable>
         )}
-      </View>
+      </LinearGradient>
 
       {/* Body */}
       {loading ? (
         <View style={s.center}>
           <ActivityIndicator size="large" color={theme.colors.brandPrimary} />
         </View>
+      ) : error ? (
+        <View testID="notifications-error" style={s.center}>
+          <KaswiseIcon
+            name="notification"
+            size={48}
+            color={theme.colors.textMuted}
+            weight="regular"
+          />
+          <Text style={s.emptyText}>{isEn ? "Couldn't load notifications." : "Gagal memuat notifikasi."}</Text>
+          <Pressable
+            testID="notifications-retry"
+            accessibilityRole="button"
+            accessibilityLabel={isEn ? "Retry" : "Coba lagi"}
+            onPress={load}
+            style={s.touchTarget}
+          >
+            <View style={s.retryBtn}>
+              <Text style={s.retryText}>{isEn ? "Retry" : "Coba lagi"}</Text>
+            </View>
+          </Pressable>
+        </View>
       ) : items.length === 0 ? (
         <View testID="notifications-empty" style={s.center}>
           <KaswiseIcon
-            name="home"
+            name="notification"
             size={48}
             color={theme.colors.textMuted}
             weight="regular"
@@ -157,7 +191,7 @@ export default function NotificationsScreen() {
         <FlatList
           data={items}
           keyExtractor={(item) => item.id}
-          contentContainerStyle={{ paddingBottom: 32 }}
+          contentContainerStyle={{ padding: 16, paddingBottom: 32 }}
           renderItem={({ item }) => (
             <Pressable
               testID={`notification-item-${item.id}`}
@@ -193,33 +227,50 @@ function styles(
   return {
     container: {
       flex: 1,
-      backgroundColor: theme.colors.background,
+      backgroundColor: fe.paper,
     },
     header: {
       flexDirection: "row" as const,
       alignItems: "center" as const,
       paddingTop: insets.top + 8,
       paddingHorizontal: 16,
-      paddingBottom: 12,
-      borderBottomWidth: 1,
-      borderBottomColor: theme.colors.borderSoft,
+      paddingBottom: 18,
+      minHeight: insets.top + 86,
+      borderBottomLeftRadius: 28,
+      borderBottomRightRadius: 28,
     },
     backBtn: {
       padding: 4,
+    },
+    backBtnTouch: {
+      minHeight: 44,
+      minWidth: 44,
+      alignItems: "center" as const,
+      justifyContent: "center" as const,
       marginRight: 8,
     },
+    touchTarget: {
+      minHeight: 44,
+      minWidth: 44,
+      alignItems: "center" as const,
+      justifyContent: "center" as const,
+    },
     title: {
-      color: theme.colors.textPrimary,
-      fontSize: 18,
+      color: fe.white,
+      fontSize: 20,
       fontWeight: "bold" as const,
       flex: 1,
     },
     markAllBtn: {
-      paddingVertical: 4,
-      paddingHorizontal: 8,
+      paddingVertical: 8,
+      paddingHorizontal: 12,
+      borderRadius: 999,
+      backgroundColor: "rgba(255,255,255,0.14)",
+      borderWidth: 1,
+      borderColor: "rgba(255,255,255,0.20)",
     },
     markAllText: {
-      color: theme.colors.brandPrimary,
+      color: fe.white,
       fontSize: 14,
       fontWeight: "600" as const,
     },
@@ -233,11 +284,25 @@ function styles(
       color: theme.colors.textMuted,
       fontSize: 15,
     },
+    retryBtn: {
+      paddingVertical: 10,
+      paddingHorizontal: 20,
+      borderRadius: 999,
+      backgroundColor: fe.blueDeep,
+    },
+    retryText: {
+      color: fe.white,
+      fontSize: 14,
+      fontWeight: "700" as const,
+    },
     item: {
       paddingHorizontal: 16,
       paddingVertical: 14,
-      borderBottomWidth: 1,
-      borderBottomColor: theme.colors.borderSoft,
+      marginBottom: 10,
+      borderRadius: 22,
+      backgroundColor: fe.white,
+      borderWidth: 1,
+      borderColor: fe.line,
     },
     itemRead: {
       opacity: 0.6,

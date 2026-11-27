@@ -11,7 +11,7 @@ import {
 import { useTheme } from "../../theme/theme-context";
 import type { MobileTheme } from "../../theme/mobile-theme";
 
-const ITEM_HEIGHT = 34;
+const ITEM_HEIGHT = 44;
 const VISIBLE_ITEMS = 5;
 const WHEEL_HEIGHT = ITEM_HEIGHT * VISIBLE_ITEMS;
 const CENTER_INDEX = Math.floor(VISIBLE_ITEMS / 2);
@@ -127,6 +127,14 @@ function WheelColumn({ label, values, selected, onChange, format, testID }: Whee
 		selectFromOffset(event.nativeEvent.contentOffset.y);
 	};
 
+	const handleAccessibilityAction = (actionName: string) => {
+		const offset = actionName === "increment" ? 1 : actionName === "decrement" ? -1 : 0;
+		if (!offset) return;
+		const nextIndex = Math.min(values.length - 1, Math.max(0, selectedIndex + offset));
+		const nextValue = values[nextIndex];
+		if (nextValue !== selected) onChange(nextValue);
+	};
+
 	const centerPosition = scrollY / ITEM_HEIGHT;
 
 	return (
@@ -136,6 +144,22 @@ function WheelColumn({ label, values, selected, onChange, format, testID }: Whee
 				<ScrollView
 					ref={scrollRef}
 					testID={`${testID}-scroll`}
+					accessible
+					accessibilityRole="adjustable"
+					accessibilityLabel={label}
+					accessibilityValue={{
+						min: 0,
+						max: Math.max(0, values.length - 1),
+						now: selectedIndex,
+						text: format(selected),
+					}}
+					accessibilityActions={[
+						{ name: "increment", label: `Next ${label}` },
+						{ name: "decrement", label: `Previous ${label}` },
+					]}
+					onAccessibilityAction={(event) =>
+						handleAccessibilityAction(event.nativeEvent.actionName)
+					}
 					showsVerticalScrollIndicator={false}
 					snapToInterval={ITEM_HEIGHT}
 					snapToAlignment="start"
@@ -158,6 +182,8 @@ function WheelColumn({ label, values, selected, onChange, format, testID }: Whee
 							<View
 								key={value}
 								testID={`${testID}-item-${value}`}
+								accessible={false}
+								importantForAccessibility="no-hide-descendants"
 								style={[
 									styles.wheelItem,
 									{

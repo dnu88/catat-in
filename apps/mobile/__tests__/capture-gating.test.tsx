@@ -1,6 +1,6 @@
 // Mock all native/router deps so capture.tsx module can be imported for its
 // exported helpers without triggering RN/expo-router transforms.
-jest.mock("expo-router", () => ({ useRouter: () => ({ push: jest.fn() }) }));
+jest.mock("expo-router", () => ({ useRouter: () => ({ push: jest.fn() }), useLocalSearchParams: () => ({}) }));
 jest.mock("../src/lib/supabase", () => ({ supabase: {}, useSupabase: () => ({ supabase: {} }) }));
 jest.mock("../src/hooks/useTransactionRealtime", () => ({ useTransactionRealtime: () => ({ loading: false, transaction: null }) }));
 jest.mock("../src/i18n/i18n-context", () => ({ useI18n: () => ({ language: "id" }) }));
@@ -17,9 +17,28 @@ jest.mock("../src/state/finance-context", () => ({ useFinanceContext: () => ({ a
 jest.mock("../src/services/transaction-classifier", () => ({ classifyTransactionTextBatch: jest.fn(() => []), CLASSIFIER_HIGH_CONFIDENCE_THRESHOLD: 0.8 }));
 jest.mock("../src/services/category-taxonomy", () => ({ getLocalizedCategoryName: (n: string) => n }));
 jest.mock("expo-image-picker", () => ({ requestMediaLibraryPermissionsAsync: jest.fn(), launchImageLibraryAsync: jest.fn() }));
+jest.mock("expo-av", () => ({
+  Audio: {
+    requestPermissionsAsync: jest.fn(),
+    setAudioModeAsync: jest.fn(),
+    Recording: {
+      createAsync: jest.fn(),
+    },
+    RecordingOptionsPresets: { HIGH_QUALITY: {} },
+  },
+}));
+jest.mock("../src/config/features", () => ({ featureFlags: { voiceNote: false, importStatement: false } }));
+jest.mock("../src/services/voice-intake", () => ({ getVoiceAuthSession: jest.fn(), processVoiceTransaction: jest.fn(), uploadVoiceAudio: jest.fn() }));
 jest.mock("../src/hooks/useEntitlements", () => ({ useEntitlements: () => ({ data: null, loading: false, refresh: jest.fn() }) }));
 
-import { photoLocked, quotaLabel } from "../app/(tabs)/capture";
+import {
+  getCaptureModes,
+  getCaptureSubtitle,
+  getDefaultCaptureMode,
+  photoLocked,
+  quotaLabel,
+  resolveCaptureModeParam,
+} from "../app/(tabs)/capture";
 
 test("photo locked when limit 0 (free)", () => {
   expect(photoLocked({ photo_limit: 0 } as any)).toBe(true);
@@ -30,4 +49,50 @@ test("photo locked when limit 0 (free)", () => {
 test("quota label shows used/limit", () => {
   expect(quotaLabel({ chat_used: 3, chat_limit: 25 } as any)).toBe("Chat AI: 3/25");
   expect(quotaLabel(null)).toBe("");
+});
+
+test("voice-enabled capture starts like Monveo: voice first", () => {
+  expect(getDefaultCaptureMode(true)).toBe("Suara");
+  expect(getCaptureModes(true).map((mode) => mode.id)).toEqual([
+    "Suara",
+    "Teks",
+    "Foto",
+  ]);
+});
+
+test("voice-disabled capture keeps the safe text-first default", () => {
+  expect(getDefaultCaptureMode(false)).toBe("Teks");
+  expect(getCaptureModes(false).map((mode) => mode.id)).toEqual(["Teks", "Foto"]);
+});
+
+test("subtitle reflects the voice feature flag", () => {
+  expect(getCaptureSubtitle(true, true)).toContain("Voice");
+  expect(getCaptureSubtitle(true, false)).toContain("Suara");
+  expect(getCaptureSubtitle(false, true)).toBe("Text or receipt—choose the fastest input.");
+  expect(getCaptureSubtitle(false, false)).toBe("Teks atau struk—pilih input tercepat.");
+  expect(getCaptureSubtitle(false, true)).not.toContain("Voice");
+});
+
+test("capture entry mode param maps to a known mode", () => {
+  expect(resolveCaptureModeParam("text", false)).toBe("Teks");
+  expect(resolveCaptureModeParam("photo", false)).toBe("Foto");
+  expect(resolveCaptureModeParam("voice", true)).toBe("Suara");
+  expect(resolveCaptureModeParam(["photo"], true)).toBe("Foto");
+});
+
+test("unknown or invalid entry mode params fall back to the default mode", () => {
+  expect(resolveCaptureModeParam("video", true)).toBe("Suara");
+  expect(resolveCaptureModeParam("video", false)).toBe("Teks");
+  expect(resolveCaptureModeParam(undefined, true)).toBe("Suara");
+  expect(resolveCaptureModeParam("", false)).toBe("Teks");
+  // Voice is gated by the flag: without it the safe default is used.
+  expect(resolveCaptureModeParam("voice", false)).toBe("Teks");
+});
+
+test("locked photo entry param falls back to the default mode", () => {
+  expect(resolveCaptureModeParam("photo", false, true)).toBe("Teks");
+  expect(resolveCaptureModeParam("photo", true, true)).toBe("Suara");
+  // Explicitly unlocked photo entry still opens the Foto mode.
+  expect(resolveCaptureModeParam("photo", false, false)).toBe("Foto");
+  expect(resolveCaptureModeParam("photo", true, false)).toBe("Foto");
 });

@@ -1,10 +1,19 @@
-import { fireEvent, render, waitFor } from "@testing-library/react-native";
+import { act, fireEvent, render, waitFor } from "@testing-library/react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { StyleSheet, Text } from "react-native";
 import type { StyleProp, TextStyle, ViewStyle } from "react-native";
 import { ThemeProvider } from "../src/theme/theme-context";
 import { I18nProvider } from "../src/i18n/i18n-context";
 import DashboardScreen from "../app/(tabs)/index";
+import { featureFlags } from "../src/config/features";
+import {
+	buildReportPeriod,
+	formatReportPeriodLabel,
+	type ReportPeriod,
+} from "../src/state/report-period";
+import { KaswiseIcon } from "../src/components/icons/kaswise-icons";
+
+let mockActivePeriod: ReportPeriod | undefined;
 
 jest.setTimeout(15000);
 
@@ -96,7 +105,7 @@ jest.mock("../src/state/report-period", () => {
 	return {
 		...actual,
 		useReportPeriod: () => ({
-			activePeriod,
+			activePeriod: mockActivePeriod ?? activePeriod,
 			savedRules: [],
 			setActivePeriod: jest.fn(),
 			resetToCurrentMonth: jest.fn(),
@@ -202,7 +211,91 @@ const SOFT_GREEN_BORDERS = [
 ];
 
 describe("DashboardScreen dark luxury Home parity", () => {
+	it("keeps delayed initial data distinct from first-use and recovers through retry", async () => {
+		jest.spyOn(featureFlags, "simplePremiumExperience", "get").mockReturnValue(true);
+		const { listWallets } = require("../src/services/wallets");
+		let reject!: (error: Error) => void;
+		jest.mocked(listWallets).mockImplementationOnce(() => new Promise((_resolve, fail) => { reject = fail; }));
+		const screen = renderDashboard();
+		expect(screen.getByTestId("home-data-status")).toBeTruthy();
+		expect(screen.queryByText("Belum ada transaksi")).toBeNull();
+		expect(screen.getByTestId("home-total-balance").props.children).toBe("—");
+		await waitFor(() => expect(reject).toBeDefined());
+		await act(async () => { reject(new Error("offline")); });
+		await waitFor(() => expect(screen.getByTestId("home-data-retry")).toBeTruthy());
+		await act(async () => { fireEvent.press(screen.getByTestId("home-data-retry")); });
+		await waitFor(() => expect(screen.getByText("Belum ada transaksi")).toBeTruthy());
+		expect(screen.queryByTestId("home-data-status")).toBeNull();
+	});
+	it("retains the loaded balance after refresh failure and retries successfully", async () => {
+		jest.spyOn(featureFlags, "simplePremiumExperience", "get").mockReturnValue(true);
+		const { listTransactions } = require("../src/services/transactions");
+		mockWallets = [{ id: "wallet", balance: 12345, is_active: true }];
+		const screen = renderDashboard();
+		await waitFor(() => expect(screen.getByTestId("home-total-balance").props.children).toBe("Rp 12.345"));
+		jest.mocked(listTransactions).mockRejectedValueOnce(new Error("offline"));
+		const { RefreshControl } = require("react-native");
+		await act(async () => { await screen.UNSAFE_getByType(RefreshControl).props.onRefresh(); });
+		expect(screen.getByTestId("home-total-balance").props.children).toBe("Rp 12.345");
+		expect(screen.getByText("Gagal memperbarui. Menampilkan data terakhir.")).toBeTruthy();
+		await act(async () => { fireEvent.press(screen.getByTestId("home-data-retry")); });
+		await waitFor(() => expect(screen.queryByTestId("home-data-status")).toBeNull());
+	});
+
+	it("shows core finances while budgets are delayed, and survives their rejection", async () => {
+		jest.spyOn(featureFlags, "simplePremiumExperience", "get").mockReturnValue(true);
+		const { listBudgetEnvelopes } = require("../src/services/budget-envelopes");
+		let reject!: (error: Error) => void;
+		jest.mocked(listBudgetEnvelopes).mockImplementationOnce(() => new Promise((_resolve, fail) => { reject = fail; }));
+		mockWallets = [{ id: "wallet", balance: 12345, is_active: true }];
+		const screen = renderDashboard();
+		await waitFor(() => expect(screen.getByTestId("home-total-balance").props.children).toBe("Rp 12.345"));
+		expect(screen.queryByTestId("home-data-status")).toBeNull();
+		await act(async () => { reject(new Error("budget offline")); });
+		expect(screen.getByTestId("home-total-balance").props.children).toBe("Rp 12.345");
+		expect(screen.queryByTestId("home-data-retry")).toBeNull();
+	});
+
+	it("hides previous-scope data immediately and ignores late responses from that scope", async () => {
+		jest.spyOn(featureFlags, "simplePremiumExperience", "get").mockReturnValue(true);
+		const { listTransactions } = require("../src/services/transactions");
+		const screen = renderDashboard();
+		await screen.findByText("Belum ada transaksi");
+		expect(screen.queryByTestId("home-data-status")).toBeNull();
+		let release!: (rows: any[]) => void;
+		jest.mocked(listTransactions).mockImplementationOnce(() => new Promise((resolve) => { release = resolve; }));
+		const { RefreshControl } = require("react-native");
+		act(() => { void screen.UNSAFE_getByType(RefreshControl).props.onRefresh(); });
+		await waitFor(() => expect(release).toBeDefined());
+		mockActiveContext = { type: "household", householdId: "hh-1", role: "admin" };
+		mockTransactions = [{ id: "new", description: "Household purchase", amount: 1000, transaction_type: "expense", category: "Groceries", date: "2026-06-01" }];
+		screen.rerender(<ThemeProvider><I18nProvider><DashboardScreen /></I18nProvider></ThemeProvider>);
+		expect(screen.getByTestId("home-total-balance").props.children).toBe("—");
+		await screen.findByText("Household purchase");
+		await act(async () => { release([{ id: "old", description: "Old personal purchase", amount: 5000, transaction_type: "expense", category: "Groceries" }]); });
+		expect(screen.queryByText("Old personal purchase")).toBeNull();
+		expect(screen.getByText("Household purchase")).toBeTruthy();
+	});
+
+	it("presents transfers neutrally and gives custom-period reset a 44px target", async () => {
+		jest.spyOn(featureFlags, "simplePremiumExperience", "get").mockReturnValue(true);
+		mockActivePeriod = { type: "custom", startDate: "2026-05-25", endDate: "2026-06-24" };
+		mockTransactions = [{ id: "transfer", amount: 42000, transaction_type: "transfer", category: "Other expenses", date: "2026-06-01", description: "Move funds" }];
+		const screen = renderDashboard();
+		const amount = await screen.findByTestId("home-recent-amount-transfer");
+		expect(amount.props.children).toBe("42.000");
+		expect(StyleSheet.flatten(amount.props.style).color).toBe("#0C4E91");
+		expect(screen.getByText("2026-06-01 · Transfer")).toBeTruthy();
+		const resetStyle = getFlattenedStyle(screen.getByTestId("home-period-reset"));
+		expect(resetStyle.minHeight).toBeGreaterThanOrEqual(44);
+		expect(resetStyle.minWidth).toBeGreaterThanOrEqual(44);
+	});
+
 	beforeEach(() => {
+		jest.restoreAllMocks();
+		jest.spyOn(featureFlags, "simpleNavigation", "get").mockReturnValue(false);
+		mockActivePeriod = buildReportPeriod("month");
+		mockReviewSummary = null;
 		mockPush.mockClear();
 		jest.mocked(AsyncStorage.getItem).mockReset();
 		jest.mocked(AsyncStorage.getItem).mockResolvedValue(null);
@@ -246,6 +339,49 @@ describe("DashboardScreen dark luxury Home parity", () => {
 	});
 
 
+	it("simple Home removes wallet management but keeps the populated decorative wallet stack and context", async () => {
+		jest.spyOn(featureFlags, "simpleNavigation", "get").mockReturnValue(true);
+		mockWallets = [{ id: "wallet-1", name: "Cash", balance: 100000, is_active: true }];
+		const screen = renderDashboard();
+		await screen.findByText("1 dompet · 1 aktif");
+		expect(screen.getByText("KASWISE")).toBeTruthy();
+		expect(screen.getByTestId("finance-context-switcher")).toBeTruthy();
+		expect(screen.getByTestId("home-total-balance").props.children).toBe("Rp 100.000");
+		expect(screen.getByTestId("home-amount-visibility-toggle")).toBeTruthy();
+		expect(screen.queryByLabelText("Kelola dompet")).toBeNull();
+		fireEvent.press(screen.getByLabelText("Buka pengaturan"));
+		expect(mockPush).toHaveBeenLastCalledWith("/(tabs)/settings");
+	});
+
+	it("counts inactive wallets in the Home total instead of hiding their money", async () => {
+		jest.spyOn(featureFlags, "simpleNavigation", "get").mockReturnValue(true);
+		mockWallets = [
+			{ id: "wallet-1", name: "Cash", balance: 100000, is_active: true },
+			{ id: "wallet-2", name: "Tunai lama", balance: 250000, is_active: false },
+		];
+		const screen = renderDashboard();
+		await screen.findByText("2 dompet · 1 aktif");
+		expect(screen.getByTestId("home-total-balance").props.children).toBe("Rp 350.000");
+	});
+
+	it("simple Home places one concise attention rail before Recent with review first and budget second", async () => {
+		jest.spyOn(featureFlags, "simpleNavigation", "get").mockReturnValue(true);
+		mockReviewSummary = { summary: { count: 2, reasons: {} } };
+		const screen = renderDashboard();
+		await screen.findByText("Kopi hampir habis");
+		expect(screen.getAllByTestId("home-attention-section")).toHaveLength(1);
+		const rail = screen.getByTestId("home-attention-section");
+		expect(rail.findByProps({ testID: "home-transaction-review-card" })).toBeTruthy();
+		expect(rail.findByProps({ testID: "home-envelope-alert" })).toBeTruthy();
+		expectTextOrder(getRenderedTextNodes(screen), ["Total saldo", "2 transaksi perlu dicek", "Kopi hampir habis", "Terakhir"]);
+		expect(screen.queryByText("Rapikan kategori agar laporan dan Insight AI lebih akurat.")).toBeNull();
+		expect(screen.queryByText("Dompet aktif yang perlu perhatian")).toBeNull();
+		fireEvent.press(screen.getByTestId("home-review-action"));
+		expect(mockPush).toHaveBeenLastCalledWith("/(tabs)/transactions?review=1");
+		fireEvent.press(screen.getByTestId("home-budget-action"));
+		expect(mockPush).toHaveBeenLastCalledWith("/(tabs)/budgets");
+	});
+
 	it("uses the saved Settings profile avatar instead of initials", async () => {
 		mockAuthUser = {
 			id: "user-1",
@@ -267,7 +403,7 @@ describe("DashboardScreen dark luxury Home parity", () => {
 		expect(screen.getByLabelText("Sari berhijab")).toBeTruthy();
 		const avatarStyle = getFlattenedStyle(screen.getByTestId("home-avatar"));
 		expect(avatarStyle.width).toBe(40);
-		expect(avatarStyle.borderWidth).toBe(2);
+		expect(avatarStyle.borderWidth).toBe(0);
 		expect(avatarStyle.backgroundColor).not.toBe("#A3FF12");
 		expect(screen.queryByText("DB")).toBeNull();
 	});
@@ -293,6 +429,15 @@ describe("DashboardScreen dark luxury Home parity", () => {
 		expect(screen.queryByText("DB")).toBeNull();
 	});
 
+	it("opens Settings from the dashboard profile control", async () => {
+		const screen = renderDashboard();
+
+		await waitFor(() => expect(screen.getByText("Halo")).toBeTruthy());
+		fireEvent.press(screen.getByLabelText("Buka pengaturan"));
+
+		expect(mockPush).toHaveBeenCalledWith("/(tabs)/settings");
+	});
+
 	it("renders the honest Home section order and labels", async () => {
 		const screen = renderDashboard();
 
@@ -312,12 +457,14 @@ describe("DashboardScreen dark luxury Home parity", () => {
 		).toBeTruthy();
 
 		expect(screen.getByTestId("home-entrance-hero")).toBeTruthy();
-		expect(screen.getByTestId("home-theme-toggle")).toBeTruthy();
+		expect(screen.queryByTestId("home-theme-toggle")).toBeNull();
 		expect(screen.getByTestId("home-amount-visibility-toggle")).toBeTruthy();
 		expect(screen.getByTestId("home-monthly-remaining")).toBeTruthy();
 		expect(screen.getByTestId("home-active-period-label")).toBeTruthy();
 		expect(screen.getByTestId("home-monthly-expense")).toBeTruthy();
-		expect(screen.getByTestId("home-entrance-actions")).toBeTruthy();
+		expect(screen.queryByTestId("home-entrance-actions")).toBeNull();
+		expect(screen.queryByTestId("home-entrance-money-focus")).toBeNull();
+		expect(screen.queryByTestId("home-first-use-card")).toBeNull();
 		expect(screen.getByTestId("home-entrance-budget")).toBeTruthy();
 		expect(screen.getByTestId("home-entrance-recent")).toBeTruthy();
 
@@ -329,8 +476,9 @@ describe("DashboardScreen dark luxury Home parity", () => {
 		expect(screen.getByText("Kelola")).toBeTruthy();
 		expect(screen.queryByText("↗ 15%")).toBeNull();
 
-		expect(screen.getByText("Input AI")).toBeTruthy();
+		expect(screen.queryByText("Input AI")).toBeNull();
 		expect(screen.queryByText("Import")).toBeNull();
+		expect(screen.queryByText("Catat sekali, pisahkan semua ruang uang.")).toBeNull();
 
 		expect(screen.getByText("Anggaran")).toBeTruthy();
 		expect(screen.getByText("Lihat →")).toBeTruthy();
@@ -352,10 +500,9 @@ describe("DashboardScreen dark luxury Home parity", () => {
 			expectedDate,
 			"Total saldo",
 			"Rp 0",
-			"Input AI",
-			"Anggaran",
 			"Terakhir",
 			"Belum ada transaksi",
+			"Anggaran",
 		]);
 	});
 
@@ -391,70 +538,18 @@ describe("DashboardScreen dark luxury Home parity", () => {
 		await waitFor(() =>
 			expect(screen.queryByTestId("home-envelope-alert")).toBeNull(),
 		);
+		expect(screen.queryByTestId("home-budget-section")).toBeNull();
 		expect(screen.queryByText(/perlu cek/i)).toBeNull();
 		expect(screen.queryByText(/Kopi hampir habis/i)).toBeNull();
 	});
 
-	it("guides a new user to create the first wallet and persists guide progress", async () => {
+	it("keeps onboarding out of the operational dashboard", async () => {
 		const screen = renderDashboard();
-
-		await waitFor(() =>
-			expect(screen.getByTestId("home-first-use-card")).toBeTruthy(),
-		);
-		expect(screen.getAllByText("Buat dompet pertama").length).toBeGreaterThan(0);
-		expect(screen.getAllByText("Buka Dompet").length).toBeGreaterThan(0);
-
-		fireEvent.press(screen.getByTestId("home-first-use-primary"));
-		expect(mockPush).toHaveBeenLastCalledWith("/(tabs)/wallets");
-
-		fireEvent.press(screen.getByTestId("home-first-use-next"));
-		await waitFor(() =>
-			expect(AsyncStorage.setItem).toHaveBeenCalledWith(
-				"first-use-guide:v1:user-1",
-				expect.stringContaining('"lastStep":1'),
-			),
-		);
-		expect(screen.getAllByText("Catat satu transaksi nyata").length).toBeGreaterThan(0);
-	});
-
-	it("uses persisted report visit state before completing the Reports setup step", async () => {
-		mockWallets = [{ id: "wallet-1", name: "Cash", balance: 100000, is_active: true }];
-		mockTransactions = [
-			{
-				id: "tx-1",
-				merchant: "Kopi",
-				description: "Kopi",
-				category: "Groceries",
-				amount: 25000,
-				transaction_type: "expense",
-				date: "2026-05-20",
-			},
-		];
-
-		const screen = renderDashboard();
-
-		await waitFor(() =>
-			expect(screen.getAllByText("Cek laporan pertama").length).toBeGreaterThan(0),
-		);
-		expect(screen.getAllByText("Buka Laporan").length).toBeGreaterThan(0);
-		expect(screen.getByTestId("home-first-use-card")).toBeTruthy();
-	});
-
-	it("hides the first-use guide after dismissal and persists the choice", async () => {
-		const screen = renderDashboard();
-
-		await waitFor(() =>
-			expect(screen.getByTestId("home-first-use-card")).toBeTruthy(),
-		);
-		fireEvent.press(screen.getByTestId("home-first-use-dismiss"));
 
 		await waitFor(() =>
 			expect(screen.queryByTestId("home-first-use-card")).toBeNull(),
 		);
-		expect(AsyncStorage.setItem).toHaveBeenCalledWith(
-			"first-use-guide:v1:user-1",
-			expect.stringContaining('"dismissed":true'),
-		);
+		expect(screen.queryByText("Langkah 1 dari 4")).toBeNull();
 	});
 
 	it("loads dashboard wallet, transactions, and budget alerts for the active finance context", async () => {
@@ -511,8 +606,8 @@ describe("DashboardScreen dark luxury Home parity", () => {
 		const incomeAmountStyle = StyleSheet.flatten(
 			screen.getByTestId("home-recent-amount-tx-income").props.style,
 		) as TextStyle;
-		expect(expenseAmountStyle.color).toBe("#DC2626");
-		expect(incomeAmountStyle.color).toBe("#65A30D");
+		expect(expenseAmountStyle.color).toBe("#263246");
+		expect(incomeAmountStyle.color).toBe("#168FA8");
 		expect(listBudgetEnvelopes).toHaveBeenCalledWith(
 			expect.anything(),
 			"user-1",
@@ -527,64 +622,45 @@ describe("DashboardScreen dark luxury Home parity", () => {
 
 		expect(screen.queryByText("Import")).toBeNull();
 
-		fireEvent.press(screen.getByText("Input AI"));
-		expect(mockPush).toHaveBeenLastCalledWith("/(tabs)/capture");
-
-		fireEvent.press(screen.getByText("Lihat →"));
+		fireEvent.press(await screen.findByText("Lihat →"));
 		expect(mockPush).toHaveBeenLastCalledWith("/(tabs)/budgets");
 
 		fireEvent.press(screen.getByText("Semua →"));
 		expect(mockPush).toHaveBeenLastCalledWith("/(tabs)/transactions");
 	});
 
-	it("uses Bottom Tab and FAB green for light theme primary accents", async () => {
+	it("uses the finance editorial surface system", async () => {
 		const screen = renderDashboard();
 
 		const avatar = screen.getByTestId("home-avatar");
 		const avatarStyle = getFlattenedStyle(avatar);
 		expect(avatarStyle.width).toBe(40);
 		expect(avatarStyle.height).toBe(40);
-		expect(avatarStyle.borderWidth).toBe(2);
-		expect(avatarStyle.backgroundColor).toBe("#FFFFFF");
-		expect(avatarStyle.backgroundColor).not.toBe("#3F6212");
+		expect(avatarStyle.borderWidth).toBe(0);
+		expect(avatarStyle.backgroundColor).toBe("rgba(255, 255, 255, 0.20)");
 
 		const hero = screen.getByTestId("home-hero-card");
 		const heroStyle = getFlattenedStyle(hero);
-		expect(heroStyle.borderRadius).toBe(24);
-		expect(heroStyle.padding).toBe(18);
+		expect(heroStyle.borderRadius).toBe(0);
+		expect(heroStyle.backgroundColor).toBe("#0C4E91");
+		expect(heroStyle.borderBottomLeftRadius).toBe(42);
+		expect(heroStyle.borderBottomRightRadius).toBe(42);
 		expect(heroStyle.shadowOpacity).toBeUndefined();
 
 		expect(screen.getAllByTestId("finance-context-switcher")).toHaveLength(1);
 		expect(screen.queryByTestId("home-wallet-pill")).toBeNull();
 
-		const quickAction = screen.getByTestId("home-quick-action-manual");
-		expect(quickAction.props.accessibilityRole).toBe("button");
-		expect(quickAction.props.accessibilityLabel).toBe("Aksi cepat Input AI");
-		const quickActionStyle = getFlattenedStyle(quickAction);
-		expect(quickActionStyle.borderRadius).toBe(16);
-		expect(quickActionStyle.paddingVertical).toBe(12);
-		expect(quickActionStyle.paddingHorizontal).toBe(8);
-
-		const sectionCard = screen.getByTestId("home-budget-section");
+		const sectionCard = await screen.findByTestId("home-budget-section");
 		const sectionCardStyle = getFlattenedStyle(sectionCard);
-		expect(sectionCardStyle.borderRadius).toBe(18);
-		expect(sectionCardStyle.padding).toBe(14);
+		expect(sectionCardStyle.backgroundColor).toBe("transparent");
+		expect(sectionCardStyle.borderWidth).toBe(0);
 
 		const cta = screen.getByTestId("home-budget-action");
 		expect(cta.props.accessibilityRole).toBe("button");
 		expect(cta.props.accessibilityLabel).toBe("Lihat semua budget");
 		expect(getFlattenedStyle(cta).backgroundColor).toBeUndefined();
 
-		const primaryBubble = screen.getByTestId("home-quick-bubble-manual");
-		const primaryBubbleStyle = getFlattenedStyle(primaryBubble);
-		expect(primaryBubbleStyle.width).toBe(32);
-		expect(primaryBubbleStyle.height).toBe(32);
-		expect(
-			SOFT_GREEN_BACKGROUNDS.includes(
-				primaryBubbleStyle.backgroundColor as string,
-			) ||
-				SOFT_GREEN_BORDERS.includes(primaryBubbleStyle.borderColor as string),
-		).toBe(true);
+		expect(screen.queryByTestId("home-quick-action-manual")).toBeNull();
 	});
 
 	it("shows transaction review CTA when review count > 0", async () => {
@@ -649,5 +725,103 @@ describe("DashboardScreen dark luxury Home parity", () => {
 			expect(screen.getByText("Halo")).toBeTruthy(),
 		);
 		expect(screen.queryByTestId("home-transaction-review-card")).toBeNull();
+	});
+
+	it("shows the localized money space caption in Indonesian", async () => {
+		const screen = renderDashboard();
+
+		await waitFor(() => expect(screen.getByText("Halo")).toBeTruthy());
+		expect(screen.getByText("Ruang uang")).toBeTruthy();
+	});
+
+	it("shows the localized money space caption in English", async () => {
+		jest.mocked(AsyncStorage.getItem).mockImplementation(async (key) =>
+			key === "kaswise:language-preference" ? "en" : null,
+		);
+
+		const screen = renderDashboard();
+
+		expect(await screen.findByText("Money space")).toBeTruthy();
+	});
+
+	it("labels the expense caption for a custom period and keeps both hero cards period-aware", async () => {
+		const customPeriod: ReportPeriod = {
+			type: "custom",
+			startDate: "2026-05-25",
+			endDate: "2026-06-24",
+		};
+		mockActivePeriod = customPeriod;
+		const periodLabel = formatReportPeriodLabel(customPeriod, "id");
+
+		const screen = renderDashboard();
+
+		await waitFor(() => expect(screen.getByText("Halo")).toBeTruthy());
+		expect(screen.getByText("Pengeluaran periode ini")).toBeTruthy();
+		expect(screen.queryByText("Pengeluaran bulan ini")).toBeNull();
+		// Both hero cards stay consistent with the active period label: the
+		// remaining-card sub and the hero period chip both reference it.
+		expect(
+			screen.getAllByText(
+				new RegExp(periodLabel.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")),
+			).length,
+		).toBeGreaterThanOrEqual(2);
+	});
+
+	it("simple Home hides the attention rail when no review or budget alert exists", async () => {
+		jest.spyOn(featureFlags, "simpleNavigation", "get").mockReturnValue(true);
+		mockReviewSummary = null;
+		mockAllocations = [];
+
+		const screen = renderDashboard();
+
+		await waitFor(() => expect(screen.getByText("Halo")).toBeTruthy());
+		expect(screen.queryByTestId("home-attention-section")).toBeNull();
+		expect(screen.queryByTestId("home-transaction-review-card")).toBeNull();
+		expect(screen.queryByTestId("home-envelope-alert")).toBeNull();
+	});
+
+	it("simple Home lists at most three recent transactions", async () => {
+		jest.spyOn(featureFlags, "simpleNavigation", "get").mockReturnValue(true);
+		mockTransactions = Array.from({ length: 5 }, (_, index) => ({
+			id: `tx-${index + 1}`,
+			merchant: `Merchant ${index + 1}`,
+			description: "Test transaction",
+			category: "Groceries",
+			amount: 1000 * (index + 1),
+			transaction_type: "expense",
+			date: "2026-06-15",
+		}));
+
+		const screen = renderDashboard();
+
+		await screen.findByText("Merchant 1");
+		expect(screen.getByTestId("home-recent-amount-tx-1")).toBeTruthy();
+		expect(screen.getByTestId("home-recent-amount-tx-2")).toBeTruthy();
+		expect(screen.getByTestId("home-recent-amount-tx-3")).toBeTruthy();
+		expect(screen.queryByTestId("home-recent-amount-tx-4")).toBeNull();
+		expect(screen.queryByTestId("home-recent-amount-tx-5")).toBeNull();
+	});
+
+	it("keeps every Home quick control at a 44px touch target without changing icon size", async () => {
+		const screen = renderDashboard();
+
+		await waitFor(() => expect(screen.getByText("Halo")).toBeTruthy());
+
+		const bell = screen.getByTestId("notification-bell");
+		const avatarTarget = screen.getByTestId("home-avatar-target");
+		const hideAmounts = screen.getByTestId("home-amount-visibility-toggle");
+		const allTransactions = screen.getByTestId("home-recent-all-target");
+
+		[bell, avatarTarget, hideAmounts, allTransactions].forEach((target) => {
+			const style = getFlattenedStyle(target);
+			expect(Number(style.width ?? style.minWidth ?? 0)).toBeGreaterThanOrEqual(44);
+			expect(Number(style.height ?? style.minHeight ?? 0)).toBeGreaterThanOrEqual(44);
+		});
+
+		// Icons and the avatar visual keep their existing sizes.
+		expect(bell.findByType(KaswiseIcon).props.size).toBe(22);
+		expect(hideAmounts.findByType(KaswiseIcon).props.size).toBe(17);
+		expect(getFlattenedStyle(screen.getByTestId("home-avatar")).width).toBe(40);
+		expect(screen.getByText("Semua →")).toBeTruthy();
 	});
 });

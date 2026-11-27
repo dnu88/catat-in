@@ -229,4 +229,44 @@ describe("motion coverage across mobile routes", () => {
 			"createKaswiseStackScreenOptions",
 		);
 	});
+
+	it("keeps every registered route file in place (no route renames or moves)", () => {
+		const expectedRouteFiles = [
+			"_layout.tsx",
+			"index.tsx",
+			"notifications.tsx",
+			"upgrade.tsx",
+			"reset-password.tsx",
+			"privacy.tsx",
+			"terms.tsx",
+			"contact.tsx",
+			"account-deletion.tsx",
+			"help.tsx",
+			"(auth)/_layout.tsx",
+			"(auth)/login.tsx",
+			"(auth)/register.tsx",
+			"(auth)/forgot-password.tsx",
+			"(auth)/callback.tsx",
+			"(tabs)/_layout.tsx",
+			...(tabScreens.map((screen) => `(tabs)/${screen}.tsx`) ?? []),
+		];
+
+		expectedRouteFiles.forEach((route) => {
+			expect({ route, exists: fs.existsSync(path.join(appRoot, route)) }).toEqual(
+				{ route, exists: true },
+			);
+		});
+	});
+
+	it("keeps the deep-link back fallback on hidden routes in the tab layout", () => {
+		const layoutSource = readRoute("(tabs)/_layout.tsx");
+
+		expect(layoutSource).toContain("goBackSafely");
+		expect(layoutSource).toContain("HIDDEN_ROUTE_BACK_FALLBACKS");
+		["settings", "wallets", "budgets", "bills", "groups", "imports"].forEach(
+			(hiddenRoute) => {
+				expect(layoutSource).toContain(`${hiddenRoute}: "/(tabs)`);
+			},
+		);
+	});
 });

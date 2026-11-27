@@ -3,7 +3,7 @@ import { getCurrentUserId } from "./currentUser";
 import { applyFinanceContextFilter, type FinanceContext } from "./finance-context-query";
 import { normalizeTransaction, type Transaction } from "./transactions";
 
-const OTHER_CATEGORY_NAMES = ["Lainnya", "Other", "Other expenses"];
+export const OTHER_CATEGORY_NAMES = ["Lainnya", "Other", "Other expenses"];
 
 export type TransactionReviewSummary = {
   count: number;

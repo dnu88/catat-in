@@ -6,6 +6,7 @@ import {
   StyleSheet,
 } from "react-native";
 import { useMemo } from "react";
+import { financeEditorial as fe } from "../../theme/finance-editorial";
 import { useTheme } from "../../theme/theme-context";
 import { useI18n } from "../../i18n/i18n-context";
 import { KaswiseIcon } from "../icons/kaswise-icons";
@@ -41,7 +42,7 @@ export function AiInsightCard({
 
   // --- Render helpers ---
 
-  function renderHeader(iconName: "insight" | "lock", iconTone: "primary" | "warning") {
+  function renderHeader(iconName: "insight" | "lock", iconTone: "navy" | "warning") {
     return (
       <View style={s.headerRow}>
         <IconBubble name={iconName} tone={iconTone} size={40} />
@@ -58,7 +59,7 @@ export function AiInsightCard({
   function renderLockedState() {
     return (
       <View testID="ai-insight-card" style={s.card}>
-        {renderHeader("lock", "warning")}
+        {renderHeader("lock", "navy")}
         <Text testID="ai-insight-body" style={s.body}>
           {isEn ? "Get AI-powered spending pattern summaries and practical recommendations." : "Dapatkan ringkasan pola pengeluaran dan rekomendasi praktis dari AI."}
         </Text>
@@ -84,7 +85,7 @@ export function AiInsightCard({
   function renderEmptyPremiumState() {
     return (
       <View testID="ai-insight-card" style={s.card}>
-        {renderHeader("insight", "primary")}
+        {renderHeader("insight", "navy")}
         <Text testID="ai-insight-body" style={s.body}>
           {isEn ? "AI analysis is ready to help you understand your finances this month." : "Analisis AI siap membantu membaca pola keuanganmu bulan ini."}
         </Text>
@@ -113,7 +114,7 @@ export function AiInsightCard({
         <View style={s.centeredContent}>
           <ActivityIndicator
             size="large"
-            color={theme.colors.brandPrimary}
+            color={fe.ink}
           />
           <Text
             testID="ai-insight-loading-text"
@@ -185,7 +186,7 @@ export function AiInsightCard({
 
     return (
       <View testID="ai-insight-card" style={s.card}>
-        {renderHeader("insight", "primary")}
+        {renderHeader("insight", "navy")}
 
         {/* Summary */}
         <Text testID="ai-insight-summary" style={s.summary}>
@@ -268,7 +269,7 @@ export function AiInsightCard({
           <KaswiseIcon
             name="insight"
             size={16}
-            color={theme.colors.brandPrimary}
+            color={fe.blue}
             weight="bold"
           />
           <Text style={s.ctaButtonOutlineText}>{isEn ? "Refresh" : "Refresh"}</Text>
@@ -326,7 +327,7 @@ export function AiInsightCard({
 function styles(theme: ReturnType<typeof useTheme>["theme"]) {
   return StyleSheet.create({
     card: {
-      backgroundColor: theme.colors.card,
+      backgroundColor: fe.white,
       borderColor: theme.colors.borderSoft,
       borderWidth: 1,
       borderRadius: theme.radius.lg,
@@ -339,13 +340,13 @@ function styles(theme: ReturnType<typeof useTheme>["theme"]) {
       gap: theme.spacing.sm,
     },
     title: {
-      color: theme.colors.textPrimary,
+      color: fe.ink,
       fontSize: theme.typography.fontSize.lg,
       fontWeight: theme.typography.fontWeight.bold,
       flex: 1,
     },
     body: {
-      color: theme.colors.textSecondary,
+      color: fe.slate,
       fontSize: theme.typography.fontSize.md,
       lineHeight: theme.typography.fontSize.md * theme.typography.lineHeight.relaxed,
     },
@@ -355,7 +356,7 @@ function styles(theme: ReturnType<typeof useTheme>["theme"]) {
       paddingVertical: theme.spacing.lg,
     },
     loadingText: {
-      color: theme.colors.textMuted,
+      color: fe.muted,
       fontSize: theme.typography.fontSize.md,
       marginTop: theme.spacing.sm,
     },
@@ -366,7 +367,7 @@ function styles(theme: ReturnType<typeof useTheme>["theme"]) {
       lineHeight: theme.typography.fontSize.md * theme.typography.lineHeight.relaxed,
     },
     summary: {
-      color: theme.colors.textPrimary,
+      color: fe.ink,
       fontSize: theme.typography.fontSize.md,
       lineHeight: theme.typography.fontSize.md * theme.typography.lineHeight.relaxed,
     },
@@ -374,7 +375,7 @@ function styles(theme: ReturnType<typeof useTheme>["theme"]) {
       gap: theme.spacing.sm,
     },
     sectionTitle: {
-      color: theme.colors.textPrimary,
+      color: fe.ink,
       fontSize: theme.typography.fontSize.md,
       fontWeight: theme.typography.fontWeight.semibold,
       marginBottom: theme.spacing.xs,
@@ -385,7 +386,7 @@ function styles(theme: ReturnType<typeof useTheme>["theme"]) {
       gap: theme.spacing.sm,
     },
     bullet: {
-      color: theme.colors.brandPrimary,
+      color: fe.blue,
       fontSize: theme.typography.fontSize.md,
       fontWeight: theme.typography.fontWeight.bold,
       width: 16,
@@ -395,12 +396,12 @@ function styles(theme: ReturnType<typeof useTheme>["theme"]) {
       width: 20,
       height: 20,
       borderRadius: theme.radius.sm,
-      backgroundColor: theme.iconBubbles.success.background,
+      backgroundColor: fe.paper,
       alignItems: "center",
       justifyContent: "center",
     },
     listItemText: {
-      color: theme.colors.textSecondary,
+      color: fe.slate,
       fontSize: theme.typography.fontSize.md,
       lineHeight: theme.typography.fontSize.md * theme.typography.lineHeight.relaxed,
       flex: 1,
@@ -417,7 +418,7 @@ function styles(theme: ReturnType<typeof useTheme>["theme"]) {
       fontWeight: theme.typography.fontWeight.semibold,
     },
     riskItem: {
-      backgroundColor: theme.iconBubbles.warning.background,
+      backgroundColor: fe.paper,
       borderColor: theme.iconBubbles.warning.border,
       borderWidth: 1,
       borderRadius: theme.radius.sm,
@@ -430,7 +431,7 @@ function styles(theme: ReturnType<typeof useTheme>["theme"]) {
       lineHeight: theme.typography.fontSize.sm * theme.typography.lineHeight.relaxed,
     },
     timestamp: {
-      color: theme.colors.textMuted,
+      color: fe.muted,
       fontSize: theme.typography.fontSize.sm,
       textAlign: "center",
     },
@@ -445,12 +446,12 @@ function styles(theme: ReturnType<typeof useTheme>["theme"]) {
       paddingHorizontal: theme.spacing.lg,
     },
     ctaButtonPrimary: {
-      backgroundColor: theme.colors.buttonPrimaryBg,
+      backgroundColor: fe.ink,
       borderColor: theme.colors.buttonPrimaryBg,
       borderWidth: 1,
     },
     ctaButtonPrimaryText: {
-      color: theme.colors.buttonPrimaryText,
+      color: fe.white,
       fontSize: theme.typography.fontSize.md,
       fontWeight: theme.typography.fontWeight.bold,
       textAlign: "center",
@@ -461,7 +462,7 @@ function styles(theme: ReturnType<typeof useTheme>["theme"]) {
       borderWidth: 1,
     },
     ctaButtonOutlineText: {
-      color: theme.colors.brandPrimary,
+      color: fe.blue,
       fontSize: theme.typography.fontSize.md,
       fontWeight: theme.typography.fontWeight.bold,
       textAlign: "center",

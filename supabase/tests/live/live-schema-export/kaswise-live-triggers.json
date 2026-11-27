@@ -1,0 +1,94 @@
+[
+  {
+    "name": "account_deletion_requests.set_account_deletion_requests_updated_at",
+    "definition": "CREATE TRIGGER set_account_deletion_requests_updated_at BEFORE UPDATE ON public.account_deletion_requests FOR EACH ROW EXECUTE FUNCTION set_updated_at()"
+  },
+  {
+    "name": "bill_reminders.prevent_bill_reminders_scope_change",
+    "definition": "CREATE TRIGGER prevent_bill_reminders_scope_change BEFORE UPDATE ON public.bill_reminders FOR EACH ROW EXECUTE FUNCTION prevent_financial_scope_change()"
+  },
+  {
+    "name": "bill_reminders.set_bill_reminders_audit_fields",
+    "definition": "CREATE TRIGGER set_bill_reminders_audit_fields BEFORE INSERT OR UPDATE ON public.bill_reminders FOR EACH ROW EXECUTE FUNCTION set_financial_audit_fields()"
+  },
+  {
+    "name": "budget_envelopes.prevent_budget_envelopes_scope_change",
+    "definition": "CREATE TRIGGER prevent_budget_envelopes_scope_change BEFORE UPDATE ON public.budget_envelopes FOR EACH ROW EXECUTE FUNCTION prevent_financial_scope_change()"
+  },
+  {
+    "name": "budget_envelopes.set_budget_envelopes_audit_fields",
+    "definition": "CREATE TRIGGER set_budget_envelopes_audit_fields BEFORE INSERT OR UPDATE ON public.budget_envelopes FOR EACH ROW EXECUTE FUNCTION set_financial_audit_fields()"
+  },
+  {
+    "name": "budget_envelopes.set_budget_envelopes_updated_at",
+    "definition": "CREATE TRIGGER set_budget_envelopes_updated_at BEFORE UPDATE ON public.budget_envelopes FOR EACH ROW EXECUTE FUNCTION set_updated_at()"
+  },
+  {
+    "name": "budgets.prevent_budgets_scope_change",
+    "definition": "CREATE TRIGGER prevent_budgets_scope_change BEFORE UPDATE ON public.budgets FOR EACH ROW EXECUTE FUNCTION prevent_financial_scope_change()"
+  },
+  {
+    "name": "budgets.set_budgets_audit_fields",
+    "definition": "CREATE TRIGGER set_budgets_audit_fields BEFORE INSERT OR UPDATE ON public.budgets FOR EACH ROW EXECUTE FUNCTION set_financial_audit_fields()"
+  },
+  {
+    "name": "household_members.set_household_members_updated_at",
+    "definition": "CREATE TRIGGER set_household_members_updated_at BEFORE UPDATE ON public.household_members FOR EACH ROW EXECUTE FUNCTION set_updated_at()"
+  },
+  {
+    "name": "households.create_owner_household_membership",
+    "definition": "CREATE TRIGGER create_owner_household_membership AFTER INSERT ON public.households FOR EACH ROW EXECUTE FUNCTION create_owner_household_membership()"
+  },
+  {
+    "name": "households.set_households_updated_at",
+    "definition": "CREATE TRIGGER set_households_updated_at BEFORE UPDATE ON public.households FOR EACH ROW EXECUTE FUNCTION set_updated_at()"
+  },
+  {
+    "name": "notification_preferences.set_notification_preferences_updated_at",
+    "definition": "CREATE TRIGGER set_notification_preferences_updated_at BEFORE UPDATE ON public.notification_preferences FOR EACH ROW EXECUTE FUNCTION set_updated_at()"
+  },
+  {
+    "name": "profiles.prevent_profile_server_managed_field_change",
+    "definition": "CREATE TRIGGER prevent_profile_server_managed_field_change BEFORE INSERT OR UPDATE ON public.profiles FOR EACH ROW EXECUTE FUNCTION prevent_profile_server_managed_field_change()"
+  },
+  {
+    "name": "profiles.trg_profiles_updated_at",
+    "definition": "CREATE TRIGGER trg_profiles_updated_at BEFORE UPDATE ON public.profiles FOR EACH ROW EXECUTE FUNCTION update_updated_at()"
+  },
+  {
+    "name": "transaction_envelope_allocations.set_transaction_envelope_allocations_updated_at",
+    "definition": "CREATE TRIGGER set_transaction_envelope_allocations_updated_at BEFORE UPDATE ON public.transaction_envelope_allocations FOR EACH ROW EXECUTE FUNCTION set_updated_at()"
+  },
+  {
+    "name": "transactions.prevent_transaction_wallet_scope_mismatch",
+    "definition": "CREATE TRIGGER prevent_transaction_wallet_scope_mismatch BEFORE INSERT OR UPDATE ON public.transactions FOR EACH ROW EXECUTE FUNCTION prevent_transaction_wallet_scope_mismatch()"
+  },
+  {
+    "name": "transactions.prevent_transactions_scope_change",
+    "definition": "CREATE TRIGGER prevent_transactions_scope_change BEFORE UPDATE ON public.transactions FOR EACH ROW EXECUTE FUNCTION prevent_financial_scope_change()"
+  },
+  {
+    "name": "transactions.set_transactions_audit_fields",
+    "definition": "CREATE TRIGGER set_transactions_audit_fields BEFORE INSERT OR UPDATE ON public.transactions FOR EACH ROW EXECUTE FUNCTION set_financial_audit_fields()"
+  },
+  {
+    "name": "transactions.sync_wallet_balance_from_transaction",
+    "definition": "CREATE TRIGGER sync_wallet_balance_from_transaction AFTER INSERT OR DELETE OR UPDATE ON public.transactions FOR EACH ROW EXECUTE FUNCTION sync_wallet_balance_from_transaction()"
+  },
+  {
+    "name": "transactions.trg_transactions_updated_at",
+    "definition": "CREATE TRIGGER trg_transactions_updated_at BEFORE UPDATE ON public.transactions FOR EACH ROW EXECUTE FUNCTION update_updated_at()"
+  },
+  {
+    "name": "wallets.prevent_wallet_balance_direct_change",
+    "definition": "CREATE TRIGGER prevent_wallet_balance_direct_change BEFORE UPDATE ON public.wallets FOR EACH ROW EXECUTE FUNCTION prevent_wallet_balance_direct_change()"
+  },
+  {
+    "name": "wallets.prevent_wallets_scope_change",
+    "definition": "CREATE TRIGGER prevent_wallets_scope_change BEFORE UPDATE ON public.wallets FOR EACH ROW EXECUTE FUNCTION prevent_financial_scope_change()"
+  },
+  {
+    "name": "wallets.set_wallets_audit_fields",
+    "definition": "CREATE TRIGGER set_wallets_audit_fields BEFORE INSERT OR UPDATE ON public.wallets FOR EACH ROW EXECUTE FUNCTION set_financial_audit_fields()"
+  }
+]

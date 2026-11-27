@@ -1,5 +1,6 @@
 import { Pressable, Text } from 'react-native'
 import { useTheme } from '../../theme/theme-context'
+import { financeEditorial as fe } from '../../theme/finance-editorial'
 
 type FilterChipProps = {
   label: string
@@ -24,13 +25,13 @@ export function FilterChip({ label, selected, onPress }: FilterChipProps) {
         justifyContent: 'center',
         borderRadius: theme.radius.pill,
         borderWidth: 1,
-        borderColor: selected ? theme.colors.brandPrimary : theme.colors.glass.border,
-        backgroundColor: selected ? theme.colors.brandPrimary : theme.colors.glass.background,
+        borderColor: 'transparent',
+        backgroundColor: selected ? fe.ink : fe.white,
       }}
     >
       <Text
         style={{
-          color: selected ? theme.colors.textInverse : theme.colors.textSecondary,
+          color: selected ? fe.white : fe.slate,
           fontSize: theme.typography.fontSize.sm,
           fontWeight: theme.typography.fontWeight.bold,
           textAlign: 'center',

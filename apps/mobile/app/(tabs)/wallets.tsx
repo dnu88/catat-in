@@ -1,6 +1,8 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
 	ActivityIndicator,
+	Alert,
+	Platform,
 	Pressable,
 	RefreshControl,
 	ScrollView,
@@ -11,6 +13,7 @@ import {
 } from "react-native";
 import { PageEntrance, StaggeredStack } from "../../src/components/motion";
 import { useFocusEffect } from "expo-router";
+import { LinearGradient } from "expo-linear-gradient";
 
 import { useI18n } from "../../src/i18n/i18n-context";
 import {
@@ -22,7 +25,18 @@ import {
 } from "../../src/services/wallets";
 import { useFinanceContext } from "../../src/state/finance-context";
 import { useTheme } from "../../src/theme/theme-context";
+import { financeEditorial as fe } from "../../src/theme/finance-editorial";
+import { isPwaPolish, pwaHeroCaption } from "../../src/theme/pwa-polish";
+import { KaswiseIcon, type KaswiseIconName } from "../../src/components/icons/kaswise-icons";
+import { KaswiseLogoMark } from "../../src/components/brand/KaswiseLogoMark";
 import { subscribeWalletChanges } from "../../src/services/wallet-events";
+import { featureFlags } from "../../src/config/features";
+import {
+	experienceTabularNumerals,
+	experienceTokens,
+	resolveExperienceTextStyle,
+} from "../../src/theme/experience-tokens";
+import { showsHeaderCreateToggle } from "../../src/features/wallets/primary-cta";
 
 type WalletType = "bank" | "ewallet" | "cash" | "investment";
 type FilterType = "all" | WalletType;
@@ -47,6 +61,9 @@ const copy = {
 		save: "Simpan dompet",
 		total: "Total Saldo Semua Akun",
 		active: "akun aktif",
+		context: "Konteks",
+		filters: "Filter dompet",
+		add: "Tambah dompet",
 		all: "Semua",
 		personal: "Pribadi",
 		family: "Keluarga",
@@ -56,6 +73,8 @@ const copy = {
 		createError: "Gagal membuat dompet",
 		edit: "Edit",
 		delete: "Hapus",
+		deleteTitle: "Hapus dompet?",
+		deleteMessage: (name: string) => `${name} akan dihapus permanen.`,
 		update: "Simpan perubahan",
 		updateError: "Gagal mengubah dompet",
 		deleteError: "Gagal menghapus dompet",
@@ -78,6 +97,9 @@ const copy = {
 		save: "Save wallet",
 		total: "Total Balance Across Accounts",
 		active: "active accounts",
+		context: "Context",
+		filters: "Filter wallets",
+		add: "Add wallet",
 		all: "All",
 		personal: "Personal",
 		family: "Family",
@@ -87,6 +109,8 @@ const copy = {
 		createError: "Failed to create wallet",
 		edit: "Edit",
 		delete: "Delete",
+		deleteTitle: "Delete wallet?",
+		deleteMessage: (name: string) => `${name} will be permanently deleted.`,
 		update: "Save changes",
 		updateError: "Failed to update wallet",
 		deleteError: "Failed to delete wallet",
@@ -99,22 +123,21 @@ const copy = {
 	},
 } as const;
 
-const typeIcons: Record<WalletType, string> = {
-	bank: "🏦",
-	ewallet: "💳",
-	cash: "💵",
-	investment: "📈",
+const typeIcons: Record<WalletType, KaswiseIconName> = {
+	bank: "bank",
+	ewallet: "creditCard",
+	cash: "wallets",
+	investment: "investment",
 };
 
 function getTypeColor(
 	type: WalletType,
-	theme: ReturnType<typeof useTheme>["theme"],
 ): string {
 	const colorMap: Record<WalletType, string> = {
-		bank: theme.colors.info,
-		ewallet: theme.colors.brandPrimary,
-		cash: theme.colors.success,
-		investment: theme.colors.warning,
+		bank: fe.blueBright,
+		ewallet: fe.blue,
+		cash: fe.blueDeep,
+		investment: "#285D99",
 	};
 	return colorMap[type];
 }
@@ -128,7 +151,12 @@ export default function WalletsScreen() {
 	const { language } = useI18n();
 	const { activeContext, memberships, canCreate } = useFinanceContext();
 	const tx = copy[language];
-	const styles = useMemo(() => createStyles(theme), [theme]);
+	const isEn = language === "en";
+	// B1 (visual foundation): resolve the presentation flag first so flag OFF
+	// keeps every value identical to the pre-B1 baseline.
+	const premium = featureFlags.simplePremiumExperience;
+	const polish = isPwaPolish();
+	const styles = useMemo(() => createStyles(theme, premium, polish), [theme, premium, polish]);
 	const [filter, setFilter] = useState<FilterType>("all");
 	const [wallets, setWallets] = useState<ScopedWallet[]>([]);
 	const [loading, setLoading] = useState(true);
@@ -195,7 +223,7 @@ export default function WalletsScreen() {
 						scopeType: "personal" as const,
 					})),
 					...householdRows.flat(),
-				].filter((wallet) => wallet.is_active !== false),
+				],
 			);
 		} catch (err) {
 			console.error("Error loading wallets:", err);
@@ -237,6 +265,7 @@ export default function WalletsScreen() {
 			: { type: "personal" as const };
 
 	const startEdit = (wallet: ScopedWallet) => {
+		if (!canCreate) return;
 		setEditingWallet(wallet);
 		setEditName(wallet.name);
 		setEditType(wallet.type as WalletType);
@@ -273,7 +302,7 @@ export default function WalletsScreen() {
 		}
 	};
 
-	const handleDelete = async (wallet: ScopedWallet) => {
+	const deleteConfirmedWallet = async (wallet: ScopedWallet) => {
 		setSubmitting(true);
 		setError(null);
 		try {
@@ -285,6 +314,26 @@ export default function WalletsScreen() {
 		} finally {
 			setSubmitting(false);
 		}
+	};
+
+	const handleDelete = (wallet: ScopedWallet) => {
+		if (!canCreate) return;
+		const message = tx.deleteMessage(wallet.name);
+		if (Platform.OS === "web") {
+			if (typeof globalThis.confirm === "function" && globalThis.confirm(`${tx.deleteTitle}\n\n${message}`)) {
+				void deleteConfirmedWallet(wallet);
+			}
+			return;
+		}
+
+		Alert.alert(tx.deleteTitle, message, [
+			{ text: tx.cancel, style: "cancel" },
+			{
+				text: tx.delete,
+				style: "destructive",
+				onPress: () => void deleteConfirmedWallet(wallet),
+			},
+		]);
 	};
 
 	const handleCreate = async () => {
@@ -321,26 +370,279 @@ export default function WalletsScreen() {
 		(sum, wallet) => sum + Number(wallet.balance ?? 0),
 		0,
 	);
+	// Dompet nonaktif tetap menyimpan uang: hitung terpisah supaya angka total
+	// tidak pernah menyembunyikan saldo yang tidak bisa dipakai transaksi baru.
+	const activeWallets = wallets.filter((wallet) => wallet.is_active !== false);
+	const inactiveWallets = wallets.filter((wallet) => wallet.is_active === false);
+	const activeBalance = activeWallets.reduce(
+		(sum, wallet) => sum + Number(wallet.balance ?? 0),
+		0,
+	);
+	const inactiveBalance = inactiveWallets.reduce(
+		(sum, wallet) => sum + Number(wallet.balance ?? 0),
+		0,
+	);
+
+	// Simple mode promotes wallets as a primary destination: balance hero, finance
+	// context, active count, account list, then the add action. Filters are demoted
+	// to secondary controls below the list so they no longer fill the first
+	// viewport. Legacy mode keeps the exact previous order and density.
+	const simple = featureFlags.simpleNavigation;
+	// T23 (simple premium): the screen must expose exactly ONE add-wallet CTA.
+	// Premium drops the duplicate header toggle (the body CTA stays); when
+	// `simpleNavigation` is OFF the header toggle is the only CTA and is kept.
+
+	// Simple mode mounts the create/edit forms after the whole wallet list, so on
+	// a long list an opened form can sit below the fold and the tap looks like a
+	// no-op. Scroll the newly opened form into view once it is laid out. The forms
+	// render at the tail of the simple layout, so scrollToEnd reveals them without
+	// measuring layout offsets, and it is implemented by both the native and the
+	// react-native-web ScrollView. Legacy mode is untouched (openForm stays null).
+	const walletScrollRef = useRef<ScrollView>(null);
+	const openForm = simple
+		? showCreate
+			? "create"
+			: editingWallet
+				? `edit:${editingWallet.id}`
+				: null
+		: null;
+	useEffect(() => {
+		if (!openForm) return;
+		const frame = requestAnimationFrame(() => {
+			walletScrollRef.current?.scrollToEnd({ animated: true });
+		});
+		return () => cancelAnimationFrame(frame);
+	}, [openForm]);
+
+	const editForm = editingWallet ? (
+		<View key="wallet-edit-form" testID="wallet-edit-form" style={styles.formCard}>
+			<Text style={styles.formTitle}>
+				{tx.edit} · {editingWallet.scopeLabel}
+			</Text>
+			<TextInput
+				accessibilityLabel={tx.name}
+				placeholder={tx.name}
+				placeholderTextColor={theme.colors.textMuted}
+				value={editName}
+				onChangeText={setEditName}
+				style={styles.input}
+			/>
+			{/* Balance is transaction-managed (database trigger) — display only */}
+			<View style={[styles.input, { justifyContent: "center" }]}>
+				<Text style={{ color: theme.colors.textSecondary, fontSize: 12, fontWeight: "700" }}>
+					{tx.editBalance}
+				</Text>
+				<Text style={{ color: theme.colors.textPrimary, fontSize: 16, marginTop: 4 }}>
+					{formatCurrency(Number(editingWallet.balance ?? 0))}
+				</Text>
+			</View>
+			<View style={styles.typeGrid}>
+				{walletTypes.map((walletType) => (
+					<Pressable
+						key={walletType}
+						testID={`wallet-edit-type-${walletType}`}
+						accessibilityRole="button"
+						accessibilityLabel={`${tx.edit} ${tx.types[walletType]}`}
+						accessibilityState={{ selected: editType === walletType }}
+						style={[
+							styles.typeChoice,
+							editType === walletType && styles.typeChoiceActive,
+						]}
+						onPress={() => setEditType(walletType)}
+					>
+						<Text
+							style={[
+								styles.typeChoiceText,
+								editType === walletType && styles.typeChoiceTextActive,
+							]}
+						>
+							{tx.types[walletType]}
+						</Text>
+					</Pressable>
+				))}
+			</View>
+			<View style={styles.editActionRow}>
+				<Pressable
+					testID="wallet-update-cancel"
+					accessibilityRole="button"
+					accessibilityLabel={tx.cancel}
+					style={styles.cancelButton}
+					onPress={cancelEdit}
+					disabled={submitting}
+				>
+					<Text style={styles.cancelButtonText}>{tx.cancel}</Text>
+				</Pressable>
+				<Pressable
+					testID="wallet-update-submit"
+					accessibilityRole="button"
+					accessibilityLabel={tx.update}
+					style={[styles.submitButton, styles.editSubmitButton, submitting && styles.disabledButton]}
+					onPress={handleUpdate}
+					disabled={submitting}
+				>
+					<Text style={styles.submitButtonText}>{tx.update}</Text>
+				</Pressable>
+			</View>
+		</View>
+	) : null;
+
+	const createForm = showCreate ? (
+		<View key="wallet-create-form" testID="wallet-create-form" style={styles.formCard}>
+			<Text style={styles.formTitle}>
+				{tx.formTitle} · {activeScopeLabel}
+			</Text>
+			<TextInput
+				accessibilityLabel={tx.name}
+				placeholder={tx.name}
+				placeholderTextColor={theme.colors.textMuted}
+				value={name}
+				onChangeText={setName}
+				style={styles.input}
+			/>
+			<TextInput
+				accessibilityLabel={tx.balance}
+				placeholder={tx.balance}
+				placeholderTextColor={theme.colors.textMuted}
+				value={balance}
+				onChangeText={setBalance}
+				keyboardType="numeric"
+				style={styles.input}
+			/>
+			<View style={styles.typeGrid}>
+				{walletTypes.map((walletType) => (
+					<Pressable
+						key={walletType}
+						testID={`wallet-type-${walletType}`}
+						accessibilityRole="button"
+						accessibilityLabel={`${tx.new} ${tx.types[walletType]}`}
+						accessibilityState={{ selected: type === walletType }}
+						style={[
+							styles.typeChoice,
+							type === walletType && styles.typeChoiceActive,
+						]}
+						onPress={() => setType(walletType)}
+					>
+						<Text
+							style={[
+								styles.typeChoiceText,
+								type === walletType && styles.typeChoiceTextActive,
+							]}
+						>
+							{tx.types[walletType]}
+						</Text>
+					</Pressable>
+				))}
+			</View>
+			<Pressable
+				testID="wallet-create-submit"
+				accessibilityRole="button"
+				accessibilityLabel={tx.save}
+				style={[styles.submitButton, submitting && styles.disabledButton]}
+				onPress={handleCreate}
+				disabled={submitting}
+			>
+				<Text style={styles.submitButtonText}>{tx.save}</Text>
+			</Pressable>
+		</View>
+	) : null;
+
+	const filterControls = (
+		<ScrollView
+			key="wallets-filter"
+			testID="wallets-filter"
+			horizontal
+			showsHorizontalScrollIndicator={false}
+			contentContainerStyle={styles.filterRow}
+		>
+			{(["all", ...walletTypes] as FilterType[]).map((filterValue) => (
+				<Pressable
+					key={filterValue}
+					accessibilityRole="button"
+					accessibilityLabel={`${tx.all}: ${filterValue === "all" ? tx.all : tx.types[filterValue]}`}
+					accessibilityState={{ selected: filter === filterValue }}
+					onPress={() => setFilter(filterValue)}
+					style={[
+						styles.filterChip,
+						filter === filterValue && styles.filterChipActive,
+					]}
+				>
+					<Text
+						style={[
+							styles.filterChipText,
+							filter === filterValue && styles.filterChipTextActive,
+						]}
+					>
+						{filterValue === "all" ? tx.all : tx.types[filterValue]}
+					</Text>
+				</Pressable>
+			))}
+		</ScrollView>
+	);
+
+	const loadingBlock = loading ? (
+		<View key="wallets-loading" testID="wallets-loading" style={styles.loadingInline}>
+			<ActivityIndicator color={fe.ink} />
+			<Text style={styles.loadingText}>{tx.loading}</Text>
+		</View>
+	) : null;
+
+	const errorBlock = error ? (
+		<Text key="wallets-error" testID="wallets-error" style={styles.errorText}>{error}</Text>
+	) : null;
+
+	const emptyBlock =
+		!loading && filtered.length === 0 ? (
+			<Text key="wallets-empty" testID="wallets-empty" style={styles.emptyText}>{tx.empty}</Text>
+		) : null;
+
+	const addWalletCta = simple ? (
+		<Pressable
+			key="wallets-add-cta"
+			testID="wallets-add-cta"
+			accessibilityRole="button"
+			accessibilityLabel={tx.add}
+			accessibilityState={{ disabled: !canCreate, expanded: showCreate }}
+			style={[styles.addCta, !canCreate && styles.disabledButton]}
+			onPress={() => canCreate && setShowCreate((value) => !value)}
+			disabled={!canCreate}
+		>
+			<Text style={styles.addCtaText}>{tx.add}</Text>
+		</Pressable>
+	) : null;
+
+	const filterSection = simple ? (
+		<View
+			key="wallets-filter-secondary"
+			testID="wallets-filter-secondary"
+			style={styles.filterSecondary}
+		>
+			<Text style={styles.filterSecondaryLabel}>{tx.filters}</Text>
+			{filterControls}
+		</View>
+	) : null;
 
 	return (
 		<PageEntrance testID="wallets-page-entrance" style={styles.screen}>
 			<ScrollView
+				ref={walletScrollRef}
 				contentContainerStyle={styles.content}
 				showsVerticalScrollIndicator={false}
 				refreshControl={
 					<RefreshControl
 						refreshing={loading}
 						onRefresh={loadWallets}
-						tintColor={theme.colors.brandPrimary}
+						tintColor={fe.ink}
 					/>
 				}
 			>
 				<StaggeredStack testIDPrefix="wallets-entrance">
-				<View key="wallets-header" testID="wallets-header" style={styles.headerRow}>
+				<LinearGradient key="wallets-header" testID="wallets-hero" colors={[fe.navySurface, fe.blueDeep, fe.blueBright]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.walletHero}>
+				<View testID="wallets-header" style={styles.headerRow}>
 					<View style={styles.headerCopy}>
 						<Text style={styles.title}>{tx.title}</Text>
 						<Text style={styles.subtitle}>{tx.subtitle}</Text>
 					</View>
+					{showsHeaderCreateToggle(premium, simple) ? (
 					<Pressable
 						testID="wallets-create-toggle"
 						accessibilityRole="button"
@@ -354,193 +656,67 @@ export default function WalletsScreen() {
 							{showCreate ? tx.cancel : tx.new}
 						</Text>
 					</Pressable>
+					) : null}
 				</View>
-
-				{editingWallet ? (
-					<View key="wallet-edit-form" testID="wallet-edit-form" style={styles.formCard}>
-						<Text style={styles.formTitle}>
-							{tx.edit} · {editingWallet.scopeLabel}
-						</Text>
-						<TextInput
-							accessibilityLabel={tx.name}
-							placeholder={tx.name}
-							placeholderTextColor={theme.colors.textMuted}
-							value={editName}
-							onChangeText={setEditName}
-							style={styles.input}
-						/>
-						{/* Balance is transaction-managed (database trigger) — display only */}
-						<View style={[styles.input, { justifyContent: "center" }]}>
-							<Text style={{ color: theme.colors.textSecondary, fontSize: 12, fontWeight: "700" }}>
-								{tx.editBalance}
-							</Text>
-							<Text style={{ color: theme.colors.textPrimary, fontSize: 16, marginTop: 4 }}>
-								{formatCurrency(Number(editingWallet.balance ?? 0))}
-							</Text>
-						</View>
-						<View style={styles.typeGrid}>
-							{walletTypes.map((walletType) => (
-								<Pressable
-									key={walletType}
-									testID={`wallet-edit-type-${walletType}`}
-									accessibilityRole="button"
-									accessibilityLabel={`${tx.edit} ${tx.types[walletType]}`}
-									accessibilityState={{ selected: editType === walletType }}
-									style={[
-										styles.typeChoice,
-										editType === walletType && styles.typeChoiceActive,
-									]}
-									onPress={() => setEditType(walletType)}
-								>
-									<Text
-										style={[
-											styles.typeChoiceText,
-											editType === walletType && styles.typeChoiceTextActive,
-										]}
-									>
-										{tx.types[walletType]}
-									</Text>
-								</Pressable>
-							))}
-						</View>
-						<View style={styles.editActionRow}>
-							<Pressable
-								testID="wallet-update-cancel"
-								accessibilityRole="button"
-								accessibilityLabel={tx.cancel}
-								style={styles.cancelButton}
-								onPress={cancelEdit}
-								disabled={submitting}
-							>
-								<Text style={styles.cancelButtonText}>{tx.cancel}</Text>
-							</Pressable>
-							<Pressable
-								testID="wallet-update-submit"
-								accessibilityRole="button"
-								accessibilityLabel={tx.update}
-								style={[styles.submitButton, styles.editSubmitButton, submitting && styles.disabledButton]}
-								onPress={handleUpdate}
-								disabled={submitting}
-							>
-								<Text style={styles.submitButtonText}>{tx.update}</Text>
-							</Pressable>
-						</View>
-					</View>
-				) : null}
-
-				{showCreate ? (
-					<View key="wallet-create-form" testID="wallet-create-form" style={styles.formCard}>
-						<Text style={styles.formTitle}>
-							{tx.formTitle} · {activeScopeLabel}
-						</Text>
-						<TextInput
-							accessibilityLabel={tx.name}
-							placeholder={tx.name}
-							placeholderTextColor={theme.colors.textMuted}
-							value={name}
-							onChangeText={setName}
-							style={styles.input}
-						/>
-						<TextInput
-							accessibilityLabel={tx.balance}
-							placeholder={tx.balance}
-							placeholderTextColor={theme.colors.textMuted}
-							value={balance}
-							onChangeText={setBalance}
-							keyboardType="numeric"
-							style={styles.input}
-						/>
-						<View style={styles.typeGrid}>
-							{walletTypes.map((walletType) => (
-								<Pressable
-									key={walletType}
-									testID={`wallet-type-${walletType}`}
-									accessibilityRole="button"
-									accessibilityLabel={`${tx.new} ${tx.types[walletType]}`}
-									accessibilityState={{ selected: type === walletType }}
-									style={[
-										styles.typeChoice,
-										type === walletType && styles.typeChoiceActive,
-									]}
-									onPress={() => setType(walletType)}
-								>
-									<Text
-										style={[
-											styles.typeChoiceText,
-											type === walletType && styles.typeChoiceTextActive,
-										]}
-									>
-										{tx.types[walletType]}
-									</Text>
-								</Pressable>
-							))}
-						</View>
-						<Pressable
-							testID="wallet-create-submit"
-							accessibilityRole="button"
-							accessibilityLabel={tx.save}
-							style={[styles.submitButton, submitting && styles.disabledButton]}
-							onPress={handleCreate}
-							disabled={submitting}
-						>
-							<Text style={styles.submitButtonText}>{tx.save}</Text>
-						</Pressable>
-					</View>
-				) : null}
-
 				<View key="wallets-total-hero" testID="wallets-total-hero" style={styles.totalCard}>
 					<Text style={styles.totalLabel}>{tx.total}</Text>
-					<Text style={styles.totalValue}>{formatCurrency(totalBalance)}</Text>
-					<View style={styles.totalRow}>
-						<View style={styles.totalChip}>
-							<Text style={styles.totalChipText}>
-								{wallets.length} {tx.active}
+					<Text testID="wallets-total-value" style={styles.totalValue}>{formatCurrency(totalBalance)}</Text>
+					{simple ? (
+						<View testID="wallets-context-label" style={styles.contextPill}>
+							<Text style={styles.contextPillText}>
+								{`${tx.context}: ${activeScopeLabel}`}
 							</Text>
+						</View>
+					) : null}
+					<View style={styles.totalRow}>
+						<View testID="wallets-active-count" style={styles.totalChip}>
+							<Text style={styles.totalChipText}>
+								{isEn
+									? `${activeWallets.length} active`
+									: `${activeWallets.length} ${tx.active}`}
+							</Text>
+						</View>
+						{inactiveWallets.length > 0 ? (
+							<View testID="wallets-inactive-count" style={styles.totalChip}>
+								<Text style={styles.totalChipText}>
+									{isEn
+										? `${inactiveWallets.length} inactive`
+										: `${inactiveWallets.length} nonaktif`}
+								</Text>
+							</View>
+						) : null}
+					</View>
+					{inactiveBalance > 0 ? (
+						<Text testID="wallets-split-balance" style={styles.totalSplit}>
+							{isEn
+								? `Active ${formatCurrency(activeBalance)} · Inactive ${formatCurrency(inactiveBalance)}`
+								: `Aktif ${formatCurrency(activeBalance)} · Nonaktif ${formatCurrency(inactiveBalance)}`}
+						</Text>
+					) : null}
+					<View testID="wallets-card-stack" style={styles.walletStack}>
+						<View style={styles.walletStackBack} />
+						<View style={styles.walletStackMiddle} />
+						<View style={styles.walletStackFront}>
+							<View>
+								<KaswiseLogoMark size={14} onDark testID="wallets-stack-logo" />
+								<Text style={styles.walletStackMeta}>{wallets[0] ? tx.types[wallets[0].type as WalletType] : tx.subtitle}</Text>
+							</View>
+							<Text testID="wallets-stack-balance" style={styles.walletStackBalance}>{wallets[0] ? formatCurrency(Number(wallets[0].balance ?? 0)) : "—"}</Text>
 						</View>
 					</View>
 				</View>
+				</LinearGradient>
 
-				<ScrollView
-					key="wallets-filter"
-					testID="wallets-filter"
-					horizontal
-					showsHorizontalScrollIndicator={false}
-					contentContainerStyle={styles.filterRow}
-				>
-					{(["all", ...walletTypes] as FilterType[]).map((filterValue) => (
-						<Pressable
-							key={filterValue}
-							accessibilityRole="button"
-							accessibilityLabel={`${tx.all}: ${filterValue === "all" ? tx.all : tx.types[filterValue]}`}
-							accessibilityState={{ selected: filter === filterValue }}
-							onPress={() => setFilter(filterValue)}
-							style={[
-								styles.filterChip,
-								filter === filterValue && styles.filterChipActive,
-							]}
-						>
-							<Text
-								style={[
-									styles.filterChipText,
-									filter === filterValue && styles.filterChipTextActive,
-								]}
-							>
-								{filterValue === "all" ? tx.all : tx.types[filterValue]}
-							</Text>
-						</Pressable>
-					))}
-				</ScrollView>
+				{!simple ? editForm : null}
 
-				{loading ? (
-					<View key="wallets-loading" testID="wallets-loading" style={styles.loadingInline}>
-						<ActivityIndicator color={theme.colors.brandPrimary} />
-						<Text style={styles.loadingText}>{tx.loading}</Text>
-					</View>
-				) : null}
-				{error ? <Text key="wallets-error" testID="wallets-error" style={styles.errorText}>{error}</Text> : null}
-				{!loading && filtered.length === 0 ? (
-					<Text key="wallets-empty" testID="wallets-empty" style={styles.emptyText}>{tx.empty}</Text>
-				) : null}
+				{!simple ? createForm : null}
+
+
+				{!simple ? filterControls : null}
+
+				{loadingBlock}
+				{errorBlock}
+				{emptyBlock}
 
 				{filtered.map((wallet) => (
 					<View
@@ -553,22 +729,31 @@ export default function WalletsScreen() {
 								style={[
 									styles.walletIcon,
 									{
-										backgroundColor: `${getTypeColor(wallet.type as WalletType, theme)}26`,
+										backgroundColor: `${getTypeColor(wallet.type as WalletType)}26`,
 									},
 								]}
 							>
-								<Text style={styles.walletIconText}>
-									{typeIcons[wallet.type as WalletType]}
-								</Text>
+								<KaswiseIcon
+									name={typeIcons[wallet.type as WalletType]}
+									size={22}
+									color={getTypeColor(wallet.type as WalletType)}
+								/>
 							</View>
 							<View style={styles.walletInfo}>
-								<Text style={styles.walletName}>{wallet.name}</Text>
+								<View style={styles.walletNameRow}>
+									<Text style={styles.walletName}>{wallet.name}</Text>
+									{wallet.is_active === false ? (
+										<View testID={`wallet-inactive-badge-${wallet.id}`} style={styles.inactiveBadge}>
+											<Text style={styles.inactiveBadgeText}>{isEn ? "Inactive" : "Nonaktif"}</Text>
+										</View>
+									) : null}
+								</View>
 								<View style={styles.walletMeta}>
 									<View
 										style={[
 											styles.typeBadge,
 											{
-												backgroundColor: `${getTypeColor(wallet.type as WalletType, theme)}26`,
+												backgroundColor: `${getTypeColor(wallet.type as WalletType)}26`,
 											},
 										]}
 									>
@@ -576,7 +761,7 @@ export default function WalletsScreen() {
 											style={[
 												styles.typeBadgeText,
 												{
-													color: getTypeColor(wallet.type as WalletType, theme),
+													color: getTypeColor(wallet.type as WalletType),
 												},
 											]}
 										>
@@ -604,7 +789,10 @@ export default function WalletsScreen() {
 							</View>
 						</View>
 						<View style={styles.walletBottom}>
-							<Text style={styles.walletBalance}>
+							<Text
+								testID={`wallet-balance-${wallet.id}`}
+								style={styles.walletBalance}
+							>
 								{formatCurrency(Number(wallet.balance ?? 0))}
 							</Text>
 							<View style={styles.walletActions}>
@@ -612,8 +800,10 @@ export default function WalletsScreen() {
 									testID={`wallet-edit-${wallet.id}`}
 									accessibilityRole="button"
 									accessibilityLabel={`${tx.edit} ${wallet.name}`}
-									style={styles.walletActionButton}
-									onPress={() => startEdit(wallet)}
+									accessibilityState={{ disabled: !canCreate }}
+									style={[styles.walletActionButton, !canCreate && styles.disabledButton]}
+									onPress={() => canCreate && startEdit(wallet)}
+									disabled={!canCreate}
 								>
 									<Text style={styles.walletActionText}>{tx.edit}</Text>
 								</Pressable>
@@ -621,8 +811,14 @@ export default function WalletsScreen() {
 									testID={`wallet-delete-${wallet.id}`}
 									accessibilityRole="button"
 									accessibilityLabel={`${tx.delete} ${wallet.name}`}
-									style={[styles.walletActionButton, styles.walletDeleteButton]}
-									onPress={() => handleDelete(wallet)}
+									accessibilityState={{ disabled: !canCreate }}
+									style={[
+										styles.walletActionButton,
+										styles.walletDeleteButton,
+										!canCreate && styles.disabledButton,
+									]}
+									onPress={() => canCreate && handleDelete(wallet)}
+									disabled={!canCreate}
 								>
 									<Text
 										style={[styles.walletActionText, styles.walletDeleteText]}
@@ -634,7 +830,12 @@ export default function WalletsScreen() {
 						</View>
 					</View>
 				))}
-				</StaggeredStack>
+
+				{simple ? addWalletCta : null}
+				{simple ? createForm : null}
+				{simple ? editForm : null}
+				{simple ? filterSection : null}
+			</StaggeredStack>
 
 
 				<View style={{ height: 100 }} />
@@ -643,10 +844,15 @@ export default function WalletsScreen() {
 	);
 }
 
-function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
+function createStyles(
+	theme: ReturnType<typeof useTheme>["theme"],
+	premium: boolean,
+	polish = false,
+) {
 	return StyleSheet.create({
-		screen: { flex: 1, backgroundColor: theme.colors.background },
-		content: { padding: 20, gap: 10, paddingBottom: 26 },
+		screen: { flex: 1, backgroundColor: fe.paper },
+		content: { gap: 10, paddingBottom: 26, backgroundColor: fe.paper },
+		walletHero: { paddingHorizontal: 20, paddingTop: 20, paddingBottom: 30, borderBottomLeftRadius: 42, borderBottomRightRadius: 42, overflow: "hidden", gap: 18 },
 		headerRow: {
 			flexDirection: "row",
 			justifyContent: "space-between",
@@ -656,31 +862,34 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 		},
 		headerCopy: { flex: 1 },
 		title: {
-			color: theme.colors.textPrimary,
+			color: fe.white,
 			fontSize: theme.typography.fontSize["4xl"],
-			fontWeight: theme.typography.fontWeight.extrabold,
-			letterSpacing: theme.typography.letterSpacing.tight,
+			fontWeight: polish ? "600" : theme.typography.fontWeight.extrabold,
+			letterSpacing: polish ? -0.6 : theme.typography.letterSpacing.tight,
 		},
 		subtitle: {
-			color: theme.colors.textSecondary,
+			color: polish ? pwaHeroCaption : "rgba(255,255,255,0.64)",
 			fontSize: theme.typography.fontSize.sm,
 			marginTop: 2,
 		},
 		addButton: {
 			minHeight: 44,
 			justifyContent: "center",
-			backgroundColor: theme.colors.brandPrimary,
+			backgroundColor: "rgba(255,255,255,0.14)",
+			borderWidth: 1,
+			borderColor: "rgba(255,255,255,0.22)",
 			borderRadius: theme.radius.pill,
 			paddingHorizontal: 14,
 			paddingVertical: 8,
 		},
 		disabledButton: { opacity: 0.5 },
 		addButtonText: {
-			color: theme.colors.textInverse,
+			color: fe.white,
 			fontSize: theme.typography.fontSize.sm,
 			fontWeight: theme.typography.fontWeight.bold,
 		},
 		formCard: {
+			marginHorizontal: 20,
 			backgroundColor: theme.colors.surface,
 			borderWidth: 1,
 			borderColor: theme.colors.borderSoft,
@@ -691,7 +900,7 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 		formTitle: {
 			color: theme.colors.textPrimary,
 			fontSize: 14,
-			fontWeight: "800",
+			fontWeight: polish ? "600" : "800",
 		},
 		input: {
 			backgroundColor: theme.colors.card,
@@ -715,26 +924,40 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			paddingVertical: 8,
 		},
 		typeChoiceActive: {
-			backgroundColor: theme.colors.brandPrimary,
-			borderColor: theme.colors.brandPrimary,
+			backgroundColor: fe.ink,
+			borderColor: fe.ink,
 		},
 		typeChoiceText: {
 			color: theme.colors.textSecondary,
 			fontSize: 12,
 			fontWeight: "700",
 		},
-		typeChoiceTextActive: { color: theme.colors.textInverse },
+		typeChoiceTextActive: { color: fe.white },
 		submitButton: {
 			minHeight: 44,
 			borderRadius: theme.radius.pill,
-			backgroundColor: theme.colors.brandPrimary,
+			backgroundColor: fe.ink,
 			alignItems: "center",
 			justifyContent: "center",
 		},
 		submitButtonText: {
-			color: theme.colors.textInverse,
+			color: fe.white,
 			fontSize: 14,
-			fontWeight: "800",
+			fontWeight: polish ? "600" : "800",
+		},
+		addCta: {
+			marginHorizontal: 20,
+			minHeight: 52,
+			borderRadius: theme.radius.pill,
+			backgroundColor: fe.ink,
+			alignItems: "center",
+			justifyContent: "center",
+			paddingHorizontal: 18,
+		},
+		addCtaText: {
+			color: fe.white,
+			fontSize: 15,
+			fontWeight: polish ? "600" : "800",
 		},
 		editActionRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
 		editSubmitButton: { flexGrow: 1, paddingHorizontal: 14 },
@@ -751,43 +974,65 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 		cancelButtonText: {
 			color: theme.colors.textSecondary,
 			fontSize: 14,
-			fontWeight: "800",
+			fontWeight: polish ? "600" : "800",
 		},
 		totalCard: {
-			backgroundColor: theme.colors.card,
-			borderRadius: 24,
-			borderWidth: 1,
-			borderColor: theme.colors.borderSoft,
-			padding: 18,
+			backgroundColor: "transparent",
+			borderRadius: 0,
+			borderWidth: 0,
+			padding: 0,
 			gap: 6,
 			overflow: "hidden",
-			...(theme.mode === "light" ? theme.shadow.lg : {}),
 		},
 		totalLabel: {
-			color: theme.colors.textMuted,
+			color: polish ? pwaHeroCaption : "rgba(255,255,255,0.62)",
 			fontSize: theme.typography.fontSize.sm,
 			fontWeight: theme.typography.fontWeight.semibold,
 		},
 		totalValue: {
-			color: theme.colors.textPrimary,
-			fontSize: theme.typography.fontSize["4xl"],
-			fontWeight: theme.typography.fontWeight.extrabold,
-			letterSpacing: theme.typography.letterSpacing.tight,
+			color: fe.white,
+			...(premium
+				? { ...resolveExperienceTextStyle("walletTotal"), ...(polish ? { fontWeight: "600" as const } : null) }
+				: {
+						fontSize: theme.typography.fontSize["4xl"],
+						fontWeight: theme.typography.fontWeight.extrabold,
+						letterSpacing: theme.typography.letterSpacing.tight,
+					}),
 		},
-		totalRow: { marginTop: 6 },
-		totalChip: {
-			backgroundColor: theme.colors.glass.background,
+		totalRow: { marginTop: 6, flexDirection: "row", gap: 8, flexWrap: "wrap" },
+		totalSplit: { marginTop: 6, color: theme.colors.textSecondary, fontSize: theme.typography.fontSize.sm },
+		// PWA polish: the active-wallet count is a caption, so it drops the pill chrome.
+		totalChip: polish
+			? { paddingVertical: 5, alignSelf: "flex-start" }
+			: {
+					backgroundColor: "rgba(255,255,255,0.12)",
+					borderWidth: 1,
+					borderColor: "rgba(255,255,255,0.20)",
+					borderRadius: 999,
+					paddingHorizontal: 12,
+					paddingVertical: 5,
+					alignSelf: "flex-start",
+				},
+		totalChipText: {
+			color: polish ? pwaHeroCaption : "rgba(255,255,255,0.76)",
+			fontSize: theme.typography.fontSize.sm,
+			fontWeight: theme.typography.fontWeight.semibold,
+		},
+		// PWA polish: the context label shares the caption treatment of the count below it.
+		contextPill: polish ? { marginTop: 6, alignSelf: "flex-start", paddingVertical: 5 } : {
+			marginTop: 6,
+			alignSelf: "flex-start",
+			backgroundColor: "rgba(255,255,255,0.10)",
 			borderWidth: 1,
-			borderColor: theme.colors.glass.border,
+			borderColor: "rgba(255,255,255,0.18)",
 			borderRadius: 999,
 			paddingHorizontal: 12,
 			paddingVertical: 5,
-			alignSelf: "flex-start",
 		},
-		totalChipText: {
-			color: theme.colors.textSecondary,
+		contextPillText: {
+			color: polish ? pwaHeroCaption : "rgba(255,255,255,0.86)",
 			fontSize: theme.typography.fontSize.sm,
-			fontWeight: theme.typography.fontWeight.semibold,
+			fontWeight: theme.typography.fontWeight.bold,
 		},
 		loadingInline: {
 			minHeight: 44,
@@ -801,7 +1046,25 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			fontSize: 12,
 			fontWeight: "700",
 		},
-		filterRow: { gap: 8, paddingVertical: 2 },
+		walletStack: { height: 104, marginTop: 12, position: "relative" },
+		walletStackBack: { position: "absolute", left: 30, right: 30, top: 0, height: 70, borderRadius: 22, backgroundColor: "rgba(255,255,255,0.10)" },
+		walletStackMiddle: { position: "absolute", left: 15, right: 15, top: 12, height: 74, borderRadius: 22, backgroundColor: "rgba(45,130,212,0.35)" },
+		walletStackFront: { position: "absolute", left: 0, right: 0, top: 25, minHeight: 76, borderRadius: 22, backgroundColor: "rgba(72,151,211,0.34)", borderWidth: 1, borderColor: "rgba(255,255,255,0.18)", paddingHorizontal: 16, flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+		walletStackMeta: { color: "rgba(255,255,255,0.64)", fontSize: 11, marginTop: 3 },
+		walletStackBalance: {
+			color: fe.white,
+			fontSize: 14,
+			fontWeight: polish ? "600" : "800",
+			...(premium ? { fontVariant: [...experienceTabularNumerals] } : null),
+		},
+		filterRow: { gap: 8, paddingVertical: 2, paddingHorizontal: 20 },
+		filterSecondary: { gap: 8, paddingVertical: 4, marginTop: 4 },
+		filterSecondaryLabel: {
+			color: theme.colors.textMuted,
+			fontSize: 11,
+			fontWeight: polish ? "600" : "800",
+			paddingHorizontal: 20,
+		},
 		filterChip: {
 			minHeight: 44,
 			justifyContent: "center",
@@ -813,16 +1076,17 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			backgroundColor: theme.colors.surface,
 		},
 		filterChipActive: {
-			backgroundColor: theme.colors.brandPrimary,
-			borderColor: theme.colors.brandPrimary,
+			backgroundColor: fe.ink,
+			borderColor: fe.ink,
 		},
 		filterChipText: {
 			color: theme.colors.textSecondary,
 			fontSize: 12,
 			fontWeight: "700",
 		},
-		filterChipTextActive: { color: theme.colors.textInverse },
+		filterChipTextActive: { color: fe.white },
 		walletCard: {
+			marginHorizontal: 20,
 			backgroundColor: theme.colors.surface,
 			borderRadius: 18,
 			borderWidth: 1,
@@ -830,7 +1094,11 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			padding: 14,
 			gap: 12,
 		},
-		walletTop: { flexDirection: "row", alignItems: "center", gap: 12 },
+		walletTop: {
+			flexDirection: "row",
+			alignItems: "center",
+			gap: premium ? experienceTokens.spacing[3] : 12,
+		},
 		walletIcon: {
 			width: 46,
 			height: 46,
@@ -838,11 +1106,24 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			alignItems: "center",
 			justifyContent: "center",
 		},
-		walletIconText: { fontSize: 22 },
 		walletInfo: { flex: 1, gap: 4 },
+		walletNameRow: { flexDirection: "row", alignItems: "center", gap: 8, flexWrap: "wrap" },
 		walletName: {
 			color: theme.colors.textPrimary,
 			fontSize: theme.typography.fontSize.lg,
+			fontWeight: theme.typography.fontWeight.bold,
+		},
+		inactiveBadge: {
+			paddingHorizontal: 8,
+			paddingVertical: 2,
+			borderRadius: theme.radius.pill,
+			backgroundColor: theme.colors.mutedSurface,
+			borderWidth: 1,
+			borderColor: theme.colors.borderBase,
+		},
+		inactiveBadgeText: {
+			color: theme.colors.textMuted,
+			fontSize: theme.typography.fontSize.xs,
 			fontWeight: theme.typography.fontWeight.bold,
 		},
 		walletMeta: {
@@ -875,7 +1156,7 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 		scopeBadgeText: {
 			color: theme.colors.textMuted,
 			fontSize: 11,
-			fontWeight: "800",
+			fontWeight: polish ? "600" : "800",
 		},
 		scopeBadgeTextHousehold: { color: theme.colors.info },
 		walletBottom: {
@@ -885,9 +1166,10 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			gap: 10,
 		},
 		walletBalance: {
-			color: theme.colors.textPrimary,
+			color: fe.financialTotal,
 			fontSize: 18,
-			fontWeight: "800",
+			fontWeight: polish ? "600" : "800",
+			...(premium ? { fontVariant: [...experienceTabularNumerals] } : null),
 		},
 		walletActions: { flexDirection: "row", gap: 8, flexWrap: "wrap" },
 		walletActionButton: {
@@ -907,7 +1189,7 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 		walletActionText: {
 			color: theme.colors.textSecondary,
 			fontSize: 12,
-			fontWeight: "800",
+			fontWeight: polish ? "600" : "800",
 		},
 		walletDeleteText: { color: theme.colors.danger },
 		errorText: { color: theme.colors.danger, fontSize: 12, fontWeight: "700" },

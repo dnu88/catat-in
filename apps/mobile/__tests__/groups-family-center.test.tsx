@@ -5,6 +5,8 @@ import {
 	screen,
 	waitFor,
 } from "@testing-library/react-native";
+import { StyleSheet } from "react-native";
+import type { StyleProp, ViewStyle } from "react-native";
 
 import GroupsScreen from "../app/(tabs)/groups";
 import { I18nProvider, useI18n, type Language } from "../src/i18n/i18n-context";
@@ -39,7 +41,9 @@ jest.mock("../src/state/finance-context", () => ({
 
 function LanguageSetter({ language }: { language: Language }) {
 	const { setLanguage } = useI18n();
-	React.useEffect(() => setLanguage(language), [language, setLanguage]);
+	React.useEffect(() => {
+		void setLanguage(language);
+	}, [language, setLanguage]);
 	return null;
 }
 
@@ -52,6 +56,10 @@ function renderGroupsScreen(language: Language = "id") {
 			</ThemeProvider>
 		</I18nProvider>,
 	);
+}
+
+function getFlattenedStyle(node: { props: { style?: StyleProp<ViewStyle> } }): ViewStyle {
+	return StyleSheet.flatten(node.props.style) ?? {};
 }
 
 describe("Family Center screen", () => {
@@ -86,6 +94,18 @@ describe("Family Center screen", () => {
 		expect(await screen.findByText("Keluarga")).toBeTruthy();
 		expect(await screen.findByText("Keluarga Budi")).toBeTruthy();
 		expect(screen.getByText("Admin")).toBeTruthy();
+	});
+
+	it("gives both header actions a real 44x44 touch box", async () => {
+		renderGroupsScreen();
+
+		await screen.findByText("Keluarga");
+
+		for (const label of ["Buat keluarga baru", "Gabung keluarga"]) {
+			const control = getFlattenedStyle(screen.getByLabelText(label));
+			expect(Number(control.minHeight)).toBeGreaterThanOrEqual(44);
+			expect(Number(control.minWidth)).toBeGreaterThanOrEqual(44);
+		}
 	});
 
 	it("uses the selected app language for Family Center copy", async () => {

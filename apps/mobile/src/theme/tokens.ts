@@ -1,25 +1,13 @@
-// =============================================================
-// Kaswise — Theme tokens (Dark Luxury system)
-//
-// Drop this into `mobile/src/theme/tokens.ts` to replace the old
-// indigo+emerald light system with the new dark luxury direction.
-// Keeps the same shape (light / dark / radius / spacing /
-// typography / opacity / shadow) so `toMobileTheme()` and the
-// rest of the consumers in mobile/src/* keep working unchanged.
-//
-// Light variant = "light luxury" (warm bone ground, white cards,
-// neon CTAs with near-black text). Dark variant = the matte-black
-// brand surface.
-// =============================================================
+import { financeEditorial as fe } from './finance-editorial'
 
 export type ThemeMode = 'light' | 'dark'
 
 const radius = {
-  sm: 10,
-  md: 14,
-  lg: 18,
-  xl: 20,
-  '2xl': 24,
+  sm: 12,
+  md: 16,
+  lg: 22,
+  xl: 24,
+  '2xl': 28,
   pill: 999,
 } as const
 
@@ -34,185 +22,98 @@ const spacing = {
 } as const
 
 const typography = {
-  fontFamily:
-    'Inter, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif',
+  fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif',
   fontSize: {
-    xs: 10, sm: 12, md: 14, lg: 16, xl: 18,
+    xs: 11, sm: 12, md: 14, lg: 16, xl: 18,
     '2xl': 20, '3xl': 24, '4xl': 28, '5xl': 32,
   },
   fontWeight: {
-    normal: '400',
-    medium: '500',
-    semibold: '600',
-    bold: '700',
-    extrabold: '800',
+    normal: '400', medium: '500', semibold: '600', bold: '700', extrabold: '800',
   },
   lineHeight: { tight: 1.2, normal: 1.4, relaxed: 1.6 },
   letterSpacing: { tight: -0.5, normal: 0, wide: 0.4 },
-  // Role-specific (kept for backward compatibility with the old tokens)
-  support:      { fontSize: 11, fontWeight: '800' },
-  cardTitle:    { fontSize: 16, fontWeight: '700' },
-  sectionTitle: { fontSize: 15, fontWeight: '700' },
-  metric:       { fontSize: 20, fontWeight: '800' },
-  screenTitle:  { fontSize: 22, fontWeight: '800' },
-  chip:         { fontSize: 11, fontWeight: '800' },
+  support: { fontSize: 11, fontWeight: '800' },
+  cardTitle: { fontSize: 16, fontWeight: '600' },
+  sectionTitle: { fontSize: 13, fontWeight: '700' },
+  metric: { fontSize: 20, fontWeight: '800' },
+  screenTitle: { fontSize: 28, fontWeight: '700' },
+  chip: { fontSize: 11, fontWeight: '800' },
 } as const
 
 const opacity = {
-  0: 0,
-  10: 0.1,
-  14: 0.14,
-  15: 0.15,
-  18: 0.18,
-  20: 0.2,
-  25: 0.25,
-  30: 0.3,
-  40: 0.4,
-  50: 0.5,
-  60: 0.6,
-  65: 0.65,
-  70: 0.7,
-  72: 0.72,
-  75: 0.75,
-  80: 0.8,
-  90: 0.9,
-  100: 1,
+  0: 0, 10: 0.1, 14: 0.14, 15: 0.15, 18: 0.18, 20: 0.2,
+  25: 0.25, 30: 0.3, 40: 0.4, 50: 0.5, 60: 0.6, 65: 0.65,
+  70: 0.7, 72: 0.72, 75: 0.75, 80: 0.8, 90: 0.9, 100: 1,
 } as const
 
-export const kaswiseTokens = {
-  // -------------------------------------------------------
-  // DARK LUXURY — the brand-canonical theme
-  // -------------------------------------------------------
-  dark: {
-    color: {
-      bg: {
-        base:     '#141414',  // Matte Black — app background
-        surface:  '#1E1E1A',  // Surface Grey — cards / UI elements
-        card:     '#18181A',  // Component card surface
-        muted:    '#242427',  // Elevated — pills, modals, nested cards
-        elevated: '#242427',
-        tabBar:   '#18181A',
-        header:   '#0A0A0A',  // Deep Black — hero, footer, nav, splash
-      },
-      text: {
-        primary:   '#FFFFFF',
-        secondary: '#E5E7EB',
-        muted:     '#9CA3AF',
-        dim:       '#9CA3AF',
-        inverse:   '#0A0A0A',
-      },
-      border: {
-        soft:   'rgba(255, 255, 255, 0.06)',
-        base:   'rgba(255, 255, 255, 0.10)',
-        strong: 'rgba(255, 255, 255, 0.18)',
-      },
-      brand: {
-        primary:        '#A3FF12',  // Neon Emerald
-        primaryDeep:    '#65A30D',  // Darker neon (for accents on light surfaces)
-        secondary:      '#4A80F0',  // Soft Navy
-        secondaryDeep:  '#2A5DD0',
-      },
-      status: {
-        success: '#A3FF12',
-        danger:  '#FF7B7B',
-        warning: '#FFC06D',
-        info:    '#38BDF8',
-      },
-      iconBubbles: {
-        primary: { background: 'rgba(163, 255, 18, 0.14)', border: 'rgba(163, 255, 18, 0.25)', color: '#A3FF12' },
-        navy:    { background: 'rgba(74, 128, 240, 0.14)', border: 'rgba(74, 128, 240, 0.30)', color: '#4A80F0' },
-        accent:  { background: 'rgba(74, 128, 240, 0.14)', border: 'rgba(74, 128, 240, 0.30)', color: '#4A80F0' },
-        success: { background: 'rgba(163, 255, 18, 0.10)', border: 'rgba(163, 255, 18, 0.20)', color: '#A3FF12' },
-        warning: { background: 'rgba(255, 192, 109, 0.14)', border: 'rgba(255, 192, 109, 0.30)', color: '#FFC06D' },
-        danger:  { background: 'rgba(255, 123, 123, 0.14)', border: 'rgba(255, 123, 123, 0.30)', color: '#FF7B7B' },
-        info:    { background: 'rgba(56, 189, 248, 0.14)',  border: 'rgba(56, 189, 248, 0.30)',  color: '#38BDF8' },
-      },
-      glass: {
-        background: 'rgba(255, 255, 255, 0.06)',
-        border:     'rgba(255, 255, 255, 0.12)',
-      },
-    },
-    radius,
-    spacing,
-    typography,
-    opacity,
-    shadow: {
-      sm: { shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.30, shadowRadius: 2,  elevation: 2 },
-      md: { shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.30, shadowRadius: 12, elevation: 6 },
-      lg: { shadowColor: '#000', shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.45, shadowRadius: 30, elevation: 12 },
-      // Neon glow — apply to the FAB, primary buttons on press, and CTAs
-      neon: {
-        shadowColor: '#A3FF12', shadowOffset: { width: 0, height: 8 },
-        shadowOpacity: 0.45, shadowRadius: 22, elevation: 16,
-      },
-    },
+const operationalColors = {
+  bg: {
+    base: fe.paper,
+    surface: fe.white,
+    card: fe.white,
+    muted: '#FAFAF5',
+    elevated: fe.white,
+    tabBar: fe.white,
+    header: fe.white,
   },
+  text: {
+    primary: fe.ink,
+    secondary: fe.textSecondary,
+    muted: fe.textMuted,
+    dim: fe.textMuted,
+    inverse: fe.white,
+  },
+  border: {
+    soft: fe.line,
+    base: 'rgba(6, 10, 28, 0.12)',
+    strong: 'rgba(6, 10, 28, 0.18)',
+  },
+  brand: {
+    primary: fe.blueBright,
+    primaryDeep: fe.blueDeep,
+    secondary: fe.blue,
+    secondaryDeep: fe.navySurface,
+  },
+  status: {
+    success: fe.successText,
+    danger: fe.danger,
+    warning: fe.warning,
+    info: fe.info,
+  },
+  iconBubbles: {
+    primary: { background: 'rgba(23, 139, 208, 0.12)', border: 'rgba(23, 139, 208, 0.26)', color: fe.blue },
+    navy: { background: 'rgba(12, 78, 145, 0.12)', border: 'rgba(12, 78, 145, 0.25)', color: fe.blue },
+    accent: { background: 'rgba(23, 139, 208, 0.12)', border: 'rgba(23, 139, 208, 0.25)', color: fe.blue },
+    success: { background: 'rgba(34, 197, 94, 0.12)', border: 'rgba(34, 197, 94, 0.24)', color: fe.successText },
+    warning: { background: 'rgba(138, 75, 8, 0.12)', border: 'rgba(138, 75, 8, 0.24)', color: fe.warning },
+    danger: { background: 'rgba(180, 35, 24, 0.10)', border: 'rgba(180, 35, 24, 0.24)', color: fe.danger },
+    info: { background: 'rgba(7, 94, 145, 0.10)', border: 'rgba(7, 94, 145, 0.24)', color: fe.info },
+  },
+  glass: {
+    background: 'rgba(255, 255, 255, 0.60)',
+    border: fe.line,
+  },
+} as const
 
-  // -------------------------------------------------------
-  // LIGHT LUXURY — warm bone counterpart, same accents
-  // -------------------------------------------------------
-  light: {
-    color: {
-      bg: {
-        base:     '#F5F5F0',  // Warm bone ground
-        surface:  '#FFFFFF',
-        card:     '#FFFFFF',
-        muted:    '#FAFAF5',
-        elevated: '#FFFFFF',
-        tabBar:   '#FFFFFF',
-        header:   '#FFFFFF',
-      },
-      text: {
-        primary:   '#0A0A0A',
-        secondary: '#4B5563',
-        muted:     '#6B7280',
-        dim:       '#6B7280',
-        inverse:   '#FFFFFF',
-      },
-      border: {
-        soft:   'rgba(10, 10, 10, 0.06)',
-        base:   'rgba(10, 10, 10, 0.10)',
-        strong: 'rgba(10, 10, 10, 0.16)',
-      },
-      brand: {
-        primary:        '#3F6212',
-        primaryDeep:    '#3F6212',
-        secondary:      '#4A80F0',
-        secondaryDeep:  '#2A5DD0',
-      },
-      status: {
-        success: '#65A30D',   // shifted darker so it reads on white
-        danger:  '#DC2626',
-        warning: '#B45309',
-        info:    '#0284C7',
-      },
-      iconBubbles: {
-        primary: { background: 'rgba(101, 163, 13, 0.16)', border: 'rgba(101, 163, 13, 0.28)', color: '#65A30D' },
-        navy:    { background: 'rgba(74, 128, 240, 0.12)', border: 'rgba(42, 93, 208, 0.25)',  color: '#2A5DD0' },
-        accent:  { background: 'rgba(74, 128, 240, 0.12)', border: 'rgba(42, 93, 208, 0.25)',  color: '#2A5DD0' },
-        success: { background: 'rgba(101, 163, 13, 0.16)', border: 'rgba(101, 163, 13, 0.28)', color: '#65A30D' },
-        warning: { background: 'rgba(245, 158, 11, 0.14)', border: 'rgba(245, 158, 11, 0.30)', color: '#B45309' },
-        danger:  { background: 'rgba(239, 68, 68, 0.10)',  border: 'rgba(239, 68, 68, 0.25)',  color: '#DC2626' },
-        info:    { background: 'rgba(14, 165, 233, 0.10)', border: 'rgba(14, 165, 233, 0.25)', color: '#0284C7' },
-      },
-      glass: {
-        background: 'rgba(255, 255, 255, 0.60)',
-        border:     'rgba(10, 10, 10, 0.08)',
-      },
-    },
-    radius,
-    spacing,
-    typography,
-    opacity,
-    shadow: {
-      sm: { shadowColor: '#0A0A0A', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.04, shadowRadius: 2,  elevation: 1 },
-      md: { shadowColor: '#0A0A0A', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.08, shadowRadius: 12, elevation: 3 },
-      lg: { shadowColor: '#0A0A0A', shadowOffset: { width: 0, height: 12 }, shadowOpacity: 0.10, shadowRadius: 30, elevation: 8 },
-      // Light theme glow follows the Bottom Tab + FAB green instead of neon.
-      neon: {
-        shadowColor: '#65A30D', shadowOffset: { width: 0, height: 8 },
-        shadowOpacity: 0.35, shadowRadius: 22, elevation: 12,
-      },
-    },
-  },
+const operationalShadow = {
+  sm: { shadowColor: fe.navy, shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.04, shadowRadius: 2, elevation: 1 },
+  md: { shadowColor: fe.navy, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.08, shadowRadius: 12, elevation: 3 },
+  lg: { shadowColor: fe.navy, shadowOffset: { width: 0, height: 12 }, shadowOpacity: 0.10, shadowRadius: 30, elevation: 8 },
+  accent: { shadowColor: fe.blueBright, shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.35, shadowRadius: 22, elevation: 12 },
+} as const
+
+const operationalTokenSet = {
+  color: operationalColors,
+  radius,
+  spacing,
+  typography,
+  opacity,
+  shadow: operationalShadow,
+} as const
+
+// Preference values stay API-compatible, but every operational mode resolves
+// to the same light-first Finance Editorial token set.
+export const kaswiseTokens = {
+  light: operationalTokenSet,
+  dark: operationalTokenSet,
 } as const

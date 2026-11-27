@@ -124,11 +124,11 @@ def test_reconcile_trust_model_payload_paid_but_mayar_says_pending_no_activation
          patch.object(ps.settings, "MAYAR_MERCHANT_ID", None), \
          patch.object(ps.repository, "find_payment_by_provider_order_id", return_value={
              "id": "p1", "order_id": "kw-x", "provider_order_id": "inv-1",
-             "user_id": "u1", "plan": "monthly", "status": "pending", "amount": 29000,
+             "user_id": "u1", "plan": "monthly", "status": "pending", "amount": 29000, "provider": "mayar",
          }), \
          patch.object(ps.repository, "get_payment_by_order_id", return_value={
              "id": "p1", "order_id": "kw-x", "provider_order_id": "inv-1",
-             "user_id": "u1", "plan": "monthly", "status": "pending", "amount": 29000,
+             "user_id": "u1", "plan": "monthly", "status": "pending", "amount": 29000, "provider": "mayar",
          }), \
          patch.object(ps.repository, "update_payment") as update_payment, \
          patch.object(ps.repository, "update_profile") as update_profile, \
@@ -172,11 +172,11 @@ def test_reconcile_trust_model_payload_paid_and_mayar_says_paid_activates():
          patch.object(ps.settings, "MAYAR_MERCHANT_ID", None), \
          patch.object(ps.repository, "find_payment_by_provider_order_id", return_value={
              "id": "p1", "order_id": "kw-x", "provider_order_id": "inv-1",
-             "user_id": "u1", "plan": "monthly", "status": "pending", "amount": 29000,
+             "user_id": "u1", "plan": "monthly", "status": "pending", "amount": 29000, "provider": "mayar",
          }), \
          patch.object(ps.repository, "get_payment_by_order_id", return_value={
              "id": "p1", "order_id": "kw-x", "provider_order_id": "inv-1",
-             "user_id": "u1", "plan": "monthly", "status": "pending", "amount": 29000,
+             "user_id": "u1", "plan": "monthly", "status": "pending", "amount": 29000, "provider": "mayar",
          }), \
          patch.object(ps.repository, "update_payment") as update_payment, \
          patch.object(ps.repository, "update_profile") as update_profile, \

@@ -3,6 +3,20 @@ import { useTheme } from '../../theme/theme-context'
 
 type StateMessageTone = 'error' | 'success' | 'warning' | 'info'
 
+const TONE_LIVE_REGION: Record<StateMessageTone, 'polite' | 'assertive'> = {
+	error: 'assertive',
+	success: 'polite',
+	warning: 'assertive',
+	info: 'polite',
+}
+
+const TONE_ROLE: Record<StateMessageTone, 'alert' | 'text'> = {
+	error: 'alert',
+	success: 'text',
+	warning: 'alert',
+	info: 'text',
+}
+
 type StateMessageProps = {
   message: string
   tone?: StateMessageTone
@@ -27,6 +41,8 @@ export function StateMessage({ message, tone = 'info' }: StateMessageProps) {
 
   return (
     <Text
+      accessibilityRole={TONE_ROLE[tone]}
+      accessibilityLiveRegion={TONE_LIVE_REGION[tone]}
       style={{
         color,
         backgroundColor,

@@ -28,6 +28,21 @@ export type PaymentStatus = {
   midtrans_status?: string | null;
 };
 
+/**
+ * Checkout failures carry the HTTP status so the paywall can explain itself
+ * (403 = the payment method is not open for that account yet, 502 = provider
+ * problem). Never let a failed checkout look like a dead button.
+ */
+export class PaymentError extends Error {
+  status: number;
+
+  constructor(status: number) {
+    super(`pembayaran gagal (${status})`);
+    this.name = "PaymentError";
+    this.status = status;
+  }
+}
+
 export async function getEntitlements(supabase: SupabaseClient): Promise<Entitlements> {
   const res = await fetch(`${getApiBaseUrl()}/api/v1/me/entitlements`, {
     headers: { ...(await authHeader(supabase)) },
@@ -41,7 +56,20 @@ export async function getPricing(supabase: SupabaseClient): Promise<Pricing> {
     headers: { ...(await authHeader(supabase)) },
   });
   if (!res.ok) throw new Error(`pricing gagal (${res.status})`);
-  return res.json();
+  const body: unknown = await res.json();
+  // A 200 with a partial body used to reach `rp(undefined)` and crash /upgrade.
+  // Reject it here so the screen shows its existing retry state instead.
+  if (!isPricing(body)) throw new Error("pricing tidak valid");
+  return body;
+}
+
+const isPrice = (value: unknown): value is number =>
+  typeof value === "number" && Number.isFinite(value);
+
+function isPricing(value: unknown): value is Pricing {
+  if (typeof value !== "object" || value === null) return false;
+  const { tier, monthly, yearly } = value as Record<string, unknown>;
+  return (tier === "promo" || tier === "normal") && isPrice(monthly) && isPrice(yearly);
 }
 
 export async function createPayment(
@@ -52,7 +80,7 @@ export async function createPayment(
     headers: { "Content-Type": "application/json", ...(await authHeader(supabase)) },
     body: JSON.stringify({ plan }),
   });
-  if (!res.ok) throw new Error(`pembayaran gagal (${res.status})`);
+  if (!res.ok) throw new PaymentError(res.status);
   return res.json();
 }
 

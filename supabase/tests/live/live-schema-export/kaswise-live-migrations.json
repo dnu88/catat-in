@@ -1,0 +1,130 @@
+[
+  {
+    "version": "001",
+    "name": "initial_schema"
+  },
+  {
+    "version": "002",
+    "name": "missing_tables"
+  },
+  {
+    "version": "003",
+    "name": "fix_schema"
+  },
+  {
+    "version": "004",
+    "name": "repair_auth_cloud"
+  },
+  {
+    "version": "005",
+    "name": "custom_categories"
+  },
+  {
+    "version": "006",
+    "name": "prd_phase1_alignment"
+  },
+  {
+    "version": "007",
+    "name": "categories_schema_backfill"
+  },
+  {
+    "version": "008",
+    "name": "fix_group_members_rls_recursion"
+  },
+  {
+    "version": "202605060001",
+    "name": "kaswise_base_schema"
+  },
+  {
+    "version": "202605060002",
+    "name": "storage_buckets"
+  },
+  {
+    "version": "202605130001",
+    "name": "harden_group_member_policies"
+  },
+  {
+    "version": "202605200001",
+    "name": "budget_envelopes"
+  },
+  {
+    "version": "202605210001",
+    "name": "household_finance_context"
+  },
+  {
+    "version": "202605210002",
+    "name": "wallet_balance_trigger"
+  },
+  {
+    "version": "202605260001",
+    "name": "mobile_pwa_crud_schema_compat"
+  },
+  {
+    "version": "202605260002",
+    "name": "mobile_pwa_transactions_compat"
+  },
+  {
+    "version": "202605270001",
+    "name": "mobile_pwa_budget_sample_cleanup_sync"
+  },
+  {
+    "version": "202605280001",
+    "name": "drop_legacy_wallet_balance_trigger"
+  },
+  {
+    "version": "202605290001",
+    "name": "unique_transaction_envelope_allocations"
+  },
+  {
+    "version": "202605290002",
+    "name": "add_category_type"
+  },
+  {
+    "version": "202605290003",
+    "name": "category_visual_sync"
+  },
+  {
+    "version": "202605300001",
+    "name": "profile_avatars_storage"
+  },
+  {
+    "version": "202605310001",
+    "name": "security_hardening_phase1"
+  },
+  {
+    "version": "202605310002",
+    "name": "repair_transaction_envelope_allocations_unique"
+  },
+  {
+    "version": "202606010001",
+    "name": "security_hardening_phase2"
+  },
+  {
+    "version": "202606070001",
+    "name": "freemium_ai_usage_payments"
+  },
+  {
+    "version": "202606100001",
+    "name": "notifications"
+  },
+  {
+    "version": "202606120001",
+    "name": "drop_legacy_permissive_rls_policies"
+  },
+  {
+    "version": "202606140001",
+    "name": "account_deletion_requests"
+  },
+  {
+    "version": "202606230001",
+    "name": "payment_provider_phase0"
+  },
+  {
+    "version": "202606270001",
+    "name": "transfer_transaction_type"
+  },
+  {
+    "version": "202606270002",
+    "name": "seed_credit_card_category"
+  }
+]

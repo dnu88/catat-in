@@ -12,6 +12,7 @@ from app.models.notifications import (
     UnreadCountResponse,
 )
 from app.services.notification_service import (
+    PreferencesPersistenceError,
     get_preferences,
     update_preferences,
     list_notifications,
@@ -36,7 +37,13 @@ async def write_preferences(
 ):
     """Update notification preferences. Only provided fields are changed."""
     patch = body.model_dump(exclude_unset=True)
-    return update_preferences(current_user["user_id"], patch)
+    try:
+        return update_preferences(current_user["user_id"], patch)
+    except PreferencesPersistenceError:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Notification preferences could not be saved. Please try again.",
+        ) from None
 
 
 @router.get("", response_model=NotificationListResponse)

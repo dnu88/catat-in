@@ -383,7 +383,7 @@ function itemLineAmount(item: ReceiptItemExtraction, useQuantityMultiplier: bool
 	return { amount: useQuantityMultiplier ? price * qty : price, qty };
 }
 
-function normalizeReceiptItems(extraction: ReceiptExtraction) {
+function receiptItemLineEntries(extraction: ReceiptExtraction) {
 	const items = (extraction.items ?? []).filter(
 		(item) => item?.name?.trim() && numericValue(item.price ?? item.unit_price ?? item.total_price ?? item.line_total) > 0,
 	);
@@ -401,10 +401,43 @@ function normalizeReceiptItems(extraction: ReceiptExtraction) {
 	const useQuantityMultiplier =
 		targetTotal > 0 && Math.abs(sumAsUnitPrices - targetTotal) < Math.abs(sumAsLineTotals - targetTotal);
 
-	const normalized = items.map((item) => ({
+	return items.map((item) => ({
 		item,
 		...itemLineAmount(item, useQuantityMultiplier),
 	}));
+}
+
+/** A single printed receipt line, before any reconciliation to the total. */
+export type ReceiptItemLine = {
+	name: string;
+	/** The line amount exactly as printed (qty-aware), never fudged. */
+	amount: number;
+	quantity: number;
+	category: string | null;
+};
+
+/**
+ * Item line amounts exactly as read from the receipt, with no adjustment to
+ * force them to agree with the receipt total. Callers that need a reconciled
+ * set must be explicit about the difference instead of hiding it inside one
+ * item, which is what `normalizeReceiptItems` (kept for legacy callers) does.
+ */
+export function receiptItemLines(
+	extraction: ReceiptExtraction,
+): ReceiptItemLine[] {
+	return receiptItemLineEntries(extraction)
+		.filter((entry) => entry.amount > 0)
+		.map((entry) => ({
+			name: entry.item.name?.trim() ?? "",
+			amount: entry.amount,
+			quantity: entry.qty,
+			category: entry.item.category ?? null,
+		}));
+}
+
+function normalizeReceiptItems(extraction: ReceiptExtraction) {
+	const normalized = receiptItemLineEntries(extraction);
+	const targetTotal = numericValue(extraction.total_amount);
 	const sum = normalized.reduce((total, item) => total + item.amount, 0);
 	const diff = targetTotal > 0 ? Math.round(targetTotal - sum) : 0;
 	if (diff !== 0 && normalized.length > 0) {
@@ -419,6 +452,42 @@ function normalizeReceiptItems(extraction: ReceiptExtraction) {
 	}
 
 	return normalized.filter((item) => item.amount > 0);
+}
+
+export type ReceiptReconciliation = {
+	/** Receipt total exactly as extracted, or null when it is unusable. */
+	total: number | null;
+	/** Sum of the item line amounts actually printed (no absorption). */
+	itemsSubtotal: number;
+	/** total - itemsSubtotal, rounded to whole rupiah. 0 when reconciled. */
+	discrepancy: number;
+	/** True only when the printed items add up to the total exactly. */
+	reconciled: boolean;
+	hasItems: boolean;
+};
+
+/**
+ * Honest arithmetic report for a receipt extraction.
+ *
+ * Unlike `receiptExtractionToDrafts`, this never adjusts an item to make the
+ * numbers agree: it reports the real difference so the review can ask the user
+ * to confirm or correct it instead of presenting fudged data as extracted.
+ */
+export function reconcileReceipt(
+	extraction: ReceiptExtraction,
+): ReceiptReconciliation {
+	const lines = receiptItemLines(extraction);
+	const itemsSubtotal = lines.reduce((sum, line) => sum + line.amount, 0);
+	const rawTotal = numericValue(extraction.total_amount);
+	const total = rawTotal > 0 ? rawTotal : null;
+	const discrepancy = total === null ? 0 : Math.round(total - itemsSubtotal);
+	return {
+		total,
+		itemsSubtotal,
+		discrepancy,
+		reconciled: total !== null && discrepancy === 0,
+		hasItems: lines.length > 0,
+	};
 }
 
 export function receiptExtractionToDrafts(

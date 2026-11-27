@@ -1,0 +1,20 @@
+{
+  "programs": [],
+  "streams": [
+    {
+      "codec_type": "video",
+      "width": 384,
+      "height": 848,
+      "r_frame_rate": "30/1"
+    },
+    {
+      "codec_type": "audio",
+      "r_frame_rate": "0/0"
+    }
+  ],
+  "format": {
+    "duration": "141.181224",
+    "size": "16200475"
+  },
+  "sha256": "a9344f2b83d73856f9dcdf4fd7fa86bcb99128144ca84e3cdb8073d375ae9c0c"
+}

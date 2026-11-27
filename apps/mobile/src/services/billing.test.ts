@@ -1,4 +1,4 @@
-import { getEntitlements, createPayment, getPricing, getPaymentStatus } from "./billing";
+import { getEntitlements, createPayment, getPricing, getPaymentStatus, PaymentError } from "./billing";
 
 jest.mock("./receipt-intake", () => ({ getApiBaseUrl: () => "https://api.test" }));
 
@@ -43,6 +43,18 @@ test("getPricing returns tier + prices", async () => {
   expect(out.tier).toBe("promo");
 });
 
+test.each([
+  ["empty body", {}],
+  ["missing yearly", { tier: "normal", monthly: 29000 }],
+  ["string price", { tier: "normal", monthly: "29000", yearly: 290000 }],
+  ["NaN price", { tier: "normal", monthly: Number.NaN, yearly: 290000 }],
+  ["unknown tier", { tier: "gold", monthly: 29000, yearly: 290000 }],
+  ["null body", null],
+])("getPricing rejects a malformed 200 response (%s) instead of returning it", async (_label, json) => {
+  global.fetch = jest.fn(async () => ({ ok: true, status: 200, json: async () => json })) as any;
+  await expect(getPricing(fakeSupabase)).rejects.toThrow(/pricing/);
+});
+
 test("getPaymentStatus hits status endpoint", async () => {
   global.fetch = jest.fn(async () => ({ ok: true, status: 200,
     json: async () => ({ order_id: "kw-x", status: "paid", provider: "midtrans" }) })) as any;
@@ -51,4 +63,16 @@ test("getPaymentStatus hits status endpoint", async () => {
   expect(out.provider).toBe("midtrans");
   expect((global.fetch as jest.Mock).mock.calls[0][0])
     .toBe("https://api.test/api/v1/payments/kw-x/status");
+});
+
+// Preserve status for the upgrade screen, but never surface arbitrary upstream
+// provider bodies (which may contain credentials or customer information).
+test.each([403, 502, 503])("createPayment retains HTTP %s without exposing the body", async (status) => {
+  const json = jest.fn(async () => ({ detail: "qa-sensitive-provider-detail" }));
+  global.fetch = jest.fn(async () => ({ ok: false, status, json })) as any;
+  const error = await createPayment(fakeSupabase, "monthly").catch((e) => e);
+  expect(error).toBeInstanceOf(PaymentError);
+  expect(error.status).toBe(status);
+  expect(error.message).not.toContain("qa-sensitive-provider-detail");
+  expect(json).not.toHaveBeenCalled();
 });

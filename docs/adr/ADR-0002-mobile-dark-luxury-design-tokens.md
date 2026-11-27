@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted
+Superseded for active visual composition and palette decisions by [ADR-0004: Finance Editorial Surfaces](./ADR-0004-finance-editorial-surfaces.md). Retained only as historical token provenance.
 
 ## Date
 

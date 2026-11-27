@@ -1,7 +1,17 @@
 import { cpSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { createRequire } from 'node:module'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { execSync } from 'node:child_process'
+
+// This script is ESM; the roll-out flag helper is plain CommonJS so both Node
+// and Jest can load it directly.
+const require = createRequire(import.meta.url)
+const {
+  stripRolloutFlagsFromEnv,
+  readRolloutConfig,
+  resolveRolloutFlagValue,
+} = require('./rollout-flags.cjs')
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const appDir = resolve(__dirname, '..')
@@ -81,7 +91,10 @@ function runLiveQualityGate() {
   }
 
   console.log('🛡️  Running live quality gate before deploy...')
-  run('pnpm quality:live')
+  // The gate validates SOURCE, not the rolled-out flag state. Rollout flags are a
+  // deployment concern (injected into the deployed HTML below), so they must not
+  // leak into the gate's env and flip the app into the rolled-out mode mid-gate.
+  run('pnpm quality:live', { env: stripRolloutFlagsFromEnv(process.env) })
 }
 
 function verifyTargetBundleMarkers() {
@@ -155,44 +168,128 @@ function installManifest(expoConfig) {
 }
 
 function withInstallMetadata(indexHtml) {
-  let nextHtml = indexHtml
-  if (!nextHtml.includes(manifestLink)) {
-    nextHtml = nextHtml.replace('</head>', `${manifestLink}
+	let nextHtml = indexHtml
+	if (!nextHtml.includes(manifestLink)) {
+		nextHtml = nextHtml.replace('</head>', `${manifestLink}
 ${appleTouchIconLink}</head>`)
-  }
-  return nextHtml
+	}
+	return nextHtml
 }
 
-function publicRuntimeConfigBlock() {
-  const env = readEnvFile(join(appDir, '.env'))
-  const extra = readExpoConfig().extra ?? {}
+function withViewportLock(indexHtml) {
+	const locked = 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, shrink-to-fit=no'
+	if (indexHtml.includes('user-scalable=no')) return indexHtml
+	return indexHtml.replace(
+		/<meta name="viewport" content="[^"]+" \/>/,
+		`<meta name="viewport" content="${locked}" />`,
+	)
+}
+
+/**
+ * Build the runtime config `<script>` injected into the deployed `index.html`.
+ *
+ * Every input is injectable (`{ env, envFile, config, expoConfig }` mirroring the
+ * operator env, the local `.env`, the committed rollout config and the Expo
+ * config) so the emitted block can be asserted without running a real deploy.
+ * The defaults read the real sources, so the CLI path is unchanged.
+ *
+ * @param {{
+ *   env?: Record<string, unknown>,
+ *   envFile?: Record<string, unknown>,
+ *   config?: Record<string, unknown>,
+ *   expoConfig?: Record<string, unknown>,
+ *   supabaseUrl?: string,
+ *   supabaseAnonKey?: string,
+ * }} [injected]
+ * @returns {string}
+ */
+export function publicRuntimeConfigBlock(injected = {}) {
+  const expoConfig = injected.expoConfig ?? readExpoConfig()
+  const env = injected.envFile ?? readEnvFile(join(appDir, '.env'))
+  const extra = expoConfig.extra ?? {}
   const supabaseUrl =
+    injected.supabaseUrl ||
     process.env.EXPO_PUBLIC_SUPABASE_URL ||
     extra.supabaseUrl ||
     extra.EXPO_PUBLIC_SUPABASE_URL ||
     env.EXPO_PUBLIC_SUPABASE_URL
   const supabaseAnonKey =
+    injected.supabaseAnonKey ||
     process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ||
     extra.supabaseAnonKey ||
     extra.EXPO_PUBLIC_SUPABASE_ANON_KEY ||
     env.EXPO_PUBLIC_SUPABASE_ANON_KEY
+  // Rollout flags are a DEPLOYMENT concern. Each one resolves with the
+  // precedence: operator env var → local .env file → committed rollout config
+  // (apps/mobile/rollout-flags.json) → ''. The final '' keeps the code-level
+  // default in src/config/features.ts authoritative for dev/test.
+  const rolloutEnv = injected.env ?? {
+    EXPO_PUBLIC_FEATURE_VOICE_NOTE: process.env.EXPO_PUBLIC_FEATURE_VOICE_NOTE,
+    EXPO_PUBLIC_FEATURE_SIMPLE_NAVIGATION: process.env.EXPO_PUBLIC_FEATURE_SIMPLE_NAVIGATION,
+    EXPO_PUBLIC_FEATURE_IMPORT_STATEMENT: process.env.EXPO_PUBLIC_FEATURE_IMPORT_STATEMENT,
+    EXPO_PUBLIC_FEATURE_TRANSACTION_ENTRY_V2: process.env.EXPO_PUBLIC_FEATURE_TRANSACTION_ENTRY_V2,
+    EXPO_PUBLIC_FEATURE_AI_AUTOSAVE_TEXT: process.env.EXPO_PUBLIC_FEATURE_AI_AUTOSAVE_TEXT,
+    EXPO_PUBLIC_FEATURE_SIMPLE_PREMIUM_EXPERIENCE: process.env.EXPO_PUBLIC_FEATURE_SIMPLE_PREMIUM_EXPERIENCE,
+  }
+  const rolloutConfig = injected.config ?? readRolloutConfig()
+  const voiceNoteFeature = resolveRolloutFlagValue({
+    envKey: 'EXPO_PUBLIC_FEATURE_VOICE_NOTE',
+    configKey: 'voiceNote',
+    env: rolloutEnv,
+    envFile: env,
+    config: rolloutConfig,
+  })
+  const simpleNavigationFeature = resolveRolloutFlagValue({
+    envKey: 'EXPO_PUBLIC_FEATURE_SIMPLE_NAVIGATION',
+    configKey: 'simpleNavigation',
+    env: rolloutEnv,
+    envFile: env,
+    config: rolloutConfig,
+  })
+  const importStatementFeature = resolveRolloutFlagValue({
+    envKey: 'EXPO_PUBLIC_FEATURE_IMPORT_STATEMENT',
+    configKey: 'importStatement',
+    env: rolloutEnv,
+    envFile: env,
+    config: rolloutConfig,
+  })
+  const transactionEntryV2Feature = resolveRolloutFlagValue({
+    envKey: 'EXPO_PUBLIC_FEATURE_TRANSACTION_ENTRY_V2',
+    configKey: 'transactionEntryV2',
+    env: rolloutEnv,
+    envFile: env,
+    config: rolloutConfig,
+  })
+  const aiAutoSaveTextFeature = resolveRolloutFlagValue({
+    envKey: 'EXPO_PUBLIC_FEATURE_AI_AUTOSAVE_TEXT',
+    configKey: 'aiAutosaveText',
+    env: rolloutEnv,
+    envFile: env,
+    config: rolloutConfig,
+  })
+  const simplePremiumExperienceFeature = resolveRolloutFlagValue({
+    envKey: 'EXPO_PUBLIC_FEATURE_SIMPLE_PREMIUM_EXPERIENCE',
+    configKey: 'simplePremiumExperience',
+    env: rolloutEnv,
+    envFile: env,
+    config: rolloutConfig,
+  })
 
   if (!supabaseUrl || !supabaseAnonKey) {
     throw new Error('Missing public Supabase config for PWA deploy')
   }
 
-  const runtimeExpoConfig = readExpoConfig()
   const manifest = {
-    name: runtimeExpoConfig.name,
-    slug: runtimeExpoConfig.slug,
-    version: runtimeExpoConfig.version,
+    name: expoConfig.name,
+    slug: expoConfig.slug,
+    version: expoConfig.version,
     extra: {
       supabaseUrl,
       supabaseAnonKey,
     },
   }
 
-  return `${marker}\n    <script>\n      var process = window.process = window.process || {};\n      process.env = process.env || {};\n      process.env.NODE_ENV = "production";\n      process.env.EXPO_PUBLIC_SUPABASE_URL = ${JSON.stringify(supabaseUrl)};\n      process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY = ${JSON.stringify(supabaseAnonKey)};\n      process.env.APP_MANIFEST = ${JSON.stringify(JSON.stringify(manifest))};\n    </script>\n`
+  return `${marker}\n    <script>\n      var process = window.process = window.process || {};\n      process.env = process.env || {};\n      process.env.NODE_ENV = "production";\n      process.env.EXPO_PUBLIC_SUPABASE_URL = ${JSON.stringify(supabaseUrl)};\n      process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY = ${JSON.stringify(supabaseAnonKey)};\n      process.env.EXPO_PUBLIC_FEATURE_VOICE_NOTE = ${JSON.stringify(voiceNoteFeature)};\n      process.env.EXPO_PUBLIC_FEATURE_SIMPLE_NAVIGATION = ${JSON.stringify(simpleNavigationFeature)};\n      process.env.EXPO_PUBLIC_FEATURE_IMPORT_STATEMENT = ${JSON.stringify(importStatementFeature)};\n      process.env.EXPO_PUBLIC_FEATURE_TRANSACTION_ENTRY_V2 = ${JSON.stringify(transactionEntryV2Feature)};\n      process.env.EXPO_PUBLIC_FEATURE_AI_AUTOSAVE_TEXT = ${JSON.stringify(aiAutoSaveTextFeature)};\n      process.env.EXPO_PUBLIC_FEATURE_SIMPLE_PREMIUM_EXPERIENCE = ${JSON.stringify(simplePremiumExperienceFeature)};\n      process.env.APP_MANIFEST = ${JSON.stringify(JSON.stringify(manifest))};\n    </script>\n`
 }
 
 function deployDistToTarget() {
@@ -203,6 +300,7 @@ function deployDistToTarget() {
   }
 
   indexHtml = withInstallMetadata(indexHtml)
+  indexHtml = withViewportLock(indexHtml)
 
   mkdirSync(targetDir, { recursive: true })
   writeFileSync(targetIndex, indexHtml)
@@ -238,18 +336,41 @@ function deployDistToTarget() {
   console.log(`Deployed mobile PWA dist to ${targetDir}`)
 }
 
-assertAllowedBranch()
-runLiveQualityGate()
-assertDistExists()
-deployDistToTarget()
-verifyTargetBundleMarkers()
+let deployStarted = false
 
-try {
-  console.log('📊 Generating marker diff report (non-blocking)...')
-  run('node scripts/marker-diff-report.mjs')
-} catch {
-  console.warn('⚠️  Marker diff report failed (non-blocking) — review before merging')
+// The full deploy sequence, in order. Exported so the rollout-config tests can
+// prove that importing this module never starts it.
+export function runDeploy() {
+  deployStarted = true
+  assertAllowedBranch()
+  runLiveQualityGate()
+  assertDistExists()
+  deployDistToTarget()
+  verifyTargetBundleMarkers()
+
+  try {
+    console.log('📊 Generating marker diff report (non-blocking)...')
+    run('node scripts/marker-diff-report.mjs')
+  } catch {
+    console.warn('⚠️  Marker diff report failed (non-blocking) — review before merging')
+  }
+  verifyLiveUrl()
+  run('node scripts/generate-release-report.mjs')
+  console.log('✅  Deploy completed with live regression guards')
 }
-verifyLiveUrl()
-run('node scripts/generate-release-report.mjs')
-console.log('✅  Deploy completed with live regression guards')
+
+export function isDeployStarted() {
+  return deployStarted
+}
+
+// Only the real CLI entry point (`node scripts/deploy-pwa.mjs`) deploys.
+// Importing this module — from tests or from other tooling — must have no side
+// effects: `assertAllowedBranch()` would exit the importing process and
+// `runLiveQualityGate()` would run the whole pre-deploy gate inside it.
+const isEntryPoint =
+  typeof process.argv[1] === 'string' &&
+  resolve(process.argv[1]) === fileURLToPath(import.meta.url)
+
+if (isEntryPoint && process.env.KASWISE_DEPLOY_PWA_TEST !== '1') {
+  runDeploy()
+}

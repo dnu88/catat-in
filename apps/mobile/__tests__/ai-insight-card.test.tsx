@@ -19,13 +19,13 @@ jest.mock("../src/theme/theme-context", () => ({
         mutedSurface: "#242427",
         surface: "#1E1E1A",
         borderSoft: "rgba(255,255,255,0.06)",
-        brandPrimary: "#A3FF12",
+        brandPrimary: "#42B7EB",
         brandSecondary: "#4A80F0",
-        success: "#A3FF12",
+        success: "#22C55E",
         warning: "#FFC06D",
         danger: "#FF7B7B",
-        buttonPrimaryBg: "#A3FF12",
-        buttonPrimaryText: "#0A0A0A",
+        buttonPrimaryBg: "#178BD0",
+        buttonPrimaryText: "#FFFFFF",
         glass: {
           background: "rgba(255,255,255,0.06)",
           border: "rgba(255,255,255,0.12)",
@@ -33,14 +33,14 @@ jest.mock("../src/theme/theme-context", () => ({
       },
       iconBubbles: {
         primary: {
-          background: "rgba(163,255,18,0.14)",
-          border: "rgba(163,255,18,0.25)",
-          color: "#A3FF12",
+          background: "rgba(66,183,235,0.14)",
+          border: "rgba(66,183,235,0.28)",
+          color: "#42B7EB",
         },
         success: {
-          background: "rgba(163,255,18,0.10)",
-          border: "rgba(163,255,18,0.20)",
-          color: "#A3FF12",
+          background: "rgba(34,197,94,0.12)",
+          border: "rgba(34,197,94,0.24)",
+          color: "#22C55E",
         },
         warning: {
           background: "rgba(255,192,109,0.14)",
@@ -76,6 +76,10 @@ jest.mock("../src/theme/theme-context", () => ({
       opacity: { 60: 0.6, 100: 1 },
     },
   }),
+}));
+
+jest.mock("../src/i18n/i18n-context", () => ({
+  useI18n: () => ({ language: "id" }),
 }));
 
 jest.mock("../src/components/icons/kaswise-icons", () => ({

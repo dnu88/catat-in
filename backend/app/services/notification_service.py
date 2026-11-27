@@ -1,8 +1,8 @@
 """Notification service — preferences, notification CRUD, dedupe inbox.
 
 All functions that interact with Supabase accept the service-role client via
-`_get_supabase_service_client()`. When the client is unavailable every function
-returns safe defaults without raising.
+`_get_supabase_service_client()`. Reads return safe defaults when unavailable;
+preference writes raise a safe error rather than claiming persistence.
 """
 
 from __future__ import annotations
@@ -38,6 +38,10 @@ _TYPE_PREF_MAP: dict[str, str] = {
 # ═══════════════════════════════════════════════════════════════════════════
 # Preferences
 # ═══════════════════════════════════════════════════════════════════════════
+
+class PreferencesPersistenceError(RuntimeError):
+    """Preference storage could not confirm the requested write."""
+
 
 def default_preferences(user_id: str) -> dict[str, Any]:
     """Return a defaults dict for notification_preferences."""
@@ -93,7 +97,7 @@ def update_preferences(user_id: str, patch: dict[str, Any]) -> dict[str, Any]:
     """
     client = _get_supabase_service_client()
     if client is None:
-        return get_preferences(user_id)
+        raise PreferencesPersistenceError("Notification preferences could not be saved.")
 
     cleaned: dict[str, Any] = {}
     for key, value in patch.items():
@@ -109,19 +113,26 @@ def update_preferences(user_id: str, patch: dict[str, Any]) -> dict[str, Any]:
     try:
         result = (
             client.table("notification_preferences")
-            .upsert({"user_id": user_id, **cleaned}, on_conflict="user_id")
-            .eq("user_id", user_id)
-            .select("*")
-            .limit(1)
+            .upsert(
+                {"user_id": user_id, **cleaned},
+                on_conflict="user_id",
+                returning="representation",
+            )
             .execute()
         )
         rows = getattr(result, "data", None)
-        if isinstance(rows, list) and rows:
-            return dict(rows[0])
+        if isinstance(rows, list) and len(rows) == 1:
+            row = dict(rows[0])
+            if row.get("user_id") == user_id and all(
+                key in row and row[key] == value for key, value in cleaned.items()
+            ):
+                return row
     except Exception:
-        pass
+        raise PreferencesPersistenceError(
+            "Notification preferences could not be saved."
+        ) from None
 
-    return get_preferences(user_id)
+    raise PreferencesPersistenceError("Notification preferences could not be saved.")
 
 
 def _sanitize_thresholds(values: list[int]) -> list[int]:

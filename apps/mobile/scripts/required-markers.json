@@ -11,7 +11,14 @@
   "transactions-bills-chip",
   "bills-create-card",
   "bills-add-button",
-  "home-theme-toggle",
+  "settings-appearance",
+  "settings-appearance-row",
+  "settings-language-row",
+  "settings-language-sheet",
+  "settings-help-guide",
+  "settings-notification-daily",
+  "settings-notification-error",
+  "reports-bubble-row",
   "home-amount-visibility-toggle",
   "home-active-period-label",
   "home-total-balance",
@@ -30,5 +37,10 @@
   "transactions-period-row",
   "home-transaction-review-card",
   "home-review-action",
-  "transactions-review-chip"
+  "transactions-review-chip",
+  "auto-save-toast",
+  "auto-save-undo",
+  "auto-save-edit",
+  "auto-save-reason",
+  "home-wallet-stack-logo"
 ]

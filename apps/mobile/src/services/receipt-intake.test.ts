@@ -4,6 +4,8 @@ import {
 	getReceiptAuthSession,
 	receiptExtractionToDraft,
 	receiptExtractionToDrafts,
+	receiptItemLines,
+	reconcileReceipt,
 	uploadReceiptImage,
 } from "./receipt-intake";
 
@@ -122,4 +124,89 @@ describe("receipt intake helpers", () => {
 		global.fetch = originalFetch;
 	});
 
+});
+
+describe("reconcileReceipt", () => {
+	it("reports an exactly reconciled receipt", () => {
+		const reconciliation = reconcileReceipt({
+			total_amount: 53000,
+			merchant: "Indomaret",
+			items: [
+				{ name: "AQUA 600ML", qty: 2, price: 5000 },
+				{ name: "SABUN LIFEBUOY", price: 18000 },
+				{ name: "OBH COMBI", price: 25000 },
+			],
+		});
+
+		expect(reconciliation).toEqual({
+			total: 53000,
+			itemsSubtotal: 53000,
+			discrepancy: 0,
+			reconciled: true,
+			hasItems: true,
+		});
+	});
+
+	it("reports the real discrepancy instead of absorbing it into one item", () => {
+		const extraction = {
+			total_amount: 100000,
+			merchant: "Indomaret",
+			items: [
+				{ name: "Kopi", price: 30000 },
+				{ name: "Roti", price: 40000 },
+			],
+		};
+
+		const reconciliation = reconcileReceipt(extraction);
+		expect(reconciliation.total).toBe(100000);
+		expect(reconciliation.itemsSubtotal).toBe(70000);
+		expect(reconciliation.discrepancy).toBe(30000);
+		expect(reconciliation.reconciled).toBe(false);
+		expect(reconciliation.hasItems).toBe(true);
+
+		// The printed lines themselves are untouched: the largest item is not
+		// silently inflated to hide the missing 30000.
+		expect(receiptItemLines(extraction).map((line) => line.amount)).toEqual([
+			30000, 40000,
+		]);
+	});
+
+	it("ignores the total for a total-less items-only receipt", () => {
+		const reconciliation = reconcileReceipt({
+			total_amount: null,
+			items: [{ name: "Kopi", price: 15000 }],
+		});
+		expect(reconciliation.total).toBeNull();
+		expect(reconciliation.itemsSubtotal).toBe(15000);
+		expect(reconciliation.discrepancy).toBe(0);
+		expect(reconciliation.reconciled).toBe(false);
+		expect(reconciliation.hasItems).toBe(true);
+	});
+
+	it("reports no items when only a total is readable", () => {
+		const reconciliation = reconcileReceipt({ total_amount: 125000 });
+		expect(reconciliation.total).toBe(125000);
+		expect(reconciliation.itemsSubtotal).toBe(0);
+		expect(reconciliation.hasItems).toBe(false);
+		expect(reconciliation.reconciled).toBe(false);
+	});
+
+	it("keeps the legacy draft path absorbing while reconciliation stays honest", () => {
+		const extraction = {
+			total_amount: 100000,
+			merchant: "Indomaret",
+			items: [
+				{ name: "Kopi", price: 30000 },
+				{ name: "Roti", price: 40000 },
+			],
+		};
+
+		// Legacy caller still receives a reconciled (adjusted) set...
+		const legacyAmounts = receiptExtractionToDrafts(extraction).map(
+			(draft) => draft.amount,
+		);
+		expect(legacyAmounts.reduce((sum, amount) => sum + amount, 0)).toBe(100000);
+		// ...while the honest reconciliation reports the printed subtotal.
+		expect(reconcileReceipt(extraction).itemsSubtotal).toBe(70000);
+	});
 });

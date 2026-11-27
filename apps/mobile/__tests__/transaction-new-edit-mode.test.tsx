@@ -138,6 +138,40 @@ describe("transaction-new edit mode", () => {
 	});
 
 
+	it("blocks two edit submissions in the same render frame", async () => {
+		const pending = createDeferred<{ id: string }>();
+		mockUpdateTransaction.mockReturnValueOnce(pending.promise);
+		const screen = renderScreen();
+		await screen.findByDisplayValue("Kopi sore");
+		const save = screen.getByLabelText("Simpan perubahan transaksi");
+		await act(async () => {
+			fireEvent.press(save);
+			fireEvent.press(save);
+		});
+		expect(mockUpdateTransaction).toHaveBeenCalledTimes(1);
+		await act(async () => { pending.resolve({ id: "tx-1" }); });
+	});
+
+	it("keeps all edited fields after a failed update and permits an explicit retry", async () => {
+		mockUpdateTransaction.mockRejectedValueOnce(new Error("Koneksi terputus"));
+		const screen = renderScreen();
+		await screen.findByDisplayValue("Kopi sore");
+		fireEvent.changeText(screen.getByLabelText("Nominal transaksi"), "45000");
+		fireEvent.changeText(screen.getByLabelText("Deskripsi transaksi"), "Kopi pagi");
+		fireEvent.press(screen.getByLabelText("Simpan perubahan transaksi"));
+		await screen.findByText("Koneksi terputus");
+		expect(screen.getByLabelText("Deskripsi transaksi").props.value).toBe("Kopi pagi");
+		expect(screen.getByDisplayValue("Kopi Kenangan")).toBeTruthy();
+		expect(screen.getByDisplayValue("Less sugar")).toBeTruthy();
+		expect(mockBack).not.toHaveBeenCalled();
+		fireEvent.press(screen.getByLabelText("Simpan perubahan transaksi"));
+		await screen.findByText("Perubahan transaksi tersimpan.");
+		expect(mockUpdateTransaction).toHaveBeenCalledTimes(2);
+		expect(mockUpdateTransaction.mock.calls[1]).toEqual(mockUpdateTransaction.mock.calls[0]);
+		expect(mockUpdateTransaction.mock.calls[1][1].amount).toBe(45000);
+		expect(mockCreateTransaction).not.toHaveBeenCalled();
+	});
+
 	it("shows a cancel button beside save in edit mode", async () => {
 		const screen = renderScreen();
 
@@ -179,14 +213,64 @@ describe("transaction-new edit mode", () => {
 
 	it("shows only default categories while editing a transaction", async () => {
 		mockListCategories.mockResolvedValueOnce([
-			{ id: "cat-1", name: "Makan", icon: "chart", is_default: true },
-			{ id: "cat-custom", name: "Nongkrong", icon: "coffee", is_default: false },
+			{ id: "cat-1", name: "Makan", icon: "chart", is_default: true, type: "expense" },
+			{ id: "cat-custom", name: "Nongkrong", icon: "coffee", is_default: false, type: "expense" },
 		]);
 		const screen = renderScreen();
 
 		expect(await screen.findByLabelText("Pilih kategori Makan & Minum")).toBeTruthy();
 		expect(screen.queryByLabelText("Pilih kategori Nongkrong")).toBeNull();
 		expect(screen.queryByLabelText("Pilih kategori kustom")).toBeNull();
+	});
+
+	it("keeps custom user categories usable in create mode", async () => {
+		mockSearchParams = {};
+		mockListCategories.mockResolvedValue([
+			{ id: "cat-1", name: "Makan", icon: "chart", is_default: true, type: "expense" },
+			{ id: "cat-custom", name: "Nongkrong", icon: "coffee", is_default: false, type: "expense" },
+		]);
+		const screen = renderScreen();
+
+		expect(await screen.findByLabelText("Pilih kategori Nongkrong")).toBeTruthy();
+		expect(screen.getByLabelText("Pilih kategori Makan & Minum")).toBeTruthy();
+	});
+
+	it("filters canonical and custom categories by transaction type", async () => {
+		mockSearchParams = {};
+		mockListCategories.mockResolvedValue([
+			{ id: "cat-food", name: "Food & Beverage", icon: null, is_default: true, type: "expense" },
+			{ id: "cat-salary", name: "Salary", icon: null, is_default: true, type: "income" },
+			{ id: "cat-custom-income", name: "Royalti", icon: "trophy", is_default: false, type: "income" },
+		]);
+		const screen = renderScreen();
+
+		expect(await screen.findByLabelText("Pilih kategori Makan & Minum")).toBeTruthy();
+		expect(screen.queryByLabelText("Pilih kategori Gaji")).toBeNull();
+		expect(screen.queryByLabelText("Pilih kategori Royalti")).toBeNull();
+
+		fireEvent.press(screen.getByLabelText("Pilih transfer"));
+		expect(screen.queryByTestId("transaction-form-category")).toBeNull();
+	});
+
+	it("uses canonical fallback icons instead of stale local mappings", async () => {
+		mockSearchParams = {};
+		mockListCategories.mockResolvedValue([
+			{ id: "health", name: "Health", icon: null, is_default: true, type: "expense" },
+			{ id: "education", name: "Education", icon: null, is_default: true, type: "expense" },
+			{ id: "shopping", name: "Personal Shopping", icon: null, is_default: true, type: "expense" },
+			{ id: "salary", name: "Salary", icon: null, is_default: true, type: "income" },
+			{ id: "bonus", name: "Bonus", icon: null, is_default: true, type: "income" },
+			{ id: "freelance", name: "Freelance", icon: null, is_default: true, type: "income" },
+		]);
+		const screen = renderScreen();
+
+		expect((await screen.findByTestId("transaction-category-Kesehatan")).props.accessibilityHint).toBe("firstAid");
+		expect(screen.getByTestId("transaction-category-Pendidikan").props.accessibilityHint).toBe("graduationCap");
+		expect(screen.getByTestId("transaction-category-Belanja Pribadi").props.accessibilityHint).toBe("tag");
+		fireEvent.press(screen.getByLabelText("Pilih pemasukan"));
+		expect(screen.getByTestId("transaction-category-Gaji").props.accessibilityHint).toBe("bank");
+		expect(screen.getByTestId("transaction-category-Bonus").props.accessibilityHint).toBe("trophy");
+		expect(screen.getByTestId("transaction-category-Freelance").props.accessibilityHint).toBe("briefcase");
 	});
 
 	it("creates manual transactions in the active household context", async () => {

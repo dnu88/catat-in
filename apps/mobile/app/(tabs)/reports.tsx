@@ -1,3 +1,4 @@
+import { reportTransactionType } from "../../src/features/reports/report-transaction-type";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
 	Pressable,
@@ -13,19 +14,76 @@ import {
 	TextInput,
 } from "react-native";
 import { useFocusEffect, useRouter } from "expo-router";
-import Svg, { Circle } from "react-native-svg";
+import { LinearGradient } from "expo-linear-gradient";
+import Svg, {
+	Circle,
+	Defs,
+	LinearGradient as SvgLinearGradient,
+	Path,
+	Stop,
+} from "react-native-svg";
 
 import { useTheme } from "../../src/theme/theme-context";
+import { financeEditorial as fe } from "../../src/theme/finance-editorial";
+import { isPwaPolish, pwaHeroCaption } from "../../src/theme/pwa-polish";
 import { useSupabase } from "../../src/lib/supabase";
 import { IOSWheelDatePicker } from "../../src/components/date/IOSWheelDatePicker";
+import { featureFlags } from "../../src/config/features";
+import {
+	periodStatusLine,
+	reportStateCopy,
+	resolveReportTabState,
+	shouldRenderReportChart,
+} from "../../src/features/reports/report-state";
+import { showsPeriodChips } from "../../src/features/reports/period-disclosure";
+import { CashflowPulse } from "../../src/features/reports/CashflowPulse";
 import { IconBubble } from "../../src/components/ui";
 import { PageEntrance, StaggeredEntrance } from "../../src/components/motion";
 import { KaswiseIcon, type KaswiseIconName } from "../../src/components/icons/kaswise-icons";
+
+function pieSlicePath(size: number, percentage: number) {
+	const center = size / 2;
+	const radius = Math.max(0, center - 2);
+	const sweep = Math.min(99.999, Math.max(0.001, percentage)) * 3.6;
+	const startAngle = -90;
+	const endAngle = startAngle + sweep;
+	const point = (angle: number) => {
+		const radians = (angle * Math.PI) / 180;
+		return {
+			x: center + radius * Math.cos(radians),
+			y: center + radius * Math.sin(radians),
+		};
+	};
+	const start = point(startAngle);
+	const end = point(endAngle);
+	return `M ${center} ${center} L ${start.x} ${start.y} A ${radius} ${radius} 0 ${sweep > 180 ? 1 : 0} 1 ${end.x} ${end.y} Z`;
+}
+
+function pieWedgePath(size: number, startFraction: number, endFraction: number) {
+	const center = size / 2;
+	const radius = Math.max(0, center - 1);
+	const startDeg = -90 + Math.max(0, startFraction) * 360;
+	const endDeg = -90 + Math.min(1, endFraction) * 360;
+	const sweep = endDeg - startDeg;
+	if (sweep <= 0) return "";
+	const point = (angle: number) => {
+		const radians = (angle * Math.PI) / 180;
+		return {
+			x: center + radius * Math.cos(radians),
+			y: center + radius * Math.sin(radians),
+		};
+	};
+	const start = point(startDeg);
+	const end = point(endDeg);
+	const largeArc = sweep > 180 ? 1 : 0;
+	return `M ${center} ${center} L ${start.x} ${start.y} A ${radius} ${radius} 0 ${largeArc} 1 ${end.x} ${end.y} Z`;
+}
 import {
 	resolveCategoryVisual,
 	type CategoryTone,
 } from "../../src/theme/category-visuals";
 import { useI18n } from "../../src/i18n/i18n-context";
+import { formatCompactCurrency } from "../../src/lib/currency";
 import { useFinanceContext } from "../../src/state/finance-context";
 import {
 	buildCustomReportPeriod,
@@ -45,6 +103,7 @@ import {
 	reportCategoryPalette,
 	reportCategoryRoleColors,
 	reportDefaultCategoryColors,
+	reportBlueGradientPalette,
 } from "../../src/theme/report-palettes";
 import { AiInsightCard } from "../../src/components/ai/AiInsightCard";
 import type { AiInsight } from "../../src/services/ai-insights";
@@ -118,7 +177,7 @@ type Tab = "overview" | "category" | "compare";
 type PeriodFilter = ReportPeriodPreset | "custom" | "saved_rule";
 type ReportTransaction = {
 	amount: number;
-	transaction_type: "income" | "expense";
+	transaction_type: "income" | "expense" | "transfer";
 	category: string | null;
 	date: string | null;
 	description?: string | null;
@@ -129,8 +188,8 @@ type ReportTransaction = {
 type ReportTransactionRow = {
 	amount?: number | string | null;
 	nominal?: number | string | null;
-	transaction_type?: "income" | "expense" | null;
-	type?: "income" | "expense" | null;
+	transaction_type?: "income" | "expense" | "transfer" | null;
+	type?: "income" | "expense" | "transfer" | null;
 	category?: string | null;
 	kategori?: string | null;
 	date?: string | null;
@@ -148,6 +207,7 @@ function toReportDateKey(value: string | null | undefined) {
 
 function normalizeReportTransaction(
 	row: ReportTransactionRow,
+	premium: boolean,
 ): ReportTransaction {
 	const date = toReportDateKey(row.date ?? row.tanggal ?? row.created_at);
 	const transactionType = row.transaction_type ?? row.type;
@@ -155,7 +215,7 @@ function normalizeReportTransaction(
 
 	return {
 		amount: Number(row.amount ?? row.nominal ?? 0),
-		transaction_type: transactionType === "income" ? "income" : "expense",
+		transaction_type: reportTransactionType(transactionType, premium),
 		category: row.category ?? row.kategori ?? null,
 		date,
 		description: description ?? null,
@@ -219,15 +279,24 @@ export default function ReportsScreen() {
 		selectSavedRule,
 	} = useReportPeriod();
 	const { language } = useI18n();
-	const styles = useMemo(() => createStyles(theme), [theme]);
+	const polish = isPwaPolish();
+	const styles = useMemo(() => createStyles(theme, polish), [theme, polish]);
 	const [activeTab, setActiveTab] = useState<Tab>("overview");
 	const [periodFilter, setPeriodFilter] = useState<PeriodFilter>("month");
-	const [selectedBar, setSelectedBar] = useState<number | null>(null);
+	// T24 (simple premium): lead with one main summary; the date/filter chips move
+	// into a picker. Report maths and the AI insight call count are untouched.
+	const premium = featureFlags.simplePremiumExperience;
+	const [premiumPeriodOpen, setPremiumPeriodOpen] = useState(false);
 	const [dataLoading, setDataLoading] = useState(false);
 	const [refreshTick, setRefreshTick] = useState(0);
 	const hasFocusedOnceRef = useRef(false);
 	const [dataError, setDataError] = useState<string | null>(null);
 	const [realTransactionCount, setRealTransactionCount] = useState<
+		number | null
+	>(null);
+	// B2 (G11): transactions in scope BEFORE the period filter, so an account
+	// with nothing at all is not confused with an empty selected period.
+	const [scopeTransactionCount, setScopeTransactionCount] = useState<
 		number | null
 	>(null);
 	const [showDateModal, setShowDateModal] = useState(false);
@@ -614,15 +683,7 @@ export default function ReportsScreen() {
 
 	const formatRupiah = (valueInJuta: number) =>
 		`Rp ${(valueInJuta * 1_000_000).toLocaleString("id-ID")}`;
-	const formatCompactRupiah = (value: number) => {
-		if (value >= 1_000_000) {
-			return `Rp ${(value / 1_000_000).toLocaleString("id-ID", { maximumFractionDigits: 1 })} jt`;
-		}
-		if (value >= 1_000) {
-			return `Rp ${(value / 1_000).toLocaleString("id-ID", { maximumFractionDigits: 0 })} rb`;
-		}
-		return `Rp ${value.toLocaleString("id-ID")}`;
-	};
+	const formatCompactRupiah = (value: number) => formatCompactCurrency(value, language);
 	const summaryIncome = useMemo(
 		() =>
 			reportTransactions
@@ -745,13 +806,15 @@ export default function ReportsScreen() {
 			);
 			if (!bucket) continue;
 			if (transaction.transaction_type === "income") bucket.income += transaction.amount || 0;
-			else bucket.expense += transaction.amount || 0;
+			else if (transaction.transaction_type === "expense") bucket.expense += transaction.amount || 0;
 		}
 
 		return {
 			keys: buckets.map((bucket) => bucket.key),
 			labels: buckets.map((bucket) => bucket.label),
 			years: buckets.map((bucket) => bucket.year),
+			startDates: buckets.map((bucket) => dateKey(bucket.start.getFullYear(), bucket.start.getMonth() + 1, bucket.start.getDate())),
+			endDates: buckets.map((bucket) => dateKey(bucket.end.getFullYear(), bucket.end.getMonth() + 1, bucket.end.getDate())),
 			income: buckets.map((bucket) => bucket.income / 1_000_000),
 			expense: buckets.map((bucket) => bucket.expense / 1_000_000),
 		};
@@ -764,19 +827,9 @@ export default function ReportsScreen() {
 		customStartYear,
 		periodFilter,
 		reportTransactions,
+		isEn,
 	]);
 
-	useEffect(() => {
-		setSelectedBar(null);
-	}, [
-		customEndDay,
-		customEndMonth,
-		customEndYear,
-		customStartDay,
-		customStartMonth,
-		customStartYear,
-		periodFilter,
-	]);
 	const top5Expenses = useMemo(() => {
 		const grouped = new Map<string, { amount: number; sourceName: string }>();
 		for (const transaction of reportTransactions) {
@@ -799,27 +852,15 @@ export default function ReportsScreen() {
 			.sort((a, b) => b.amount - a.amount)
 			.slice(0, 5);
 	}, [isEn, reportTransactions]);
-	const maxVal = Math.max(1, ...chartData.income, ...chartData.expense);
-	const pulseMaxHeight = 58;
-	const pulseHeightFor = (value: number) => {
-		if (value <= 0) return 2;
-		return Math.max(8, Math.round((value / maxVal) * pulseMaxHeight));
-	};
-	const netValueFor = (idx: number) =>
-		(chartData.income[idx] ?? 0) - (chartData.expense[idx] ?? 0);
-	const pulseAccessibilityLabel = `${tx.trendTitle}: ${periodDisplayLabel}`;
-	const donutSize = 180;
+	const donutSize = 200;
 	const donutCenter = donutSize / 2;
 	const donutRadius = 64;
-	const donutStrokeWidth = 18;
-	const donutGlowStrokeWidth = 21;
+	const donutStrokeWidth = 48;
+	const donutGlowStrokeWidth = 52;
 	const donutCircumference = 2 * Math.PI * donutRadius;
 	const donutSegmentGap = 6;
-	const incomeAccent = categoryRoleColors.success;
-	const expenseAccent =
-		theme.mode === "light"
-			? theme.colors.textPrimary
-			: categoryRoleColors.danger;
+	const incomeAccent = fe.financialTotal;
+	const expenseAccent = fe.financialTotal;
 	const totalIncomeJuta = summaryIncome / 1_000_000;
 	const totalExpenseJuta = summaryExpense / 1_000_000;
 	const netJuta = summaryNet / 1_000_000;
@@ -832,7 +873,7 @@ export default function ReportsScreen() {
 		dynamicCategories.reduce((sum, cat) => sum + Math.max(0, cat.percent), 0) ||
 		100;
 	const donutSegments = dynamicCategories
-		.map((cat) => {
+		.map((cat, index) => {
 			const normalizedRatio =
 				categoryValueTotal > 0
 					? Math.max(0, cat.value ?? 0) / categoryValueTotal
@@ -841,17 +882,23 @@ export default function ReportsScreen() {
 			const segmentGap = Math.min(donutSegmentGap, rawDashLength * 0.32);
 			return {
 				...cat,
+				gradientId: `report-blue-${index}`,
+				gradientColors: reportBlueGradientPalette[index % reportBlueGradientPalette.length],
 				dashLength: Math.max(0, rawDashLength - segmentGap),
 				gapLength: donutCircumference - Math.max(0, rawDashLength - segmentGap),
 				sweepLength: rawDashLength,
 				offsetLength: 0,
+				ratio: normalizedRatio,
 			};
 		})
 		.map((cat, index, items) => {
 			const previousLength = items
 				.slice(0, index)
 				.reduce((sum, item) => sum + item.sweepLength, 0);
-			return { ...cat, offsetLength: previousLength };
+			const previousRatio = items
+				.slice(0, index)
+				.reduce((sum, item) => sum + item.ratio, 0);
+			return { ...cat, offsetLength: previousLength, startFraction: previousRatio };
 		});
 
 	const selectedCategory =
@@ -1039,6 +1086,7 @@ export default function ReportsScreen() {
 	};
 
 	useEffect(() => {
+		let cancelled = false;
 		const loadTransactionData = async () => {
 			setDataLoading(true);
 			setDataError(null);
@@ -1100,6 +1148,7 @@ export default function ReportsScreen() {
 				const loadedCategories = await listCategories().catch(
 					() => [] as Category[],
 				);
+				if (premium && cancelled) return;
 				setCategoryOptions(loadedCategories);
 
 				let query = supabase.from("transactions").select("*");
@@ -1112,11 +1161,12 @@ export default function ReportsScreen() {
 				}
 				const { data: transactions, error } = await query;
 
+				if (premium && cancelled) return;
 				if (error) throw error;
 
 				const allTransactions = (
 					(transactions || []) as ReportTransactionRow[]
-				).map(normalizeReportTransaction);
+				).map((row) => normalizeReportTransaction(row, premium));
 				const loadedTransactions = filterReportTransactionsByDateRange(
 					allTransactions,
 					startDateString,
@@ -1124,6 +1174,7 @@ export default function ReportsScreen() {
 				);
 				setReportTransactions(loadedTransactions);
 				setRealTransactionCount(loadedTransactions.length);
+				setScopeTransactionCount(allTransactions.length);
 
 				const expenseTx = loadedTransactions.filter(
 					(t) => t.transaction_type === "expense",
@@ -1238,15 +1289,18 @@ export default function ReportsScreen() {
 					setCompareData(null);
 				}
 			} catch (err: any) {
+				if (premium && cancelled) return;
 				console.error("Failed to load transaction data:", err);
 				setDataError(tx.errorLoad);
 			} finally {
-				setDataLoading(false);
+				if (!premium || !cancelled) setDataLoading(false);
 			}
 		};
 
 		loadTransactionData();
+		return () => { cancelled = true; };
 	}, [
+		premium,
 		activeTab,
 		periodFilter,
 		customStartYear,
@@ -1260,86 +1314,21 @@ export default function ReportsScreen() {
 		refreshTick,
 	]);
 
-	return (
-		<View style={styles.screen}>
-			<PageEntrance testID="reports-page-entrance" style={styles.pageEntrance}>
-				<ScrollView
-					contentContainerStyle={styles.content}
-					showsVerticalScrollIndicator={false}
-					refreshControl={
-						<RefreshControl
-							refreshing={dataLoading}
-							onRefresh={() => setRefreshTick((value) => value + 1)}
-							tintColor={theme.colors.brandPrimary}
-						/>
-					}
-				>
-				{/* Header */}
-				<View style={styles.headerRow}>
-					<View>
-						<Text style={styles.title}>{tx.title}</Text>
-						<Text style={styles.subtitle}>{tx.subtitle}</Text>
-					</View>
-					<View style={styles.headerRight}>
-						<View testID="finance-context-badge" style={styles.contextBadge}>
-							<Text style={styles.contextBadgeText}>
-								{activeContext.type === "household" ? tx.contextHousehold : tx.contextPersonal}
-							</Text>
-						</View>
-						<View testID="reports-month-badge" style={styles.monthBadge}>
-							<Text style={styles.monthBadgeText}>{tx.monthBadge}</Text>
-						</View>
-						<Pressable
-							accessibilityRole="button"
-							accessibilityLabel={tx.shareA11y}
-							style={({ pressed }) => [
-								styles.shareButton,
-								pressed && { opacity: 0.7 },
-							]}
-							onPress={handleShare}
-						>
-							<Text style={styles.shareButtonText}>{tx.share}</Text>
-						</Pressable>
-					</View>
-				</View>
+	// B2 — one place decides the active tab's presentation state.
+	const reportViewState = resolveReportTabState({
+		tab: activeTab,
+		previousTransactionCount: compareData?.previous?.count ?? 0,
+		expenseCategoryCount: dynamicCategories.length,
+		loading: dataLoading,
+		error: dataError,
+		scopeTransactionCount,
+		periodTransactionCount: realTransactionCount,
+	});
+	const stateCopy = reportStateCopy(reportViewState, isEn);
 
-				{/* Summary Row — shown before controls */}
-				<StaggeredEntrance index={0} testID="reports-entrance-summary">
-					<View testID="reports-summary-card" style={styles.summaryCard}>
-					<View style={styles.summaryTopRow}>
-						<View style={styles.summaryHalf}>
-							<Text style={styles.summaryLabel}>{tx.income}</Text>
-							<Text
-								testID="reports-summary-income-value"
-								style={[styles.summaryValue, { color: incomeAccent }]}
-							>
-								{formatCompactRupiah(summaryIncome)}
-							</Text>
-						</View>
-						<View style={styles.summaryDivider} />
-						<View style={styles.summaryHalf}>
-							<Text style={styles.summaryLabel}>{tx.expense}</Text>
-							<Text
-								testID="reports-summary-expense-value"
-								style={[styles.summaryValue, { color: expenseAccent }]}
-							>
-								{formatCompactRupiah(summaryExpense)}
-							</Text>
-						</View>
-					</View>
-					<View style={styles.summarySavingsRow}>
-						<Text style={styles.summaryLabel}>{tx.savings}</Text>
-						<Text
-							testID="reports-summary-savings-value"
-							style={[styles.summaryValue, { color: theme.colors.textPrimary }]}
-						>
-							{formatCompactRupiah(summaryNet)}
-						</Text>
-						<Text style={styles.summarySavingRate}>{savingRate}</Text>
-					</View>
-					</View>
-				</StaggeredEntrance>
-
+	// Shared supporting cards keep their legacy position when premium is OFF.
+	const supportingCards = (
+		<>
 				<StaggeredEntrance index={1} testID="reports-entrance-ai-insight">
 					<AiInsightCard
 						insight={aiInsight}
@@ -1355,7 +1344,7 @@ export default function ReportsScreen() {
 					<View testID="reports-envelope-entry" style={styles.envelopeEntryCard}>
 					<View style={styles.envelopeEntryTopRow}>
 						<View style={styles.envelopeEntryTitleRow}>
-							<IconBubble name="budgets" tone="primary" size={36} />
+							<IconBubble name="budgets" tone="navy" color={fe.blue} backgroundColor="rgba(12,78,145,0.12)" borderColor="rgba(12,78,145,0.24)" size={36} />
 							<View
 								testID="reports-envelope-copy"
 								style={styles.envelopeEntryCopy}
@@ -1386,6 +1375,147 @@ export default function ReportsScreen() {
 					</View>
 					</View>
 				</StaggeredEntrance>
+		</>
+	);
+
+	return (
+		<View style={styles.screen}>
+			<PageEntrance testID="reports-page-entrance" style={styles.pageEntrance}>
+				<ScrollView
+					contentContainerStyle={styles.content}
+					showsVerticalScrollIndicator={false}
+					refreshControl={
+						<RefreshControl
+							refreshing={dataLoading}
+							onRefresh={() => setRefreshTick((value) => value + 1)}
+							tintColor={fe.ink}
+						/>
+					}
+				>
+				{/* Reference-led analytics hero */}
+				<LinearGradient testID="reports-analytics-hero" colors={[fe.navySurface, fe.blueDeep, fe.blueBright]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[styles.analyticsHero, dynamicCategories.length === 0 && styles.analyticsHeroEmpty]}>
+				<View style={styles.headerRow}>
+					<View>
+						<Text style={styles.title}>{tx.title}</Text>
+						<Text style={styles.subtitle}>{tx.subtitle}</Text>
+					</View>
+					<View style={styles.headerRight}>
+						<View testID="finance-context-badge" style={styles.contextBadge}>
+							<Text style={styles.contextBadgeText}>
+								{activeContext.type === "household" ? tx.contextHousehold : tx.contextPersonal}
+							</Text>
+						</View>
+						<View testID="reports-month-badge" style={styles.monthBadge}>
+							<Text style={styles.monthBadgeText}>{premium ? (periodFilter === "custom" || periodFilter === "saved_rule" ? periodDisplayLabel : periodLabels[periodFilter]) : tx.monthBadge}</Text>
+						</View>
+						<Pressable
+							accessibilityRole="button"
+							accessibilityLabel={tx.shareA11y}
+							style={({ pressed }) => [styles.touchTarget, pressed && { opacity: 0.7 }]}
+							onPress={handleShare}
+						>
+							<View style={styles.shareButton}>
+								<Text style={styles.shareButtonText}>{tx.share}</Text>
+							</View>
+						</Pressable>
+					</View>
+				</View>
+				<View testID="reports-hero-bubbles" style={styles.heroBubbleCluster}>
+					{dynamicCategories.length === 0 ? null : dynamicCategories.slice(0, 5).map((cat, index) => {
+						const size = [112, 88, 96, 106, 82][index] ?? 88;
+						const tones = reportBlueGradientPalette[index % reportBlueGradientPalette.length];
+						return (
+							<LinearGradient key={`hero-${cat.id}`} colors={tones} start={{ x: 0.15, y: 0 }} end={{ x: 0.9, y: 1 }} style={[styles.heroBubble, { width: size, height: size, borderRadius: size / 2 }]}>
+								<KaswiseIcon name={cat.icon} color={fe.white} size={18} weight="bold" />
+								<Text numberOfLines={1} style={styles.heroBubbleLabel}>{cat.label}</Text>
+								<Text style={styles.heroBubblePercent}>{cat.percent}%</Text>
+							</LinearGradient>
+						);
+					})}
+				</View>
+				</LinearGradient>
+
+				{/* Summary Row — shown before controls */}
+				<StaggeredEntrance index={0} testID="reports-entrance-summary">
+					<View testID="reports-summary-card" style={styles.summaryCard}>
+					<View style={styles.summaryTopRow}>
+						<View style={styles.summaryHalf}>
+							<Text style={styles.summaryLabel}>{tx.income}</Text>
+							<Text
+								testID="reports-summary-income-value"
+								style={[styles.summaryValue, { color: incomeAccent }]}
+							>
+								{formatCompactRupiah(summaryIncome)}
+							</Text>
+						</View>
+						<View style={styles.summaryDivider} />
+						<View style={styles.summaryHalf}>
+							<Text style={styles.summaryLabel}>{tx.expense}</Text>
+							<Text
+								testID="reports-summary-expense-value"
+								style={[styles.summaryValue, { color: expenseAccent }]}
+							>
+								{formatCompactRupiah(summaryExpense)}
+							</Text>
+						</View>
+					</View>
+					<View style={styles.summarySavingsRow}>
+						<Text style={styles.summaryLabel}>{tx.savings}</Text>
+						<Text
+							testID="reports-summary-savings-value"
+							style={[styles.summaryValue, { color: fe.ink }]}
+						>
+							{formatCompactRupiah(summaryNet)}
+						</Text>
+						<Text style={styles.summarySavingRate}>{savingRate}</Text>
+					</View>
+					</View>
+				</StaggeredEntrance>
+
+				{/* B2 (G11): the state card sits directly under the summary so the
+				    explanation and its action are visible without scrolling. */}
+				{premium && stateCopy ? (
+					<StaggeredEntrance index={1} testID="reports-entrance-state">
+						<View
+							testID="reports-state-card"
+							style={[
+								styles.stateCard,
+								reportViewState === "error" ? styles.stateCardError : null,
+							]}
+						>
+							<Text style={styles.stateTitle}>{stateCopy.title}</Text>
+							<Text style={styles.stateBody}>{stateCopy.body}</Text>
+							{stateCopy.action ? (
+								<Pressable
+									testID="reports-state-action"
+									accessibilityRole="button"
+									accessibilityLabel={stateCopy.actionLabel}
+									style={({ pressed }) => [
+										styles.stateAction,
+										pressed ? styles.stateActionPressed : null,
+									]}
+									onPress={() => {
+										if (stateCopy.action === "retry") {
+											setRefreshTick((value) => value + 1);
+											return;
+										}
+										if (stateCopy.action === "capture") {
+											router.push("/(tabs)/capture" as never);
+											return;
+										}
+										setPremiumPeriodOpen(true);
+									}}
+								>
+									<Text style={styles.stateActionText}>
+										{stateCopy.actionLabel}
+									</Text>
+								</Pressable>
+							) : null}
+						</View>
+					</StaggeredEntrance>
+				) : null}
+
+				{!premium ? supportingCards : null}
 
 				{/* Tab Selector */}
 				<ScrollView
@@ -1398,73 +1528,140 @@ export default function ReportsScreen() {
 						accessibilityRole="button"
 						accessibilityLabel={tx.showOverviewA11y}
 						accessibilityState={{ selected: activeTab === "overview" }}
-						style={[
-							styles.tabChip,
-							activeTab === "overview" && styles.tabChipActive,
-						]}
+						style={styles.touchTarget}
 						onPress={() => setActiveTab("overview")}
 					>
-						<Text
+						<View
 							style={[
-								styles.tabChipText,
-								activeTab === "overview" && styles.tabChipTextActive,
+								styles.tabChip,
+								activeTab === "overview" && styles.tabChipActive,
 							]}
 						>
-							{tx.overview}
-						</Text>
+							<Text
+								style={[
+									styles.tabChipText,
+									activeTab === "overview" && styles.tabChipTextActive,
+								]}
+							>
+								{tx.overview}
+							</Text>
+						</View>
 					</Pressable>
 					<Pressable
 						accessibilityRole="button"
 						accessibilityLabel={tx.showCategoryA11y}
 						accessibilityState={{ selected: activeTab === "category" }}
-						style={[
-							styles.tabChip,
-							activeTab === "category" && styles.tabChipActive,
-						]}
+						style={styles.touchTarget}
 						onPress={() => setActiveTab("category")}
 					>
-						<Text
+						<View
 							style={[
-								styles.tabChipText,
-								activeTab === "category" && styles.tabChipTextActive,
+								styles.tabChip,
+								activeTab === "category" && styles.tabChipActive,
 							]}
 						>
-							{tx.category}
-						</Text>
+							<Text
+								style={[
+									styles.tabChipText,
+									activeTab === "category" && styles.tabChipTextActive,
+								]}
+							>
+								{tx.category}
+							</Text>
+						</View>
 					</Pressable>
 					<Pressable
 						accessibilityRole="button"
 						accessibilityLabel={tx.showCompareA11y}
 						accessibilityState={{ selected: activeTab === "compare" }}
-						style={[
-							styles.tabChip,
-							activeTab === "compare" && styles.tabChipActive,
-						]}
+						style={styles.touchTarget}
 						onPress={() => setActiveTab("compare")}
 					>
-						<Text
+						<View
 							style={[
-								styles.tabChipText,
-								activeTab === "compare" && styles.tabChipTextActive,
+								styles.tabChip,
+								activeTab === "compare" && styles.tabChipActive,
 							]}
 						>
-							{tx.compare}
-						</Text>
+							<Text
+								style={[
+									styles.tabChipText,
+									activeTab === "compare" && styles.tabChipTextActive,
+								]}
+							>
+								{tx.compare}
+							</Text>
+						</View>
 					</Pressable>
 				</ScrollView>
 
 				{/* Period Selector */}
-				<View style={styles.periodWrap}>
+				{premium ? (
+					<Pressable
+						testID="reports-period-toggle"
+						accessibilityRole="button"
+						accessibilityLabel={
+							premiumPeriodOpen
+								? isEn
+									? "Hide period options"
+									: "Sembunyikan pilihan periode"
+								: isEn
+									? `Period: ${
+											periodFilter === "custom" || periodFilter === "saved_rule"
+												? periodDisplayLabel
+												: periodLabels[periodFilter]
+										}`
+									: `Periode: ${
+											periodFilter === "custom" || periodFilter === "saved_rule"
+												? periodDisplayLabel
+												: periodLabels[periodFilter]
+										}`
+						}
+						accessibilityHint={
+							premiumPeriodOpen
+								? isEn
+									? "Collapses the period options"
+									: "Menutup pilihan periode"
+								: isEn
+									? "Shows the period options"
+									: "Menampilkan pilihan periode"
+						}
+						accessibilityState={{ expanded: premiumPeriodOpen }}
+						style={styles.touchTarget}
+						onPress={() => setPremiumPeriodOpen((open) => !open)}
+					>
+						<View style={[styles.periodChip, styles.periodChipActive]}>
+							<Text style={[styles.periodChipText, styles.periodChipTextActive]}>
+								<Text accessible={false} importantForAccessibility="no">
+									{premiumPeriodOpen ? "⌃" : "⌄"}{" "}
+								</Text>
+								{periodFilter === "custom" || periodFilter === "saved_rule"
+									? periodDisplayLabel
+									: periodLabels[periodFilter]}
+							</Text>
+						</View>
+					</Pressable>
+				) : null}
+				{premium ? (
+					<Text testID="reports-period-status" style={styles.periodStatus}>
+						{periodStatusLine(
+							periodFilter === "custom" || periodFilter === "saved_rule"
+								? periodDisplayLabel
+								: periodLabels[periodFilter],
+							realTransactionCount,
+							isEn,
+						)}
+					</Text>
+				) : null}
+				{showsPeriodChips(premium, premiumPeriodOpen) ? (
+				<View testID="reports-period-chips" style={styles.periodWrap}>
 					{(Object.keys(periodLabels) as Exclude<PeriodFilter, "saved_rule">[]).map((key) => (
 						<Pressable
 							key={key}
 							accessibilityRole="button"
 							accessibilityLabel={tx.choosePeriodA11y(periodLabels[key])}
 							accessibilityState={{ selected: periodFilter === key }}
-							style={[
-								styles.periodChip,
-								periodFilter === key && styles.periodChipActive,
-							]}
+							style={styles.touchTarget}
 							onPress={() => {
 								setPeriodFilter(key);
 								if (key === "custom") {
@@ -1475,27 +1672,36 @@ export default function ReportsScreen() {
 								}
 							}}
 						>
-							<Text
+							<View
 								style={[
-									styles.periodChipText,
-									periodFilter === key && styles.periodChipTextActive,
+									styles.periodChip,
+									periodFilter === key && styles.periodChipActive,
 								]}
 							>
-								{periodLabels[key]}
-							</Text>
+								<Text
+									style={[
+										styles.periodChipText,
+										periodFilter === key && styles.periodChipTextActive,
+									]}
+								>
+									{periodLabels[key]}
+								</Text>
+							</View>
 						</Pressable>
 					))}
 				</View>
+				) : null}
 
-				<View testID="reports-active-period-card" style={styles.periodControlsCard}>
+				{!premium || premiumPeriodOpen ? (
+				<View testID={premium ? "reports-period-options" : "reports-active-period-card"} style={premium ? undefined : styles.periodControlsCard}>
 					<View style={styles.activePeriodRow}>
-						<View style={styles.activePeriodCopy}>
+						{!premium ? <View style={styles.activePeriodCopy}>
 							<Text style={styles.activePeriodTitle}>{tx.activePeriodTitle}</Text>
 							<Text numberOfLines={1} style={styles.activePeriodValue}>{activePeriodNameLabel}</Text>
 							{shouldShowActivePeriodRange ? (
 								<Text numberOfLines={1} style={styles.activePeriodDate}>{activePeriodRangeLabel}</Text>
 							) : null}
-						</View>
+						</View> : null}
 						{!isCurrentMonthActive ? (
 							<Pressable
 								testID="reports-reset-current-month"
@@ -1547,7 +1753,7 @@ export default function ReportsScreen() {
 												<KaswiseIcon
 													name="more"
 													size={18}
-													color={selected ? (theme.mode === "light" ? theme.colors.brandPrimaryDeep : theme.colors.brandPrimary) : theme.colors.textMuted}
+													color={selected ? (fe.ink) : fe.muted}
 													weight="bold"
 												/>
 											</Pressable>
@@ -1558,7 +1764,8 @@ export default function ReportsScreen() {
 						</View>
 					) : null}
 				</View>
-				{periodFilter === "custom" && (
+				) : null}
+				{periodFilter === "custom" && (!premium || premiumPeriodOpen) && (
 					<View style={styles.customRulePrompt}>
 						<Pressable
 							accessibilityRole="button"
@@ -1580,150 +1787,45 @@ export default function ReportsScreen() {
 					</View>
 				)}
 
-				{/* Loading/Error State */}
-				{dataLoading && (
-					<View style={styles.loadingCard}>
-						<Text style={styles.loadingText}>{tx.loading}</Text>
-					</View>
-				)}
-				{dataError && !dataLoading && (
-					<View style={styles.errorCard}>
-						<Text style={styles.errorText}>{dataError}</Text>
-					</View>
-				)}
-				{realTransactionCount !== null && !dataLoading && (
-					<StaggeredEntrance index={3} testID="reports-entrance-info">
-						<View testID="reports-info-card" style={styles.infoCard}>
-						<Text style={styles.infoText}>
-							{tx.txFound(realTransactionCount)}
-						</Text>
-						</View>
-					</StaggeredEntrance>
+				{/* B2 (G11): the legacy surface keeps its previous rendering. */}
+				{premium ? null : (
+					<>
+						{dataLoading && (
+							<View style={styles.loadingCard}>
+								<Text style={styles.loadingText}>{tx.loading}</Text>
+							</View>
+						)}
+						{dataError && !dataLoading && (
+							<View style={styles.errorCard}>
+								<Text style={styles.errorText}>{dataError}</Text>
+							</View>
+						)}
+						{realTransactionCount !== null && !dataLoading && (
+							<StaggeredEntrance index={3} testID="reports-entrance-info">
+								<View testID="reports-info-card" style={styles.infoCard}>
+								<Text style={styles.infoText}>
+									{tx.txFound(realTransactionCount)}
+								</Text>
+							</View>
+							</StaggeredEntrance>
+						)}
+					</>
 				)}
 
-				{activeTab === "overview" && (
+				{activeTab === "overview" &&
+					(premium ? shouldRenderReportChart(reportViewState) : true) && (
 					<>
 						{/* Chart */}
 						<StaggeredEntrance index={1} testID="reports-entrance-chart">
 							<View style={styles.chartCard}>
-							<Text style={styles.chartTitle}>{tx.trendTitle}</Text>
-							<Text style={styles.chartSub}>{tx.trendSub}</Text>
-
-							<View
-								testID="reports-pulse-chart"
-								style={styles.lineChartArea}
-							>
-								<View style={styles.lineGrid}>
-									<View testID="reports-line-guide-0" style={styles.gridLine} />
-									<View testID="reports-line-guide-1" style={styles.gridLine} />
-									<View testID="reports-line-guide-2" style={styles.gridLine} />
-								</View>
-								<View
-									testID="reports-line-chart-svg"
-									accessibilityRole="image"
-									accessibilityLabel={pulseAccessibilityLabel}
-									style={styles.lineGraphLayer}
-								>
-									{chartData.labels.map((label, idx) => {
-										const incomeHeight = pulseHeightFor(chartData.income[idx] ?? 0);
-										const expenseHeight = pulseHeightFor(chartData.expense[idx] ?? 0);
-										const netValue = netValueFor(idx);
-										return (
-											<Pressable
-												key={chartData.keys[idx] ?? `${label}-${chartData.years[idx]}`}
-												testID={`reports-pulse-column-${idx}`}
-												accessibilityRole="button"
-												accessibilityLabel={tx.chartColumnA11y(label, chartData.years[idx] ?? new Date().getFullYear())}
-												accessibilityState={{ selected: selectedBar === idx }}
-												style={styles.lineColumn}
-												onPress={() =>
-													setSelectedBar(selectedBar === idx ? null : idx)
-												}
-											>
-												<View style={styles.pulseStack}>
-													<View style={styles.pulseUpper}>
-														<View
-															testID={`reports-line-dot-income-${idx}`}
-															style={[
-																styles.pulseBar,
-																styles.incomePulse,
-																{ height: incomeHeight },
-															]}
-														/>
-													</View>
-													<View style={styles.pulseAxis}>
-														<View
-															testID={`reports-pulse-net-${idx}`}
-															style={[
-																styles.netDot,
-																netValue >= 0 ? styles.netDotPositive : styles.netDotNegative,
-															]}
-														/>
-													</View>
-													<View style={styles.pulseLower}>
-														<View
-															testID={`reports-line-dot-expense-${idx}`}
-															style={[
-																styles.pulseBar,
-																styles.expensePulse,
-																{ height: expenseHeight },
-															]}
-														/>
-													</View>
-												</View>
-												<Text style={styles.chartLabel}>{label}</Text>
-
-												{selectedBar === idx && (
-													<View style={styles.chartTooltip}>
-														<Text style={styles.tooltipTitle}>
-															{label} {chartData.years[idx]}
-														</Text>
-														<Text
-															style={[
-																styles.tooltipValue,
-																{ color: theme.colors.success },
-															]}
-														>
-															{tx.tooltipIncome}: {" "}
-															{formatCompactRupiah((chartData.income[idx] ?? 0) * 1_000_000)}
-														</Text>
-														<Text
-															style={[
-																styles.tooltipValue,
-																{ color: theme.colors.danger },
-															]}
-														>
-															{tx.tooltipExpense}: {" "}
-															{formatCompactRupiah((chartData.expense[idx] ?? 0) * 1_000_000)}
-														</Text>
-													</View>
-												)}
-											</Pressable>
-										);
-									})}
-								</View>
-							</View>
-
-							<View style={styles.chartLegend}>
-								<View style={styles.legendItem}>
-									<View
-										style={[
-											styles.legendDot,
-											{ backgroundColor: theme.colors.success },
-										]}
-									/>
-									<Text style={styles.legendText}>{tx.income}</Text>
-								</View>
-								<View style={styles.legendItem}>
-									<View
-										style={[
-											styles.legendDot,
-											{ backgroundColor: theme.colors.danger },
-										]}
-									/>
-									<Text style={styles.legendText}>{tx.expense}</Text>
-								</View>
-							</View>
+								<CashflowPulse
+								data={chartData}
+								summaryIncome={summaryIncome}
+								summaryExpense={summaryExpense}
+								periodLabel={periodDisplayLabel}
+								language={language}
+								scopeKey={`${activeContext.type === "household" ? activeContext.householdId : "personal"}:${periodFilter}:${customStartIso}:${customEndIso}:${activePeriod.startDate}:${activePeriod.endDate}:${activePeriod.ruleId ?? ""}`}
+								/>
 							</View>
 						</StaggeredEntrance>
 						<StaggeredEntrance index={3} testID="reports-entrance-history">
@@ -1754,7 +1856,7 @@ export default function ReportsScreen() {
 						</StaggeredEntrance>
 					</>
 				)}
-				{activeTab === "category" && (
+				{activeTab === "category" && (!premium || shouldRenderReportChart(reportViewState)) && (
 					<>
 						{/* Category Breakdown */}
 						<View style={styles.categoryCard}>
@@ -1779,76 +1881,79 @@ export default function ReportsScreen() {
 										accessibilityLabel={tx.donutA11y}
 										style={styles.donutSvg}
 									>
-										<Circle
-											cx={donutCenter}
-											cy={donutCenter}
-											r={donutRadius + 4}
-											fill="none"
-											stroke={theme.colors.borderSoft}
-											strokeWidth={1}
-											opacity={theme.mode === "dark" ? 0.55 : 0.72}
-										/>
-										<Circle
-											cx={donutCenter}
-											cy={donutCenter}
-											r={donutRadius}
-											fill="none"
-											stroke={theme.colors.borderSoft}
-											strokeWidth={donutStrokeWidth}
-											opacity={theme.mode === "dark" ? 0.18 : 0.28}
-										/>
-										<Circle
-											cx={donutCenter}
-											cy={donutCenter}
-											r={donutRadius - 14}
-											fill="none"
-											stroke={
-												theme.mode === "dark"
-													? "rgba(255,255,255,0.08)"
-													: "rgba(15,23,42,0.06)"
-											}
-											strokeWidth={1}
-										/>
+										<Defs>
+											{donutSegments.map((cat) => (
+												<SvgLinearGradient key={cat.gradientId} id={cat.gradientId} x1="0%" y1="0%" x2="100%" y2="100%">
+													<Stop offset="0%" stopColor={cat.gradientColors[0]} />
+													<Stop offset="52%" stopColor={cat.gradientColors[1]} />
+													<Stop offset="100%" stopColor={fe.navySurface} />
+												</SvgLinearGradient>
+											))}
+										</Defs>
 										{donutSegments.map((cat) => (
-											<Circle
-												key={`glow-${cat.id}`}
-												testID={`reports-donut-glow-${cat.id}`}
-												cx={donutCenter}
-												cy={donutCenter}
-												r={donutRadius}
-												fill="none"
-												stroke={cat.color}
-												strokeWidth={donutGlowStrokeWidth}
-												strokeDasharray={`${cat.dashLength} ${cat.gapLength}`}
-												strokeDashoffset={-cat.offsetLength}
-												strokeLinecap="butt"
-												opacity={theme.mode === "dark" ? 0.09 : 0.045}
-												transform={`rotate(-90 ${donutCenter} ${donutCenter})`}
-											/>
-										))}
-										{donutSegments.map((cat) => (
-											<Circle
+											<Path
 												key={cat.id}
 												testID={`reports-donut-segment-${cat.id}`}
-												cx={donutCenter}
-												cy={donutCenter}
-												r={donutRadius}
-												fill="none"
-												stroke={cat.color}
-												strokeWidth={donutStrokeWidth}
-												strokeDasharray={`${cat.dashLength} ${cat.gapLength}`}
-												strokeDashoffset={-cat.offsetLength}
-												strokeLinecap="butt"
-												opacity={theme.mode === "dark" ? 0.9 : 0.86}
-												transform={`rotate(-90 ${donutCenter} ${donutCenter})`}
+												d={pieWedgePath(
+													donutSize,
+													cat.startFraction,
+													cat.startFraction + cat.ratio,
+												)}
+												fill={`url(#${cat.gradientId})`}
+												stroke={fe.white}
+												strokeWidth={3}
+												strokeLinejoin="round"
 											/>
 										))}
+										<Circle
+											cx={donutSize * 0.36}
+											cy={donutSize * 0.28}
+											r={donutSize * 0.22}
+											fill="rgba(255,255,255,0.10)"
+										/>
 									</Svg>
 									<View style={styles.ringInner}>
 										<Text style={styles.ringValue}>{donutTotalLabel}</Text>
 										<Text style={styles.ringLabel}>{tx.ringLabel}</Text>
 									</View>
 								</View>
+							</View>
+
+							<View testID="reports-bubble-row" style={styles.bubbleRow}>
+								{dynamicCategories.map((cat, index) => {
+									const bubbleSize = Math.round(76 + Math.min(cat.percent, 100) * 0.72);
+									const tones = reportBlueGradientPalette[index % reportBlueGradientPalette.length];
+									const gradientId = `bubble-blue-${index}`;
+									return (
+										<Pressable
+											key={`bubble-${cat.id}`}
+											testID={`reports-bubble-${cat.id}`}
+											accessibilityRole="button"
+											accessibilityLabel={tx.openCategoryA11y(cat.label)}
+											onPress={() => setSelectedCategoryId(cat.id)}
+											style={[styles.bubble, { width: bubbleSize, height: bubbleSize, borderRadius: bubbleSize / 2 }]}
+										>
+											<Svg width={bubbleSize} height={bubbleSize} style={styles.bubbleSvg} pointerEvents="none">
+												<Defs>
+													<SvgLinearGradient id={gradientId} x1="0%" y1="0%" x2="100%" y2="100%">
+														<Stop offset="0%" stopColor={tones[0]} stopOpacity={0.84} />
+														<Stop offset="52%" stopColor={tones[1]} stopOpacity={0.92} />
+														<Stop offset="100%" stopColor={fe.navySurface} />
+													</SvgLinearGradient>
+												</Defs>
+												<Circle cx={bubbleSize / 2} cy={bubbleSize / 2} r={bubbleSize / 2 - 2} fill={`url(#${gradientId})`} />
+												<Path d={pieSlicePath(bubbleSize, cat.percent)} fill="rgba(255,255,255,0.26)" />
+												<Circle cx={bubbleSize * 0.36} cy={bubbleSize * 0.25} r={bubbleSize * 0.16} fill="rgba(255,255,255,0.11)" />
+												<Circle cx={bubbleSize / 2} cy={bubbleSize / 2} r={bubbleSize / 2 - 2} fill="none" stroke="rgba(255,255,255,0.32)" strokeWidth={1} />
+											</Svg>
+											<View style={styles.bubbleContent} pointerEvents="none">
+												<KaswiseIcon name={cat.icon} color={fe.white} size={15} weight="bold" />
+												<Text style={styles.bubbleLabel} numberOfLines={1}>{cat.label}</Text>
+												<Text style={styles.bubbleText}>{cat.percent}%</Text>
+											</View>
+										</Pressable>
+									);
+								})}
 							</View>
 
 							{dynamicCategories.map((cat, idx) => (
@@ -1893,10 +1998,10 @@ export default function ReportsScreen() {
 						</View>
 					</>
 				)}
-				{activeTab === "compare" && (
+				{activeTab === "compare" && (!premium || shouldRenderReportChart(reportViewState)) && (
 					<>
 						{/* Comparison Panel */}
-						<View style={styles.categoryCard}>
+						<View testID="reports-comparison-panel" style={styles.categoryCard}>
 							<Text style={styles.categoryCardTitle}>{tx.compareTitle}</Text>
 							<Text style={styles.categoryCardSub}>{tx.compareSub}</Text>
 
@@ -2027,6 +2132,8 @@ export default function ReportsScreen() {
 					</>
 				)}
 
+				{premium ? supportingCards : null}
+
 				<View style={{ height: 100 }} />
 				</ScrollView>
 			</PageEntrance>
@@ -2109,7 +2216,7 @@ export default function ReportsScreen() {
 							value={ruleName}
 							onChangeText={setRuleName}
 							placeholder={defaultRuleName}
-							placeholderTextColor={theme.colors.textMuted}
+							placeholderTextColor={fe.muted}
 							style={styles.ruleNameInput}
 						/>
 						<View style={styles.modalActions}>
@@ -2214,7 +2321,7 @@ export default function ReportsScreen() {
 										value={editingRuleName}
 										onChangeText={setEditingRuleName}
 										placeholder={renameSavedRule.name}
-										placeholderTextColor={theme.colors.textMuted}
+										placeholderTextColor={fe.muted}
 										style={styles.ruleNameInput}
 										autoFocus
 										selectTextOnFocus
@@ -2366,24 +2473,21 @@ export default function ReportsScreen() {
 	);
 }
 
-function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
-	const brandText =
-		theme.mode === "light"
-			? theme.colors.brandPrimaryDeep
-			: theme.colors.brandPrimary;
-	const brandSoftBg =
-		theme.mode === "light"
-			? "rgba(101, 163, 13, 0.14)"
-			: "rgba(163, 255, 18, 0.10)";
-	const brandSoftBorder =
-		theme.mode === "light"
-			? "rgba(101, 163, 13, 0.28)"
-			: "rgba(163, 255, 18, 0.35)";
+function createStyles(theme: ReturnType<typeof useTheme>["theme"], polish = false) {
+	const brandText = fe.ink;
+	const brandSoftBg = fe.paper;
+	const brandSoftBorder = "transparent";
 
 	return StyleSheet.create({
-		screen: { flex: 1, backgroundColor: theme.colors.background },
+		screen: { flex: 1, backgroundColor: fe.paper },
 		pageEntrance: { flex: 1 },
 		content: { padding: 20, gap: 10, paddingBottom: 26 },
+		analyticsHero: { marginHorizontal: -20, marginTop: -20, paddingHorizontal: 20, paddingTop: 20, paddingBottom: 48, borderBottomLeftRadius: 42, borderBottomRightRadius: 42, overflow: "hidden", gap: 22 },
+		analyticsHeroEmpty: { minHeight: 124, paddingBottom: 24 },
+		heroBubbleCluster: { flexDirection: "row", flexWrap: "wrap", justifyContent: "center", alignContent: "center", gap: 8, paddingHorizontal: 6 },
+		heroBubble: { alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: "rgba(255,255,255,0.20)", shadowColor: fe.navy, shadowOpacity: 0.24, shadowRadius: 14, shadowOffset: { width: 0, height: 8 }, paddingHorizontal: 9 },
+		heroBubbleLabel: { color: "rgba(255,255,255,0.82)", fontSize: 11, fontWeight: "600", marginTop: 4, maxWidth: 78 },
+		heroBubblePercent: { color: fe.white, fontSize: 13, fontWeight: polish ? "600" : "800", marginTop: 1 },
 		headerRow: {
 			flexDirection: "row",
 			justifyContent: "space-between",
@@ -2391,54 +2495,59 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			gap: 12,
 		},
 		title: {
-			color: theme.colors.textPrimary,
+			color: fe.white,
 			fontSize: theme.typography.fontSize["4xl"],
-			fontWeight: theme.typography.fontWeight.extrabold,
-			letterSpacing: theme.typography.letterSpacing.tight,
+			fontWeight: polish ? "600" : theme.typography.fontWeight.extrabold,
+			letterSpacing: polish ? -0.6 : theme.typography.letterSpacing.tight,
 		},
 		subtitle: {
-			color: theme.colors.textSecondary,
+			color: polish ? pwaHeroCaption : "rgba(255,255,255,0.64)",
 			fontSize: theme.typography.fontSize.sm,
 			marginTop: 2,
 		},
 		monthBadge: {
-			backgroundColor: brandSoftBg,
+			backgroundColor: "rgba(255,255,255,0.12)",
 			borderWidth: 1,
-			borderColor: brandSoftBorder,
+			borderColor: "rgba(255,255,255,0.20)",
 			borderRadius: theme.radius.pill,
 			paddingHorizontal: 12,
 			paddingVertical: 6,
 		},
 		monthBadgeText: {
-			color: brandText,
+			color: fe.white,
 			fontSize: theme.typography.fontSize.sm,
 			fontWeight: theme.typography.fontWeight.bold,
 		},
 		contextBadge: {
-			backgroundColor: theme.colors.mutedSurface,
-			borderColor: theme.colors.borderSoft,
+			backgroundColor: "rgba(255,255,255,0.12)",
+			borderColor: "rgba(255,255,255,0.20)",
 			borderRadius: theme.radius.pill,
 			borderWidth: 1,
 			paddingHorizontal: 12,
 			paddingVertical: 6,
 		},
 		contextBadgeText: {
-			color: theme.colors.textSecondary,
+			color: fe.white,
 			fontSize: theme.typography.fontSize.sm,
 			fontWeight: theme.typography.fontWeight.bold,
 		},
 		headerRight: { alignItems: "flex-end", gap: 8 },
+		touchTarget: {
+			minHeight: 44,
+			minWidth: 44,
+			alignItems: "center",
+			justifyContent: "center",
+		},
 		shareButton: {
-			backgroundColor:
-				theme.mode === "light"
-					? theme.colors.brandPrimaryDeep
-					: theme.colors.brandPrimary,
+			backgroundColor: "rgba(255,255,255,0.16)",
+			borderWidth: 1,
+			borderColor: "rgba(255,255,255,0.22)",
 			borderRadius: theme.radius.pill,
 			paddingHorizontal: 12,
 			paddingVertical: 6,
 		},
 		shareButtonText: {
-			color: theme.colors.textInverse,
+			color: fe.white,
 			fontSize: 11,
 			fontWeight: theme.typography.fontWeight.bold,
 		},
@@ -2463,26 +2572,26 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			paddingHorizontal: 12,
 			borderRadius: 999,
 			borderWidth: 1,
-			borderColor: theme.colors.borderSoft,
-			backgroundColor: theme.colors.surface,
+			borderColor: fe.line,
+			backgroundColor: fe.white,
 		},
 		periodChipActive: {
-			backgroundColor: brandSoftBg,
-			borderColor: brandSoftBorder,
+			backgroundColor: fe.ink,
+			borderColor: fe.ink,
 		},
 		periodChipText: {
 			fontSize: 11,
 			fontWeight: "600",
-			color: theme.colors.textSecondary,
+			color: fe.slate,
 		},
 		periodChipTextActive: {
-			color: brandText,
+			color: fe.white,
 		},
 		periodControlsCard: {
-			backgroundColor: theme.colors.surface,
+			backgroundColor: fe.white,
 			borderRadius: 16,
 			borderWidth: 1,
-			borderColor: theme.colors.borderSoft,
+			borderColor: fe.line,
 			padding: 10,
 			gap: 8,
 		},
@@ -2498,21 +2607,21 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			minWidth: 180,
 		},
 		activePeriodTitle: {
-			color: theme.colors.textMuted,
-			fontSize: 10,
-			fontWeight: "800",
-			textTransform: "uppercase",
-			letterSpacing: 0.35,
+			color: fe.muted,
+			fontSize: 11,
+			fontWeight: polish ? "600" : "800",
+			textTransform: polish ? "none" : "uppercase",
+			letterSpacing: polish ? 0 : 0.35,
 		},
 		activePeriodValue: {
-			color: theme.colors.textPrimary,
+			color: fe.ink,
 			fontSize: 13,
-			fontWeight: "800",
+			fontWeight: polish ? "600" : "800",
 			lineHeight: 17,
 			marginTop: 1,
 		},
 		activePeriodDate: {
-			color: theme.colors.textMuted,
+			color: fe.muted,
 			fontSize: 11,
 			fontWeight: "700",
 			lineHeight: 15,
@@ -2532,20 +2641,20 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 		activePeriodResetText: {
 			color: brandText,
 			fontSize: 11,
-			fontWeight: "800",
+			fontWeight: polish ? "600" : "800",
 		},
 		savedRulesInline: {
 			borderTopWidth: 1,
-			borderTopColor: theme.colors.borderSoft,
+			borderTopColor: fe.line,
 			paddingTop: 8,
 			gap: 6,
 		},
 		savedRulesInlineTitle: {
-			color: theme.colors.textMuted,
-			fontSize: 10,
-			fontWeight: "800",
-			textTransform: "uppercase",
-			letterSpacing: 0.35,
+			color: fe.muted,
+			fontSize: 11,
+			fontWeight: polish ? "600" : "800",
+			textTransform: polish ? "none" : "uppercase",
+			letterSpacing: polish ? 0 : 0.35,
 		},
 		savedRuleRow: {
 			gap: 6,
@@ -2557,15 +2666,15 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			minHeight: 46,
 			borderRadius: 14,
 			borderWidth: 1,
-			borderColor: theme.colors.borderSoft,
-			backgroundColor: theme.colors.mutedSurface,
+			borderColor: fe.line,
+			backgroundColor: fe.paper,
 			flexDirection: "row",
 			alignItems: "stretch",
 			overflow: "hidden",
 		},
 		savedRuleChipShellActive: {
-			backgroundColor: brandSoftBg,
-			borderColor: brandSoftBorder,
+			backgroundColor: fe.ink,
+			borderColor: fe.ink,
 		},
 		savedRuleChip: {
 			flex: 1,
@@ -2581,24 +2690,24 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			alignItems: "center",
 			justifyContent: "center",
 			borderLeftWidth: 1,
-			borderLeftColor: theme.colors.borderSoft,
+			borderLeftColor: fe.line,
 		},
 		savedRuleManageButtonActive: {
-			borderLeftColor: brandSoftBorder,
-			backgroundColor: `${theme.colors.surface}66`,
+			borderLeftColor: "rgba(255,255,255,0.18)",
+			backgroundColor: "rgba(255,255,255,0.10)",
 		},
 		savedRuleName: {
-			color: theme.colors.textPrimary,
+			color: fe.ink,
 			fontSize: 12,
-			fontWeight: "800",
+			fontWeight: polish ? "600" : "800",
 		},
-		savedRuleNameActive: { color: brandText },
+		savedRuleNameActive: { color: fe.white },
 		savedRuleSummary: {
-			color: theme.colors.textMuted,
-			fontSize: 10,
-			fontWeight: "700",
+			color: fe.muted,
+			fontSize: polish ? 11 : 10,
+			fontWeight: polish ? "500" : "700",
 		},
-		savedRuleSummaryActive: { color: brandText },
+		savedRuleSummaryActive: { color: fe.white },
 		customRulePrompt: {
 			flexDirection: "row",
 			alignItems: "center",
@@ -2618,10 +2727,10 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 		saveRuleButtonText: {
 			color: brandText,
 			fontSize: 12,
-			fontWeight: "800",
+			fontWeight: polish ? "600" : "800",
 		},
 		saveRuleHint: {
-			color: theme.colors.textSecondary,
+			color: fe.slate,
 			fontSize: 12,
 			fontWeight: "600",
 			marginBottom: 8,
@@ -2630,40 +2739,40 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			minHeight: 46,
 			borderRadius: 14,
 			borderWidth: 1,
-			borderColor: theme.colors.borderSoft,
-			backgroundColor: theme.colors.mutedSurface,
-			color: theme.colors.textPrimary,
+			borderColor: fe.line,
+			backgroundColor: fe.paper,
+			color: fe.ink,
 			fontSize: 14,
 			fontWeight: "700",
 			paddingHorizontal: 12,
 			marginBottom: 12,
 		},
 		ruleManageSheet: {
-			backgroundColor: theme.colors.surface,
+			backgroundColor: fe.white,
 			borderTopLeftRadius: 24,
 			borderTopRightRadius: 24,
 			paddingHorizontal: 20,
 			paddingTop: 10,
 			paddingBottom: 34,
 			borderTopWidth: 1,
-			borderColor: theme.colors.borderSoft,
+			borderColor: fe.line,
 		},
 		ruleManageHandle: {
 			alignSelf: "center",
 			width: 42,
 			height: 4,
 			borderRadius: 999,
-			backgroundColor: theme.colors.borderSoft,
+			backgroundColor: fe.line,
 			marginBottom: 14,
 		},
 		ruleManageName: {
-			color: theme.colors.textPrimary,
+			color: fe.ink,
 			fontSize: 15,
-			fontWeight: "800",
+			fontWeight: polish ? "600" : "800",
 			textAlign: "center",
 		},
 		ruleManageSummary: {
-			color: theme.colors.textMuted,
+			color: fe.muted,
 			fontSize: 12,
 			fontWeight: "700",
 			textAlign: "center",
@@ -2677,15 +2786,15 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			minHeight: 46,
 			borderRadius: 14,
 			borderWidth: 1,
-			borderColor: theme.colors.borderSoft,
-			backgroundColor: theme.colors.mutedSurface,
+			borderColor: fe.line,
+			backgroundColor: fe.paper,
 			paddingHorizontal: 14,
 			justifyContent: "center",
 		},
 		ruleManageMenuText: {
-			color: theme.colors.textPrimary,
+			color: fe.ink,
 			fontSize: 14,
-			fontWeight: "800",
+			fontWeight: polish ? "600" : "800",
 		},
 		ruleManageMenuDangerButton: {
 			borderColor: `${theme.colors.danger}35`,
@@ -2694,14 +2803,14 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 		ruleManageMenuDangerText: {
 			color: theme.colors.danger,
 			fontSize: 14,
-			fontWeight: "800",
+			fontWeight: polish ? "600" : "800",
 		},
 		renameModalKeyboardWrap: {
 			flex: 1,
 		},
 		modalCenterOverlay: {
 			flex: 1,
-			backgroundColor: `${theme.colors.background}${theme.opacity[50] * 100}`,
+			backgroundColor: `${fe.paper}${theme.opacity[50] * 100}`,
 			alignItems: "center",
 			justifyContent: "center",
 			padding: 20,
@@ -2711,8 +2820,8 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			maxWidth: 360,
 			borderRadius: 22,
 			borderWidth: 1,
-			borderColor: theme.colors.borderSoft,
-			backgroundColor: theme.colors.surface,
+			borderColor: fe.line,
+			backgroundColor: fe.white,
 			padding: 18,
 		},
 		deleteRuleCard: {
@@ -2721,17 +2830,17 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			borderRadius: 22,
 			borderWidth: 1,
 			borderColor: `${theme.colors.danger}30`,
-			backgroundColor: theme.colors.surface,
+			backgroundColor: fe.white,
 			padding: 18,
 		},
 		renameRuleTitle: {
-			color: theme.colors.textPrimary,
-			fontSize: 17,
-			fontWeight: "800",
+			color: fe.ink,
+			fontSize: 14,
+			fontWeight: polish ? "600" : "800",
 			textAlign: "center",
 		},
 		renameRuleSummary: {
-			color: theme.colors.textMuted,
+			color: fe.muted,
 			fontSize: 12,
 			fontWeight: "700",
 			textAlign: "center",
@@ -2743,7 +2852,7 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			gap: 10,
 		},
 		deleteRuleBody: {
-			color: theme.colors.textSecondary,
+			color: fe.slate,
 			fontSize: 13,
 			fontWeight: "600",
 			lineHeight: 18,
@@ -2759,7 +2868,7 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 		deleteRuleConfirmText: {
 			color: theme.colors.danger,
 			fontSize: 14,
-			fontWeight: "800",
+			fontWeight: polish ? "600" : "800",
 		},
 		ruleManageCancelButton: {
 			minHeight: 44,
@@ -2767,23 +2876,67 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			alignItems: "center",
 			justifyContent: "center",
 			marginTop: 12,
-			backgroundColor: theme.colors.mutedSurface,
+			backgroundColor: fe.paper,
 		},
 		ruleManageCancelText: {
-			color: theme.colors.textSecondary,
+			color: fe.slate,
 			fontSize: 13,
-			fontWeight: "800",
+			fontWeight: polish ? "600" : "800",
+		},
+		stateCard: {
+			backgroundColor: fe.white,
+			borderRadius: 16,
+			borderWidth: 1,
+			borderColor: fe.line,
+			paddingVertical: 16,
+			paddingHorizontal: 16,
+			gap: 6,
+		},
+		stateCardError: {
+			borderColor: `${theme.colors.danger}40`,
+			backgroundColor: `${theme.colors.danger}0D`,
+		},
+		stateTitle: {
+			color: fe.ink,
+			fontSize: 15,
+			fontWeight: "700",
+		},
+		stateBody: {
+			color: fe.slate,
+			fontSize: 13,
+			lineHeight: 19,
+		},
+		stateAction: {
+			alignSelf: "flex-start",
+			minHeight: 44,
+			justifyContent: "center",
+			paddingHorizontal: 16,
+			borderRadius: 999,
+			backgroundColor: fe.ink,
+			marginTop: 6,
+		},
+		stateActionPressed: { opacity: 0.85 },
+		stateActionText: {
+			color: fe.white,
+			fontSize: 13,
+			fontWeight: "700",
+		},
+		periodStatus: {
+			color: fe.muted,
+			fontSize: 12,
+			marginTop: 4,
+			marginBottom: 4,
 		},
 		loadingCard: {
-			backgroundColor: theme.colors.surface,
+			backgroundColor: fe.white,
 			borderRadius: 12,
 			borderWidth: 1,
-			borderColor: theme.colors.borderSoft,
+			borderColor: fe.line,
 			paddingVertical: 10,
 			paddingHorizontal: 12,
 		},
 		loadingText: {
-			color: theme.colors.textSecondary,
+			color: fe.slate,
 			fontSize: 12,
 			fontWeight: "600",
 		},
@@ -2814,10 +2967,10 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			fontWeight: "600",
 		},
 		envelopeEntryCard: {
-			backgroundColor: theme.colors.surface,
+			backgroundColor: fe.white,
 			borderRadius: 18,
 			borderWidth: 1,
-			borderColor: theme.colors.borderSoft,
+			borderColor: fe.line,
 			padding: 14,
 		},
 		envelopeEntryTopRow: {
@@ -2840,12 +2993,12 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			paddingRight: 8,
 		},
 		envelopeEntryTitle: {
-			color: theme.colors.textPrimary,
+			color: fe.ink,
 			fontSize: 15,
-			fontWeight: "800",
+			fontWeight: polish ? "600" : "800",
 		},
 		envelopeEntryMeta: {
-			color: theme.colors.textMuted,
+			color: fe.muted,
 			fontSize: 12,
 			lineHeight: 16,
 			marginTop: 2,
@@ -2864,7 +3017,7 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 		envelopeManageText: {
 			color: brandText,
 			fontSize: 12,
-			fontWeight: "800",
+			fontWeight: polish ? "600" : "800",
 		},
 		tabScrollView: {
 			marginHorizontal: -20,
@@ -2874,30 +3027,31 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			minWidth: 96,
 			paddingVertical: 10,
 			paddingHorizontal: 16,
-			borderRadius: 12,
-			borderWidth: 1,
-			borderColor: theme.colors.borderSoft,
-			backgroundColor: theme.colors.surface,
+			borderRadius: 14,
+			borderWidth: 0,
+			backgroundColor: fe.white,
 			alignItems: "center",
 		},
 		tabChipActive: {
-			backgroundColor: brandSoftBg,
-			borderColor: brandSoftBorder,
+			backgroundColor: fe.ink,
+			borderColor: fe.ink,
 		},
 		tabChipText: {
-			color: theme.colors.textSecondary,
+			color: fe.slate,
 			fontSize: 13,
-			fontWeight: "700",
+			fontWeight: "500",
 		},
-		tabChipTextActive: { color: brandText },
+		tabChipTextActive: { color: fe.white },
 		summaryCard: {
-			backgroundColor: theme.colors.card,
-			borderRadius: 24,
+			backgroundColor: fe.white,
+			borderRadius: 28,
 			padding: 18,
 			borderWidth: 1,
-			borderColor: theme.colors.borderSoft,
+			borderColor: fe.line,
 			gap: 14,
 			overflow: "hidden",
+			marginTop: -36,
+			zIndex: 2,
 		},
 		summaryTopRow: {
 			flexDirection: "row",
@@ -2910,246 +3064,80 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 		},
 		summaryDivider: {
 			width: 1,
-			backgroundColor: theme.colors.borderSoft,
+			backgroundColor: fe.line,
 		},
 		summarySavingsRow: {
 			borderTopWidth: 1,
-			borderTopColor: theme.colors.borderSoft,
+			borderTopColor: fe.line,
 			paddingTop: 12,
 			gap: 4,
 		},
 		summaryLabel: {
-			color: theme.colors.textSecondary,
+			color: fe.slate,
 			fontSize: 12,
 			fontWeight: "600",
 		},
-		summaryValue: { fontSize: 18, fontWeight: "800", marginTop: 2 },
+		summaryValue: { fontSize: 18, fontWeight: polish ? "600" : "800", marginTop: 2 },
 		summarySavingRate: {
-			color: theme.colors.textMuted,
+			color: fe.muted,
 			fontSize: 11,
 			marginTop: 2,
 		},
 		chartCard: {
-			backgroundColor: theme.colors.surface,
+			backgroundColor: fe.white,
 			borderRadius: 20,
 			borderWidth: 1,
-			borderColor: theme.colors.borderSoft,
+			borderColor: fe.line,
 			padding: 16,
 			gap: 10,
-		},
-		chartTitle: {
-			color: theme.colors.textPrimary,
-			fontSize: 16,
-			fontWeight: "800",
-		},
-		chartSub: { color: theme.colors.textSecondary, fontSize: 12 },
-		lineChartArea: {
-			height: 190,
-			marginTop: 8,
-			position: "relative",
-		},
-		lineGrid: {
-			position: "absolute",
-			left: 0,
-			right: 0,
-			top: 18,
-			bottom: 36,
-			justifyContent: "space-between",
-		},
-		gridLine: {
-			height: 1,
-			backgroundColor: theme.colors.borderSoft,
-		},
-		lineGraphLayer: {
-			flex: 1,
-			flexDirection: "row",
-			justifyContent: "space-between",
-			paddingTop: 18,
-			paddingBottom: 32,
-			position: "relative",
-		},
-		lineSvgLayer: {
-			position: "absolute",
-			left: 0,
-			right: 0,
-			top: 0,
-		},
-		lineColumn: {
-			flex: 1,
-			alignItems: "center",
-			height: "100%",
-			position: "relative",
-		},
-		pulseStack: {
-			width: "100%",
-			minHeight: 124,
-			alignItems: "center",
-			justifyContent: "center",
-		},
-		pulseUpper: {
-			height: 58,
-			justifyContent: "flex-end",
-			alignItems: "center",
-		},
-		pulseAxis: {
-			height: 18,
-			alignItems: "center",
-			justifyContent: "center",
-		},
-		pulseLower: {
-			height: 58,
-			justifyContent: "flex-start",
-			alignItems: "center",
-		},
-		pulseBar: {
-			width: 12,
-			borderRadius: 999,
-			borderWidth: 1,
-			borderColor:
-				theme.mode === "light"
-					? "rgba(255,255,255,0.78)"
-					: "rgba(10,10,10,0.45)",
-		},
-		incomePulse: {
-			backgroundColor: theme.colors.success,
-			shadowColor: theme.colors.success,
-			shadowOpacity: theme.mode === "light" ? 0.18 : 0.28,
-			shadowRadius: 8,
-			shadowOffset: { width: 0, height: 4 },
-		},
-		expensePulse: {
-			backgroundColor: theme.colors.danger,
-			shadowColor: theme.colors.danger,
-			shadowOpacity: theme.mode === "light" ? 0.12 : 0.26,
-			shadowRadius: 8,
-			shadowOffset: { width: 0, height: 4 },
-		},
-		netDot: {
-			width: 10,
-			height: 10,
-			borderRadius: 5,
-			borderWidth: 2,
-			borderColor: theme.colors.surface,
-		},
-		netDotPositive: {
-			backgroundColor: theme.colors.brandPrimary,
-		},
-		netDotNegative: {
-			backgroundColor: theme.colors.textPrimary,
-		},
-		lineDot: {
-			position: "absolute",
-			width: 10,
-			height: 10,
-			borderRadius: 5,
-			borderWidth: 2,
-			borderColor: theme.colors.surface,
-			zIndex: 3,
-		},
-		incomeDot: {
-			backgroundColor: theme.colors.success,
-		},
-		expenseDot: {
-			backgroundColor: theme.colors.danger,
-		},
-		lineSegment: {
-			position: "absolute",
-			left: "50%",
-			width: "100%",
-			height: 3,
-			borderRadius: 999,
-			opacity: 0.72,
-			zIndex: 1,
-		},
-		incomeSegment: {
-			backgroundColor: theme.colors.success,
-		},
-		expenseSegment: {
-			backgroundColor: theme.colors.danger,
-		},
-		chartTooltip: {
-			position: "absolute",
-			top: 8,
-			left: "50%",
-			marginLeft: -62,
-			width: 124,
-			backgroundColor: theme.colors.surface,
-			borderRadius: theme.radius.md,
-			padding: 8,
-			borderWidth: 1,
-			borderColor: theme.colors.borderSoft,
-			...theme.shadow.md,
-			zIndex: 12,
-		},
-		tooltipTitle: {
-			fontSize: 11,
-			fontWeight: "700",
-			color: theme.colors.textPrimary,
-			marginBottom: 4,
-		},
-		tooltipValue: { fontSize: 10, fontWeight: "600", marginBottom: 2 },
-		chartLabel: {
-			color: theme.colors.textMuted,
-			fontSize: 10,
-			fontWeight: "700",
-			marginTop: 6,
-		},
-		chartLegend: { flexDirection: "row", gap: 16, marginTop: 4 },
-		legendItem: { flexDirection: "row", alignItems: "center", gap: 6 },
-		legendDot: { width: 8, height: 8, borderRadius: 999 },
-		legendText: {
-			color: theme.colors.textMuted,
-			fontSize: 11,
-			fontWeight: "600",
 		},
 		categoryCard: {
-			backgroundColor: theme.colors.surface,
-			borderRadius: 20,
-			borderWidth: 1,
-			borderColor: theme.colors.borderSoft,
-			padding: 16,
-			gap: 10,
+			backgroundColor: fe.white,
+			borderRadius: 22,
+			borderWidth: 0,
+			padding: 18,
+			gap: 12,
 		},
 		categoryCardTitle: {
-			color: theme.colors.textPrimary,
-			fontSize: 16,
-			fontWeight: "800",
+			color: fe.ink,
+			fontSize: 18,
+			fontWeight: "600",
 		},
-		categoryCardSub: { color: theme.colors.textSecondary, fontSize: 12 },
+		categoryCardSub: { color: fe.slate, fontSize: 12 },
 		otherInsightCard: {
-			backgroundColor: theme.colors.mutedSurface,
+			backgroundColor: fe.paper,
 			borderWidth: 1,
-			borderColor: theme.colors.borderSoft,
+			borderColor: fe.line,
 			borderRadius: 14,
 			padding: 12,
 		},
 		otherInsightText: {
-			color: theme.colors.textSecondary,
+			color: fe.slate,
 			fontSize: 12,
 			fontWeight: "700",
 			lineHeight: 17,
 		},
 		top5Card: {
-			backgroundColor: theme.colors.surface,
+			backgroundColor: fe.white,
 			borderRadius: 20,
 			borderWidth: 1,
-			borderColor: theme.colors.borderSoft,
+			borderColor: fe.line,
 			padding: 16,
 			gap: 12,
 		},
 		top5Title: {
-			color: theme.colors.textPrimary,
+			color: fe.ink,
 			fontSize: 16,
-			fontWeight: "800",
+			fontWeight: polish ? "600" : "800",
 		},
-		top5Sub: { color: theme.colors.textSecondary, fontSize: 12 },
+		top5Sub: { color: fe.slate, fontSize: 12 },
 		top5Row: {
 			flexDirection: "row",
 			alignItems: "center",
 			justifyContent: "space-between",
 			paddingTop: 12,
 			borderTopWidth: 1,
-			borderTopColor: theme.colors.borderSoft,
+			borderTopColor: fe.line,
 		},
 		top5Left: {
 			flexDirection: "row",
@@ -3167,15 +3155,15 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			borderWidth: 1,
 			borderColor: brandSoftBorder,
 		},
-		top5RankText: { color: brandText, fontSize: 12, fontWeight: "800" },
+		top5RankText: { color: brandText, fontSize: 12, fontWeight: polish ? "600" : "800" },
 		top5Label: {
-			color: theme.colors.textPrimary,
+			color: fe.ink,
 			fontSize: 14,
 			fontWeight: "700",
 			flexShrink: 1,
 		},
 		top5Amount: {
-			color: theme.colors.textSecondary,
+			color: fe.financialExpense,
 			fontSize: 13,
 			fontWeight: "700",
 		},
@@ -3185,34 +3173,28 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			paddingBottom: 20,
 		},
 		donutChart: {
-			width: 180,
-			height: 180,
-			borderRadius: 90,
+			width: 200,
+			height: 200,
+			borderRadius: 100,
 			alignItems: "center",
 			justifyContent: "center",
 			overflow: "visible",
 			position: "relative",
-			backgroundColor:
-				theme.mode === "light"
-					? theme.colors.mutedSurface
-					: theme.colors.surface,
+			backgroundColor: fe.navySurface,
 			borderWidth: 1,
-			borderColor:
-				theme.mode === "light"
-					? "rgba(15,23,42,0.08)"
-					: "rgba(255,255,255,0.09)",
-			shadowColor: theme.colors.textPrimary,
-			shadowOpacity: theme.mode === "light" ? 0.09 : 0.32,
-			shadowRadius: 28,
+			borderColor: "rgba(255,255,255,0.18)",
+			shadowColor: polish ? fe.navy : fe.blueBright,
+			shadowOpacity: polish ? 0.16 : 0.28,
+			shadowRadius: 30,
 			shadowOffset: { width: 0, height: 16 },
-			elevation: 7,
+			elevation: 8,
 		},
 		donutSvg: {
 			position: "absolute",
 			top: 0,
 			left: 0,
-			width: 180,
-			height: 180,
+			width: 200,
+			height: 200,
 		},
 		donutSegment: {
 			height: 150,
@@ -3220,66 +3202,87 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 		},
 		ringInner: {
 			position: "absolute",
-			top: 41,
-			left: 41,
-			width: 98,
-			height: 98,
-			borderRadius: 49,
-			backgroundColor: theme.colors.card,
+			top: 63,
+			left: 63,
+			width: 74,
+			height: 74,
+			borderRadius: 37,
+			backgroundColor: "rgba(7,27,79,0.92)",
 			alignItems: "center",
 			justifyContent: "center",
 			borderWidth: 1,
-			borderColor:
-				theme.mode === "light"
-					? "rgba(15,23,42,0.07)"
-					: theme.colors.borderSoft,
-			shadowColor: theme.colors.textPrimary,
-			shadowOpacity: theme.mode === "light" ? 0.06 : 0.24,
+			borderColor: "rgba(255,255,255,0.20)",
+			shadowColor: fe.blueGlow,
+			shadowOpacity: 0.18,
 			shadowRadius: 18,
 			shadowOffset: { width: 0, height: 10 },
 			elevation: 4,
 		},
 		ringValue: {
-			color: theme.colors.textPrimary,
-			fontSize: 17,
-			fontWeight: "900",
-			letterSpacing: -0.4,
+			color: fe.white,
+			fontSize: 14,
+			fontWeight: polish ? "600" : "900",
+			letterSpacing: polish ? 0 : -0.4,
 		},
 		ringLabel: {
-			color: theme.colors.textMuted,
-			fontSize: 10,
-			fontWeight: "700",
-			letterSpacing: 0.5,
+			color: polish ? "rgba(255,255,255,0.74)" : "rgba(255,255,255,0.62)",
+			fontSize: 11,
+			fontWeight: polish ? "600" : "700",
+			letterSpacing: polish ? 0 : 0.5,
 			marginTop: 3,
-			textTransform: "uppercase",
+			textTransform: polish ? "none" : "uppercase",
 		},
 		catRow: {
 			flexDirection: "row",
 			justifyContent: "space-between",
 			alignItems: "center",
-			paddingVertical: 10,
+			paddingVertical: 12,
 			borderTopWidth: 1,
-			borderTopColor: theme.colors.borderSoft,
+			borderTopColor: fe.line,
 		},
+		bubbleRow: {
+			flexDirection: "row",
+			flexWrap: "wrap",
+			gap: 12,
+			alignItems: "center",
+			justifyContent: "center",
+			paddingVertical: 14,
+			paddingHorizontal: 2,
+		},
+		bubble: {
+			alignItems: "center",
+			justifyContent: "center",
+			borderWidth: 0,
+			position: "relative",
+			shadowColor: polish ? fe.navy : fe.blueBright,
+			shadowOpacity: polish ? 0.16 : 0.22,
+			shadowRadius: 16,
+			shadowOffset: { width: 0, height: 9 },
+			elevation: 5,
+		},
+		bubbleSvg: { position: "absolute", top: 0, left: 0 },
+		bubbleContent: { alignItems: "center", justifyContent: "center", maxWidth: "80%", gap: 1 },
+		bubbleLabel: { color: "rgba(255,255,255,0.82)", fontSize: 11, fontWeight: "600", maxWidth: 72 },
+		bubbleText: { color: fe.white, fontSize: 12, fontWeight: polish ? "600" : "800" },
 		catLeft: { flexDirection: "row", alignItems: "center", gap: 10, flex: 1 },
 		catEmoji: { fontSize: 18 },
 		catName: {
-			color: theme.colors.textPrimary,
-			fontSize: 13,
-			fontWeight: "700",
+			color: fe.ink,
+			fontSize: 14,
+			fontWeight: "600",
 		},
-		catAmount: { color: theme.colors.textMuted, fontSize: 11, marginTop: 1 },
+		catAmount: { color: fe.muted, fontSize: 11, marginTop: 1 },
 		catRight: { alignItems: "flex-end", gap: 4 },
 		catPct: {
-			color: theme.colors.brandPrimary,
+			color: fe.ink,
 			fontSize: 13,
-			fontWeight: "800",
+			fontWeight: polish ? "600" : "800",
 		},
 		catBar: {
 			width: 60,
 			height: 4,
 			borderRadius: 999,
-			backgroundColor: theme.colors.mutedSurface,
+			backgroundColor: fe.paper,
 		},
 		catBarFill: { height: "100%", borderRadius: 999 },
 		customRangeBadge: {
@@ -3299,11 +3302,11 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 		},
 		modalOverlay: {
 			flex: 1,
-			backgroundColor: `${theme.colors.background}${theme.opacity[50] * 100}`,
+			backgroundColor: `${fe.paper}${theme.opacity[50] * 100}`,
 			justifyContent: "flex-end",
 		},
 		modalContent: {
-			backgroundColor: theme.colors.surface,
+			backgroundColor: fe.white,
 			borderTopLeftRadius: 24,
 			borderTopRightRadius: 24,
 			padding: 20,
@@ -3311,7 +3314,7 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			maxHeight: "80%",
 		},
 		dateRangeModalContent: {
-			backgroundColor: theme.colors.surface,
+			backgroundColor: fe.white,
 			borderTopLeftRadius: 24,
 			borderTopRightRadius: 24,
 			padding: 18,
@@ -3325,9 +3328,9 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			paddingBottom: 2,
 		},
 		modalTitle: {
-			color: theme.colors.textPrimary,
+			color: fe.ink,
 			fontSize: 18,
-			fontWeight: "800",
+			fontWeight: polish ? "600" : "800",
 			textAlign: "center",
 			marginBottom: 20,
 		},
@@ -3335,7 +3338,7 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			marginBottom: 16,
 		},
 		modalSectionTitle: {
-			color: theme.colors.textSecondary,
+			color: fe.slate,
 			fontSize: 12,
 			fontWeight: "600",
 			marginBottom: 8,
@@ -3351,19 +3354,19 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			width: 44,
 			height: 44,
 			borderRadius: 22,
-			backgroundColor: theme.colors.mutedSurface,
+			backgroundColor: fe.paper,
 			alignItems: "center",
 			justifyContent: "center",
 		},
 		modalButtonText: {
-			color: theme.colors.textPrimary,
+			color: fe.ink,
 			fontSize: 20,
 			fontWeight: "700",
 		},
 		modalValue: {
-			color: theme.colors.textPrimary,
+			color: fe.ink,
 			fontSize: 20,
-			fontWeight: "800",
+			fontWeight: polish ? "600" : "800",
 			minWidth: 60,
 			textAlign: "center",
 		},
@@ -3376,8 +3379,8 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			paddingHorizontal: 14,
 			borderRadius: 999,
 			borderWidth: 1,
-			borderColor: theme.colors.borderSoft,
-			backgroundColor: theme.colors.background,
+			borderColor: fe.line,
+			backgroundColor: fe.paper,
 			marginRight: 8,
 		},
 		dayChip: {
@@ -3386,22 +3389,22 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			paddingHorizontal: 10,
 			borderRadius: 999,
 			borderWidth: 1,
-			borderColor: theme.colors.borderSoft,
-			backgroundColor: theme.colors.background,
+			borderColor: fe.line,
+			backgroundColor: fe.paper,
 			marginRight: 8,
 			alignItems: "center",
 		},
 		monthChipActive: {
-			backgroundColor: brandSoftBg,
-			borderColor: brandSoftBorder,
+			backgroundColor: fe.ink,
+			borderColor: fe.ink,
 		},
 		monthChipText: {
-			color: theme.colors.textSecondary,
+			color: fe.slate,
 			fontSize: 12,
 			fontWeight: "600",
 		},
 		monthChipTextActive: {
-			color: brandText,
+			color: fe.white,
 		},
 		modalActions: {
 			flexDirection: "row",
@@ -3414,7 +3417,7 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			marginTop: 10,
 			paddingTop: 10,
 			borderTopWidth: 1,
-			borderTopColor: theme.colors.borderSoft,
+			borderTopColor: fe.line,
 		},
 		modalActionButton: {
 			flex: 1,
@@ -3424,21 +3427,21 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			alignItems: "center",
 		},
 		modalActionCancel: {
-			backgroundColor: theme.colors.mutedSurface,
+			backgroundColor: fe.paper,
 		},
 		modalActionConfirm: {
 			backgroundColor:
 				theme.mode === "light"
-					? theme.colors.brandPrimaryDeep
-					: theme.colors.brandPrimary,
+					? fe.ink
+					: fe.ink,
 		},
 		modalActionCancelText: {
-			color: theme.colors.textSecondary,
+			color: fe.slate,
 			fontSize: 14,
 			fontWeight: "700",
 		},
 		modalActionConfirmText: {
-			color: theme.colors.textInverse,
+			color: fe.white,
 			fontSize: 14,
 			fontWeight: "700",
 		},
@@ -3448,10 +3451,10 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			alignItems: "center",
 			paddingVertical: 12,
 			borderBottomWidth: 1,
-			borderBottomColor: theme.colors.borderSoft,
+			borderBottomColor: fe.line,
 		},
 		compareLabel: {
-			color: theme.colors.textSecondary,
+			color: fe.slate,
 			fontSize: 13,
 			fontWeight: "600",
 		},
@@ -3460,19 +3463,19 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			gap: 4,
 		},
 		compareCurrent: {
-			color: theme.colors.textPrimary,
+			color: fe.ink,
 			fontSize: 14,
-			fontWeight: "800",
+			fontWeight: polish ? "600" : "800",
 		},
 		compareDelta: {
 			fontSize: 11,
 			fontWeight: "700",
 		},
 		compareDeltaPositive: {
-			color: theme.colors.success,
+			color: fe.financialIncome,
 		},
 		compareDeltaNegative: {
-			color: theme.colors.danger,
+			color: fe.financialExpenseAlert,
 		},
 		detailHeaderRow: {
 			flexDirection: "row",
@@ -3489,20 +3492,20 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 		detailBackText: {
 			color: brandText,
 			fontSize: 28,
-			fontWeight: "800",
+			fontWeight: polish ? "600" : "800",
 			lineHeight: 30,
 		},
 		detailBackLabel: {
 			color: brandText,
 			fontSize: 13,
-			fontWeight: "800",
+			fontWeight: polish ? "600" : "800",
 		},
 		detailHeaderTitleWrap: {
 			flex: 1,
 			paddingRight: 54,
 		},
 		detailSubtitle: {
-			color: theme.colors.textSecondary,
+			color: fe.slate,
 			fontSize: 12,
 			fontWeight: "600",
 			textAlign: "center",
@@ -3522,25 +3525,25 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			gap: 12,
 			paddingVertical: 12,
 			borderBottomWidth: 1,
-			borderBottomColor: theme.colors.borderSoft,
+			borderBottomColor: fe.line,
 		},
 		detailTxInfo: {
 			flex: 1,
 		},
 		detailTxTitle: {
-			color: theme.colors.textPrimary,
+			color: fe.ink,
 			fontSize: 13,
-			fontWeight: "800",
+			fontWeight: polish ? "600" : "800",
 		},
 		detailTxMeta: {
-			color: theme.colors.textMuted,
+			color: fe.muted,
 			fontSize: 11,
 			marginTop: 3,
 		},
 		detailTxAmount: {
-			color: theme.colors.danger,
+			color: fe.financialExpense,
 			fontSize: 13,
-			fontWeight: "800",
+			fontWeight: polish ? "600" : "800",
 		},
 	});
 }

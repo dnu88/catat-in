@@ -112,14 +112,14 @@ export function getCategoryVisualMeta(
 		groceries: { color: roleColors.warning, icon: "groceries", tone: "warning" },
 		household: { color: roleColors.warning, icon: "basket", tone: "warning" },
 		"belanja bulanan": { color: roleColors.warning, icon: "groceries", tone: "warning" },
-		"belanja pribadi": { color: roleColors.warning, icon: "groceries", tone: "warning" },
+		"belanja pribadi": { color: roleColors.warning, icon: "tag", tone: "warning" },
 		"personal care": { color: roleColors.warning, icon: "basket", tone: "warning" },
-		"personal shopping": { color: roleColors.warning, icon: "groceries", tone: "warning" },
-		belanja: { color: roleColors.warning, icon: "groceries", tone: "warning" },
+		"personal shopping": { color: roleColors.warning, icon: "tag", tone: "warning" },
+		belanja: { color: roleColors.warning, icon: "tag", tone: "warning" },
 		bills: { color: roleColors.danger, icon: "bills", tone: "danger" },
 		tagihan: { color: roleColors.danger, icon: "bills", tone: "danger" },
-		health: { color: roleColors.info, icon: "sport", tone: "info" },
-		kesehatan: { color: roleColors.info, icon: "sport", tone: "info" },
+		health: { color: roleColors.info, icon: "firstAid", tone: "info" },
+		kesehatan: { color: roleColors.info, icon: "firstAid", tone: "info" },
 		entertainment: {
 			color: roleColors.info,
 			icon: "recreation",
@@ -132,6 +132,11 @@ export function getCategoryVisualMeta(
 		"gifts & donations": { color: roleColors.danger, icon: "gift", tone: "danger" },
 		"kartu kredit": { color: roleColors.navy, icon: "creditCard", tone: "navy" },
 		"credit card": { color: roleColors.navy, icon: "creditCard", tone: "navy" },
+		"other expenses": {
+			color: neutralCategoryColor,
+			icon: "otherExpenses",
+			tone: "neutral",
+		},
 		other: {
 			color: neutralCategoryColor,
 			icon: "otherExpenses",
@@ -142,6 +147,12 @@ export function getCategoryVisualMeta(
 			icon: "otherExpenses",
 			tone: "neutral",
 		},
+		education: { color: roleColors.info, icon: "graduationCap", tone: "info" },
+		pendidikan: { color: roleColors.info, icon: "graduationCap", tone: "info" },
+		salary: { color: roleColors.navy, icon: "bank", tone: "navy" },
+		gaji: { color: roleColors.navy, icon: "bank", tone: "navy" },
+		bonus: { color: roleColors.navy, icon: "trophy", tone: "navy" },
+		freelance: { color: roleColors.navy, icon: "briefcase", tone: "navy" },
 	};
 	const definition = getCategoryDefinitionByName(categoryName);
 	const key = normalizeCategoryVisualName(definition?.labels.en ?? categoryName);

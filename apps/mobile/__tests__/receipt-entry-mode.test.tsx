@@ -1,0 +1,691 @@
+import React from "react";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import {
+	act,
+	fireEvent,
+	render,
+	screen,
+	waitFor,
+} from "@testing-library/react-native";
+
+import CaptureScreen from "../app/(tabs)/capture";
+import { I18nProvider } from "../src/i18n/i18n-context";
+import { ThemeProvider } from "../src/theme/theme-context";
+import {
+	draftsMatchConfirmedTotal,
+	receiptDraftMode,
+	receiptDraftsForMode,
+} from "../src/features/transaction-entry/adapters";
+import { createDraft } from "../src/features/transaction-entry/draft";
+import type { ReceiptExtraction } from "../src/services/receipt-intake";
+
+// The flag object is read through getters so individual tests can flip the
+// review-first flow on or off without re-importing the screen.
+const mockTransactionEntryV2 = true;
+// Text auto-save is ON for every test in this file on purpose: the receipt path
+// must ignore it completely and always stop at the confirmation screen.
+const mockAiAutosaveText = true;
+// Premium batch presentation. OFF unless a test turns it on, so every existing
+// case keeps exercising the legacy review surface.
+let mockSimplePremiumExperience = false;
+jest.mock("../src/config/features", () => ({
+	featureFlags: {
+		get transactionEntryV2() {
+			return mockTransactionEntryV2;
+		},
+		get aiAutosaveText() {
+			return mockAiAutosaveText;
+		},
+		get simplePremiumExperience() {
+			return mockSimplePremiumExperience;
+		},
+		get simpleNavigation() {
+			return true;
+		},
+		get voiceNote() {
+			return false;
+		},
+		get importStatement() {
+			return false;
+		},
+	},
+}));
+
+jest.mock("expo-av", () => ({
+	Audio: {
+		requestPermissionsAsync: jest.fn<any, any[]>(),
+		setAudioModeAsync: jest.fn<any, any[]>(),
+		Recording: { createAsync: jest.fn<any, any[]>() },
+		RecordingOptionsPresets: { HIGH_QUALITY: {} },
+	},
+}));
+
+jest.mock("react-native-safe-area-context", () => ({
+	useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }),
+	SafeAreaProvider: ({ children }: { children: React.ReactNode }) => children,
+}));
+
+const mockRequestMediaLibraryPermissionsAsync = jest.fn<any, any[]>(
+	async () => ({ granted: true }),
+);
+const mockLaunchImageLibraryAsync = jest.fn<any, any[]>(async () => ({
+	canceled: false,
+	assets: [{ uri: "file:///receipt.jpg", fileName: "receipt.jpg", mimeType: "image/jpeg" }],
+}));
+jest.mock("expo-image-picker", () => ({
+	requestMediaLibraryPermissionsAsync: (...args: unknown[]) =>
+		mockRequestMediaLibraryPermissionsAsync(...(args as any[])),
+	launchImageLibraryAsync: (...args: unknown[]) =>
+		mockLaunchImageLibraryAsync(...(args as any[])),
+}));
+
+const mockCreateTransaction = jest.fn<any, any[]>(async (input: Record<string, unknown>) => ({
+	id: "tx-legacy",
+	...input,
+}));
+jest.mock("../src/services/transactions", () => ({
+	createTransaction: (...args: unknown[]) => mockCreateTransaction(args[0] as any),
+}));
+
+const mockSaveEntry = jest.fn<any, any[]>();
+const mockReconcileEntry = jest.fn<any, any[]>(async () => []);
+jest.mock("../src/services/transaction-entry-persistence", () => {
+	class EntryPersistenceError extends Error {
+		kind: string;
+		fields?: Record<string, unknown>;
+		constructor(
+			kind: string,
+			message: string,
+			options?: { fields?: Record<string, unknown> },
+		) {
+			super(message);
+			this.name = "EntryPersistenceError";
+			this.kind = kind;
+			this.fields = options?.fields;
+		}
+	}
+	return {
+		EntryPersistenceError,
+		saveEntry: (...args: unknown[]) => mockSaveEntry(...args),
+		reconcileEntry: (...args: unknown[]) => mockReconcileEntry(...args),
+	};
+});
+
+const mockAnalyzeTransactionText = jest.fn<any, any[]>(async () => ({ transactions: [] }));
+const mockAnalyzeReceiptImage = jest.fn<any, any[]>();
+const mockGetReceiptAuthSession = jest.fn<any, any[]>(async () => ({
+	access_token: "token",
+	user: { id: "user-1" },
+}));
+const mockUploadReceiptImage = jest.fn<any, any[]>(async () => "user-1/receipt.jpg");
+// Keep every pure receipt helper real (reconcileReceipt, receiptItemLines,
+// receiptExtractionToDrafts, normalizeReceiptDate); only stub the I/O edges.
+jest.mock("../src/services/receipt-intake", () => {
+	const actual = jest.requireActual("../src/services/receipt-intake");
+	return {
+		...actual,
+		analyzeTransactionText: (...args: unknown[]) =>
+			mockAnalyzeTransactionText(...(args as any[])),
+		analyzeReceiptImage: (...args: unknown[]) =>
+			mockAnalyzeReceiptImage(...(args as any[])),
+		getReceiptAuthSession: (...args: unknown[]) =>
+			mockGetReceiptAuthSession(...(args as any[])),
+		uploadReceiptImage: (...args: unknown[]) =>
+			mockUploadReceiptImage(...(args as any[])),
+	};
+});
+
+jest.mock("../src/services/transaction-classifier", () => ({
+	classifyTransactionTextBatch: jest.fn<any, any[]>(() => []),
+	CLASSIFIER_HIGH_CONFIDENCE_THRESHOLD: 0.8,
+}));
+
+jest.mock("../src/services/categories", () => ({
+	listCategories: jest.fn<any, any[]>(async () => []),
+}));
+
+jest.mock("../src/services/wallets", () => ({
+	listWallets: jest.fn<any, any[]>(async () => [
+		{ id: "w-1", name: "Seabank", is_active: true },
+	]),
+}));
+
+// Keep context identity stable, matching the real store: an empty/cancelled
+// picker must not retrigger scoped loading on every render.
+const mockActiveContext = { type: "personal" };
+jest.mock("../src/state/finance-context", () => ({
+	useFinanceContext: () => ({
+		activeContext: mockActiveContext,
+		canCreate: true,
+		memberships: [],
+		setPersonalContext: jest.fn<any, any[]>(),
+		setActiveHousehold: jest.fn<any, any[]>(),
+	}),
+}));
+
+const mockGetUser = jest.fn<any, any[]>(async () => ({ data: { user: { id: "user-1" } } }));
+const mockSupabaseClient = {
+	auth: { getUser: (...args: unknown[]) => mockGetUser(...(args as any[])) },
+	from: jest.fn<any, any[]>(() => ({ insert: jest.fn<any, any[]>(), select: jest.fn<any, any[]>() })),
+	functions: { invoke: jest.fn<any, any[]>() },
+	rpc: jest.fn<any, any[]>(),
+};
+jest.mock("../src/lib/supabase", () => ({
+	supabase: mockSupabaseClient,
+	useSupabase: () => ({ supabase: mockSupabaseClient }),
+}));
+
+jest.mock("../src/hooks/useTransactionRealtime", () => ({
+	useTransactionRealtime: () => ({ loading: false, transaction: null }),
+}));
+
+jest.mock("../src/hooks/useEntitlements", () => ({
+	useEntitlements: () => ({
+		data: null,
+		loading: false,
+		refresh: jest.fn<any, any[]>(async () => undefined),
+	}),
+}));
+
+jest.mock("../src/services/budget-envelopes", () => ({
+	createEnvelopeAllocation: jest.fn<any, any[]>(),
+	syncEnvelopeAllocationForTransaction: jest.fn<any, any[]>(async () => undefined),
+	deleteEnvelopeAllocationsForTransaction: jest.fn<any, any[]>(async () => undefined),
+}));
+
+jest.mock("../src/services/voice-intake", () => ({
+	getVoiceAuthSession: jest.fn<any, any[]>(),
+	processVoiceTransaction: jest.fn<any, any[]>(),
+	uploadVoiceAudio: jest.fn<any, any[]>(),
+}));
+
+const mockPush = jest.fn<any, any[]>();
+jest.mock("expo-router", () => ({
+	useRouter: () => ({ push: mockPush }),
+	useLocalSearchParams: () => ({}),
+	useFocusEffect: (callback: () => void | (() => void)) => {
+		const ReactModule = require("react");
+		ReactModule.useEffect(() => callback(), [callback]);
+	},
+}));
+
+const SAVED_ROW = {
+	id: "tx-1",
+	wallet_id: "w-1",
+	transaction_type: "expense",
+	amount: 125000,
+	category: "Makan & Minum",
+	description: "Struk RM Sederhana",
+	date: "2026-10-02",
+};
+
+function renderCapture() {
+	return render(
+		<I18nProvider>
+			<ThemeProvider>
+				<CaptureScreen />
+			</ThemeProvider>
+		</I18nProvider>,
+	);
+}
+
+/** Drives photo selection through analysis until the receipt review is mounted. */
+async function reachReceiptReview() {
+	// Premium replaces the mode chips with the composer's secondary routes, so
+	// pick whichever surface is actually mounted.
+	const legacyMode = screen.queryByTestId("capture-mode-Foto");
+	if (legacyMode) {
+		fireEvent.press(legacyMode);
+	} else {
+		fireEvent.press(screen.getByTestId("capture-composer-receipt"));
+	}
+	fireEvent.press(screen.getByTestId("capture-receipt-pick"));
+	await waitFor(() =>
+		expect(screen.getByTestId("capture-receipt-preview")).toBeTruthy(),
+	);
+}
+
+function recordedTotalText(): string {
+	return String(screen.getByTestId("capture-receipt-recorded-total").props.children);
+}
+
+beforeEach(() => {
+	mockSaveEntry.mockReset();
+	mockReconcileEntry.mockReset();
+	mockReconcileEntry.mockResolvedValue([]);
+	// Premium presentation is opt-in per test; every case resets to legacy.
+	mockSimplePremiumExperience = false;
+	mockGetUser.mockReset();
+	mockGetUser.mockResolvedValue({ data: { user: { id: "user-1" } } });
+	mockAnalyzeTransactionText.mockReset();
+	mockAnalyzeTransactionText.mockResolvedValue({ transactions: [] });
+	mockAnalyzeReceiptImage.mockReset();
+	mockRequestMediaLibraryPermissionsAsync.mockClear();
+	mockLaunchImageLibraryAsync.mockClear();
+	mockGetReceiptAuthSession.mockClear();
+	mockUploadReceiptImage.mockClear();
+	mockCreateTransaction.mockReset();
+	mockPush.mockClear();
+	jest.mocked(AsyncStorage.getItem).mockReset();
+	jest.mocked(AsyncStorage.getItem).mockResolvedValue(null);
+});
+
+describe("receipt entry return navigation", () => {
+	it("returns from the receipt picker to existing entry without clearing text or wallet", async () => {
+		mockSimplePremiumExperience = true;
+		renderCapture();
+		await waitFor(() => expect(screen.getByText("Seabank")).toBeTruthy());
+		fireEvent.changeText(screen.getByTestId("capture-composer-input"), "Kopi 35 ribu");
+		fireEvent.press(screen.getByTestId("capture-composer-receipt"));
+		expect(screen.getByTestId("capture-receipt-pick")).toBeTruthy();
+		fireEvent.press(screen.getByTestId("capture-receipt-back"));
+		expect(screen.getByTestId("capture-composer-input").props.value).toBe("Kopi 35 ribu");
+		expect(screen.getByText("Seabank")).toBeTruthy();
+		expect(mockPush).not.toHaveBeenCalled();
+		expect(mockLaunchImageLibraryAsync).not.toHaveBeenCalled();
+		expect(mockAnalyzeTransactionText).not.toHaveBeenCalled();
+		expect(mockAnalyzeReceiptImage).not.toHaveBeenCalled();
+		expect(mockSaveEntry).not.toHaveBeenCalled();
+	});
+
+	it("does not allow return while receipt analysis is running", async () => {
+		mockSimplePremiumExperience = true;
+		let finish: ((value: ReceiptExtraction) => void) | undefined;
+		mockAnalyzeReceiptImage.mockImplementation(() => new Promise<ReceiptExtraction>((resolve) => { finish = resolve; }));
+		renderCapture();
+		await waitFor(() => expect(screen.getByText("Seabank")).toBeTruthy());
+		fireEvent.press(screen.getByTestId("capture-composer-receipt"));
+		fireEvent.press(screen.getByTestId("capture-receipt-pick"));
+		await waitFor(() => expect(mockAnalyzeReceiptImage).toHaveBeenCalledTimes(1));
+		const back = screen.queryByTestId("capture-receipt-back");
+		if (back) {
+			expect(back.props.accessibilityState).toMatchObject({ disabled: true });
+			fireEvent.press(back);
+			expect(screen.queryByTestId("capture-composer-input")).toBeNull();
+		}
+		expect(mockSaveEntry).not.toHaveBeenCalled();
+		expect(finish).toBeDefined();
+		await act(async () => { finish?.({ total_amount: 25000, merchant: "QA", date: "2026-10-04", confidence: 0.9, items: [] }); });
+	});
+});
+
+describe("capture receipt recording modes", () => {
+	it("(a) defaults to ONE transaction whose amount equals the receipt total", async () => {
+		mockAnalyzeReceiptImage.mockResolvedValue({
+			total_amount: 125000,
+			merchant: "RM Sederhana",
+			confidence: 0.92,
+			date: "2026-10-02",
+			items: [
+				{ name: "Kopi", price: 50000 },
+				{ name: "Roti", price: 75000 },
+			],
+		} satisfies ReceiptExtraction);
+		mockSaveEntry.mockResolvedValue({
+			transactions: [{ ...SAVED_ROW }],
+			budgetSyncWarning: false,
+		});
+
+		renderCapture();
+		await reachReceiptReview();
+
+		expect(recordedTotalText()).toBe("1 transaksi · Rp 125.000");
+
+		fireEvent.press(screen.getByTestId("capture-receipt-confirm"));
+		await waitFor(() => expect(mockSaveEntry).toHaveBeenCalledTimes(1));
+
+		const payload = mockSaveEntry.mock.calls[0][0] as {
+			drafts: Array<{ amount: number }>;
+		};
+		expect(payload.drafts).toHaveLength(1);
+		expect(payload.drafts[0].amount).toBe(125000);
+	});
+
+	it("(b) splits per item and the drafts sum to the confirmed total", async () => {
+		mockAnalyzeReceiptImage.mockResolvedValue({
+			total_amount: 125000,
+			merchant: "RM Sederhana",
+			confidence: 0.92,
+			date: "2026-10-02",
+			items: [
+				{ name: "Kopi", price: 50000 },
+				{ name: "Roti", price: 75000 },
+			],
+		} satisfies ReceiptExtraction);
+
+		renderCapture();
+		await reachReceiptReview();
+
+		fireEvent.press(screen.getByTestId("capture-receipt-split"));
+		await waitFor(() => expect(recordedTotalText()).toBe("2 transaksi · Rp 125.000"));
+
+		const drafts = screen.getAllByTestId(/^review-draft-/);
+		expect(drafts).toHaveLength(2);
+	});
+
+	it("(c) surfaces a discrepancy and never absorbs it into the largest item", async () => {
+		mockAnalyzeReceiptImage.mockResolvedValue({
+			total_amount: 100000,
+			merchant: "Indomaret",
+			confidence: 0.9,
+			date: "2026-10-02",
+			items: [
+				{ name: "Kopi", price: 30000 },
+				{ name: "Roti", price: 40000 },
+			],
+		} satisfies ReceiptExtraction);
+
+		renderCapture();
+		await reachReceiptReview();
+
+		fireEvent.press(screen.getByTestId("capture-receipt-split"));
+		await waitFor(() =>
+			expect(screen.getByTestId("capture-receipt-discrepancy")).toBeTruthy(),
+		);
+
+		// The printed amounts are shown as printed: nothing is inflated to 60000.
+		expect(screen.getAllByText(/Rp 30\.000/).length).toBeGreaterThan(0);
+		expect(screen.getAllByText(/Rp 40\.000/).length).toBeGreaterThan(0);
+		expect(screen.queryAllByText(/Rp 60\.000/)).toHaveLength(0);
+
+		// The save CTA stays blocked until the discrepancy is acknowledged.
+		expect(screen.getByTestId("capture-receipt-confirm")).toBeDisabled();
+		expect(mockSaveEntry).not.toHaveBeenCalled();
+
+		fireEvent.press(screen.getByTestId("capture-receipt-discrepancy-ack"));
+		await waitFor(() =>
+			expect(screen.getByTestId("capture-receipt-confirm")).not.toBeDisabled(),
+		);
+	});
+
+	it("(d) saving per item calls saveEntry exactly once with all drafts", async () => {
+		mockAnalyzeReceiptImage.mockResolvedValue({
+			total_amount: 125000,
+			merchant: "RM Sederhana",
+			confidence: 0.92,
+			date: "2026-10-02",
+			items: [
+				{ name: "Kopi", price: 50000 },
+				{ name: "Roti", price: 75000 },
+			],
+		} satisfies ReceiptExtraction);
+		mockSaveEntry.mockResolvedValue({
+			transactions: [
+				{ ...SAVED_ROW, amount: 50000 },
+				{ ...SAVED_ROW, id: "tx-2", amount: 75000 },
+			],
+			budgetSyncWarning: false,
+		});
+
+		renderCapture();
+		await reachReceiptReview();
+
+		fireEvent.press(screen.getByTestId("capture-receipt-split"));
+		await waitFor(() => expect(recordedTotalText()).toBe("2 transaksi · Rp 125.000"));
+
+		fireEvent.press(screen.getByTestId("capture-receipt-confirm"));
+		await waitFor(() => expect(mockSaveEntry).toHaveBeenCalledTimes(1));
+
+		const payload = mockSaveEntry.mock.calls[0][0] as {
+			drafts: Array<{ amount: number }>;
+		};
+		expect(payload.drafts).toHaveLength(2);
+		expect(payload.drafts.map((draft) => draft.amount)).toEqual([50000, 75000]);
+		// One atomic batch, never a loop of per-item inserts.
+		expect(mockCreateTransaction).not.toHaveBeenCalled();
+	});
+
+	it("(premium batch) renders ONE batch surface with count, total and a single CTA", async () => {
+		mockSimplePremiumExperience = true;
+		mockAnalyzeReceiptImage.mockResolvedValue({
+			total_amount: 125000,
+			merchant: "RM Sederhana",
+			confidence: 0.92,
+			date: "2026-10-02",
+			items: [
+				{ name: "Kopi", price: 50000 },
+				{ name: "Roti", price: 75000 },
+			],
+		} satisfies ReceiptExtraction);
+
+		renderCapture();
+		await reachReceiptReview();
+
+		fireEvent.press(screen.getByTestId("capture-receipt-split"));
+		await waitFor(() => expect(recordedTotalText()).toBe("2 transaksi · Rp 125.000"));
+
+		// Premium: one summary + collapsed rows instead of one card per item.
+		expect(screen.getByTestId("batch-review")).toBeTruthy();
+		expect(screen.getByTestId("batch-review-count").props.children).toBe("2 transaksi");
+		expect(screen.getByTestId("batch-review-total").props.children).toBe("Rp 125.000");
+		expect(screen.queryAllByTestId(/^review-draft-/)).toHaveLength(0);
+		expect(screen.getAllByTestId("batch-review-save")).toHaveLength(1);
+		expect(screen.getByTestId("batch-review-save").props.accessibilityLabel).toBe(
+			"Simpan 2 transaksi",
+		);
+	});
+
+	it("premium warning acknowledgements are explicit, field-scoped and keep invalid amounts blocked", async () => {
+		mockSimplePremiumExperience = true;
+		mockAnalyzeReceiptImage.mockResolvedValue({ total_amount: 125000, confidence: 0.4, items: [{ name: "Kopi", price: 50000 }, { name: "Roti", price: 75000 }] });
+		mockSaveEntry.mockImplementation(async (input) => {
+			const { allDraftsValid } = jest.requireActual("../src/features/transaction-entry/draft");
+			expect(allDraftsValid(input.drafts, { wallets: input.wallets, categories: input.categories, canCreate: true })).toBe(true);
+			return { transactions: [SAVED_ROW, { ...SAVED_ROW, id: "tx-2" }], budgetSyncWarning: false };
+		});
+		renderCapture();
+		await reachReceiptReview();
+		fireEvent.press(screen.getByTestId("capture-receipt-split"));
+		await waitFor(() => expect(screen.getByTestId("batch-review")).toBeTruthy());
+		expect(screen.getByTestId("batch-review-save")).toBeDisabled();
+		const categoryAck = screen.getAllByTestId(/^review-ack-.*-category$/)[0];
+		fireEvent.press(categoryAck);
+		expect(screen.getAllByTestId(/^review-ack-.*-date$/)).toHaveLength(2);
+		expect(screen.getByTestId("batch-review-save")).toBeDisabled();
+		fireEvent.changeText(screen.getAllByLabelText("Nominal")[0], "0");
+		for (const ack of screen.getAllByTestId(/^review-ack-/)) fireEvent.press(ack);
+		expect(screen.getByTestId("batch-review-save")).toBeDisabled();
+		fireEvent.press(screen.getByTestId("batch-review-save"));
+		expect(mockSaveEntry).not.toHaveBeenCalled();
+		fireEvent.changeText(screen.getAllByLabelText("Nominal")[0], "50000");
+		expect(screen.getByTestId("batch-review-save")).not.toBeDisabled();
+		fireEvent.press(screen.getByTestId("batch-review-save"));
+		await waitFor(() => expect(mockSaveEntry).toHaveBeenCalledTimes(1));
+	});
+
+	it.each([false, true])("premium receipt has exactly one save action (split=%s) and discrepancy gate", async (split) => {
+		mockSimplePremiumExperience = true;
+		mockAnalyzeReceiptImage.mockResolvedValue({ total_amount: 100000, merchant: "RM Sederhana", confidence: 0.92, date: "2026-10-02", items: [{ name: "Kopi", price: 30000 }, { name: "Roti", price: 40000 }] });
+		renderCapture();
+		await reachReceiptReview();
+		if (split) fireEvent.press(screen.getByTestId("capture-receipt-split"));
+		expect(screen.getAllByTestId(/^(review-save|batch-review-save|capture-receipt-confirm)$/)).toHaveLength(1);
+		const save = screen.getByTestId(split ? "batch-review-save" : "review-save");
+		if (split) {
+			expect(save).toBeDisabled();
+			fireEvent.press(save);
+			expect(mockSaveEntry).not.toHaveBeenCalled();
+			fireEvent.press(screen.getByTestId("capture-receipt-discrepancy-ack"));
+		}
+		// Category inference can still be uncertain independently of the total.
+		for (const ack of screen.queryAllByTestId(/^review-ack-/)) fireEvent.press(ack);
+		expect(screen.getByTestId(split ? "batch-review-save" : "review-save")).not.toBeDisabled();
+	});
+
+	it("(premium batch) still issues exactly ONE atomic request, even on a double tap", async () => {
+		mockSimplePremiumExperience = true;
+		mockAnalyzeReceiptImage.mockResolvedValue({
+			total_amount: 125000,
+			merchant: "RM Sederhana",
+			confidence: 0.92,
+			date: "2026-10-02",
+			items: [
+				{ name: "Kopi", price: 50000 },
+				{ name: "Roti", price: 75000 },
+			],
+		} satisfies ReceiptExtraction);
+		// Never resolves: keeps the batch surface mounted so the save lock can be
+		// observed instead of racing the success screen.
+		mockSaveEntry.mockImplementation(() => new Promise(() => undefined));
+
+		renderCapture();
+		await reachReceiptReview();
+
+		fireEvent.press(screen.getByTestId("capture-receipt-split"));
+		await waitFor(() => expect(recordedTotalText()).toBe("2 transaksi · Rp 125.000"));
+
+		fireEvent.press(screen.getByTestId("batch-review-save"));
+
+		await waitFor(() => expect(mockSaveEntry).toHaveBeenCalledTimes(1));
+
+		const payload = mockSaveEntry.mock.calls[0][0] as {
+			drafts: Array<{ amount: number }>;
+			requestId: string;
+		};
+		// All drafts travel in the SAME request, with the same requestId.
+		expect(payload.drafts).toHaveLength(2);
+		expect(payload.drafts.map((draft) => draft.amount)).toEqual([50000, 75000]);
+		expect(typeof payload.requestId).toBe("string");
+		expect(mockCreateTransaction).not.toHaveBeenCalled();
+
+		// Double-submit protection: while the single request is in flight the
+		// whole batch surface is replaced by the busy state, so there is no CTA
+		// left to press a second time.
+		expect(screen.queryByTestId("batch-review-save")).toBeNull();
+		expect(screen.queryByTestId("batch-review")).toBeNull();
+		expect(mockSaveEntry).toHaveBeenCalledTimes(1);
+	});
+
+	it("saves the corrected receipt amount rather than the extracted total", async () => {
+		mockAnalyzeReceiptImage.mockResolvedValue({
+			total_amount: 125000, merchant: "RM Sederhana", confidence: 0.92,
+			date: "2026-10-02", items: [{ name: "Kopi", price: 125000 }],
+		} satisfies ReceiptExtraction);
+		mockSaveEntry.mockResolvedValue({ transactions: [{ ...SAVED_ROW, amount: 120000 }], budgetSyncWarning: false });
+		renderCapture();
+		await reachReceiptReview();
+		fireEvent.changeText(screen.getAllByLabelText("Nominal")[0], "120000");
+		expect(mockSaveEntry).not.toHaveBeenCalled();
+		fireEvent.press(screen.getByTestId("capture-receipt-confirm"));
+		await waitFor(() => expect(mockSaveEntry).toHaveBeenCalledTimes(1));
+		expect(mockSaveEntry.mock.calls[0][0].drafts[0]).toMatchObject({ amount: 120000, source: "image" });
+	});
+
+	it("cancels the photo picker without upload, analysis, or write", async () => {
+		mockLaunchImageLibraryAsync.mockResolvedValueOnce({ canceled: true, assets: null });
+		renderCapture();
+		fireEvent.press(screen.getByTestId("capture-mode-Foto"));
+		fireEvent.press(screen.getByTestId("capture-receipt-pick"));
+		await waitFor(() => expect(mockLaunchImageLibraryAsync).toHaveBeenCalledTimes(1));
+		await act(async () => { await Promise.resolve(); });
+		expect(screen.queryByTestId("capture-receipt-preview")).toBeNull();
+		expect(mockUploadReceiptImage).not.toHaveBeenCalled();
+		expect(mockAnalyzeReceiptImage).not.toHaveBeenCalled();
+		expect(mockSaveEntry).not.toHaveBeenCalled();
+	});
+
+	it("(g) never auto-saves a receipt, even while text auto-save is switched on", async () => {
+		// A receipt that looks perfectly clear and single-transaction: exactly the
+		// shape text auto-save would accept. It must still stop at confirmation.
+		mockAnalyzeReceiptImage.mockResolvedValue({
+			total_amount: 125000,
+			merchant: "RM Sederhana",
+			confidence: 0.92,
+			date: "2026-10-02",
+			items: [
+				{ name: "Kopi", price: 50000 },
+				{ name: "Roti", price: 75000 },
+			],
+		} satisfies ReceiptExtraction);
+		mockSaveEntry.mockResolvedValue({
+			transactions: [{ ...SAVED_ROW }],
+			budgetSyncWarning: false,
+		});
+
+		renderCapture();
+		await reachReceiptReview();
+
+		// The confirmation screen owns the decision: nothing is written yet.
+		// (reachReceiptReview waits until the review is mounted, which is the same
+		// effect flush that would have fired an automatic save.)
+		expect(screen.getByTestId("capture-receipt-preview")).toBeTruthy();
+		expect(screen.queryByTestId("auto-save-toast")).toBeNull();
+		expect(mockSaveEntry).not.toHaveBeenCalled();
+
+		// The block reason belongs to the text path only: a receipt shows no
+		// auto-save explanation carry-over.
+		expect(screen.queryByTestId("auto-save-reason")).toBeNull();
+
+		// Only the explicit confirmation writes, and it never shows the undo notice.
+		fireEvent.press(screen.getByTestId("capture-receipt-confirm"));
+		await waitFor(() => expect(mockSaveEntry).toHaveBeenCalledTimes(1));
+		expect(screen.queryByTestId("auto-save-toast")).toBeNull();
+		expect(screen.queryByTestId("auto-save-undo")).toBeNull();
+	});
+});
+
+describe("receipt mode adapters", () => {
+	const reconciled: ReceiptExtraction = {
+		total_amount: 125000,
+		merchant: "RM Sederhana",
+		confidence: 0.92,
+		date: "2026-10-02",
+		items: [
+			{ name: "Kopi", price: 50000 },
+			{ name: "Roti", price: 75000 },
+		],
+	};
+
+	it("(e) draftsMatchConfirmedTotal rejects a batch whose sum differs", () => {
+		const matching = [
+			createDraft({ source: "image", amount: 50000, date: "2026-10-02" }),
+			createDraft({ source: "image", amount: 75000, date: "2026-10-02" }),
+		];
+		expect(draftsMatchConfirmedTotal(matching, 125000)).toBe(true);
+		expect(draftsMatchConfirmedTotal(matching, 120000)).toBe(false);
+
+		const withInvalid = [
+			...matching.slice(1),
+			createDraft({ source: "image", amount: null, date: "2026-10-02" }),
+		];
+		expect(draftsMatchConfirmedTotal(withInvalid, 125000)).toBe(false);
+		expect(draftsMatchConfirmedTotal([], 125000)).toBe(false);
+	});
+
+	it("(f) an unreadable receipt yields no drafts", () => {
+		const unreadable: ReceiptExtraction = {
+			total_amount: null,
+			readable: false,
+			items: [],
+		};
+		expect(receiptDraftsForMode(unreadable, "unreadable", "w-1")).toEqual([]);
+		expect(receiptDraftMode(unreadable)).toBe("unreadable");
+	});
+
+	it("total mode is one draft; items mode is one draft per printed line", () => {
+		expect(receiptDraftsForMode(reconciled, "total", "w-1")).toHaveLength(1);
+		expect(receiptDraftsForMode(reconciled, "total", "w-1")[0].amount).toBe(125000);
+
+		const items = receiptDraftsForMode(reconciled, "items", "w-1");
+		expect(items).toHaveLength(2);
+		expect(items.map((draft) => draft.amount)).toEqual([50000, 75000]);
+		expect(draftsMatchConfirmedTotal(items, 125000)).toBe(true);
+	});
+
+	it("marks printed items unresolved instead of fudging when they do not reconcile", () => {
+		const off: ReceiptExtraction = {
+			total_amount: 100000,
+			merchant: "Indomaret",
+			date: "2026-10-02",
+			items: [
+				{ name: "Kopi", price: 30000 },
+				{ name: "Roti", price: 40000 },
+			],
+		};
+
+		const items = receiptDraftsForMode(off, "items", "w-1");
+		expect(items.map((draft) => draft.amount)).toEqual([30000, 40000]);
+		expect(items.every((draft) => draft.unresolvedFields.includes("amount"))).toBe(true);
+		expect(draftsMatchConfirmedTotal(items, 100000)).toBe(false);
+	});
+});

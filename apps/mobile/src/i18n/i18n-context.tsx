@@ -6,7 +6,12 @@ type TranslationKey = keyof typeof translations.id
 
 type I18nContextValue = {
   language: Language
-  setLanguage: (language: Language) => void
+  /**
+   * Applies the language immediately and reports whether it could be stored.
+   * `false` means the choice is active for this session but will NOT survive a
+   * reload, so callers must tell the user instead of implying it was saved.
+   */
+  setLanguage: (language: Language) => Promise<boolean>
   t: (key: TranslationKey) => string
 }
 
@@ -24,9 +29,10 @@ const translations = {
     tabDashboard: 'Beranda',
     tabTransactions: 'Transaksi',
     tabBills: 'Tagihan',
-    tabCapture: '',
+    tabCapture: 'Catat',
     tabReports: 'Laporan',
     tabSettings: 'Setelan',
+    tabWallets: 'Dompet',
     headerKaswise: 'Kaswise',
     headerWallets: 'Dompet',
     headerBudgets: 'Anggaran',
@@ -55,7 +61,7 @@ const translations = {
     appCrashedTitle: 'Aplikasi bermasalah',
     appCrashedDescription: 'Tutup lalu buka ulang Kaswise. Jika masih gagal, hubungi dukungan.',
     loginTitle: 'Masuk ke akunmu',
-    loginSubtitle: 'Lanjutkan ke dashboard Kaswise dengan akun Supabase yang sama.',
+    loginSubtitle: 'Lanjutkan ke dashboard Kaswise kamu.',
     loginButton: 'Masuk',
     googleLoginButton: 'Masuk dengan Google',
     googleLoginFailed: 'Login Google gagal. Coba lagi.',
@@ -64,9 +70,9 @@ const translations = {
     authCallbackLoading: 'Memproses login...',
     authCallbackFailed: 'Login tidak dapat diselesaikan. Coba ulangi dari halaman login.',
     loginHeroTitle: 'Catat keuangan, tetap tenang, tetap rapi.',
-    loginHeroDescription: 'Masuk ke ruang finansialmu dengan tampilan navy premium, ringkas, dan fokus ke hal penting tiap hari.',
+    loginHeroDescription: 'Scan struk & catat chat dengan AI. Sinkron dompet, lacak budget dalam satu kopilot finansial.',
     registerTitle: 'Akun baru',
-    registerSubtitle: 'Data tersimpan aman di Supabase dengan kebijakan RLS aktif.',
+    registerSubtitle: 'Data kamu tetap privat dan aman.',
     registerButton: 'Daftar sekarang',
     registerHeroTitle: 'Buat akun untuk mulai mencatat dalam hitungan menit.',
     registerHeroDescription: 'Dompet, anggaran, dan tagihan tergabung dalam satu shell finansial yang sama di semua perangkat.',
@@ -107,6 +113,7 @@ const translations = {
     planValidUntil: 'Berlaku sampai ',
     planUpgrade: 'Upgrade ke Premium',
     planExtend: 'Perpanjang',
+    moneySpace: 'Ruang uang',
   },
   en: {
     back: 'Back',
@@ -121,9 +128,10 @@ const translations = {
     tabDashboard: 'Home',
     tabTransactions: 'Transactions',
     tabBills: 'Bills',
-    tabCapture: '',
+    tabCapture: 'Add transaction',
     tabReports: 'Reports',
     tabSettings: 'Settings',
+    tabWallets: 'Wallets',
     headerKaswise: 'Kaswise',
     headerWallets: 'Wallets',
     headerBudgets: 'Budgets',
@@ -152,7 +160,7 @@ const translations = {
     appCrashedTitle: 'App needs attention',
     appCrashedDescription: 'Close and reopen Kaswise. If it still fails, contact support.',
     loginTitle: 'Sign in to your account',
-    loginSubtitle: 'Continue to Kaswise dashboard with your Supabase account.',
+    loginSubtitle: 'Continue to your Kaswise dashboard.',
     loginButton: 'Sign in',
     googleLoginButton: 'Sign in with Google',
     googleLoginFailed: 'Google login failed. Try again.',
@@ -161,9 +169,9 @@ const translations = {
     authCallbackLoading: 'Processing login...',
     authCallbackFailed: 'Login could not be completed. Try again from the login screen.',
     loginHeroTitle: 'Track finances, stay calm, stay organized.',
-    loginHeroDescription: 'Access your financial space with premium navy design, compact, and focused on what matters daily.',
+    loginHeroDescription: 'Capture receipts & chat transactions with AI. Sync wallets, track budgets in one financial copilot.',
     registerTitle: 'New account',
-    registerSubtitle: 'Data stored securely in Supabase with active RLS policies.',
+    registerSubtitle: 'Your data stays private and secure.',
     registerButton: 'Sign up now',
     registerHeroTitle: 'Create account to start tracking in minutes.',
     registerHeroDescription: 'Wallets, budgets, and bills unified in one financial shell across all devices.',
@@ -204,6 +212,7 @@ const translations = {
     planValidUntil: 'Valid until ',
     planUpgrade: 'Upgrade to Premium',
     planExtend: 'Extend',
+    moneySpace: 'Money space',
   },
 } as const
 
@@ -237,9 +246,14 @@ export function I18nProvider({ children }: { children: React.ReactNode }) {
   const value = useMemo<I18nContextValue>(
     () => ({
       language,
-      setLanguage: (nextLanguage) => {
+      setLanguage: async (nextLanguage) => {
         setLanguageState(nextLanguage)
-        AsyncStorage.setItem(I18N_STORAGE_KEY, nextLanguage).catch(() => {})
+        try {
+          await AsyncStorage.setItem(I18N_STORAGE_KEY, nextLanguage)
+          return true
+        } catch {
+          return false
+        }
       },
       t: (key) => translations[language][key],
     }),

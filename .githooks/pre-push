@@ -8,8 +8,11 @@ set -euo pipefail
 # Only run if mobile files changed in the commits being pushed
 CHANGED=$(git diff --name-only HEAD 2>/dev/null || true)
 if [ -z "$CHANGED" ]; then
-  # First push of new branch — check all files since we can't diff
-  CHANGED="$(git ls-files apps/mobile/ | head -1)"
+  # First push of new branch — check all files since we can't diff.
+  # No pipe here: `git ls-files | head -1` triggers SIGPIPE and, under
+  # `set -o pipefail`, aborts this hook silently so the push fails with a
+  # bare "failed to push some refs" and no explanation.
+  CHANGED="$(git ls-files 'apps/mobile/*' 2>/dev/null || true)"
 fi
 
 if ! echo "$CHANGED" | grep -q '^apps/mobile/' && [ "${SKIP_MOBILE_CHECK:-}" != "force" ]; then

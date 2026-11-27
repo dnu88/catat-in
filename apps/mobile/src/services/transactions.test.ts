@@ -97,7 +97,7 @@ describe("Transaction Service", () => {
 			expect.objectContaining({
 				merchant: "PT Acme",
 				tanggal: "2026-05-10",
-				catatan: "gaji bulanan",
+				catatan: "Gaji April",
 			}),
 		);
 		const insertedPayload = mockInsert.mock.calls[0][0];
@@ -373,7 +373,7 @@ describe("Transaction Service", () => {
 			category: "Salary",
 			description: "Bonus",
 			date: "2026-05-20",
-			note: "Bonus",
+			note: "stale note must not overwrite description",
 		});
 
 		expect(mockUpdate).toHaveBeenCalledWith({

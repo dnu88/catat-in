@@ -50,6 +50,8 @@ import {
 	type Category,
 } from "../../src/services/categories";
 import { useTheme } from "../../src/theme/theme-context";
+import { financeEditorial as fe } from "../../src/theme/finance-editorial";
+import { isPwaPolish, pwaMinTouch } from "../../src/theme/pwa-polish";
 import { budgetEnvelopePalette } from "../../src/theme/report-palettes";
 import { resolveCategoryVisual } from "../../src/theme/category-visuals";
 import { areCategoryNamesEquivalent, getLocalizedCategoryHelper, getLocalizedCategoryName } from "../../src/services/category-taxonomy";
@@ -162,7 +164,7 @@ function EnvelopeRow({
 		? theme.colors.danger
 		: progress.is_near_limit
 			? theme.colors.warning
-			: theme.colors.brandPrimary;
+			: fe.blueBright;
 	const categoryVisual = resolveCategoryVisual({
 		categoryId: envelope.parent_category_id,
 		categoryName: envelope.parent_category_name,
@@ -419,7 +421,8 @@ export default function BudgetsScreen() {
 					},
 		[isEn],
 	);
-	const styles = useMemo(() => createStyles(theme), [theme]);
+	const polish = isPwaPolish();
+	const styles = useMemo(() => createStyles(theme, polish), [theme, polish]);
 	const [activeSummaries, setActiveSummaries] = useState<EnvelopeSummary[]>([]);
 	const [archivedSummaries, setArchivedSummaries] = useState<EnvelopeSummary[]>(
 		[],
@@ -784,7 +787,7 @@ export default function BudgetsScreen() {
 					{ justifyContent: "center", alignItems: "center" },
 				]}
 			>
-				<ActivityIndicator size="large" color={theme.colors.brandPrimary} />
+				<ActivityIndicator size="large" color={fe.blueBright} />
 			</View>
 		);
 	}
@@ -1146,7 +1149,7 @@ export default function BudgetsScreen() {
 	const ListEmpty = () => (
 		<EmptyState
 			icon="budgets"
-			tone="primary"
+			tone="navy"
 			title={tx.emptyTitle}
 			description={tx.emptyDescription}
 		/>
@@ -1170,14 +1173,42 @@ export default function BudgetsScreen() {
 
 			<Text style={styles.sectionTitle}>{tx.archiveSection}</Text>
 			{archivedSummaries.length > 0 ? (
-				archivedSummaries.map((item) => (
-					<View key={item.envelope.id} style={styles.archiveCard}>
-						<Text style={styles.reviewTitle}>{item.envelope.name}</Text>
-						<Text style={styles.budgetMeta}>
-							{item.envelope.start_date}–{item.envelope.end_date}
-						</Text>
-					</View>
-				))
+				archivedSummaries.map((item) => {
+					const categoryVisual = resolveCategoryVisual({
+						categoryId: item.envelope.parent_category_id,
+						categoryName: item.envelope.parent_category_name,
+						categories: categoryOptions,
+						mode: theme.mode,
+						fallbackIcon: item.envelope.icon,
+						fallbackColor: item.envelope.color,
+					});
+					const categoryDisplayName = item.envelope.parent_category_name
+						? getLocalizedCategoryName(item.envelope.parent_category_name, isEn ? "en" : "id")
+						: tx.noCategory;
+					const categoryHelper = item.envelope.parent_category_name
+						? getLocalizedCategoryHelper(item.envelope.parent_category_name, isEn ? "en" : "id")
+						: null;
+					return (
+						<View key={item.envelope.id} style={styles.archiveCard}>
+							<View style={styles.budgetLeft}>
+								<IconBubble
+									name={resolveBudgetIconName(categoryVisual.icon)}
+									tone="primary"
+									color={resolveEnvelopeAccentColor(categoryVisual.color, fe.blueBright)}
+									size={44}
+								/>
+								<View style={styles.budgetTextWrap}>
+									<Text style={styles.reviewTitle}>{categoryDisplayName}</Text>
+									{categoryHelper ? <Text style={styles.budgetHelper}>{categoryHelper}</Text> : null}
+									<Text style={styles.budgetMeta}>{item.envelope.name}</Text>
+									<Text style={styles.budgetMeta}>
+										{item.envelope.start_date}–{item.envelope.end_date}
+									</Text>
+								</View>
+							</View>
+						</View>
+					);
+				})
 			) : (
 				<Text style={styles.emptyInlineText}>{tx.noArchive}</Text>
 			)}
@@ -1208,7 +1239,7 @@ export default function BudgetsScreen() {
 					<RefreshControl
 						refreshing={loading}
 						onRefresh={loadEnvelopes}
-						tintColor={theme.colors.brandPrimary}
+						tintColor={fe.blueBright}
 					/>
 				}
 			/>
@@ -1216,12 +1247,14 @@ export default function BudgetsScreen() {
 	);
 }
 
-function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
+function createStyles(theme: ReturnType<typeof useTheme>["theme"], polish = false) {
 	return StyleSheet.create({
 		screen: { flex: 1, backgroundColor: theme.colors.background },
 		content: { padding: 20, gap: 8, paddingBottom: 26 },
 		addButton: {
-			backgroundColor: theme.colors.brandPrimary,
+			backgroundColor: fe.glassStrong,
+			borderWidth: 1,
+			borderColor: "rgba(255,255,255,0.24)",
 			borderRadius: 999,
 			paddingHorizontal: 14,
 			paddingVertical: 8,
@@ -1230,7 +1263,7 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			justifyContent: "center",
 		},
 		addButtonText: {
-			color: theme.colors.textInverse,
+			color: fe.white,
 			fontSize: 12,
 			fontWeight: "700",
 		},
@@ -1353,7 +1386,7 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			backgroundColor: theme.colors.surface,
 		},
 		colorOptionActive: {
-			borderColor: theme.colors.brandPrimary,
+			borderColor: fe.blueBright,
 			borderWidth: 2,
 		},
 		colorOptionSwatch: { width: 24, height: 24, borderRadius: 12 },
@@ -1378,7 +1411,7 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 		saveButton: {
 			flex: 1,
 			minHeight: 44,
-			backgroundColor: theme.colors.brandPrimary,
+			backgroundColor: fe.blueDeep,
 			borderRadius: 14,
 			alignItems: "center",
 			justifyContent: "center",
@@ -1509,22 +1542,22 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 		},
 		budgetActionRow: { flexDirection: "row", gap: 8 },
 		editButton: {
-			minHeight: 36,
+			minHeight: polish ? pwaMinTouch : 36,
 			justifyContent: "center",
 			borderRadius: 999,
 			borderWidth: 1,
-			borderColor: `${theme.colors.brandPrimary}40`,
-			backgroundColor: `${theme.colors.brandPrimary}12`,
+			borderColor: "rgba(23,139,208,0.28)",
+			backgroundColor: "rgba(23,139,208,0.10)",
 			paddingHorizontal: 12,
 			paddingVertical: 6,
 		},
 		editButtonText: {
-			color: theme.colors.brandPrimary,
+			color: fe.blueBright,
 			fontSize: 12,
 			fontWeight: "800",
 		},
 		deleteButton: {
-			minHeight: 36,
+			minHeight: polish ? pwaMinTouch : 36,
 			justifyContent: "center",
 			borderRadius: 999,
 			borderWidth: 1,

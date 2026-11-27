@@ -1,0 +1,344 @@
+[
+  {
+    "name": "account_deletion_requests.account_deletion_requests_select_own",
+    "cmd": "SELECT",
+    "qual": "(auth.uid() = user_id)",
+    "with_check": null
+  },
+  {
+    "name": "ai_usage.ai_usage_select_own",
+    "cmd": "SELECT",
+    "qual": "(auth.uid() = user_id)",
+    "with_check": null
+  },
+  {
+    "name": "bill_reminders.bill_reminders_delete_personal_or_household",
+    "cmd": "DELETE",
+    "qual": "(((household_id IS NULL) AND (user_id = auth.uid())) OR ((household_id IS NOT NULL) AND (can_admin_household(household_id) OR ((created_by = auth.uid()) AND (household_role(household_id) = 'member'::text)))))",
+    "with_check": null
+  },
+  {
+    "name": "bill_reminders.bill_reminders_insert_personal_or_household",
+    "cmd": "INSERT",
+    "qual": null,
+    "with_check": "(((household_id IS NULL) AND (user_id = auth.uid()) AND (created_by = auth.uid()) AND (updated_by = auth.uid())) OR ((household_id IS NOT NULL) AND (user_id = auth.uid()) AND (created_by = auth.uid()) AND can_write_household(household_id)))"
+  },
+  {
+    "name": "bill_reminders.bill_reminders_own",
+    "cmd": "ALL",
+    "qual": "(auth.uid() = user_id)",
+    "with_check": null
+  },
+  {
+    "name": "bill_reminders.bill_reminders_select_personal_or_household",
+    "cmd": "SELECT",
+    "qual": "(((household_id IS NULL) AND (user_id = auth.uid())) OR ((household_id IS NOT NULL) AND is_household_member(household_id)))",
+    "with_check": null
+  },
+  {
+    "name": "bill_reminders.bill_reminders_update_personal_or_household",
+    "cmd": "UPDATE",
+    "qual": "(((household_id IS NULL) AND (user_id = auth.uid()) AND (created_by = auth.uid()) AND (updated_by = auth.uid())) OR ((household_id IS NOT NULL) AND (can_admin_household(household_id) OR ((created_by = auth.uid()) AND (household_role(household_id) = 'member'::text)))))",
+    "with_check": "(((household_id IS NULL) AND (user_id = auth.uid()) AND (created_by = auth.uid()) AND (updated_by = auth.uid())) OR ((household_id IS NOT NULL) AND (updated_by = auth.uid()) AND (can_admin_household(household_id) OR ((created_by = auth.uid()) AND (household_role(household_id) = 'member'::text)))))"
+  },
+  {
+    "name": "budget_envelopes.budget_envelopes_delete_personal_or_household",
+    "cmd": "DELETE",
+    "qual": "(((household_id IS NULL) AND (user_id = auth.uid())) OR ((household_id IS NOT NULL) AND (can_admin_household(household_id) OR ((created_by = auth.uid()) AND (household_role(household_id) = 'member'::text)))))",
+    "with_check": null
+  },
+  {
+    "name": "budget_envelopes.budget_envelopes_insert_personal_or_household",
+    "cmd": "INSERT",
+    "qual": null,
+    "with_check": "(((household_id IS NULL) AND (user_id = auth.uid()) AND (created_by = auth.uid()) AND (updated_by = auth.uid()) AND ((parent_category_id IS NULL) OR (EXISTS ( SELECT 1\n   FROM categories c\n  WHERE ((c.id = budget_envelopes.parent_category_id) AND (c.user_id = auth.uid())))))) OR ((household_id IS NOT NULL) AND (user_id = auth.uid()) AND (created_by = auth.uid()) AND can_write_household(household_id) AND ((parent_category_id IS NULL) OR (EXISTS ( SELECT 1\n   FROM categories c\n  WHERE ((c.id = budget_envelopes.parent_category_id) AND (c.user_id = auth.uid())))))))"
+  },
+  {
+    "name": "budget_envelopes.budget_envelopes_select_personal_or_household",
+    "cmd": "SELECT",
+    "qual": "(((household_id IS NULL) AND (user_id = auth.uid())) OR ((household_id IS NOT NULL) AND is_household_member(household_id)))",
+    "with_check": null
+  },
+  {
+    "name": "budget_envelopes.budget_envelopes_update_personal_or_household",
+    "cmd": "UPDATE",
+    "qual": "(((household_id IS NULL) AND (user_id = auth.uid()) AND (created_by = auth.uid()) AND (updated_by = auth.uid())) OR ((household_id IS NOT NULL) AND (can_admin_household(household_id) OR ((created_by = auth.uid()) AND (household_role(household_id) = 'member'::text)))))",
+    "with_check": "(((household_id IS NULL) AND (user_id = auth.uid()) AND (created_by = auth.uid()) AND (updated_by = auth.uid()) AND ((parent_category_id IS NULL) OR (EXISTS ( SELECT 1\n   FROM categories c\n  WHERE ((c.id = budget_envelopes.parent_category_id) AND (c.user_id = auth.uid())))))) OR ((household_id IS NOT NULL) AND (updated_by = auth.uid()) AND (can_admin_household(household_id) OR ((created_by = auth.uid()) AND (household_role(household_id) = 'member'::text))) AND ((parent_category_id IS NULL) OR (EXISTS ( SELECT 1\n   FROM categories c\n  WHERE ((c.id = budget_envelopes.parent_category_id) AND (c.user_id = auth.uid())))))))"
+  },
+  {
+    "name": "budgets.User can manage own budgets",
+    "cmd": "ALL",
+    "qual": "(auth.uid() = user_id)",
+    "with_check": null
+  },
+  {
+    "name": "budgets.budgets_delete_personal_or_household",
+    "cmd": "DELETE",
+    "qual": "(((household_id IS NULL) AND (user_id = auth.uid())) OR ((household_id IS NOT NULL) AND (can_admin_household(household_id) OR ((created_by = auth.uid()) AND (household_role(household_id) = 'member'::text)))))",
+    "with_check": null
+  },
+  {
+    "name": "budgets.budgets_insert_personal_or_household",
+    "cmd": "INSERT",
+    "qual": null,
+    "with_check": "(((household_id IS NULL) AND (user_id = auth.uid()) AND (created_by = auth.uid()) AND (updated_by = auth.uid())) OR ((household_id IS NOT NULL) AND (user_id = auth.uid()) AND (created_by = auth.uid()) AND can_write_household(household_id)))"
+  },
+  {
+    "name": "budgets.budgets_select_personal_or_household",
+    "cmd": "SELECT",
+    "qual": "(((household_id IS NULL) AND (user_id = auth.uid())) OR ((household_id IS NOT NULL) AND is_household_member(household_id)))",
+    "with_check": null
+  },
+  {
+    "name": "budgets.budgets_update_personal_or_household",
+    "cmd": "UPDATE",
+    "qual": "(((household_id IS NULL) AND (user_id = auth.uid()) AND (created_by = auth.uid()) AND (updated_by = auth.uid())) OR ((household_id IS NOT NULL) AND (can_admin_household(household_id) OR ((created_by = auth.uid()) AND (household_role(household_id) = 'member'::text)))))",
+    "with_check": "(((household_id IS NULL) AND (user_id = auth.uid()) AND (created_by = auth.uid()) AND (updated_by = auth.uid())) OR ((household_id IS NOT NULL) AND (updated_by = auth.uid()) AND (can_admin_household(household_id) OR ((created_by = auth.uid()) AND (household_role(household_id) = 'member'::text)))))"
+  },
+  {
+    "name": "categories.User can manage own categories",
+    "cmd": "ALL",
+    "qual": "(auth.uid() = user_id)",
+    "with_check": null
+  },
+  {
+    "name": "categories.User can view default and own categories",
+    "cmd": "SELECT",
+    "qual": "((user_id IS NULL) OR (auth.uid() = user_id))",
+    "with_check": null
+  },
+  {
+    "name": "categories.categories_own",
+    "cmd": "ALL",
+    "qual": "(auth.uid() = user_id)",
+    "with_check": "(auth.uid() = user_id)"
+  },
+  {
+    "name": "household_members.household_members_delete_admin_or_self",
+    "cmd": "DELETE",
+    "qual": "((user_id = auth.uid()) OR (can_admin_household(household_id) AND (role <> 'owner'::text)))",
+    "with_check": null
+  },
+  {
+    "name": "household_members.household_members_insert_admin",
+    "cmd": "INSERT",
+    "qual": null,
+    "with_check": "((can_admin_household(household_id) AND (role = ANY (ARRAY['admin'::text, 'member'::text, 'viewer'::text]))) OR ((role = 'owner'::text) AND (user_id = auth.uid()) AND (EXISTS ( SELECT 1\n   FROM households h\n  WHERE ((h.id = household_members.household_id) AND (h.owner_id = auth.uid()))))))"
+  },
+  {
+    "name": "household_members.household_members_select_active_peer",
+    "cmd": "SELECT",
+    "qual": "(can_admin_household(household_id) OR ((status = 'active'::text) AND is_household_member(household_id)))",
+    "with_check": null
+  },
+  {
+    "name": "household_members.household_members_update_admin",
+    "cmd": "UPDATE",
+    "qual": "(can_admin_household(household_id) AND (role <> 'owner'::text))",
+    "with_check": "(can_admin_household(household_id) AND (role = ANY (ARRAY['admin'::text, 'member'::text, 'viewer'::text])))"
+  },
+  {
+    "name": "households.households_delete_owner",
+    "cmd": "DELETE",
+    "qual": "(owner_id = auth.uid())",
+    "with_check": null
+  },
+  {
+    "name": "households.households_insert_owner",
+    "cmd": "INSERT",
+    "qual": null,
+    "with_check": "(owner_id = auth.uid())"
+  },
+  {
+    "name": "households.households_select_member",
+    "cmd": "SELECT",
+    "qual": "(is_household_member(id) OR (owner_id = auth.uid()))",
+    "with_check": null
+  },
+  {
+    "name": "households.households_update_owner",
+    "cmd": "UPDATE",
+    "qual": "(owner_id = auth.uid())",
+    "with_check": "(owner_id = auth.uid())"
+  },
+  {
+    "name": "import_logs.import_logs_own",
+    "cmd": "ALL",
+    "qual": "(auth.uid() = user_id)",
+    "with_check": null
+  },
+  {
+    "name": "notification_preferences.notification_preferences_insert_own",
+    "cmd": "INSERT",
+    "qual": null,
+    "with_check": "(auth.uid() = user_id)"
+  },
+  {
+    "name": "notification_preferences.notification_preferences_select_own",
+    "cmd": "SELECT",
+    "qual": "(auth.uid() = user_id)",
+    "with_check": null
+  },
+  {
+    "name": "notification_preferences.notification_preferences_update_own",
+    "cmd": "UPDATE",
+    "qual": "(auth.uid() = user_id)",
+    "with_check": "(auth.uid() = user_id)"
+  },
+  {
+    "name": "notifications.notifications_select_own",
+    "cmd": "SELECT",
+    "qual": "(auth.uid() = user_id)",
+    "with_check": null
+  },
+  {
+    "name": "payments.payments_select_own",
+    "cmd": "SELECT",
+    "qual": "(auth.uid() = user_id)",
+    "with_check": null
+  },
+  {
+    "name": "profiles.User can update own profile",
+    "cmd": "UPDATE",
+    "qual": "(auth.uid() = id)",
+    "with_check": null
+  },
+  {
+    "name": "profiles.User can view own profile",
+    "cmd": "SELECT",
+    "qual": "(auth.uid() = id)",
+    "with_check": null
+  },
+  {
+    "name": "report_period_preferences.Users can manage their report period preferences",
+    "cmd": "ALL",
+    "qual": "(auth.uid() = user_id)",
+    "with_check": "(auth.uid() = user_id)"
+  },
+  {
+    "name": "report_period_rules.Users can manage their report period rules",
+    "cmd": "ALL",
+    "qual": "(auth.uid() = user_id)",
+    "with_check": "(auth.uid() = user_id)"
+  },
+  {
+    "name": "transaction_envelope_allocations.transaction_envelope_allocations_delete_personal_or_household",
+    "cmd": "DELETE",
+    "qual": "(EXISTS ( SELECT 1\n   FROM (transactions t\n     JOIN budget_envelopes e ON ((e.id = transaction_envelope_allocations.envelope_id)))\n  WHERE ((t.id = transaction_envelope_allocations.transaction_id) AND (((t.household_id IS NULL) AND (e.household_id IS NULL) AND (t.user_id = auth.uid()) AND (e.user_id = auth.uid())) OR ((t.household_id IS NOT NULL) AND (e.household_id = t.household_id) AND (can_admin_household(t.household_id) OR ((t.created_by = auth.uid()) AND (household_role(t.household_id) = 'member'::text))))))))",
+    "with_check": null
+  },
+  {
+    "name": "transaction_envelope_allocations.transaction_envelope_allocations_insert_personal_or_household",
+    "cmd": "INSERT",
+    "qual": null,
+    "with_check": "(EXISTS ( SELECT 1\n   FROM (transactions t\n     JOIN budget_envelopes e ON ((e.id = transaction_envelope_allocations.envelope_id)))\n  WHERE ((t.id = transaction_envelope_allocations.transaction_id) AND (((t.household_id IS NULL) AND (e.household_id IS NULL) AND (t.user_id = auth.uid()) AND (e.user_id = auth.uid())) OR ((t.household_id IS NOT NULL) AND (e.household_id = t.household_id) AND (can_admin_household(t.household_id) OR ((t.created_by = auth.uid()) AND (household_role(t.household_id) = 'member'::text))))))))"
+  },
+  {
+    "name": "transaction_envelope_allocations.transaction_envelope_allocations_select_personal_or_household",
+    "cmd": "SELECT",
+    "qual": "(EXISTS ( SELECT 1\n   FROM (transactions t\n     JOIN budget_envelopes e ON ((e.id = transaction_envelope_allocations.envelope_id)))\n  WHERE ((t.id = transaction_envelope_allocations.transaction_id) AND (((t.household_id IS NULL) AND (e.household_id IS NULL) AND (t.user_id = auth.uid()) AND (e.user_id = auth.uid())) OR ((t.household_id IS NOT NULL) AND (e.household_id = t.household_id) AND is_household_member(t.household_id))))))",
+    "with_check": null
+  },
+  {
+    "name": "transaction_envelope_allocations.transaction_envelope_allocations_update_personal_or_household",
+    "cmd": "UPDATE",
+    "qual": "(EXISTS ( SELECT 1\n   FROM (transactions t\n     JOIN budget_envelopes e ON ((e.id = transaction_envelope_allocations.envelope_id)))\n  WHERE ((t.id = transaction_envelope_allocations.transaction_id) AND (((t.household_id IS NULL) AND (e.household_id IS NULL) AND (t.user_id = auth.uid()) AND (e.user_id = auth.uid())) OR ((t.household_id IS NOT NULL) AND (e.household_id = t.household_id) AND (can_admin_household(t.household_id) OR ((t.created_by = auth.uid()) AND (household_role(t.household_id) = 'member'::text))))))))",
+    "with_check": "(EXISTS ( SELECT 1\n   FROM (transactions t\n     JOIN budget_envelopes e ON ((e.id = transaction_envelope_allocations.envelope_id)))\n  WHERE ((t.id = transaction_envelope_allocations.transaction_id) AND (((t.household_id IS NULL) AND (e.household_id IS NULL) AND (t.user_id = auth.uid()) AND (e.user_id = auth.uid())) OR ((t.household_id IS NOT NULL) AND (e.household_id = t.household_id) AND (can_admin_household(t.household_id) OR ((t.created_by = auth.uid()) AND (household_role(t.household_id) = 'member'::text))))))))"
+  },
+  {
+    "name": "transactions.User can manage own transactions",
+    "cmd": "ALL",
+    "qual": "(auth.uid() = user_id)",
+    "with_check": null
+  },
+  {
+    "name": "transactions.Users can manage own transactions",
+    "cmd": "ALL",
+    "qual": "(auth.uid() = user_id)",
+    "with_check": "(auth.uid() = user_id)"
+  },
+  {
+    "name": "transactions.transactions_delete_personal_or_household",
+    "cmd": "DELETE",
+    "qual": "(((household_id IS NULL) AND (user_id = auth.uid())) OR ((household_id IS NOT NULL) AND (can_admin_household(household_id) OR ((created_by = auth.uid()) AND (household_role(household_id) = 'member'::text)))))",
+    "with_check": null
+  },
+  {
+    "name": "transactions.transactions_insert_personal_or_household",
+    "cmd": "INSERT",
+    "qual": null,
+    "with_check": "(transaction_wallet_matches_scope(wallet_id, user_id, household_id) AND (((household_id IS NULL) AND (user_id = auth.uid()) AND (created_by = auth.uid()) AND (updated_by = auth.uid())) OR ((household_id IS NOT NULL) AND (user_id = auth.uid()) AND (created_by = auth.uid()) AND can_write_household(household_id))))"
+  },
+  {
+    "name": "transactions.transactions_select_personal_or_household",
+    "cmd": "SELECT",
+    "qual": "(((household_id IS NULL) AND (user_id = auth.uid())) OR ((household_id IS NOT NULL) AND is_household_member(household_id)))",
+    "with_check": null
+  },
+  {
+    "name": "transactions.transactions_update_personal_or_household",
+    "cmd": "UPDATE",
+    "qual": "(((household_id IS NULL) AND (user_id = auth.uid()) AND (created_by = auth.uid()) AND (updated_by = auth.uid())) OR ((household_id IS NOT NULL) AND (can_admin_household(household_id) OR ((created_by = auth.uid()) AND (household_role(household_id) = 'member'::text)))))",
+    "with_check": "(transaction_wallet_matches_scope(wallet_id, user_id, household_id) AND (((household_id IS NULL) AND (user_id = auth.uid()) AND (created_by = auth.uid()) AND (updated_by = auth.uid())) OR ((household_id IS NOT NULL) AND (updated_by = auth.uid()) AND (can_admin_household(household_id) OR ((created_by = auth.uid()) AND (household_role(household_id) = 'member'::text))))))"
+  },
+  {
+    "name": "wallets.User can delete own wallets",
+    "cmd": "DELETE",
+    "qual": "(auth.uid() = user_id)",
+    "with_check": null
+  },
+  {
+    "name": "wallets.User can insert own wallets",
+    "cmd": "INSERT",
+    "qual": null,
+    "with_check": "(auth.uid() = user_id)"
+  },
+  {
+    "name": "wallets.User can update own wallets",
+    "cmd": "UPDATE",
+    "qual": "(auth.uid() = user_id)",
+    "with_check": null
+  },
+  {
+    "name": "wallets.User can view own wallets",
+    "cmd": "SELECT",
+    "qual": "(auth.uid() = user_id)",
+    "with_check": null
+  },
+  {
+    "name": "wallets.wallets_delete_personal_or_household",
+    "cmd": "DELETE",
+    "qual": "(((household_id IS NULL) AND (user_id = auth.uid())) OR ((household_id IS NOT NULL) AND (can_admin_household(household_id) OR ((created_by = auth.uid()) AND (household_role(household_id) = 'member'::text)))))",
+    "with_check": null
+  },
+  {
+    "name": "wallets.wallets_insert_personal_or_household",
+    "cmd": "INSERT",
+    "qual": null,
+    "with_check": "(((household_id IS NULL) AND (user_id = auth.uid()) AND (created_by = auth.uid()) AND (updated_by = auth.uid())) OR ((household_id IS NOT NULL) AND (user_id = auth.uid()) AND (created_by = auth.uid()) AND can_write_household(household_id)))"
+  },
+  {
+    "name": "wallets.wallets_own_update",
+    "cmd": "UPDATE",
+    "qual": "(auth.uid() = user_id)",
+    "with_check": null
+  },
+  {
+    "name": "wallets.wallets_own_write",
+    "cmd": "INSERT",
+    "qual": null,
+    "with_check": "(auth.uid() = user_id)"
+  },
+  {
+    "name": "wallets.wallets_select_personal_or_household",
+    "cmd": "SELECT",
+    "qual": "(((household_id IS NULL) AND (user_id = auth.uid())) OR ((household_id IS NOT NULL) AND is_household_member(household_id)))",
+    "with_check": null
+  },
+  {
+    "name": "wallets.wallets_update_personal_or_household",
+    "cmd": "UPDATE",
+    "qual": "(((household_id IS NULL) AND (user_id = auth.uid()) AND (created_by = auth.uid()) AND (updated_by = auth.uid())) OR ((household_id IS NOT NULL) AND (can_admin_household(household_id) OR ((created_by = auth.uid()) AND (household_role(household_id) = 'member'::text)))))",
+    "with_check": "(((household_id IS NULL) AND (user_id = auth.uid()) AND (created_by = auth.uid()) AND (updated_by = auth.uid())) OR ((household_id IS NOT NULL) AND (updated_by = auth.uid()) AND (can_admin_household(household_id) OR ((created_by = auth.uid()) AND (household_role(household_id) = 'member'::text)))))"
+  }
+]

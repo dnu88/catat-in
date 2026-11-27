@@ -32,7 +32,7 @@ test.describe.serial('Kaswise PWA core finance go-live flow', () => {
     await expectReportContainsCategory(page, 'Makan');
     await editFirstTransactionViaSwipe(page);
     await createCaptureExpense(page);
-    await expectTransactionVisible(page, 'Beli kopi 35rb');
+    await expectTransactionVisible(page, 'Beli kopi di Kopi Kenangan');
 
     const { email, password } = getGoLiveCredentials();
     const admin = createSupabaseAdmin();

@@ -10,6 +10,7 @@ import * as WebBrowser from "expo-web-browser";
 import { router } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { ScrollView } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
 
 import { KaswiseLogoMark } from "../src/components/brand/KaswiseLogoMark";
 import { supabase } from "../src/lib/supabase";
@@ -20,29 +21,38 @@ import {
   type Pricing,
 } from "../src/services/billing";
 import { useTheme } from "../src/theme/theme-context";
+import { financeEditorial as fe } from "../src/theme/finance-editorial";
+import { isPwaPolish, pwaHeroCaption } from "../src/theme/pwa-polish";
 import { useI18n } from "../src/i18n/i18n-context";
 import { getStoreReleaseConfig } from "../src/config/store-release";
+import { goBackSafely } from "../src/lib/safe-back";
 
 const rp = (n: number) => `Rp${n.toLocaleString("id-ID")}`;
 
 const POLL_INTERVAL = 2000;
 const MAX_POLLS = 30;
+// How long the success phase stays on screen before returning the user.
+const PAID_EXIT_DELAY = 1500;
 
 export default function UpgradeScreen() {
   const { theme } = useTheme();
   const { language } = useI18n();
   const isEn = language === "en";
-  const styles = useMemo(() => createStyles(theme), [theme]);
+  const polish = isPwaPolish();
+  const styles = useMemo(() => createStyles(theme, polish), [theme, polish]);
   const storeReleaseConfig = useMemo(() => getStoreReleaseConfig(), []);
   const allowNativePremiumPurchase = storeReleaseConfig.allowNativePremiumPurchase;
 
   const [pricing, setPricing] = useState<Pricing | null>(null);
   const [pricingError, setPricingError] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
+  const [purchaseError, setPurchaseError] = useState<string | null>(null);
   const [phase, setPhase] = useState<"idle" | "polling" | "paid" | "error">("idle");
   const [orderId, setOrderId] = useState<string | null>(null);
   const [pollError, setPollError] = useState<string | null>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const exitTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const mountedRef = useRef(true);
   const pollCountRef = useRef(0);
 
   const stopPolling = useCallback(() => {
@@ -51,6 +61,26 @@ export default function UpgradeScreen() {
       intervalRef.current = null;
     }
   }, []);
+
+  const clearPaidExit = useCallback(() => {
+    if (exitTimeoutRef.current) {
+      clearTimeout(exitTimeoutRef.current);
+      exitTimeoutRef.current = null;
+    }
+  }, []);
+
+  // Schedule the return to settings once the success phase has been shown. The
+  // timer is tracked so unmount can cancel it, and the callback re-checks that
+  // the screen is still mounted, so a timer left behind while the user moves on
+  // can never navigate the screen they landed on.
+  const schedulePaidExit = useCallback(() => {
+    clearPaidExit();
+    exitTimeoutRef.current = setTimeout(() => {
+      exitTimeoutRef.current = null;
+      if (!mountedRef.current) return;
+      goBackSafely(router, "/(tabs)/settings");
+    }, PAID_EXIT_DELAY);
+  }, [clearPaidExit]);
 
   const pollStatusImpl = useCallback(async () => {
     const currentId = orderId;
@@ -61,7 +91,7 @@ export default function UpgradeScreen() {
       if (result.status === "paid" || result.status === "settlement") {
         stopPolling();
         setPhase("paid");
-        setTimeout(() => router.back(), 1500);
+        schedulePaidExit();
       } else if (pollCountRef.current >= MAX_POLLS) {
         stopPolling();
         setPhase("error");
@@ -74,7 +104,7 @@ export default function UpgradeScreen() {
         setPollError(isEn ? "Failed to check payment status. Please try again." : "Gagal memeriksa status. Coba lagi nanti.");
       }
     }
-  }, [orderId, stopPolling]);
+  }, [orderId, stopPolling, schedulePaidExit]);
 
   const startPolling = useCallback(
     (id: string) => {
@@ -92,7 +122,7 @@ export default function UpgradeScreen() {
             if (result.status === "paid" || result.status === "settlement") {
               stopPolling();
               setPhase("paid");
-              setTimeout(() => router.back(), 1500);
+              schedulePaidExit();
             } else if (pollCountRef.current >= MAX_POLLS) {
               stopPolling();
               setPhase("error");
@@ -110,7 +140,7 @@ export default function UpgradeScreen() {
           });
       }, POLL_INTERVAL);
     },
-    [stopPolling]
+    [stopPolling, schedulePaidExit]
   );
 
   const fetchPricing = useCallback(() => {
@@ -121,9 +151,14 @@ export default function UpgradeScreen() {
   }, []);
 
   useEffect(() => {
+    mountedRef.current = true;
     fetchPricing();
-    return stopPolling;
-  }, [fetchPricing, stopPolling]);
+    return () => {
+      mountedRef.current = false;
+      stopPolling();
+      clearPaidExit();
+    };
+  }, [fetchPricing, stopPolling, clearPaidExit]);
 
   async function buy(plan: "monthly" | "yearly") {
     if (!allowNativePremiumPurchase) {
@@ -131,12 +166,28 @@ export default function UpgradeScreen() {
     }
 
     setBusy(plan);
+    setPurchaseError(null);
     try {
       const res = await createPayment(supabase, plan);
       await WebBrowser.openBrowserAsync(res.redirect_url);
       startPolling(res.order_id);
-    } catch {
-      // createPayment throws on failure — stay idle
+    } catch (error) {
+      // Never fail silently: a checkout that cannot open must say why, otherwise
+      // the plan cards look like a dead button. 403 = the provider is not open
+      // for this account (activation allowlist), anything else = provider/network.
+      const status =
+        typeof (error as { status?: unknown } | null)?.status === "number"
+          ? (error as { status: number }).status
+          : null;
+      setPurchaseError(
+        status === 403
+          ? isEn
+            ? "This payment method is not available for your account yet. Use another method or contact support."
+            : "Metode pembayaran ini belum tersedia untuk akun Anda. Hubungi dukungan atau pakai metode lain."
+          : isEn
+            ? "We could not open the payment page. Please try again."
+            : "Halaman pembayaran gagal dibuka. Coba lagi sebentar lagi.",
+      );
     } finally {
       setBusy(null);
     }
@@ -181,7 +232,12 @@ export default function UpgradeScreen() {
         showsVerticalScrollIndicator={false}
       >
         {/* Header */}
-        <View style={styles.header}>
+        <LinearGradient
+          colors={[fe.navySurface, fe.blueDeep, fe.blueBright]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.header}
+        >
           <KaswiseLogoMark size={40} />
           <Text accessibilityRole="header" style={styles.title}>
             Kaswise Premium
@@ -189,7 +245,7 @@ export default function UpgradeScreen() {
           <Text style={styles.subtitle}>
             {isEn ? "OCR receipts, AI chat 200/month, AI Insight" : "Foto struk OCR, chat AI 200/bulan, AI Insight"}
           </Text>
-        </View>
+        </LinearGradient>
 
         {/* Promo badge */}
         {isPromo ? (
@@ -217,6 +273,11 @@ export default function UpgradeScreen() {
         {/* Plan cards — idle phase */}
         {phase === "idle" && allowNativePremiumPurchase ? (
           <>
+            {purchaseError ? (
+              <View testID="upgrade-purchase-error" style={styles.purchaseErrorCard}>
+                <Text style={styles.purchaseErrorText}>{purchaseError}</Text>
+              </View>
+            ) : null}
             <Pressable
               testID="upgrade-monthly"
               disabled={busy !== null}
@@ -313,7 +374,7 @@ export default function UpgradeScreen() {
   );
 }
 
-function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
+function createStyles(theme: ReturnType<typeof useTheme>["theme"], polish = false) {
   const brandText =
     theme.mode === "light"
       ? theme.colors.brandPrimaryDeep
@@ -322,7 +383,7 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
   return StyleSheet.create({
     screen: {
       flex: 1,
-      backgroundColor: theme.colors.background,
+      backgroundColor: fe.paper,
     },
     scrollContent: {
       flexGrow: 1,
@@ -342,18 +403,25 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
     header: {
       alignItems: "center",
       gap: theme.spacing.sm,
-      paddingTop: theme.spacing.lg,
-      paddingBottom: theme.spacing.md,
+      padding: theme.spacing.xl,
+      paddingVertical: theme.spacing["2xl"],
+      borderRadius: theme.radius["2xl"],
+      overflow: "hidden",
+      shadowColor: fe.navy,
+      shadowOpacity: 0.18,
+      shadowRadius: 24,
+      shadowOffset: { width: 0, height: 12 },
+      elevation: 8,
     },
     title: {
-      fontSize: 22,
-      fontWeight: "800",
-      color: theme.colors.textPrimary,
+      fontSize: 28,
+      fontWeight: "700",
+      color: fe.white,
       textAlign: "center",
     },
     subtitle: {
       fontSize: 14,
-      color: theme.colors.textSecondary,
+      color: polish ? pwaHeroCaption : "rgba(255,255,255,0.72)",
       textAlign: "center",
       lineHeight: 20,
     },
@@ -374,7 +442,7 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
     },
     // Plan cards
     planCard: {
-      backgroundColor: theme.colors.surface,
+      backgroundColor: fe.white,
       borderRadius: theme.radius.xl,
       borderWidth: 1,
       borderColor: theme.colors.borderSoft,
@@ -436,7 +504,7 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
     },
     // Phase cards (polling, success, error)
     phaseCard: {
-      backgroundColor: theme.colors.surface,
+      backgroundColor: fe.white,
       borderRadius: theme.radius.xl,
       borderWidth: 1,
       borderColor: theme.colors.borderSoft,
@@ -461,6 +529,21 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
       fontSize: 48,
     },
     // Error & retry
+    purchaseErrorCard: {
+      backgroundColor: theme.colors.surface,
+      borderRadius: theme.radius.lg,
+      borderWidth: 1,
+      borderColor: theme.colors.danger,
+      paddingVertical: theme.spacing.md,
+      paddingHorizontal: theme.spacing.lg,
+      marginBottom: theme.spacing.lg,
+    },
+    purchaseErrorText: {
+      fontSize: 14,
+      color: theme.colors.danger,
+      textAlign: "center",
+      lineHeight: 20,
+    },
     errorTitle: {
       fontSize: 16,
       fontWeight: "700",

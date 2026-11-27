@@ -3,31 +3,90 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { ActivityIndicator, Animated, Image, Linking, Modal, Pressable, RefreshControl, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { PageEntrance, StaggeredStack } from "../../src/components/motion";
 import { AccountDeletionSection } from "../../src/components/settings/AccountDeletionSection";
+import { FinanceContextSwitcher } from "../../src/components/FinanceContextSwitcher";
+import { SettingsNavigationRow } from "../../src/components/settings/SettingsNavigationRow";
+import { SettingsSection } from "../../src/components/settings/SettingsSection";
+import { SettingsLanguageRow } from "../../src/components/settings/SettingsLanguageRow";
 import { LegalSupportSection } from "../../src/components/settings/LegalSupportSection";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as ImagePicker from "expo-image-picker";
+import { LinearGradient } from "expo-linear-gradient";
 import Svg, { Circle, Path, Rect } from "react-native-svg";
 
 import { useSupabase } from "../../src/lib/supabase";
 import type { KaswiseIconName } from "../../src/components/icons/kaswise-icons";
 import { KaswiseIcon } from "../../src/components/icons/kaswise-icons";
-import { KaswiseLogoMark } from "../../src/components/brand/KaswiseLogoMark";
-import { IconBubble } from "../../src/components/ui";
+
+
 import { useTheme } from "../../src/theme/theme-context";
+import { financeEditorial as fe } from "../../src/theme/finance-editorial";
+import { isPwaPolish, pwaHeroCaption } from "../../src/theme/pwa-polish";
 import { useI18n } from "../../src/i18n/i18n-context";
 import { useEntitlements } from "../../src/hooks/useEntitlements";
+import { featureFlags } from "../../src/config/features";
+import { resolveExperienceTextStyle } from "../../src/theme/experience-tokens";
 import { planStatusLabel } from "../../src/utils/plan-labels";
 import { getStoreReleaseConfig } from "../../src/config/store-release";
 import { getLatestAccountDeletionRequest, submitAccountDeletionRequest, type AccountDeletionRequestItem } from "../../src/services/account-deletion";
-import { getNotificationPreferences, updateNotificationPreferences, type NotificationPreferences } from "../../src/services/notifications";
+import { useNotificationSettings } from "../../src/components/settings/useNotificationSettings";
+
+/**
+ * T25 (simple premium) — reusable settings rows.
+ *
+ * These rows used to be inlined inside the "Finance" group, which made the
+ * planned "Pencatatan" / "Data" groups impossible to build without duplicating
+ * JSX. Extracted once here so the simple layout and the premium grouping render
+ * exactly the same rows (same testIDs, same behaviour, one source of truth).
+ */
+function SettingsRecordingRows({ language }: { language: string }) {
+	return (
+		<>
+			<SettingsNavigationRow testID="settings-wallets" icon="wallets"
+				title={language === "id" ? "Dompet & akun" : "Wallets & accounts"}
+				onPress={() => router.push("/(tabs)/wallets")}
+							premium={featureFlags.simplePremiumExperience} />
+			<SettingsNavigationRow testID="settings-budgets" icon="budgets"
+				title={language === "id" ? "Anggaran kategori" : "Category budgets"}
+				description={language === "id" ? "Atur batas pengeluaran per kategori." : "Set expense budgets by category."}
+				onPress={() => router.push("/(tabs)/budgets")}
+							premium={featureFlags.simplePremiumExperience} />
+			<SettingsNavigationRow testID="settings-bills" icon="bills"
+				title={language === "id" ? "Tagihan & pengingat" : "Bills & reminders"}
+				onPress={() => router.push("/(tabs)/bills")}
+							premium={featureFlags.simplePremiumExperience} />
+		</>
+	);
+}
+
+function SettingsDataRows({ language }: { language: string }) {
+	// A feature that is OFF must never be promoted as active.
+	if (!featureFlags.importStatement) return null;
+	return (
+		<View testID="settings-import-statement">
+			<SettingsNavigationRow testID="settings-import-statement-link" icon="upload"
+				title={language === "id" ? "Import rekening koran" : "Bank statement import"}
+				onPress={() => router.push("/(tabs)/imports")}
+							premium={featureFlags.simplePremiumExperience} />
+		</View>
+	);
+}
+
+/**
+ * T27 follow-up (reviewer finding #2): the premium grouping initially dropped
+ * the notification-inbox row that the simpleNavigation layout renders, silently
+ * removing a way into `/notifications`. Extracted once so both layouts render
+ * exactly the same row (same testID, same target, same ID/EN copy).
+ */
+function SettingsNotificationInboxRow({ language }: { language: string }) {
+	return (
+		<SettingsNavigationRow testID="settings-notification-inbox" icon="notification"
+			title={language === "id" ? "Kotak masuk notifikasi" : "Notification inbox"}
+			description={language === "id" ? "Lihat notifikasi yang sudah diterima." : "View notifications you have received."}
+			onPress={() => router.push("/notifications")}
+							premium={featureFlags.simplePremiumExperience} />
+	);
+}
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
-
-const NOTIFICATION_KEYS = {
-	dailyReminder: "@kaswise/notifications/dailyReminder",
-	billReminder: "@kaswise/notifications/billReminder",
-	budgetAlert: "@kaswise/notifications/budgetAlert",
-} as const;
 
 const EXPENSE_CATEGORY_CONFIG = {
 	Makanan: {
@@ -384,19 +443,25 @@ function createBudgets({
 	}));
 }
 
+
 export default function SettingsScreen() {
 	const { supabase } = useSupabase();
 	const { theme } = useTheme();
-	const { language, setLanguage, t } = useI18n();
-	const styles = useMemo(() => createStyles(theme), [theme]);
+	const { language, setLanguage } = useI18n();
+	// B1 (visual foundation): resolve the presentation flag first so flag OFF
+	// keeps every value identical to the pre-B1 baseline.
+	const premium = featureFlags.simplePremiumExperience;
+	const polish = isPwaPolish();
+	const styles = useMemo(() => createStyles(theme, premium, polish), [theme, premium, polish]);
 	const storeReleaseConfig = useMemo(() => getStoreReleaseConfig(), []);
 	const allowNativePremiumPurchase = storeReleaseConfig.allowNativePremiumPurchase;
 	const { data: entitlements, loading: entitlementsLoading } = useEntitlements();
-	const [dailyReminder, setDailyReminder] = useState(true);
-	const [billReminder, setBillReminder] = useState(true);
-	const [budgetAlert, setBudgetAlert] = useState(true);
-	const [notifPrefs, setNotifPrefs] = useState<NotificationPreferences | null>(null);
-	const [notifPrefsLoading, setNotifPrefsLoading] = useState(false);
+	const notifications = useNotificationSettings(supabase);
+	const notifPrefs = notifications.prefs;
+	const notifPrefsLoading = notifications.loading;
+	const dailyReminder = notifPrefs?.daily_reminder_enabled ?? false;
+	const billReminder = notifPrefs?.bill_reminder_enabled ?? false;
+	const budgetAlert = notifPrefs?.budget_alert_enabled ?? false;
 	const [profileLoading, setProfileLoading] = useState(true);
 	const [profileName, setProfileName] = useState("");
 	const [profileEmail, setProfileEmail] = useState("");
@@ -478,39 +543,6 @@ export default function SettingsScreen() {
 		};
 	}, [supabase]);
 
-	useEffect(() => {
-		let active = true;
-		const loadNotifications = async () => {
-			// Load from backend first.
-			try {
-				setNotifPrefsLoading(true);
-				const prefs = await getNotificationPreferences(supabase);
-				if (active) {
-					setNotifPrefs(prefs);
-					setDailyReminder(prefs.daily_reminder_enabled);
-					setBillReminder(prefs.bill_reminder_enabled);
-					setBudgetAlert(prefs.budget_alert_enabled);
-				}
-			} catch {
-				// Fallback: load from legacy AsyncStorage (migration path).
-				const [daily, bill, budget] = await AsyncStorage.multiGet([
-					NOTIFICATION_KEYS.dailyReminder,
-					NOTIFICATION_KEYS.billReminder,
-					NOTIFICATION_KEYS.budgetAlert,
-				]);
-				if (!active) return;
-				if (daily[1] !== null) setDailyReminder(daily[1] === "true");
-				if (bill[1] !== null) setBillReminder(bill[1] === "true");
-				if (budget[1] !== null) setBudgetAlert(budget[1] === "true");
-			} finally {
-				if (active) setNotifPrefsLoading(false);
-			}
-		};
-		loadNotifications();
-		return () => {
-			active = false;
-		};
-	}, [supabase]);
 
 	useEffect(() => {
 		let active = true;
@@ -567,36 +599,10 @@ export default function SettingsScreen() {
 		(avatar) => avatarFilter === "all" || avatar.group === avatarFilter,
 	);
 
-	const toggleDailyReminder = () => {
-		setDailyReminder((v) => {
-			const next = !v;
-			updateNotificationPreferences(supabase, { daily_reminder_enabled: next }).catch(() => {});
-			return next;
-		});
-	};
-
-	const toggleBillReminder = () => {
-		setBillReminder((v) => {
-			const next = !v;
-			updateNotificationPreferences(supabase, { bill_reminder_enabled: next }).catch(() => {});
-			return next;
-		});
-	};
-
-	const toggleBudgetAlert = () => {
-		setBudgetAlert((v) => {
-			const next = !v;
-			updateNotificationPreferences(supabase, { budget_alert_enabled: next }).catch(() => {});
-			return next;
-		});
-	};
-
-	const toggleNotifEnabled = () => {
-		if (!notifPrefs) return;
-		const next = !notifPrefs.enabled;
-		setNotifPrefs({ ...notifPrefs, enabled: next });
-		updateNotificationPreferences(supabase, { enabled: next }).catch(() => {});
-	};
+	const toggleDailyReminder = () => { void notifications.toggle("daily_reminder_enabled"); };
+	const toggleBillReminder = () => { void notifications.toggle("bill_reminder_enabled"); };
+	const toggleBudgetAlert = () => { void notifications.toggle("budget_alert_enabled"); };
+	const toggleNotifEnabled = () => { void notifications.toggle("enabled"); };
 
 	const openProfileSheet = () => {
 		setDraftPhotoUri(profilePhotoUrl || null);
@@ -1040,6 +1046,462 @@ export default function SettingsScreen() {
 		await Linking.openURL(url);
 	};
 
+	const profileSection = (
+		<LinearGradient
+			key="settings-profile"
+			testID="settings-profile"
+			colors={[fe.navySurface, fe.blueDeep, fe.blueBright]}
+			start={{ x: 0, y: 0 }}
+			end={{ x: 1, y: 1 }}
+			style={styles.profileCard}
+		>
+			<View style={styles.profileAvatar}>
+				{profilePhotoUrl ? (
+					<Image source={{ uri: profilePhotoUrl }} style={styles.profileAvatarImage} />
+				) : selectedAvatar ? (
+					<ProfileAvatarIllustration preset={selectedAvatar} theme={theme} size={68} />
+				) : (
+					<Text style={styles.profileAvatarText}>{avatarInitials}</Text>
+				)}
+			</View>
+			<View style={styles.profileInfo}>
+				<Text style={styles.profileName}>{displayName}</Text>
+				{displayEmail ? (
+					<Text style={styles.profileEmail}>{displayEmail}</Text>
+				) : null}
+				<Pressable
+					testID="settings-change-profile-photo"
+					accessibilityRole="button"
+					accessibilityLabel={language === "id" ? "Ubah foto profil" : "Change profile photo"}
+					onPress={openProfileSheet}
+					style={styles.profilePhotoButton}
+				>
+					<Text style={styles.profilePhotoButtonText}>
+						{language === "id" ? "Ubah Foto Profil" : "Change Profile Photo"}
+					</Text>
+				</Pressable>
+				{profileMessage ? (
+					<Text style={[styles.inlineMessage, profileMessage.type === "error" && styles.inlineMessageError]}>
+						{profileMessage.message}
+					</Text>
+				) : null}
+			</View>
+		</LinearGradient>
+	);
+
+	const appearanceSection = (
+		<View key="settings-appearance" testID="settings-appearance" style={styles.sectionCard}>
+			<View testID="settings-appearance-row" accessible accessibilityLabel={language === "id" ? "Tampilan, Terang" : "Appearance, Light"} style={{ flexDirection: "row", justifyContent: "space-between", minHeight: 44, alignItems: "center" }}>
+				<Text style={styles.sectionTitle}>{language === "id" ? "Tampilan" : "Appearance"}</Text>
+				<Text style={styles.navigationTitle}>{language === "id" ? "Terang" : "Light"}</Text>
+			</View>
+			<Text style={[styles.sectionSub, { display: "flex", marginBottom: 0 }]}>{language === "id" ? "Kaswise memakai tampilan terang agar catatan keuangan tetap jelas dan mudah dibaca." : "Kaswise uses a light-first appearance to keep financial records clear and readable."}</Text>
+		</View>
+	);
+
+	const securitySection = (
+		<View key="settings-account-security" testID="settings-account-security" style={styles.sectionCard}>
+			<Text style={styles.sectionTitle}>
+				{language === "id" ? "Akun & Keamanan" : "Account & Security"}
+			</Text>
+			<Text style={styles.sectionSub}>
+				{language === "id"
+					? "Kelola akses akun dan password login."
+					: "Manage account access and login password."}
+			</Text>
+			<Pressable
+				testID="settings-password-toggle"
+				accessibilityRole="button"
+				accessibilityLabel={language === "id" ? "Ubah password" : "Change password"}
+				style={styles.navigationRow}
+				onPress={() => setPasswordExpanded((value) => !value)}
+			>
+				<View style={styles.navigationCopy}>
+					<KaswiseIcon name="lock" size={20} color={theme.colors.textMuted} />
+					<View style={styles.navigationTextBlock}>
+						<Text style={styles.navigationTitle}>{language === "id" ? "Ubah Password" : "Change Password"}</Text>
+						<Text style={styles.navigationHelper}>
+							{language === "id" ? "Gunakan minimal 8 karakter." : "Use at least 8 characters."}
+						</Text>
+					</View>
+				</View>
+				<Text style={styles.navigationChevron}>{passwordExpanded ? "⌃" : "›"}</Text>
+			</Pressable>
+			{passwordExpanded ? (
+				<View style={styles.passwordForm}>
+					<TextInput
+						testID="settings-new-password"
+						value={newPassword}
+						onChangeText={setNewPassword}
+						placeholder={language === "id" ? "Password baru" : "New password"}
+						placeholderTextColor={theme.colors.textDim}
+						secureTextEntry
+						style={styles.textInput}
+					/>
+					<TextInput
+						testID="settings-confirm-password"
+						value={confirmPassword}
+						onChangeText={setConfirmPassword}
+						placeholder={language === "id" ? "Konfirmasi password" : "Confirm password"}
+						placeholderTextColor={theme.colors.textDim}
+						secureTextEntry
+						style={styles.textInput}
+					/>
+					{passwordMessage ? (
+						<Text style={[styles.inlineMessage, passwordMessage.type === "error" && styles.inlineMessageError]}>
+							{passwordMessage.message}
+						</Text>
+					) : null}
+					<Pressable
+						testID="settings-save-password"
+						accessibilityRole="button"
+						accessibilityState={{ busy: passwordSaving, disabled: passwordSaving }}
+						disabled={passwordSaving}
+						style={[styles.primaryButton, passwordSaving && styles.buttonDisabled]}
+						onPress={onChangePassword}
+					>
+						{passwordSaving ? (
+							<ActivityIndicator color={theme.colors.buttonPrimaryText} />
+						) : (
+							<Text style={styles.primaryButtonText}>{language === "id" ? "Simpan Password" : "Save Password"}</Text>
+						)}
+					</Pressable>
+				</View>
+			) : passwordMessage ? (
+				<Text style={[styles.inlineMessage, passwordMessage.type === "error" && styles.inlineMessageError]}>
+					{passwordMessage.message}
+				</Text>
+			) : null}
+		</View>
+	);
+
+	const planSection = (
+		<View key="settings-plan" testID="settings-plan" style={styles.sectionCard}>
+			<Text style={styles.sectionTitle}>
+				{language === "id" ? "Paket" : "Plan"}
+			</Text>
+			<Text style={styles.sectionSub}>
+				{!allowNativePremiumPurchase
+					? (language === "id"
+						? "Status paket aktif. Upgrade Premium sementara tersedia lewat Kaswise web/PWA."
+						: "Current plan status. Premium upgrade is temporarily available on Kaswise web/PWA.")
+					: (language === "id"
+						? "Status langganan dan upgrade ke Premium."
+						: "Subscription status and premium upgrade.")}
+			</Text>
+			{entitlementsLoading ? (
+				<ActivityIndicator style={{ marginTop: 6 }} />
+			) : (
+				<>
+					<View style={styles.navigationRow}>
+						<View style={styles.navigationCopy}>
+							<KaswiseIcon name="card" size={20} color={theme.colors.textMuted} />
+							<View style={styles.navigationTextBlock}>
+								<Text style={styles.navigationTitle}>
+									{planStatusLabel(entitlements)}
+								</Text>
+								{entitlements?.plan === "premium" && entitlements.plan_expires_at ? (
+									<Text style={styles.navigationHelper}>
+										{language === "id" ? "Berlaku sampai " : "Valid until "}
+										{new Date(entitlements.plan_expires_at).toLocaleDateString(
+											language === "id" ? "id-ID" : "en-US",
+											{ year: "numeric", month: "long", day: "numeric" }
+										)}
+									</Text>
+								) : (
+									<Text style={styles.navigationHelper}>
+										{language === "id" ? "Akses dasar dengan batasan." : "Basic access with limits."}
+									</Text>
+								)}
+							</View>
+						</View>
+					</View>
+					{entitlements?.plan !== "premium" ? (
+						allowNativePremiumPurchase ? (
+							<Pressable
+								testID="settings-upgrade-button"
+								accessibilityRole="button"
+								style={styles.planAction}
+								onPress={() => router.push("/upgrade")}
+							>
+								<Text style={styles.planActionText}>
+									{language === "id" ? "Upgrade ke Premium" : "Upgrade to Premium"}
+								</Text>
+							</Pressable>
+						) : (
+							<Text testID="settings-upgrade-unavailable" style={styles.navigationHelper}>
+								{language === "id"
+									? "Upgrade Premium sementara hanya tersedia lewat Kaswise web/PWA."
+									: "Premium upgrade is temporarily available only on Kaswise web/PWA."}
+							</Text>
+						)
+					) : allowNativePremiumPurchase ? (
+						<Pressable
+							testID="settings-extend-button"
+							accessibilityRole="button"
+							style={styles.planAction}
+							onPress={() => router.push("/upgrade")}
+						>
+							<Text style={styles.planActionText}>
+								{language === "id" ? "Perpanjang" : "Extend"}
+							</Text>
+						</Pressable>
+					) : (
+						<Text testID="settings-extend-unavailable" style={styles.navigationHelper}>
+							{language === "id"
+								? "Perpanjangan paket sementara dikelola lewat Kaswise web/PWA."
+								: "Plan renewal is temporarily handled on Kaswise web/PWA."}
+						</Text>
+					)}
+				</>
+			)}
+		</View>
+	);
+
+	const familySection = (
+		<View key="settings-family" testID="settings-family" style={styles.sectionCard}>
+			<Text style={styles.sectionTitle}>
+				{language === "id" ? "Keluarga" : "Family"}
+			</Text>
+			<Text style={styles.sectionSub}>
+				{language === "id"
+					? "Kelola akses keluarga, undangan, dan mode keuangan bersama."
+					: "Manage household access, invites, and shared finance mode."}
+			</Text>
+			<Pressable
+				testID="settings-family-center"
+				accessibilityRole="button"
+				accessibilityLabel={
+					language === "id" ? "Buka pusat keluarga" : "Open family center"
+				}
+				style={styles.navigationRow}
+				onPress={() => router.push("/(tabs)/groups")}
+			>
+				<View style={styles.navigationCopy}>
+					<KaswiseIcon name="groups" size={20} color={theme.colors.textMuted} />
+					<View style={styles.navigationTextBlock}>
+						<Text style={styles.navigationTitle}>
+							{language === "id" ? "Pusat Keluarga" : "Family Center"}
+						</Text>
+						<Text style={styles.navigationHelper}>
+							{language === "id"
+								? "Buat keluarga atau gabung dengan kode undangan."
+								: "Create a family or join with an invite code."}
+						</Text>
+					</View>
+				</View>
+				<Text style={styles.navigationChevron}>›</Text>
+			</Pressable>
+		</View>
+	);
+
+	const importSection = (
+		featureFlags.importStatement ? (
+			<View key="settings-import-statement" testID="settings-import-statement" style={styles.sectionCard}>
+				<Text style={styles.sectionTitle}>
+					{language === "id" ? "Import Rekening Koran" : "Bank Statement Import"}
+				</Text>
+				<Text style={styles.sectionSub}>
+					{language === "id"
+						? "Upload CSV/XLSX/PDF bank atau e-wallet dan review transaksi sebelum disimpan."
+						: "Upload bank or e-wallet CSV/XLSX/PDF files and review transactions before saving."}
+				</Text>
+				<Pressable
+					testID="settings-import-statement-link"
+					accessibilityRole="button"
+					accessibilityLabel={language === "id" ? "Buka import rekening koran" : "Open bank statement import"}
+					style={styles.navigationRow}
+					onPress={() => router.push("/(tabs)/imports")}
+				>
+					<View style={styles.navigationCopy}>
+						<KaswiseIcon name="upload" size={20} color={theme.colors.textMuted} />
+						<View style={styles.navigationTextBlock}>
+							<Text style={styles.navigationTitle}>
+								{language === "id" ? "Import CSV/XLSX/PDF" : "Import CSV/XLSX/PDF"}
+							</Text>
+							<Text style={styles.navigationHelper}>
+								{language === "id"
+									? "Preview duplikat dan error sebelum konfirmasi."
+									: "Preview duplicates and errors before confirming."}
+							</Text>
+						</View>
+					</View>
+					<Text style={styles.navigationChevron}>›</Text>
+				</Pressable>
+			</View>
+		) : null
+	);
+
+	const languageSection = <SettingsLanguageRow key="settings-language" language={language} onSelect={setLanguage} />;
+
+	const notificationsSection = (
+		<View key="settings-notifications" testID="settings-notifications" style={styles.sectionCard}>
+			<Text style={styles.sectionTitle}>
+				{featureFlags.simpleNavigation
+					? (language === "id" ? "Preferensi notifikasi" : "Notification preferences")
+					: (language === "id" ? "Notifikasi" : "Notifications")}
+			</Text>
+			<Text style={styles.sectionSub}>
+				{language === "id"
+					? "Kelola pengingat penting."
+					: "Manage important reminders."}
+			</Text>
+
+			{notifications.error ? (
+				<View>
+					<Text testID="settings-notification-error" accessibilityRole="alert" accessibilityLiveRegion="polite" style={{ color: theme.colors.danger }}>
+						{notifications.error === "load"
+							? (language === "id" ? "Preferensi belum dapat dimuat. Coba lagi." : "Preferences could not be loaded. Try again.")
+							: (language === "id" ? "Perubahan belum tersimpan. Pilihan dikembalikan; ketuk lagi untuk mencoba." : "Change not saved. Your choice was restored; toggle again to retry.")}
+					</Text>
+					{notifications.error === "load" ? <Pressable testID="settings-notification-retry" accessibilityRole="button" onPress={notifications.reload} style={{ minHeight: 44, justifyContent: "center" }}><Text style={{ color: fe.blue }}>{language === "id" ? "Coba lagi" : "Retry"}</Text></Pressable> : null}
+				</View>
+			) : null}
+			{notifPrefs != null ? (
+				<ToggleRow
+					icon="notification"
+					tone="primary"
+					title={language === "id" ? "Notifikasi Aktif" : "Notifications On"}
+					helper={
+						language === "id"
+							? "Matikan semua notifikasi sekaligus"
+							: "Turn off all notifications at once"
+					}
+					value={notifPrefs.enabled}
+					onToggle={toggleNotifEnabled}
+				testID="settings-notification-enabled"
+				disabled={notifPrefsLoading || notifications.saving !== null || !notifPrefs}
+				busy={notifications.saving === "enabled"}
+					theme={theme}
+				/>
+			) : notifPrefsLoading ? (
+				<ActivityIndicator style={{ marginTop: 6 }} />
+			) : null}
+
+			<ToggleRow
+				icon="chart"
+				tone="info"
+				title={language === "id" ? "Pengingat Harian" : "Daily Summary"}
+				helper={
+					language === "id"
+						? "Notifikasi kondisi keuangan setiap malam"
+						: "Nightly financial condition notification"
+				}
+				value={dailyReminder}
+				onToggle={toggleDailyReminder}
+				testID="settings-notification-daily"
+				disabled={notifPrefsLoading || notifications.saving !== null || !notifPrefs}
+				busy={notifications.saving === "daily_reminder_enabled"}
+				theme={theme}
+			/>
+			<ToggleRow
+				icon="bills"
+				tone="warning"
+				title={language === "id" ? "Pengingat Tagihan" : "Bill Reminder"}
+				helper={
+					language === "id"
+						? "Notifikasi sebelum jatuh tempo"
+						: "Notification before due date"
+				}
+				value={billReminder}
+				onToggle={toggleBillReminder}
+				testID="settings-notification-bills"
+				disabled={notifPrefsLoading || notifications.saving !== null || !notifPrefs}
+				busy={notifications.saving === "bill_reminder_enabled"}
+				theme={theme}
+			/>
+			<ToggleRow
+				icon="budgets"
+				tone="primary"
+				title={language === "id" ? "Alert Anggaran" : "Budget Alert"}
+				helper={
+					language === "id"
+						? "Notifikasi saat budget hampir habis"
+						: "Notification when budget is nearly depleted"
+				}
+				value={budgetAlert}
+				onToggle={toggleBudgetAlert}
+				testID="settings-notification-budget"
+				disabled={notifPrefsLoading || notifications.saving !== null || !notifPrefs}
+				busy={notifications.saving === "budget_alert_enabled"}
+				theme={theme}
+			/>
+		</View>
+	);
+
+	const legalSection = (
+		<View key="settings-legal-support" style={{ gap: 12 }}>
+			<SettingsNavigationRow testID="settings-help-guide" icon="file"
+				title={language === "id" ? "Panduan Kaswise" : "Kaswise guide"}
+				description={language === "id" ? "Cara mencatat transaksi, memilih dompet, dan membaca laporan." : "How to record transactions, choose wallets, and read reports."}
+				onPress={() => router.push("/help")}
+							premium={featureFlags.simplePremiumExperience} />
+			<LegalSupportSection key="settings-legal-support" language={language} styles={styles} onOpenUrl={openLegalUrl} />
+		</View>
+	);
+
+	const deletionSection = (
+		<AccountDeletionSection key="settings-account-deletion"
+			language={language}
+			styles={styles}
+			profileEmail={profileEmail}
+			expanded={accountDeletionExpanded}
+			onToggleExpanded={() => {
+				setAccountDeletionExpanded((current) => !current);
+				setAccountDeletionMessage(null);
+			}}
+			request={accountDeletionRequest}
+			reason={accountDeletionReason}
+			details={accountDeletionDetails}
+			onChangeReason={setAccountDeletionReason}
+			onChangeDetails={setAccountDeletionDetails}
+			onSubmit={onSubmitAccountDeletionRequest}
+			loading={accountDeletionLoading}
+			loadingStatus={accountDeletionStatusLoading}
+			message={accountDeletionMessage}
+		/>
+	);
+
+	const appInfoSection = (
+		<View key="settings-app-info" testID="settings-app-info" style={styles.appInfo}>
+			<Text style={styles.appName}>Kaswise v1.0.0</Text>
+			<Text style={styles.appTagline}>
+				{language === "id"
+					? "Catat Keuangan, Bijak Setiap Hari"
+					: "Track Finances, Wise Every Day"}
+			</Text>
+		</View>
+	);
+
+	const logoutSection = (
+		<AnimatedPressable
+			key="settings-logout"
+			testID="settings-logout"
+			accessibilityRole="button"
+			accessibilityLabel={
+				language === "id" ? "Keluar dari akun" : "Sign out"
+			}
+			accessibilityState={{ busy: logoutLoading, disabled: logoutLoading }}
+			disabled={logoutLoading}
+			hitSlop={12}
+			onPressIn={() => animateLogoutButton(0.97)}
+			onPressOut={() => animateLogoutButton(1)}
+			style={[
+				styles.logoutBtn,
+				{ transform: [{ scale: logoutScale }], opacity: logoutLoading ? 0.72 : 1 },
+			]}
+			onPress={onLogout}
+		>
+			{logoutLoading ? (
+				<ActivityIndicator color={theme.colors.danger} />
+			) : (
+				<Text style={styles.logoutText}>
+					{language === "id" ? "Keluar dari Akun" : "Sign Out"}
+				</Text>
+			)}
+		</AnimatedPressable>
+	);
+
 	return (
 		<PageEntrance testID="settings-page-entrance" style={styles.screen}>
 			<ScrollView
@@ -1049,419 +1511,91 @@ export default function SettingsScreen() {
 					<RefreshControl
 						refreshing={refreshing}
 						onRefresh={onRefresh}
-						tintColor={theme.colors.brandPrimary}
+						tintColor={fe.blue}
 					/>
 				}
 			>
 				<StaggeredStack testIDPrefix="settings-entrance">
-				{/* Header */}
-				<View key="settings-header" testID="settings-header" style={styles.headerRow}>
-					<View style={styles.headerCopy}>
-						<Text style={styles.title}>{t("settingsTitle")}</Text>
-						<Text style={styles.subtitle}>{t("settingsSubtitle")}</Text>
-					</View>
-					<KaswiseLogoMark testID="settings-kaswise-logo-mark" size={42} />
-				</View>
-
-				{/* Profile Card */}
-				<View key="settings-profile" testID="settings-profile" style={styles.profileCard}>
-					<View style={styles.profileAvatar}>
-						{profilePhotoUrl ? (
-							<Image source={{ uri: profilePhotoUrl }} style={styles.profileAvatarImage} />
-						) : selectedAvatar ? (
-							<ProfileAvatarIllustration preset={selectedAvatar} theme={theme} size={68} />
-						) : (
-							<Text style={styles.profileAvatarText}>{avatarInitials}</Text>
-						)}
-					</View>
-					<View style={styles.profileInfo}>
-						<Text style={styles.profileName}>{displayName}</Text>
-						{displayEmail ? (
-							<Text style={styles.profileEmail}>{displayEmail}</Text>
-						) : null}
-						<Pressable
-							testID="settings-change-profile-photo"
-							accessibilityRole="button"
-							accessibilityLabel={language === "id" ? "Ubah foto profil" : "Change profile photo"}
-							onPress={openProfileSheet}
-							style={styles.profilePhotoButton}
-						>
-							<Text style={styles.profilePhotoButtonText}>
-								{language === "id" ? "Ubah Foto Profil" : "Change Profile Photo"}
-							</Text>
-						</Pressable>
-						{profileMessage ? (
-							<Text style={[styles.inlineMessage, profileMessage.type === "error" && styles.inlineMessageError]}>
-								{profileMessage.message}
-							</Text>
-						) : null}
-					</View>
-				</View>
-
-				{/* Account Security */}
-				<View key="settings-account-security" testID="settings-account-security" style={styles.sectionCard}>
-					<Text style={styles.sectionTitle}>
-						{language === "id" ? "Akun & Keamanan" : "Account & Security"}
-					</Text>
-					<Text style={styles.sectionSub}>
-						{language === "id"
-							? "Kelola akses akun dan password login."
-							: "Manage account access and login password."}
-					</Text>
-					<Pressable
-						testID="settings-password-toggle"
-						accessibilityRole="button"
-						accessibilityLabel={language === "id" ? "Ubah password" : "Change password"}
-						style={styles.navigationRow}
-						onPress={() => setPasswordExpanded((value) => !value)}
-					>
-						<View style={styles.navigationCopy}>
-							<IconBubble name="lock" tone="primary" size={32} />
-							<View style={styles.navigationTextBlock}>
-								<Text style={styles.navigationTitle}>{language === "id" ? "Ubah Password" : "Change Password"}</Text>
-								<Text style={styles.navigationHelper}>
-									{language === "id" ? "Gunakan minimal 8 karakter." : "Use at least 8 characters."}
-								</Text>
-							</View>
+				{featureFlags.simplePremiumExperience ? [
+					<View key="settings-group-account" testID="settings-group-account">
+						<SettingsSection title={language === "id" ? "Akun" : "Account"}>
+							{profileSection}
+							{securitySection}
+							{planSection}
+							{familySection}
+						</SettingsSection>
+					</View>,
+					<View key="settings-group-recording" testID="settings-group-recording">
+						<SettingsSection title={language === "id" ? "Pencatatan" : "Recording"}>
+							<FinanceContextSwitcher variant="compact" />
+							<SettingsRecordingRows language={language} />
+						</SettingsSection>
+					</View>,
+					<View key="settings-group-data" testID="settings-group-data">
+						<SettingsSection title={language === "id" ? "Data" : "Data"}>
+							<SettingsDataRows language={language} />
+							{deletionSection}
+						</SettingsSection>
+					</View>,
+					<View key="settings-group-preferences" testID="settings-group-preferences">
+						<SettingsSection title={language === "id" ? "Preferensi" : "Preferences"}>
+							<SettingsNotificationInboxRow language={language} />
+							{appearanceSection}
+							{languageSection}
+							{notificationsSection}
+						</SettingsSection>
+					</View>,
+					<View key="settings-group-help" testID="settings-group-help">
+						<SettingsSection title={language === "id" ? "Bantuan" : "Help"}>
+							{legalSection}
+							{appInfoSection}
+						</SettingsSection>
+					</View>,
+					logoutSection,
+				] : featureFlags.simpleNavigation ? [
+					<SettingsSection key="settings-finance" title={language === "id" ? "Keuangan" : "Finance"}>
+						<FinanceContextSwitcher variant="compact" />
+						<SettingsRecordingRows language={language} />
+						<SettingsDataRows language={language} />
+					</SettingsSection>,
+					<SettingsSection key="settings-family" title={language === "id" ? "Keluarga" : "Family"}>
+						<View testID="settings-family">
+							<SettingsNavigationRow testID="settings-family-center" icon="groups"
+								title={language === "id" ? "Pusat Keluarga" : "Family Center"}
+								description={language === "id" ? "Kelola akses dan undangan keluarga." : "Manage household access and invites."}
+								onPress={() => router.push("/(tabs)/groups")}
+							premium={featureFlags.simplePremiumExperience} />
 						</View>
-						<Text style={styles.navigationChevron}>{passwordExpanded ? "⌃" : "›"}</Text>
-					</Pressable>
-					{passwordExpanded ? (
-						<View style={styles.passwordForm}>
-							<TextInput
-								testID="settings-new-password"
-								value={newPassword}
-								onChangeText={setNewPassword}
-								placeholder={language === "id" ? "Password baru" : "New password"}
-								placeholderTextColor={theme.colors.textDim}
-								secureTextEntry
-								style={styles.textInput}
-							/>
-							<TextInput
-								testID="settings-confirm-password"
-								value={confirmPassword}
-								onChangeText={setConfirmPassword}
-								placeholder={language === "id" ? "Konfirmasi password" : "Confirm password"}
-								placeholderTextColor={theme.colors.textDim}
-								secureTextEntry
-								style={styles.textInput}
-							/>
-							{passwordMessage ? (
-								<Text style={[styles.inlineMessage, passwordMessage.type === "error" && styles.inlineMessageError]}>
-									{passwordMessage.message}
-								</Text>
-							) : null}
-							<Pressable
-								testID="settings-save-password"
-								accessibilityRole="button"
-								accessibilityState={{ busy: passwordSaving, disabled: passwordSaving }}
-								disabled={passwordSaving}
-								style={[styles.primaryButton, passwordSaving && styles.buttonDisabled]}
-								onPress={onChangePassword}
-							>
-								{passwordSaving ? (
-									<ActivityIndicator color={theme.colors.buttonPrimaryText} />
-								) : (
-									<Text style={styles.primaryButtonText}>{language === "id" ? "Simpan Password" : "Save Password"}</Text>
-								)}
-							</Pressable>
-						</View>
-					) : passwordMessage ? (
-						<Text style={[styles.inlineMessage, passwordMessage.type === "error" && styles.inlineMessageError]}>
-							{passwordMessage.message}
-						</Text>
-					) : null}
-				</View>
-
-				{/* Plan / Paket Section */}
-				<View key="settings-plan" testID="settings-plan" style={styles.sectionCard}>
-					<Text style={styles.sectionTitle}>
-						{language === "id" ? "Paket" : "Plan"}
-					</Text>
-					<Text style={styles.sectionSub}>
-						{!allowNativePremiumPurchase
-							? (language === "id"
-								? "Status paket aktif. Upgrade Premium sementara tersedia lewat Kaswise web/PWA."
-								: "Current plan status. Premium upgrade is temporarily available on Kaswise web/PWA.")
-							: (language === "id"
-								? "Status langganan dan upgrade ke Premium."
-								: "Subscription status and premium upgrade.")}
-					</Text>
-					{entitlementsLoading ? (
-						<ActivityIndicator style={{ marginTop: 6 }} />
-					) : (
-						<>
-							<View style={styles.navigationRow}>
-								<View style={styles.navigationCopy}>
-									<IconBubble name="card" tone="primary" size={32} />
-									<View style={styles.navigationTextBlock}>
-										<Text style={styles.navigationTitle}>
-											{planStatusLabel(entitlements)}
-										</Text>
-										{entitlements?.plan === "premium" && entitlements.plan_expires_at ? (
-											<Text style={styles.navigationHelper}>
-												{language === "id" ? "Berlaku sampai " : "Valid until "}
-												{new Date(entitlements.plan_expires_at).toLocaleDateString(
-													language === "id" ? "id-ID" : "en-US",
-													{ year: "numeric", month: "long", day: "numeric" }
-												)}
-											</Text>
-										) : (
-											<Text style={styles.navigationHelper}>
-												{language === "id" ? "Akses dasar dengan batasan." : "Basic access with limits."}
-											</Text>
-										)}
-									</View>
-								</View>
-							</View>
-							{entitlements?.plan !== "premium" ? (
-								allowNativePremiumPurchase ? (
-									<Pressable
-										testID="settings-upgrade-button"
-										accessibilityRole="button"
-										style={styles.primaryButton}
-										onPress={() => router.push("/upgrade")}
-									>
-										<Text style={styles.primaryButtonText}>
-											{language === "id" ? "Upgrade ke Premium" : "Upgrade to Premium"}
-										</Text>
-									</Pressable>
-								) : (
-									<Text testID="settings-upgrade-unavailable" style={styles.navigationHelper}>
-										{language === "id"
-											? "Upgrade Premium sementara hanya tersedia lewat Kaswise web/PWA."
-											: "Premium upgrade is temporarily available only on Kaswise web/PWA."}
-									</Text>
-								)
-							) : allowNativePremiumPurchase ? (
-								<Pressable
-									testID="settings-extend-button"
-									accessibilityRole="button"
-									style={styles.primaryButton}
-									onPress={() => router.push("/upgrade")}
-								>
-									<Text style={styles.primaryButtonText}>
-										{language === "id" ? "Perpanjang" : "Extend"}
-									</Text>
-								</Pressable>
-							) : (
-								<Text testID="settings-extend-unavailable" style={styles.navigationHelper}>
-									{language === "id"
-										? "Perpanjangan paket sementara dikelola lewat Kaswise web/PWA."
-										: "Plan renewal is temporarily handled on Kaswise web/PWA."}
-								</Text>
-							)}
-						</>
-					)}
-				</View>
-
-				{/* Family Section */}
-				<View key="settings-family" testID="settings-family" style={styles.sectionCard}>
-					<Text style={styles.sectionTitle}>
-						{language === "id" ? "Keluarga" : "Family"}
-					</Text>
-					<Text style={styles.sectionSub}>
-						{language === "id"
-							? "Kelola akses keluarga, undangan, dan mode keuangan bersama."
-							: "Manage household access, invites, and shared finance mode."}
-					</Text>
-					<Pressable
-						testID="settings-family-center"
-						accessibilityRole="button"
-						accessibilityLabel={
-							language === "id" ? "Buka pusat keluarga" : "Open family center"
-						}
-						style={styles.navigationRow}
-						onPress={() => router.push("/(tabs)/groups")}
-					>
-						<View style={styles.navigationCopy}>
-							<IconBubble name="groups" tone="primary" size={32} />
-							<View style={styles.navigationTextBlock}>
-								<Text style={styles.navigationTitle}>
-									{language === "id" ? "Pusat Keluarga" : "Family Center"}
-								</Text>
-								<Text style={styles.navigationHelper}>
-									{language === "id"
-										? "Buat keluarga atau gabung dengan kode undangan."
-										: "Create a family or join with an invite code."}
-								</Text>
-							</View>
-						</View>
-						<Text style={styles.navigationChevron}>›</Text>
-					</Pressable>
-				</View>
-
-				{/* Language Section */}
-				<View key="settings-language" testID="settings-language" style={styles.sectionCard}>
-					<Text style={styles.sectionTitle}>{t("languageSection")}</Text>
-					<Text style={styles.sectionSub}>{t("languageSectionHelper")}</Text>
-
-					<View style={styles.themeGrid}>
-						{(["id", "en"] as const).map((lang) => (
-							<Pressable
-								key={lang}
-								testID={`settings-language-${lang}`}
-								accessibilityRole="button"
-								accessibilityLabel={`${language === "id" ? "Pilih bahasa" : "Choose language"} ${lang === "id" ? t("indonesian") : t("english")}`}
-								accessibilityState={{ selected: language === lang }}
-								onPress={() => setLanguage(lang)}
-								style={[
-									styles.themeChip,
-									language === lang && {
-										backgroundColor:
-											theme.mode === "light"
-												? theme.colors.brandPrimaryDeep
-												: theme.colors.brandPrimary,
-										borderColor:
-											theme.mode === "light"
-												? theme.colors.brandPrimaryDeep
-												: theme.colors.brandPrimary,
-									},
-								]}
-							>
-								<Text
-									style={[
-										styles.themeChipText,
-										language === lang && { color: theme.colors.textInverse },
-									]}
-								>
-									{lang === "id" ? t("indonesian") : t("english")}
-								</Text>
-							</Pressable>
-						))}
-					</View>
-				</View>
-
-				{/* Notifications Section */}
-				<View key="settings-notifications" testID="settings-notifications" style={styles.sectionCard}>
-					<Text style={styles.sectionTitle}>
-						{language === "id" ? "Notifikasi" : "Notifications"}
-					</Text>
-					<Text style={styles.sectionSub}>
-						{language === "id"
-							? "Kelola pengingat penting."
-							: "Manage important reminders."}
-					</Text>
-
-					{notifPrefs != null ? (
-						<ToggleRow
-							icon="notification"
-							tone="primary"
-							title={language === "id" ? "Notifikasi Aktif" : "Notifications On"}
-							helper={
-								language === "id"
-									? "Matikan semua notifikasi sekaligus"
-									: "Turn off all notifications at once"
-							}
-							value={notifPrefs.enabled}
-							onToggle={toggleNotifEnabled}
-							theme={theme}
-						/>
-					) : notifPrefsLoading ? (
-						<ActivityIndicator style={{ marginTop: 6 }} />
-					) : null}
-
-					<ToggleRow
-						icon="chart"
-						tone="info"
-						title={language === "id" ? "Pengingat Harian" : "Daily Summary"}
-						helper={
-							language === "id"
-								? "Notifikasi kondisi keuangan setiap malam"
-								: "Nightly financial condition notification"
-						}
-						value={dailyReminder}
-						onToggle={toggleDailyReminder}
-						theme={theme}
-					/>
-					<ToggleRow
-						icon="bills"
-						tone="warning"
-						title={language === "id" ? "Pengingat Tagihan" : "Bill Reminder"}
-						helper={
-							language === "id"
-								? "Notifikasi sebelum jatuh tempo"
-								: "Notification before due date"
-						}
-						value={billReminder}
-						onToggle={toggleBillReminder}
-						theme={theme}
-					/>
-					<ToggleRow
-						icon="budgets"
-						tone="primary"
-						title={language === "id" ? "Alert Anggaran" : "Budget Alert"}
-						helper={
-							language === "id"
-								? "Notifikasi saat budget hampir habis"
-								: "Notification when budget is nearly depleted"
-						}
-						value={budgetAlert}
-						onToggle={toggleBudgetAlert}
-						theme={theme}
-					/>
-				</View>
-
-				{/* Legal Section */}
-				<LegalSupportSection key="settings-legal-support" language={language} styles={styles} onOpenUrl={openLegalUrl} />
-				<AccountDeletionSection key="settings-account-deletion" 
-					language={language}
-					styles={styles}
-					profileEmail={profileEmail}
-					expanded={accountDeletionExpanded}
-					onToggleExpanded={() => {
-						setAccountDeletionExpanded((current) => !current);
-						setAccountDeletionMessage(null);
-					}}
-					request={accountDeletionRequest}
-					reason={accountDeletionReason}
-					details={accountDeletionDetails}
-					onChangeReason={setAccountDeletionReason}
-					onChangeDetails={setAccountDeletionDetails}
-					onSubmit={onSubmitAccountDeletionRequest}
-					loading={accountDeletionLoading}
-					loadingStatus={accountDeletionStatusLoading}
-					message={accountDeletionMessage}
-				/>
-
-				{/* App Info */}
-				<View key="settings-app-info" testID="settings-app-info" style={styles.appInfo}>
-					<Text style={styles.appName}>Kaswise v1.0.0</Text>
-					<Text style={styles.appTagline}>
-						{language === "id"
-							? "Catat Keuangan, Bijak Setiap Hari"
-							: "Track Finances, Wise Every Day"}
-					</Text>
-				</View>
-
-
-				{/* Logout */}
-				<AnimatedPressable
-					key="settings-logout"
-					testID="settings-logout"
-					accessibilityRole="button"
-					accessibilityLabel={
-						language === "id" ? "Keluar dari akun" : "Sign out"
-					}
-					accessibilityState={{ busy: logoutLoading, disabled: logoutLoading }}
-					disabled={logoutLoading}
-					hitSlop={12}
-					onPressIn={() => animateLogoutButton(0.97)}
-					onPressOut={() => animateLogoutButton(1)}
-					style={[
-						styles.logoutBtn,
-						{ transform: [{ scale: logoutScale }], opacity: logoutLoading ? 0.72 : 1 },
-					]}
-					onPress={onLogout}
-				>
-					{logoutLoading ? (
-						<ActivityIndicator color={theme.colors.danger} />
-					) : (
-						<Text style={styles.logoutText}>
-							{language === "id" ? "Keluar dari Akun" : "Sign Out"}
-						</Text>
-					)}
-				</AnimatedPressable>
+					</SettingsSection>,
+					<SettingsSection key="settings-app" title={language === "id" ? "Aplikasi" : "App"}>
+						<SettingsNotificationInboxRow language={language} />
+						{notificationsSection}
+						{languageSection}
+						{appearanceSection}
+						{planSection}
+					</SettingsSection>,
+					<SettingsSection key="settings-account-support" title={language === "id" ? "Akun & bantuan" : "Account & support"}>
+						{profileSection}
+						{securitySection}
+						{legalSection}
+						{deletionSection}
+						{appInfoSection}
+					</SettingsSection>,
+					logoutSection,
+				] : [
+					profileSection,
+					appearanceSection,
+					securitySection,
+					planSection,
+					familySection,
+					importSection,
+					languageSection,
+					notificationsSection,
+					legalSection,
+					deletionSection,
+					appInfoSection,
+					logoutSection,
+				]}
 				</StaggeredStack>
 
 
@@ -1686,21 +1820,22 @@ function ProfilePhotoAction({
 					borderRadius: 24,
 					alignItems: "center",
 					justifyContent: "center",
-					backgroundColor: colorWithAlpha(theme.colors.brandPrimary, theme.mode === "dark" ? "18" : "14"),
+					backgroundColor: "rgba(12,78,145,0.12)",
 					borderWidth: 1,
-					borderColor: colorWithAlpha(theme.colors.brandPrimary, "55"),
+					borderColor: "rgba(12,78,145,0.28)",
 				}}
 			>
-				<KaswiseIcon name={icon} color={theme.colors.brandPrimary} size={22} />
+				<KaswiseIcon name={icon} color={fe.blue} size={22} />
 			</View>
-			<Text style={{ color: theme.colors.textSecondary, fontSize: 11, fontWeight: "800", textAlign: "center" }}>{label}</Text>
+			<Text style={{ color: theme.colors.textSecondary, fontSize: 11, fontWeight: isPwaPolish() ? "600" : "800", textAlign: "center" }}>{label}</Text>
 		</Pressable>
 	);
 }
 
 function ToggleRow({
+	testID, disabled, busy,
 	icon,
-	tone,
+	tone: _tone,
 	title,
 	helper,
 	value,
@@ -1708,6 +1843,9 @@ function ToggleRow({
 	theme,
 }: {
 	icon: KaswiseIconName;
+	testID: string;
+	disabled: boolean;
+	busy: boolean;
 	tone: "primary" | "success" | "warning" | "danger" | "accent" | "info";
 	title: string;
 	helper: string;
@@ -1717,45 +1855,45 @@ function ToggleRow({
 }) {
 	return (
 		<Pressable
+			testID={testID}
+			disabled={disabled}
 			onPress={onToggle}
 			accessibilityRole="switch"
-			accessibilityState={{ checked: value }}
+			aria-checked={value}
+			aria-disabled={disabled}
+			aria-busy={busy}
+			accessibilityState={{ checked: value, disabled, busy }}
 			accessibilityLabel={title}
 			style={{
 				flexDirection: "row",
 				justifyContent: "space-between",
 				alignItems: "center",
-				paddingVertical: 10,
-				borderTopWidth: 1,
-				borderTopColor: theme.colors.borderSoft,
+				minHeight: 60,
+				paddingHorizontal: 14,
+				paddingVertical: 12,
+				borderRadius: 16,
+				backgroundColor: fe.white,
 				gap: 12,
 			}}
 		>
 			<View
 				style={{ flexDirection: "row", alignItems: "center", gap: 12, flex: 1 }}
 			>
-				<IconBubble name={icon} tone={tone} size={32} />
+				<KaswiseIcon name={icon} size={20} color={theme.colors.textMuted} />
 				<View style={{ flex: 1 }}>
 					<Text
 						style={{
 							color: theme.colors.textPrimary,
-							fontSize: 13,
-							fontWeight: "700",
+							fontSize: 15,
+							fontWeight: "600",
 						}}
 					>
 						{title}
 					</Text>
-					<Text
-						style={{
-							color: theme.colors.textMuted,
-							fontSize: 11,
-							marginTop: 1,
-						}}
-					>
-						{helper}
-					</Text>
+					<Text style={{ display: "none" }}>{helper}</Text>
 				</View>
 			</View>
+			{busy ? <ActivityIndicator color={fe.blue} /> : null}
 			<View
 				style={{
 					width: 44,
@@ -1763,8 +1901,8 @@ function ToggleRow({
 					borderRadius: 999,
 					backgroundColor: value
 						? theme.mode === "light"
-							? theme.colors.brandPrimaryDeep
-							: theme.colors.brandPrimary
+							? fe.blueDeep
+							: fe.blueBright
 						: theme.colors.borderStrong,
 					padding: 2,
 					justifyContent: "center",
@@ -1784,10 +1922,14 @@ function ToggleRow({
 	);
 }
 
-function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
+function createStyles(
+	theme: ReturnType<typeof useTheme>["theme"],
+	premium: boolean,
+	polish = false,
+) {
 	return StyleSheet.create({
-		screen: { flex: 1, backgroundColor: theme.colors.background },
-		content: { padding: 20, gap: 10, paddingBottom: 26 },
+		screen: { flex: 1, backgroundColor: fe.paper },
+		content: { padding: 20, gap: 22, paddingBottom: 130 },
 		headerRow: {
 			marginBottom: 4,
 			flexDirection: "row",
@@ -1797,62 +1939,47 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 		},
 		headerCopy: { flex: 1 },
 		title: {
-			color: theme.colors.textPrimary,
-			fontSize: theme.typography.fontSize["4xl"],
-			fontWeight: theme.typography.fontWeight.extrabold,
-			letterSpacing: theme.typography.letterSpacing.tight,
+			color: fe.ink,
+			...(premium
+				? resolveExperienceTextStyle("screenTitle")
+				: {
+						fontSize: 28,
+						fontWeight: theme.typography.fontWeight.semibold,
+						letterSpacing: -0.6,
+					}),
 		},
 		subtitle: {
-			color: theme.colors.textSecondary,
-			fontSize: theme.typography.fontSize.sm,
+			color: fe.slate,
+			...(premium ? resolveExperienceTextStyle("body") : { fontSize: 13 }),
 			marginTop: 2,
 		},
 		profileCard: {
-			backgroundColor: theme.colors.surface,
-			borderRadius: theme.radius.lg,
-			borderWidth: 1,
-			borderColor: theme.colors.borderSoft,
-			padding: 14,
-			flexDirection: "row",
-			alignItems: "center",
-			gap: 14,
+			minHeight: 148, borderRadius: 28, borderWidth: 1,
+			borderColor: "rgba(255,255,255,0.16)", padding: 20,
+			flexDirection: "row", alignItems: "center", gap: 14,
+			overflow: "hidden", shadowColor: fe.navy, shadowOpacity: 0.18,
+			shadowRadius: 24, shadowOffset: { width: 0, height: 12 }, elevation: 8,
 		},
 		profileAvatar: {
-			width: 68,
-			height: 68,
-			borderRadius: 34,
-			backgroundColor: theme.colors.mutedSurface,
-			alignItems: "center",
-			justifyContent: "center",
-			overflow: "hidden",
+			width: 64, height: 64, borderRadius: 32, backgroundColor: fe.paper,
+			alignItems: "center", justifyContent: "center", overflow: "hidden",
 		},
-		profileAvatarImage: {
-			width: 68,
-			height: 68,
-			borderRadius: 34,
-		},
-		profileAvatarText: {
-			color: theme.colors.textPrimary,
-			fontSize: 16,
-			fontWeight: "800",
-		},
+		profileAvatarImage: { width: 64, height: 64, borderRadius: 32 },
+		profileAvatarText: { color: fe.ink, fontSize: 16, fontWeight: "700" },
 		profileInfo: { flex: 1 },
-		profileName: {
-			color: theme.colors.textPrimary,
-			fontSize: theme.typography.fontSize.lg,
-			fontWeight: theme.typography.fontWeight.extrabold,
+		profileName: { color: fe.white, fontSize: 17, fontWeight: theme.typography.fontWeight.semibold },
+		profileEmail: { color: polish ? pwaHeroCaption : "rgba(255,255,255,0.68)", fontSize: 12, marginTop: 2 },
+		// Bare text link: give it a real 44x44 interaction box without moving the
+		// label or growing the row. The 15px ring is cancelled by negative margins.
+		profilePhotoButton: {
+			alignSelf: "flex-start",
+			marginTop: -7,
+			marginBottom: -15,
+			minHeight: 44,
+			minWidth: 44,
+			justifyContent: "center",
 		},
-		profileEmail: {
-			color: theme.colors.textMuted,
-			fontSize: theme.typography.fontSize.sm,
-			marginTop: 2,
-		},
-		profilePhotoButton: { alignSelf: "flex-start", marginTop: 8 },
-		profilePhotoButtonText: {
-			color: theme.colors.brandPrimary,
-			fontSize: 12,
-			fontWeight: "800",
-		},
+		profilePhotoButtonText: { color: fe.white, fontSize: 12, fontWeight: "600" },
 		inlineMessage: {
 			color: theme.colors.success,
 			fontSize: 11,
@@ -1860,46 +1987,25 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			marginTop: 6,
 		},
 		inlineMessageError: { color: theme.colors.danger },
-		sectionCard: {
-			backgroundColor: theme.colors.surface,
-			borderRadius: 18,
-			borderWidth: 1,
-			borderColor: theme.colors.borderSoft,
-			padding: 14,
-			gap: 10,
-		},
+		sectionCard: { backgroundColor: "transparent", borderRadius: 0, borderWidth: 0, padding: 0, gap: 8 },
 		sectionTitle: {
-			color: theme.colors.textPrimary,
-			fontSize: 15,
-			fontWeight: "800",
+			color: fe.muted, fontSize: 12, fontWeight: polish ? "600" : "700",
+			textTransform: polish ? "none" : "uppercase",
+			letterSpacing: polish ? 0 : 0.8, paddingHorizontal: 4,
 		},
-		sectionSub: { color: theme.colors.textSecondary, fontSize: 12 },
+		sectionSub: { display: "none" },
 		themeGrid: { flexDirection: "row", gap: 8 },
 		themeChip: {
-			flex: 1,
-			paddingVertical: 10,
-			minHeight: 44,
-			justifyContent: "center",
-			borderRadius: 12,
-			borderWidth: 1,
-			borderColor: theme.colors.borderSoft,
-			backgroundColor: theme.colors.mutedSurface,
-			alignItems: "center",
+			flex: 1, minHeight: 46, justifyContent: "center", alignItems: "center",
+			borderRadius: 14, borderWidth: 0, backgroundColor: fe.white,
 		},
-		themeChipText: {
-			color: theme.colors.textSecondary,
-			fontSize: 12,
-			fontWeight: "700",
-		},
+		themeChipText: { color: fe.slate, fontSize: 13, fontWeight: "600" },
+		themeChipActive: { backgroundColor: fe.blueDeep },
+		themeChipTextActive: { color: theme.colors.textInverse },
 		navigationRow: {
-			minHeight: 56,
-			borderTopWidth: 1,
-			borderTopColor: theme.colors.borderSoft,
-			paddingTop: 10,
-			flexDirection: "row",
-			alignItems: "center",
-			justifyContent: "space-between",
-			gap: 12,
+			minHeight: 60, borderRadius: 16, borderWidth: 0, backgroundColor: fe.white,
+			paddingHorizontal: 14, paddingVertical: 12, flexDirection: "row",
+			alignItems: "center", justifyContent: "space-between", gap: 12,
 		},
 		navigationCopy: {
 			flex: 1,
@@ -1908,32 +2014,15 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			gap: 12,
 		},
 		navigationTextBlock: { flex: 1 },
-		navigationTitle: {
-			color: theme.colors.textPrimary,
-			fontSize: 13,
-			fontWeight: "800",
-		},
+		navigationTitle: { color: fe.ink, fontSize: 15, fontWeight: "600" },
 		navigationHelper: {
-			color: theme.colors.textMuted,
-			fontSize: 11,
-			marginTop: 1,
+			display: "none",
 		},
-		navigationChevron: {
-			color: theme.colors.textMuted,
-			fontSize: 24,
-			fontWeight: "700",
-		},
+		navigationChevron: { color: fe.muted, fontSize: 22, fontWeight: "600" },
 		passwordForm: { gap: 10, paddingTop: 2 },
 		textInput: {
-			minHeight: 46,
-			borderRadius: 14,
-			borderWidth: 1,
-			borderColor: theme.colors.borderSoft,
-			backgroundColor: theme.colors.mutedSurface,
-			color: theme.colors.textPrimary,
-			paddingHorizontal: 14,
-			fontSize: 14,
-			fontWeight: "600",
+			minHeight: 48, borderRadius: 14, borderWidth: 0, backgroundColor: fe.white,
+			color: fe.ink, paddingHorizontal: 14, fontSize: 14, fontWeight: "500",
 		},
 		readOnlyInput: {
 			opacity: 0.78,
@@ -1943,28 +2032,24 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			paddingTop: 14,
 		},
 		primaryButton: {
-			minHeight: 48,
-			borderRadius: 14,
-			backgroundColor: theme.colors.buttonPrimaryBg,
-			alignItems: "center",
-			justifyContent: "center",
-			paddingHorizontal: 16,
-			paddingVertical: 12,
+			minHeight: 48, borderRadius: 14, backgroundColor: fe.blueDeep, alignItems: "center",
+			justifyContent: "center", paddingHorizontal: 16, paddingVertical: 12,
 		},
 		buttonDisabled: { opacity: 0.68 },
-		primaryButtonText: {
-			color: theme.colors.buttonPrimaryText,
-			fontSize: 14,
-			fontWeight: "800",
+		primaryButtonText: { color: theme.colors.textInverse, fontSize: 14, fontWeight: "700" },
+		planAction: {
+			alignSelf: "flex-start", minHeight: 44, minWidth: 44, justifyContent: "center",
+			paddingHorizontal: 16, borderRadius: 12, backgroundColor: fe.paper,
 		},
+		planActionText: { color: fe.blue, fontSize: 13, fontWeight: "700" },
 		appInfo: { alignItems: "center", paddingVertical: 10, gap: 4 },
-		appName: { color: theme.colors.textMuted, fontSize: 13, fontWeight: "700" },
+		appName: { color: fe.slate, fontSize: 13, fontWeight: "600" },
 		appTagline: { color: theme.colors.textMuted, fontSize: 11 },
 		seedButton: {
 			backgroundColor:
 				theme.mode === "light"
-					? theme.colors.brandPrimaryDeep
-					: theme.colors.brandPrimary,
+					? fe.blueDeep
+					: fe.blueBright,
 			borderRadius: 14,
 			minHeight: 46,
 			alignItems: "center",
@@ -1976,7 +2061,7 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 		seedButtonText: {
 			color: theme.colors.textInverse,
 			fontSize: 14,
-			fontWeight: "800",
+			fontWeight: polish ? "600" : "800",
 		},
 		seedResult: {
 			color: theme.colors.success,
@@ -1985,14 +2070,9 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 		},
 		seedResultError: { color: theme.colors.danger },
 		logoutBtn: {
-			backgroundColor: `${theme.colors.danger}12`,
-			borderWidth: 1,
-			borderColor: `${theme.colors.danger}40`,
-			borderRadius: 14,
-			paddingVertical: 14,
-			alignItems: "center",
+			backgroundColor: fe.white, borderRadius: 16, paddingVertical: 15, alignItems: "center",
 		},
-		logoutText: { color: theme.colors.danger, fontSize: 14, fontWeight: "700" },
+		logoutText: { color: theme.colors.danger, fontSize: 14, fontWeight: "600" },
 		sheetOverlay: {
 			flex: 1,
 			justifyContent: "flex-end",
@@ -2000,17 +2080,8 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 		},
 		sheetBackdrop: { ...StyleSheet.absoluteFillObject },
 		bottomSheet: {
-			maxHeight: "90%",
-			backgroundColor: theme.colors.surface,
-			borderTopLeftRadius: 30,
-			borderTopRightRadius: 30,
-			borderWidth: 1,
-			borderColor: theme.colors.borderSoft,
-			overflow: "hidden",
-			shadowColor: theme.colors.textPrimary,
-			shadowOpacity: theme.mode === "dark" ? 0.34 : 0.14,
-			shadowRadius: 24,
-			elevation: 18,
+			maxHeight: "90%", backgroundColor: fe.paper,
+			borderTopLeftRadius: 30, borderTopRightRadius: 30, overflow: "hidden",
 		},
 		sheetHeader: {
 			paddingHorizontal: 20,
@@ -2023,7 +2094,7 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 		sheetTitle: {
 			color: theme.colors.textPrimary,
 			fontSize: 18,
-			fontWeight: "800",
+			fontWeight: polish ? "600" : "800",
 		},
 		closeButton: {
 			width: 36,
@@ -2050,18 +2121,18 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			overflow: "hidden",
 		},
 		sheetPreviewImage: { width: 76, height: 76, borderRadius: 38 },
-		sheetPreviewText: { color: theme.colors.textMuted, fontSize: 11, fontWeight: "700" },
+		sheetPreviewText: { color: theme.colors.textMuted, fontSize: 11, fontWeight: polish ? "500" : "700" },
 		avatarSectionTitle: {
 			color: theme.colors.textPrimary,
 			fontSize: 15,
-			fontWeight: "800",
+			fontWeight: polish ? "600" : "800",
 		},
 		avatarTabs: { flexDirection: "row", alignItems: "flex-end", gap: 12 },
 		avatarTab: { paddingBottom: 6, gap: 6 },
-		avatarTabText: { color: theme.colors.textMuted, fontSize: 12, fontWeight: "800" },
+		avatarTabText: { color: theme.colors.textMuted, fontSize: 12, fontWeight: polish ? "600" : "800" },
 		avatarTabTextActive: { color: theme.colors.textPrimary },
 		avatarTabUnderline: { height: 2, borderRadius: 999, backgroundColor: "transparent" },
-		avatarTabUnderlineActive: { backgroundColor: theme.colors.brandPrimary },
+		avatarTabUnderlineActive: { backgroundColor: fe.blue },
 		avatarGrid: {
 			flexDirection: "row",
 			flexWrap: "wrap",
@@ -2079,8 +2150,8 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			backgroundColor: theme.colors.mutedSurface,
 		},
 		avatarOptionSelected: {
-			borderColor: theme.colors.brandPrimary,
-			shadowColor: theme.colors.brandPrimary,
+			borderColor: fe.blue,
+			shadowColor: fe.blue,
 			shadowOpacity: theme.mode === "dark" ? 0.34 : 0.20,
 			shadowRadius: 12,
 			elevation: 7,

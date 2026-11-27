@@ -1,13 +1,26 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.4'
 
-const allowedOrigin = Deno.env.get('KASWISE_ALLOWED_ORIGIN') ?? 'https://kaswise.com'
+const defaultAllowedOrigins = ['https://kaswise.com', 'https://app.kaswise.com']
+const configuredAllowedOrigins = (Deno.env.get('KASWISE_ALLOWED_ORIGIN') ?? '')
+  .split(',')
+  .map((origin) => origin.trim())
+  .filter(Boolean)
+const allowedOrigins = Array.from(
+  new Set([...defaultAllowedOrigins, ...configuredAllowedOrigins]),
+)
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': allowedOrigin,
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  'Vary': 'Origin',
+function corsHeadersFor(req: Request): Record<string, string> {
+  const origin = req.headers.get('Origin')
+  const headers: Record<string, string> = {
+    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Vary': 'Origin',
+  }
+  if (origin && allowedOrigins.includes(origin)) {
+    headers['Access-Control-Allow-Origin'] = origin
+  }
+  return headers
 }
 
 type ProcessTextRequest = {
@@ -36,6 +49,7 @@ async function assertProcessableTransaction(
   supabase: ReturnType<typeof createClient>,
   transactionId: string,
   userId: string,
+  corsHeaders: Record<string, string>,
 ): Promise<Response | null> {
   const { data, error } = await supabase
     .from('transactions')
@@ -124,8 +138,15 @@ async function extractFromTextWithAI(rawText: string): Promise<{ confidence: num
 }
 
 serve(async (req) => {
+  const corsHeaders = corsHeadersFor(req)
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
+  }
+  if (req.method !== 'POST') {
+    return new Response(JSON.stringify({ error: 'Method not allowed' }), {
+      status: 405,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    })
   }
 
   try {
@@ -167,7 +188,7 @@ serve(async (req) => {
       )
     }
 
-    const preflightResponse = await assertProcessableTransaction(supabase, transaction_id, userId)
+    const preflightResponse = await assertProcessableTransaction(supabase, transaction_id, userId, corsHeaders)
     if (preflightResponse) {
       return preflightResponse
     }

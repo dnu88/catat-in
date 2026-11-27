@@ -7,6 +7,7 @@ import {
 import { StyleSheet } from "react-native";
 import type { StyleProp, ViewStyle } from "react-native";
 
+import { featureFlags } from "../src/config/features";
 import ReportsScreen from "../app/(tabs)/reports";
 import { ThemeProvider } from "../src/theme/theme-context";
 import { SupabaseProvider } from "../src/lib/supabase";
@@ -226,11 +227,52 @@ function renderReports() {
 }
 
 describe("ReportsScreen visual parity", () => {
+	beforeAll(() => {
+		jest.useFakeTimers({
+			doNotFake: [
+				"nextTick",
+				"setImmediate",
+				"clearImmediate",
+				"setInterval",
+				"clearInterval",
+				"setTimeout",
+				"clearTimeout",
+				"queueMicrotask",
+				"performance",
+			],
+		});
+		jest.setSystemTime(new Date("2026-07-15T12:00:00.000Z"));
+	});
+
+	afterAll(() => {
+		jest.useRealTimers();
+	});
+
 	beforeEach(() => {
 		mockActiveContext = { type: "personal" };
 		mockTransactions = defaultMockTransactions;
 		jest.clearAllMocks();
 	});
+	it("premium uses the chosen period in its header without a redundant active-period card and retains saved-rule access", async () => {
+		const premium = jest.spyOn(featureFlags, "simplePremiumExperience", "get").mockReturnValue(true);
+		try {
+			renderReports();
+			await waitFor(() => expect(screen.getByTestId("reports-period-toggle")).toBeTruthy());
+			expect(screen.queryByTestId("reports-active-period-card")).toBeNull();
+			expect(screen.queryByTestId("reports-saved-rules-card")).toBeNull();
+			fireEvent.press(screen.getByTestId("reports-period-toggle"));
+			expect(screen.getByTestId("reports-manage-saved-rule-rule-1")).toBeTruthy();
+			expect(screen.getByTestId("reports-saved-rule-rule-1")).toBeTruthy();
+			fireEvent.press(screen.getByLabelText("Pilih periode 6 Bulan"));
+			expect(screen.getByTestId("reports-month-badge").props.children.props.children).toBe("6 Bulan");
+			expect(screen.queryByTestId("reports-active-period-card")).toBeNull();
+			fireEvent.press(screen.getByTestId("reports-period-toggle"));
+			expect(screen.queryByTestId("reports-period-options")).toBeNull();
+		} finally {
+			premium.mockRestore();
+		}
+	});
+
 	it("exposes budget wallet management entry point in Reports without letting copy collide with the action", async () => {
 		renderReports();
 
@@ -282,10 +324,32 @@ describe("ReportsScreen visual parity", () => {
 		const savingsStyle = getFlattenedStyle(savingsValue) as { color?: string };
 
 		expect(summaryCardStyle.backgroundColor).toBe("#FFFFFF");
-		expect(summaryCardStyle.borderColor).toBe("rgba(10, 10, 10, 0.06)");
-		expect(incomeStyle.color).toBe("#65A30D");
-		expect(expenseStyle.color).not.toBe("#FF7B7B");
-		expect(savingsStyle.color).toBe("#0A0A0A");
+		expect(summaryCardStyle.borderColor).toBe("rgba(6, 10, 28, 0.08)");
+		expect(incomeStyle.color).toBe("#071B4F");
+		expect(expenseStyle.color).toBe("#071B4F");
+		expect(savingsStyle.color).toBe("#090D18");
+	});
+
+	it("uses the reference-led analytics hero and category bubble cluster", async () => {
+		const screen = renderReports();
+
+		expect(screen.getByTestId("reports-analytics-hero")).toBeTruthy();
+		expect(await screen.findByTestId("reports-hero-bubbles")).toBeTruthy();
+		const summaryStyle = getFlattenedStyle(screen.getByTestId("reports-summary-card"));
+		expect(summaryStyle.marginTop).toBe(-36);
+		expect(summaryStyle.borderRadius).toBe(28);
+	});
+
+	it("collapses the analytics hero when the selected period has no data", async () => {
+		mockTransactions = [];
+		const screen = renderReports();
+
+		await waitFor(() => {
+			const heroStyle = getFlattenedStyle(screen.getByTestId("reports-analytics-hero"));
+			expect(heroStyle.minHeight).toBe(124);
+		});
+		const heroStyle = getFlattenedStyle(screen.getByTestId("reports-analytics-hero"));
+		expect(heroStyle.paddingBottom).toBe(24);
 	});
 
 	it("queries all deployed transaction columns and normalizes legacy plus current fields for category visuals", async () => {
@@ -345,8 +409,8 @@ describe("ReportsScreen visual parity", () => {
 		);
 
 		expect(getFlattenedStyle(foodFill).backgroundColor).toBe("#4A80F0");
-		expect(getFlattenedStyle(shoppingFill).backgroundColor).toBe("#B45309");
-		expect(getFlattenedStyle(transportFill).backgroundColor).toBe("#2A5DD0");
+		expect(getFlattenedStyle(shoppingFill).backgroundColor).toBe("#2F7FC1");
+		expect(getFlattenedStyle(transportFill).backgroundColor).toBe("#0C4E91");
 		expect(getFlattenedStyle(customFill).backgroundColor).toMatch(
 			/^#[0-9A-F]{6}$/,
 		);
@@ -358,20 +422,50 @@ describe("ReportsScreen visual parity", () => {
 		expect(getFlattenedStyle(foodFill).backgroundColor).not.toBe("#A3FF12");
 	});
 
-	it("renders a period-aware cashflow pulse instead of a mainstream line/bar chart", () => {
+	it("renders grouped solid bars on one baseline with an accessible period-aware chart", () => {
 		const screen = renderReports();
-
 		const chart = screen.getByTestId("reports-line-chart-svg");
-		expect(chart.props.accessibilityRole).toBe("image");
 		expect(chart.props.accessibilityLabel).toMatch(/Ritme Kas:/);
 		expect(screen.getByTestId("reports-pulse-chart")).toBeTruthy();
 		expect(screen.getAllByTestId(/reports-line-guide-/)).toHaveLength(3);
 		expect(screen.getAllByTestId(/reports-pulse-column-/).length).toBeGreaterThanOrEqual(4);
-		expect(screen.getAllByTestId(/reports-line-dot-income-/).length).toBeGreaterThanOrEqual(4);
-		expect(screen.getAllByTestId(/reports-line-dot-expense-/).length).toBeGreaterThanOrEqual(4);
+		expect(screen.getAllByTestId(/reports-pulse-bar-income-/).length).toBeGreaterThanOrEqual(4);
+		expect(screen.getAllByTestId(/reports-pulse-bar-expense-/).length).toBeGreaterThanOrEqual(4);
+		expect(screen.queryByTestId("reports-pulse-net-0")).toBeNull();
 		expect(screen.queryByTestId("reports-line-path-income")).toBeNull();
 		expect(screen.queryByTestId("reports-line-path-expense")).toBeNull();
-		expect(screen.queryByTestId("reports-bar-chart")).toBeNull();
+		expect(screen.getByTestId("reports-pulse-plot-scroll").props.horizontal).toBe(true);
+	});
+
+	it("integrates scoped period net and independently selected month detail without relabeling the aggregate", async () => {
+		const screen = renderReports();
+		await waitFor(() => expect(screen.getByTestId("reports-pulse-net-amount")).toHaveTextContent("Rp -1,1 jt"));
+		fireEvent.press(screen.getByText("6 Bulan"));
+		await waitFor(() => expect(screen.getAllByTestId(/reports-pulse-column-/)).toHaveLength(6));
+		fireEvent.press(screen.getByTestId("reports-pulse-column-5"));
+		expect(screen.getByTestId("reports-pulse-detail")).toHaveTextContent(/Jul 2026/);
+		expect(screen.getByTestId("reports-pulse-detail-income")).toHaveTextContent("Rp 125 rb");
+		expect(screen.getByTestId("reports-pulse-detail-expense")).toHaveTextContent("Rp 1,2 jt");
+		expect(screen.getByTestId("reports-pulse-detail-net")).toHaveTextContent("Rp -1,1 jt");
+		expect(screen.getByTestId("reports-pulse-net-amount")).toHaveTextContent("Rp -1,1 jt");
+		fireEvent.press(screen.getByTestId("reports-pulse-column-5"));
+		expect(screen.queryByTestId("reports-pulse-detail")).toBeNull();
+		fireEvent.press(screen.getByTestId("reports-pulse-column-5"));
+		fireEvent.press(screen.getByText("3 Bulan"));
+		expect(screen.queryByTestId("reports-pulse-detail")).toBeNull();
+	});
+
+	it("keeps all six empty months truthful and shows zero net with no fake balance insight", async () => {
+		mockTransactions = [];
+		const screen = renderReports();
+		fireEvent.press(screen.getByText("6 Bulan"));
+		await waitFor(() => expect(screen.getByTestId("reports-pulse-empty")).toBeTruthy());
+		expect(screen.getByTestId("reports-pulse-net-amount")).toHaveTextContent("Rp 0");
+		expect(screen.getByText("Belum ada aktivitas")).toBeTruthy();
+		expect(screen.getAllByTestId(/reports-pulse-column-/)).toHaveLength(6);
+		for (const bar of screen.getAllByTestId(/reports-pulse-bar-(income|expense)-/)) {
+			expect(getFlattenedStyle(bar).height).toBe(0);
+		}
 	});
 
 	it("updates the pulse bucket count immediately when selecting longer periods", () => {
@@ -440,7 +534,7 @@ describe("ReportsScreen visual parity", () => {
 		expect(screen.getByText("Skincare")).toBeTruthy();
 	});
 
-	it("renders refined editorial donut segments without changing category colors", async () => {
+	it("renders solid editorial pie segments in the reference blue family", async () => {
 		const screen = renderReports();
 
 		fireEvent.press(screen.getByText("Kategori"));
@@ -448,24 +542,16 @@ describe("ReportsScreen visual parity", () => {
 		const foodSegment = await screen.findByTestId(
 			"reports-donut-segment-food_beverage",
 		);
-		const foodGlow = await screen.findByTestId("reports-donut-glow-food_beverage");
 
-		expect(foodSegment.props.strokeLinecap).toBe(0);
-		expect(foodSegment.props.strokeWidth).toBeGreaterThanOrEqual(17);
-		expect(foodSegment.props.strokeWidth).toBeLessThanOrEqual(19);
-		expect(foodSegment.props.strokeDasharray).toHaveLength(2);
-		const foodCircumference = 2 * Math.PI * Number(foodSegment.props.r);
-		const foodRawDash =
-			(500000 / (500000 + 350000 + 200000 + 150000)) * foodCircumference;
-		expect(
-			Math.abs(Number(foodSegment.props.strokeDasharray[0]) + 6 - foodRawDash),
-		).toBeLessThan(0.001);
-		expect(foodGlow.props.accessibilityLabel).toBeUndefined();
-		expect(foodGlow.props.opacity).toBeLessThan(0.4);
+		expect(foodSegment.props.fill).toBeTruthy();
+		expect(foodSegment.props.stroke).toBeTruthy();
+		expect(foodSegment.props.strokeWidth).toBe(3);
+		expect(typeof foodSegment.props.d).toBe("string");
+		expect(foodSegment.props.d).toMatch(/^M /);
 		expect(foodSegment.props.accessibilityLabel).toBeUndefined();
 	});
 
-	it("uses precise amount-based donut proportions instead of rounded display percentages", async () => {
+	it("uses precise amount-based pie proportions instead of rounded display percentages", async () => {
 		const screen = renderReports();
 
 		fireEvent.press(screen.getByText("Kategori"));
@@ -476,26 +562,21 @@ describe("ReportsScreen visual parity", () => {
 		const shoppingSegment = await screen.findByTestId(
 			"reports-donut-segment-personal_shopping",
 		);
-		const circumference = 2 * Math.PI * Number(foodSegment.props.r);
-		const total = 500000 + 350000 + 200000 + 150000;
+		const transportSegment = await screen.findByTestId(
+			"reports-donut-segment-transport",
+		);
+		const healthSegment = await screen.findByTestId(
+			"reports-donut-segment-health",
+		);
 
-		expect(
-			Math.abs(
-				Number(foodSegment.props.strokeDasharray[0]) +
-					6 -
-					(500000 / total) * circumference,
-			),
-		).toBeLessThan(0.001);
-		expect(
-			Math.abs(
-				Number(shoppingSegment.props.strokeDasharray[0]) +
-					6 -
-					(350000 / total) * circumference,
-			),
-		).toBeLessThan(0.001);
+		const paths = [foodSegment, shoppingSegment, transportSegment, healthSegment].map(
+			(segment: { props: { d: string } }) => segment.props.d,
+		);
+		expect(new Set(paths).size).toBe(4);
+		expect(paths.every((p) => /^M \d+\.?\d* \d+\.?\d* L /.test(p))).toBe(true);
 	});
 
-	it("uses a different donut color for every rendered expense category", async () => {
+	it("uses a different pie color for every rendered expense category", async () => {
 		const screen = renderReports();
 
 		fireEvent.press(screen.getByText("Kategori"));
@@ -507,33 +588,72 @@ describe("ReportsScreen visual parity", () => {
 			screen.findByTestId("reports-donut-segment-health"),
 		]);
 		const colors = segments.map(
-			(segment: { props: { stroke: string } }) => segment.props.stroke,
+			(segment: { props: { fill: string } }) => segment.props.fill,
 		);
 
 		expect(new Set(colors).size).toBe(colors.length);
 	});
 
-	it("keeps the donut ring perfectly centered and square for a precise circle", async () => {
+	it("renders bubble analytics for each expense category", async () => {
+		const screen = renderReports();
+
+		fireEvent.press(screen.getByText("Kategori"));
+
+		const bubbles = await Promise.all([
+			screen.findByTestId("reports-bubble-food_beverage"),
+			screen.findByTestId("reports-bubble-personal_shopping"),
+			screen.findByTestId("reports-bubble-transport"),
+			screen.findByTestId("reports-bubble-health"),
+		]);
+
+		expect(screen.getByTestId("reports-bubble-row")).toBeTruthy();
+		for (const bubble of bubbles) {
+			const style = getFlattenedStyle(bubble);
+			expect(Number(style.width)).toBeGreaterThanOrEqual(52);
+			expect(style.borderRadius).toBe(Number(style.width) / 2);
+		}
+		expect(screen.getAllByText("42%").length).toBeGreaterThan(0);
+	});
+
+	it("keeps the pie chart perfectly centered and square for a precise circle", async () => {
 		const screen = renderReports();
 
 		fireEvent.press(screen.getByText("Kategori"));
 
 		const donutSvg = await screen.findByTestId("reports-donut-svg");
-		const foodGlow = await screen.findByTestId("reports-donut-glow-food_beverage");
-		const center = Number(foodGlow.props.cx);
-		const outerEdge =
-			Number(foodGlow.props.r) + Number(foodGlow.props.strokeWidth) / 2;
+		const foodSegment = await screen.findByTestId("reports-donut-segment-food_beverage");
 
 		expect(Number(donutSvg.props.width)).toBe(Number(donutSvg.props.height));
 		expect(donutSvg.props.accessibilityRole).toBe("image");
 		expect(donutSvg.props.accessibilityLabel).toBe(
 			"Komposisi pengeluaran berdasarkan kategori",
 		);
-		expect(center - outerEdge).toBeGreaterThanOrEqual(8);
-		expect(
-			Number(donutSvg.props.width) - (center + outerEdge),
-		).toBeGreaterThanOrEqual(8);
-		expect(foodGlow.props.cy).toBe(foodGlow.props.cx);
+		expect(typeof foodSegment.props.d).toBe("string");
+		expect(foodSegment.props.d).toMatch(/^M 100 100 /);
+	});
+
+	it("gives every reported sub-44 control a real 44x44 touch box", async () => {
+		const screen = renderReports();
+
+		await waitFor(() => expect(screen.getByText(/Dompet/i)).toBeTruthy());
+
+		const labels = [
+			"Bagikan laporan",
+			"Tampilkan ringkasan laporan",
+			"Tampilkan kategori laporan",
+			"Tampilkan perbandingan laporan",
+			"Pilih periode 1 Bulan",
+			"Pilih periode 3 Bulan",
+			"Pilih periode 6 Bulan",
+			"Pilih periode 1 Tahun",
+			"Pilih periode Kustom",
+		];
+
+		for (const label of labels) {
+			const control = getFlattenedStyle(screen.getByLabelText(label));
+			expect(Number(control.minHeight)).toBeGreaterThanOrEqual(44);
+			expect(Number(control.minWidth)).toBeGreaterThanOrEqual(44);
+		}
 	});
 
 	it("lets custom period choose exact start and end dates for client-side report filtering", async () => {
@@ -542,8 +662,8 @@ describe("ReportsScreen visual parity", () => {
 		fireEvent.press(screen.getByText("Kustom"));
 		expect(screen.getByTestId("reports-start-date-wheel-picker")).toBeTruthy();
 		expect(screen.getByTestId("reports-end-date-wheel-picker")).toBeTruthy();
-		fireEvent.press(await screen.findByTestId("reports-start-date-wheel-picker-date-item-15"));
-		fireEvent.press(await screen.findByTestId("reports-end-date-wheel-picker-date-item-20"));
+		fireEvent.press(screen.UNSAFE_getByProps({ testID: "reports-start-date-wheel-picker-date-item-15" }));
+		fireEvent.press(screen.UNSAFE_getByProps({ testID: "reports-end-date-wheel-picker-date-item-20" }));
 
 		await waitFor(() => {
 			expect((globalThis as any).__reportsQueryChain.then).toHaveBeenCalled();

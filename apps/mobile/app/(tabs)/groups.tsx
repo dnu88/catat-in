@@ -25,6 +25,8 @@ import {
 } from "../../src/services/households";
 import { useFinanceContext } from "../../src/state/finance-context";
 import { useTheme } from "../../src/theme/theme-context";
+import { financeEditorial as fe } from "../../src/theme/finance-editorial";
+import { isPwaPolish, pwaMinTouch } from "../../src/theme/pwa-polish";
 
 type ActiveForm = "create" | "join" | null;
 
@@ -109,7 +111,8 @@ export default function GroupsScreen() {
 	const tx = copy[language];
 	const { supabase } = useSupabase();
 	const { refreshMemberships } = useFinanceContext();
-	const styles = useMemo(() => createStyles(theme), [theme]);
+	const polish = isPwaPolish();
+	const styles = useMemo(() => createStyles(theme, polish), [theme, polish]);
 	const [memberships, setMemberships] = useState<HouseholdMember[]>([]);
 	const [activeForm, setActiveForm] = useState<ActiveForm>(null);
 	const [householdName, setHouseholdName] = useState("");
@@ -208,20 +211,22 @@ export default function GroupsScreen() {
 								accessibilityRole="button"
 								accessibilityLabel={tx.createLabel}
 								accessibilityHint={tx.createHint}
-								style={[styles.addButton, submitting && styles.disabledButton]}
+								style={[styles.touchTarget, submitting && styles.disabledButton]}
 								onPress={() =>
 									setActiveForm(activeForm === "create" ? null : "create")
 								}
 								disabled={submitting}
 							>
-								<Text style={styles.addButtonText}>{tx.create}</Text>
+								<View style={styles.addButton}>
+									<Text style={styles.addButtonText}>{tx.create}</Text>
+								</View>
 							</Pressable>
 							<Pressable
 								accessibilityRole="button"
 								accessibilityLabel={tx.joinLabel}
 								accessibilityHint={tx.joinHint}
 								style={[
-									styles.secondaryButton,
+									styles.touchTarget,
 									submitting && styles.disabledButton,
 								]}
 								onPress={() =>
@@ -229,7 +234,9 @@ export default function GroupsScreen() {
 								}
 								disabled={submitting}
 							>
-								<Text style={styles.secondaryButtonText}>{tx.join}</Text>
+								<View style={styles.secondaryButton}>
+									<Text style={styles.secondaryButtonText}>{tx.join}</Text>
+								</View>
 							</Pressable>
 						</View>
 					}
@@ -365,30 +372,40 @@ export default function GroupsScreen() {
 	);
 }
 
-function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
+function createStyles(theme: ReturnType<typeof useTheme>["theme"], polish = false) {
 	return StyleSheet.create({
-		screen: { flex: 1, backgroundColor: theme.colors.background },
+		screen: { flex: 1, backgroundColor: fe.paper },
 		content: { padding: 20, gap: 12, paddingBottom: 26 },
 		headerActions: { flexDirection: "row", gap: 8 },
+		touchTarget: {
+			minHeight: 44,
+			minWidth: 44,
+			alignItems: "center",
+			justifyContent: "center",
+		},
 		addButton: {
-			backgroundColor: theme.colors.brandPrimary,
+			backgroundColor: fe.glassStrong,
+			borderWidth: 1,
+			borderColor: "rgba(255,255,255,0.24)",
 			borderRadius: theme.radius.pill,
 			paddingHorizontal: 14,
 			paddingVertical: 8,
 		},
 		addButtonText: {
-			color: theme.colors.textInverse,
+			color: fe.white,
 			fontSize: 12,
 			fontWeight: "800",
 		},
 		secondaryButton: {
-			backgroundColor: theme.iconBubbles.primary.background,
+			backgroundColor: "rgba(255,255,255,0.12)",
+			borderWidth: 1,
+			borderColor: "rgba(255,255,255,0.20)",
 			borderRadius: theme.radius.pill,
 			paddingHorizontal: 14,
 			paddingVertical: 8,
 		},
 		secondaryButtonText: {
-			color: theme.colors.brandPrimary,
+			color: fe.white,
 			fontSize: 12,
 			fontWeight: "800",
 		},
@@ -426,6 +443,7 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"]) {
 			backgroundColor: theme.colors.brandPrimary,
 			borderRadius: theme.radius.pill,
 			paddingVertical: 10,
+			...(polish ? { minHeight: pwaMinTouch, justifyContent: "center" as const } : null),
 		},
 		submitButtonText: {
 			color: theme.colors.textInverse,

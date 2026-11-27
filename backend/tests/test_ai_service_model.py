@@ -21,7 +21,8 @@ async def test_chat_uses_haiku_and_cache():
         return _fake_response(json.dumps({"transactions": [], "unclear": None}))
     fake_client.messages.create = _create
     with patch.object(ai_service, "_get_async_anthropic_client", return_value=fake_client), \
-         patch.object(ai_service.settings, "ANTHROPIC_API_KEY", "sk-test"):
+         patch.object(ai_service.settings, "ANTHROPIC_API_KEY", "sk-test"), \
+         patch.object(ai_service.settings, "DEEPSEEK_API_KEY", None):
         await ai_service.extract_transaction_from_text("beli kopi 15rb")
     assert captured["model"] == "claude-haiku-4-5"
     assert captured["max_tokens"] == 2048

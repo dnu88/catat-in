@@ -76,12 +76,18 @@ class MidtransProvider(PaymentProvider):
         return self._core_client_factory().transactions.status(order_id)
 
     def verify_notification_signature(self, payload: dict) -> bool:
+        server_key = self._server_key_getter() or ""
+        if not server_key or not isinstance(payload, dict):
+            return False
+        signature = payload.get("signature_key")
+        if not isinstance(signature, str):
+            return False
         raw = (
             f"{payload.get('order_id', '')}{payload.get('status_code', '')}"
-            f"{payload.get('gross_amount', '')}{self._server_key_getter() or ''}"
+            f"{payload.get('gross_amount', '')}{server_key}"
         )
         expected = hashlib.sha512(raw.encode()).hexdigest()
-        return hmac.compare_digest(expected, payload.get("signature_key", ""))
+        return hmac.compare_digest(expected, signature)
 
     def map_internal_status(self, payload: dict) -> str:
         return map_status(payload.get("transaction_status", ""), payload.get("fraud_status"))

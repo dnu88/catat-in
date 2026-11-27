@@ -6,6 +6,7 @@ import TransactionsScreen, {
 	SWIPE_GESTURE_CONFIG,
 	SWIPE_SNAP_SPRING_CONFIG,
 	filterTransactionsByPeriod,
+	getTransactionIconPalette,
 	getSwipeTranslateX,
 	getTransactionDateValue,
 	shouldOpenSwipe,
@@ -212,12 +213,17 @@ describe("transaction swipe actions", () => {
 		fireEvent(screen.getByLabelText("Pilih transaksi Kopi sore"), "longPress");
 
 		await waitFor(() => expect(screen.getByTestId("transactions-selection-toolbar")).toBeTruthy());
-		expect(screen.queryByText("2 item")).toBeNull();
-		expect(screen.getByText("1 dipilih")).toBeTruthy();
-		expect(screen.getByText("Ketuk transaksi lain untuk menambah pilihan.")).toBeTruthy();
-		expect(screen.queryByLabelText("Edit transaksi Kopi sore")).toBeNull();
-		expect(screen.queryByLabelText("Hapus transaksi Kopi sore")).toBeNull();
-		expect(screen.queryByTestId("transaction-swipe-actions-tx-1")).toBeNull();
+		// Hardened 2026-10-03 (finding #3): the selection visuals commit in the same
+		// pass as the toolbar, so assert them inside one deterministic wait instead
+		// of bare reads that could race the async list update.
+		await waitFor(() => {
+			expect(screen.queryByText("2 item")).toBeNull();
+			expect(screen.getByText("1 dipilih")).toBeTruthy();
+			expect(screen.getByText("Ketuk transaksi lain untuk menambah pilihan.")).toBeTruthy();
+			expect(screen.queryByLabelText("Edit transaksi Kopi sore")).toBeNull();
+			expect(screen.queryByLabelText("Hapus transaksi Kopi sore")).toBeNull();
+			expect(screen.queryByTestId("transaction-swipe-actions-tx-1")).toBeNull();
+		});
 		await waitFor(() => expect(screen.getByTestId("transactions-selection-delete-action")).toBeTruthy());
 		expect(screen.getByTestId("transactions-selection-delete-count-text").props.children).toBe(1);
 		await waitFor(() => expect(screen.getByLabelText("Batalkan pilihan transaksi Kopi sore")).toBeTruthy());
@@ -328,18 +334,60 @@ describe("transaction swipe actions", () => {
 			screen.getByTestId("transactions-stat-expense").props.style as object,
 		) as ViewStyle;
 
-		expect(headerStyle.marginBottom).toBeGreaterThanOrEqual(12);
+		const heroStyle = StyleSheet.flatten(
+			screen.getByTestId("transactions-hero").props.style as object,
+		) as ViewStyle;
+
+		expect(heroStyle.borderBottomLeftRadius).toBe(42);
+		expect(heroStyle.borderBottomRightRadius).toBe(42);
 		expect(periodRowStyle.marginBottom).toBeGreaterThanOrEqual(16);
 		expect(screen.getByTestId("transactions-period-report")).toBeTruthy();
 		expect(screen.getByTestId("transactions-report-period-label")).toBeTruthy();
-		expect(statRowStyle.marginTop).toBeGreaterThanOrEqual(4);
-		expect(statRowStyle.marginBottom).toBeGreaterThanOrEqual(20);
+		expect(statRowStyle.marginTop).toBeGreaterThanOrEqual(2);
 		expect(filterScrollerStyle.marginTop).toBeGreaterThanOrEqual(4);
 		expect(filterScrollerStyle.marginBottom).toBeGreaterThanOrEqual(16);
 		expect(incomeCardStyle.flex).toBe(1);
 		expect(expenseCardStyle.flex).toBe(1);
-		expect(incomeCardStyle.minHeight).toBeGreaterThanOrEqual(136);
-		expect(expenseCardStyle.minHeight).toBeGreaterThanOrEqual(136);
+		expect(incomeCardStyle.minHeight).toBeGreaterThanOrEqual(132);
+		expect(expenseCardStyle.minHeight).toBeGreaterThanOrEqual(132);
+	});
+
+	it("uses finance editorial surfaces instead of lime dark-luxury chrome", async () => {
+		const screen = renderScreen();
+
+		await waitFor(() => expect(screen.getByText("Kopi sore")).toBeTruthy());
+
+		const periodCard = StyleSheet.flatten(
+			screen.getByTestId("transactions-report-period-card").props.style as object,
+		) as ViewStyle;
+		const activePeriod = StyleSheet.flatten(
+			screen.getByTestId("transactions-period-report").props.style as object,
+		) as ViewStyle;
+		const fab = StyleSheet.flatten(
+			screen.getByTestId("transactions-fab").props.style as object,
+		) as ViewStyle;
+
+		expect(periodCard.backgroundColor).toBe("#FFFFFF");
+		expect(periodCard.borderWidth).toBe(0);
+		expect(activePeriod.backgroundColor).toBe("#090D18");
+		expect(fab.backgroundColor).toBe("#090D18");
+	});
+
+	it("uses tonal-blue category icons while keeping income semantically green", async () => {
+		const screen = renderScreen();
+
+		await waitFor(() => expect(screen.getByText("Kopi sore")).toBeTruthy());
+
+		const iconStyle = StyleSheet.flatten(
+			screen.getByTestId("transaction-icon-tx-1").props.style as object,
+		) as ViewStyle;
+		const expensePalette = getTransactionIconPalette("Makan", "expense");
+		const incomePalette = getTransactionIconPalette("Gaji", "income");
+
+		expect(iconStyle.backgroundColor).toBe(expensePalette.background);
+		expect(iconStyle.borderColor).toBe(expensePalette.border);
+		expect(expensePalette.color).not.toBe("#A3FF12");
+		expect(incomePalette.color).toBe("#168FA8");
 	});
 
 	it("adds right-side breathing room to transaction amounts", async () => {
@@ -353,6 +401,7 @@ describe("transaction swipe actions", () => {
 
 		expect(amountStyle.marginRight).toBeGreaterThanOrEqual(8);
 		expect(amountStyle.textAlign).toBe("right");
+		expect(amountStyle.color).toBe("#263246");
 	});
 
 	it("uses spring physics and resisted overdrag for organic row swipes", () => {
@@ -575,7 +624,9 @@ describe("transaction swipe actions", () => {
 		const screen = renderScreen();
 
 		await waitFor(() => expect(screen.getByText("Kopi sore")).toBeTruthy());
-		expect(screen.queryByText("Bonus tahunan")).toBeNull();
+		// Hardened 2026-10-03 (finding #3): the out-of-period row must be absent, but
+		// the filtered list lands asynchronously — wait instead of a bare read.
+		await waitFor(() => expect(screen.queryByText("Bonus tahunan")).toBeNull());
 
 		fireEvent.press(screen.getByTestId("transactions-period-year"));
 
@@ -637,12 +688,12 @@ describe("transaction swipe actions", () => {
 		await waitFor(() => {
 			// Clean tx with merchant "Warung" should be hidden
 			expect(screen.queryByText("Warung")).toBeNull();
+			// Reviewable transactions should still show
+			expect(screen.getByText("Toko")).toBeTruthy();
+			expect(screen.getByText("Kafe")).toBeTruthy();
+			expect(screen.getByText("Parkir")).toBeTruthy();
+			expect(screen.queryByText("Sudah Dicek")).toBeNull();
 		});
-		// Reviewable transactions should still show
-		expect(screen.getByText("Toko")).toBeTruthy();
-		expect(screen.getByText("Kafe")).toBeTruthy();
-		expect(screen.getByText("Parkir")).toBeTruthy();
-		expect(screen.queryByText("Sudah Dicek")).toBeNull();
 	});
 
 	it("shows empty state when no transactions need review", async () => {

@@ -1,12 +1,14 @@
 """
 Tests for AI endpoints.
 """
-import pytest
+
 from unittest.mock import AsyncMock, patch
-from main import app
+
+import pytest
+
 from app.core.auth import get_current_user
 from app.core.rate_limit import rate_limit_ai
-
+from main import app
 
 FAKE_USER = {"user_id": "test-user-123", "email": "test@example.com"}
 
@@ -39,6 +41,22 @@ class TestAIChatAuth:
 
 class TestAIChatWithAuth:
     """Behavior with authenticated request (mocked auth + mocked AI service)."""
+
+    @pytest.fixture(autouse=True)
+    def isolate_quota_storage(self):
+        state = {
+            "is_premium": False,
+            "period_ym": "2026-06",
+            "chat_count": 0,
+            "photo_count": 0,
+            "chat_limit": 25,
+            "photo_limit": 0,
+        }
+        with (
+            patch("app.api.v1.ai.load_state", return_value=state),
+            patch("app.api.v1.ai.record_use"),
+        ):
+            yield
 
     def setup_method(self):
         app.dependency_overrides[get_current_user] = override_auth

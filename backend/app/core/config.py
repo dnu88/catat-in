@@ -25,12 +25,14 @@ _LIST_FIELDS_NO_JSON_DECODE = {
     "ALLOWED_HOSTS",
     "SUPABASE_JWT_ALLOWED_ALGORITHMS",
     "MAYAR_ALLOWED_EMAILS",
+    "ADMIN_EMAILS",
 }
 
 _REQUIRED_ALLOWED_ORIGINS: list[str] = [
     "https://catat-in-nine.vercel.app",
     "https://kaswise.com",
     "https://www.kaswise.com",
+    "https://app.kaswise.com",
 ]
 
 _REQUIRED_ALLOWED_HOSTS = [
@@ -38,6 +40,7 @@ _REQUIRED_ALLOWED_HOSTS = [
     "127.0.0.1",
     "kaswise.com",
     "www.kaswise.com",
+    "app.kaswise.com",
 ]
 
 
@@ -90,9 +93,41 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 15
     REFRESH_TOKEN_EXPIRE_DAYS: int = 30
 
-    # Anthropic
+    # Anthropic (cadangan)
     ANTHROPIC_API_KEY: str | None = None
     ANTHROPIC_MODEL: str = "claude-sonnet-4-6"
+
+    # DeepSeek (provider AI utama — jauh lebih murah untuk ekstraksi)
+    DEEPSEEK_API_KEY: str | None = None
+    DEEPSEEK_MODEL: str = "deepseek-flash"
+    DEEPSEEK_BASE_URL: str = "https://api.deepseek.com"
+
+    # Gemini (pembaca gambar/struk — cadangan).
+    # Endpoint-nya kompatibel-OpenAI, jadi bentuk panggilannya sama seperti DeepSeek.
+    GEMINI_API_KEY: str | None = None
+    GEMINI_MODEL: str = "gemini-3.8-flash"
+    # Model cadangan bila model utama sudah dipensiunkan untuk kunci baru
+    # (pernah terjadi: gemini-2.5-flash -> "no longer available to new users").
+    GEMINI_FALLBACK_MODEL: str = "gemini-flash-latest"
+    GEMINI_BASE_URL: str = "https://generativelanguage.googleapis.com/v1beta/openai"
+
+    # Urutan provider pembaca struk/gambar, dipisah koma. Hanya provider yang
+    # kuncinya terisi yang dipakai. Bisa diubah lewat env tanpa deploy ulang —
+    # berguna saat kredit salah satu akun habis (pernah terjadi: Gemini & Claude
+    # sama-sama kehabisan kredit, sementara deepseek-flash sanggup membaca gambar).
+    VISION_PROVIDER_ORDER: str = "deepseek,gemini,anthropic"
+    ZAI_OCR_API_KEY: str | None = None
+    # Model teks GLM (Z.ai). Dipakai sebagai cadangan ekstraksi teks supaya
+    # pencatatan tetap jalan saat kredit DeepSeek/Anthropic habis.
+    ZAI_TEXT_MODEL: str = "glm-5.3-flash"
+
+    # Urutan provider AI Insight (analisis keuangan), dipisah koma. Sama seperti
+    # VISION_PROVIDER_ORDER: hanya provider yang kuncinya terisi yang dipakai, dan
+    # bisa diubah lewat env tanpa deploy. Bila semua provider gagal, endpoint tetap
+    # membalas ringkasan lokal (tidak pernah 500).
+    INSIGHT_PROVIDER_ORDER: str = "deepseek,anthropic"
+    # deepseek-flash adalah model reasoning: beri ruang token lega untuk penalaran.
+    INSIGHT_MAX_TOKENS: int = 4000
 
     # Midtrans
     MIDTRANS_SERVER_KEY: str | None = None
@@ -106,6 +141,7 @@ class Settings(BaseSettings):
     MAYAR_REDIRECT_URL: str | None = None
     MAYAR_CALLBACK_URL: str | None = None
     MAYAR_ALLOWED_EMAILS: List[str] = []
+    ADMIN_EMAILS: List[str] = []
     MAYAR_WEBHOOKS_ENABLED: bool = False
     MAYAR_ACTIVATION_ENABLED: bool = False
     # Optional soft-auth: Mayar does not sign webhooks (see ADR-0003). If set,
@@ -132,7 +168,7 @@ class Settings(BaseSettings):
         "http://localhost:3000",
         "http://localhost:3001",
     ]
-    ALLOWED_HOSTS: List[str] = ["localhost", "127.0.0.1", "kaswise.com", "www.kaswise.com"]
+    ALLOWED_HOSTS: List[str] = ["localhost", "127.0.0.1", "kaswise.com", "www.kaswise.com", "app.kaswise.com"]
     CORS_ALLOW_CREDENTIALS: bool = False
 
     # Storage
@@ -173,6 +209,12 @@ class Settings(BaseSettings):
     FREE_TIER_BILL_REMINDER_LIMIT: int = 3
     FREE_TIER_IMPORT_MONTHS: int = 3
     FREE_TIER_MAX_TRANSACTIONS: int = 10_000
+
+    # Import rekening koran PDF — local extraction first, OCR fallback gated.
+    IMPORT_PDF_OCR_ENABLED: bool = False
+    IMPORT_PDF_MAX_PAGES: int = 20
+    IMPORT_PDF_OCR_MAX_PAGES: int = 5
+    IMPORT_PDF_TEXT_MIN_CHARS: int = 80
     PREMIUM_PRICE_MONTHLY_IDR: int = 29_000
     PREMIUM_PRICE_YEARLY_IDR: int = 249_000
     GROUP_MAX_MEMBERS: int = 10
@@ -185,6 +227,7 @@ class Settings(BaseSettings):
         "SUPABASE_LEGACY_HS256_ENABLED",
         "MAYAR_WEBHOOKS_ENABLED",
         "MAYAR_ACTIVATION_ENABLED",
+        "IMPORT_PDF_OCR_ENABLED",
         mode="before",
     )
     @classmethod
@@ -214,6 +257,7 @@ class Settings(BaseSettings):
         "ALLOWED_HOSTS",
         "SUPABASE_JWT_ALLOWED_ALGORITHMS",
         "MAYAR_ALLOWED_EMAILS",
+        "ADMIN_EMAILS",
         mode="before",
     )
     @classmethod
@@ -243,6 +287,9 @@ class Settings(BaseSettings):
         ])
         self.MAYAR_ALLOWED_EMAILS = _dedupe_preserve_order([
             str(email).strip().lower() for email in self.MAYAR_ALLOWED_EMAILS if str(email).strip()
+        ])
+        self.ADMIN_EMAILS = _dedupe_preserve_order([
+            str(email).strip().lower() for email in self.ADMIN_EMAILS if str(email).strip()
         ])
 
         is_production = self.ENVIRONMENT.strip().lower() == "production" or not self.DEBUG

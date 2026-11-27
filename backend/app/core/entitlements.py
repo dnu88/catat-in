@@ -102,7 +102,10 @@ def load_state(user_id: str, now: datetime | None = None) -> dict:
                 subscription_started_at = _parse_datetime(
                     prow_payment.get("paid_at") or prow_payment.get("created_at")
                 )
-            period = current_period_ym(subscription_started_at=subscription_started_at)
+            period = current_period_ym(
+                now=now,
+                subscription_started_at=subscription_started_at,
+            )
         usage = (client.table("ai_usage").select("chat_count,photo_count")
                  .eq("user_id", user_id).eq("period_ym", period).limit(1).execute())
         urow = usage.data[0] if getattr(usage, "data", None) else None

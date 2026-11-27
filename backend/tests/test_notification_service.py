@@ -94,11 +94,11 @@ def test_get_preferences_returns_existing_row():
 # update_preferences
 # ---------------------------------------------------------------------------
 
-def test_update_preferences_returns_defaults_when_client_unavailable():
-    """When client unavailable, update returns current defaults (no-op)."""
+def test_update_preferences_raises_when_client_unavailable():
+    """Unavailable storage must not report a successful write."""
     with _patch_supabase_client(None):
-        result = ns.update_preferences("u1", {"enabled": False})
-    assert result["enabled"] is True  # unchanged
+        with pytest.raises(ns.PreferencesPersistenceError):
+            ns.update_preferences("u1", {"enabled": False})
 
 
 def test_update_preferences_updates_fields():
@@ -130,7 +130,7 @@ def test_update_preferences_sanitizes_unknown_fields():
 def test_update_preferences_rejects_invalid_thresholds():
     """Threshold values outside 1-200 or more than 5 items are sanitized."""
     existing = {"user_id": "u1", "budget_alert_thresholds": [80, 100]}
-    updated = {"user_id": "u1", "budget_alert_thresholds": [80, 90, 100]}
+    updated = {"user_id": "u1", "budget_alert_thresholds": [80, 90, 100, 200]}
     fake = _chain_mock([updated])
     with patch.object(ns, "get_preferences", return_value=existing), \
          _patch_supabase_client(fake):

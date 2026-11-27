@@ -1,3 +1,4 @@
+import { StyleSheet } from "react-native";
 import { fireEvent, render, screen } from "@testing-library/react-native";
 
 import { FinanceContextSwitcher } from "../src/components/FinanceContextSwitcher";
@@ -38,7 +39,7 @@ describe("FinanceContextSwitcher", () => {
 		);
 
 		expect(screen.getByText("Pribadi")).toBeTruthy();
-		expect(screen.getByTestId("finance-context-switcher").props.style).toEqual(
+		expect(StyleSheet.flatten(screen.getByTestId("finance-context-switcher").props.style)).toEqual(
 			expect.objectContaining({
 				minHeight: 44,
 				maxWidth: 132,

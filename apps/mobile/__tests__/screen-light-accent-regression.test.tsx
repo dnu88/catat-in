@@ -10,10 +10,15 @@ import { ThemeProvider } from "../src/theme/theme-context";
 
 const mockFinanceContext = { type: "personal" as const };
 
-jest.mock("expo-router", () => ({
-	router: { replace: jest.fn() },
-	useRouter: () => ({ push: jest.fn(), back: jest.fn() }),
-}));
+jest.mock("expo-router", () => {
+	const React = jest.requireActual("react");
+	return {
+		router: { replace: jest.fn() },
+		useRouter: () => ({ push: jest.fn(), back: jest.fn() }),
+		useLocalSearchParams: () => ({}),
+		useFocusEffect: (callback: () => void | (() => void)) => React.useEffect(() => callback(), [callback]),
+	};
+});
 
 jest.mock("../src/lib/supabase", () => ({
 	useSupabase: () => ({
@@ -65,7 +70,7 @@ jest.mock("../src/state/report-period", () => {
 });
 
 describe("light accent regressions", () => {
-	it("does not use neon green for dashboard theme toggle in light theme", () => {
+	it("uses editorial blue for the active language control", () => {
 		const screen = render(
 			<I18nProvider>
 				<ThemeProvider>
@@ -74,15 +79,14 @@ describe("light accent regressions", () => {
 			</I18nProvider>,
 		);
 
-		const lightChip = screen.getByTestId("settings-language-en");
-
-		fireEvent.press(lightChip);
-
-		const flattened = StyleSheet.flatten(
-			lightChip.props.style as object,
-		) as ViewStyle;
-		expect(flattened.backgroundColor).toBe("#3F6212");
-		expect(flattened.backgroundColor).not.toBe("#A3FF12");
+		const languageRow = screen.getByTestId("settings-language-row");
+		fireEvent.press(languageRow);
+		fireEvent.press(screen.getByTestId("settings-language-en"));
+		expect(screen.queryByTestId("settings-language-sheet")).toBeNull();
+		const activeValue = screen.getByText("English");
+		const flattened = StyleSheet.flatten(activeValue.props.style);
+		expect(flattened.color).toBe("#0C4E91");
+		expect(flattened.color).not.toBe("#A3FF12");
 	});
 
 	it("keeps transaction-new icon controls accessible and at least 44px wide", async () => {
@@ -107,7 +111,7 @@ describe("light accent regressions", () => {
 		);
 	});
 
-	it("does not use neon green for transactions period chips or fab in light theme", async () => {
+	it("uses premium ink for transactions period chips and fab", async () => {
 		const screen = render(
 			<ThemeProvider>
 				<I18nProvider>
@@ -124,12 +128,12 @@ describe("light accent regressions", () => {
 		const monthStyle = StyleSheet.flatten(
 			monthChip.props.style as object,
 		) as ViewStyle;
-		expect(monthStyle.backgroundColor).toBe("#3F6212");
+		expect(monthStyle.backgroundColor).toBe("#090D18");
 		expect(monthStyle.backgroundColor).not.toBe("#A3FF12");
 
 		const fab = screen.getByTestId("transactions-fab");
 		const fabStyle = StyleSheet.flatten(fab.props.style as object) as ViewStyle;
-		expect(fabStyle.backgroundColor).toBe("#3F6212");
+		expect(fabStyle.backgroundColor).toBe("#090D18");
 		expect(fabStyle.backgroundColor).not.toBe("#A3FF12");
 	});
 });

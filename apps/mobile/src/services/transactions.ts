@@ -90,7 +90,10 @@ export function normalizeTransaction(row: any): Transaction {
 		category: row.category ?? row.kategori,
 		description: row.description ?? row.catatan ?? "",
 		date: row.date ?? row.tanggal ?? row.created_at ?? "",
-		note: row.note ?? row.catatan ?? null,
+		// Do not mirror the legacy `catatan` description into `note`.
+		// The edit form sends both description and note; treating catatan as note
+		// makes the old description overwrite a user's edited description.
+		note: row.note ?? null,
 		review_required: row.review_required ?? null,
 		is_verified: row.is_verified ?? null,
 		confidence: row.confidence ?? row.ai_confidence ?? null,
@@ -104,7 +107,7 @@ function buildInsertPayload(tx: TransactionCreate, userId: string) {
 		type: tx.transaction_type,
 		nominal: tx.amount,
 		kategori: tx.category,
-		catatan: tx.note ?? tx.description,
+		catatan: tx.description,
 		created_by: userId,
 	};
 
@@ -137,7 +140,10 @@ function buildUpdatePayload(updates: Partial<TransactionCreate>) {
 	if ("amount" in updates) payload.nominal = updates.amount;
 	if ("category" in updates) payload.kategori = updates.category;
 	if ("description" in updates) payload.catatan = updates.description;
-	if ("note" in updates) payload.catatan = updates.note;
+	// Legacy production rows store the visible description in `catatan`.
+	// Only let note write that column for old call sites that do not also send
+	// description; otherwise a stale/empty note can undo an edit to description.
+	if (!("description" in updates) && "note" in updates) payload.catatan = updates.note;
 	if ("merchant" in updates) payload.merchant = updates.merchant ?? null;
 	if ("date" in updates) payload.tanggal = updates.date;
 	if ("payment_method" in updates)
