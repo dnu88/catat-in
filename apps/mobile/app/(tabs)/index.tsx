@@ -319,9 +319,9 @@ export default function DashboardScreen() {
 						listCategories().catch(() => [] as Category[]),
 					]);
 				if (isMounted()) {
-					// Simpan semua dompet: total saldo harus mencerminkan uang yang
-					// benar-benar ada, termasuk dompet yang dinonaktifkan. Filter
-					// aktif hanya dipakai untuk label dan pemilih transaksi.
+					// Simpan semua dompet untuk daftar/label, tapi total saldo
+					// dihitung dari dompet AKTIF saja — dompet nonaktif bukan
+					// uang yang masih bisa dipakai (kesepakatan Danu).
 					setWallets(scopedWallets);
 					setRecentTransactions(scopedTransactions);
 					setCategoryOptions(categories);
@@ -393,7 +393,7 @@ export default function DashboardScreen() {
 	const primaryEnvelopeAlert = hideUnloadedData || hideAuxiliaryData ? undefined : envelopeAlerts[0];
 	const hasReview = !hideUnloadedData && !hideAuxiliaryData && !!reviewSummary && reviewSummary.count > 0;
 	const hasAttention = hasReview || !!primaryEnvelopeAlert;
-	const totalBalance = wallets.reduce(
+	const totalBalance = activeWallets.reduce(
 		(sum, wallet) => sum + Number(wallet.balance ?? 0),
 		0,
 	);
