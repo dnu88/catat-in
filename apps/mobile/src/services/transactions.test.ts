@@ -73,7 +73,36 @@ describe("Transaction Service", () => {
 		expect(supabase.from).not.toHaveBeenCalledWith("wallets");
 	});
 
-	test("createTransaction should include optional fields when provided", async () => {
+	test.each([
+	{ stillOwnsWrite: false, resolvedUserId: "user-123", change: "scope" },
+	{ stillOwnsWrite: true, resolvedUserId: "user-456", change: "principal" },
+])("does not insert a guarded Capture write when $change changes during auth lookup", async ({ stillOwnsWrite, resolvedUserId }) => {
+	let resolveLookup!: (result: { data: { user: { id: string } }; error: null }) => void;
+	const lookup = new Promise<{ data: { user: { id: string } }; error: null }>((resolve) => {
+		resolveLookup = resolve;
+	});
+	(supabase.auth.getUser as jest.Mock).mockReturnValueOnce(lookup);
+	const insert = jest.fn().mockReturnValue({
+		select: () => ({ single: async () => ({ data: { id: "tx-unexpected" }, error: null }) }),
+	});
+	(supabase.from as jest.Mock).mockReturnValue({ insert });
+	const originalScope = {};
+	let currentScope = originalScope;
+	const pending = createTransaction(
+		{ wallet_id: "w-1", transaction_type: "expense", amount: 50000, category: "Food", description: "Lunch" },
+		{ type: "personal" },
+		{ expectedUserId: "user-123", ownsWrite: () => currentScope === originalScope },
+	);
+	const rejected = expect(pending).rejects.toThrow("Capture write no longer matches the current scope");
+		expect(supabase.auth.getUser).toHaveBeenCalledTimes(1);
+		expect(insert).not.toHaveBeenCalled();
+	if (!stillOwnsWrite) currentScope = {};
+	resolveLookup({ data: { user: { id: resolvedUserId } }, error: null });
+	await rejected;
+	expect(insert).not.toHaveBeenCalled();
+});
+
+test("createTransaction should include optional fields when provided", async () => {
 		const mockData = { id: "tx-2" };
 		const mockSingle = jest
 			.fn()
