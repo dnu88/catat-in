@@ -19,6 +19,9 @@ import { useI18n } from "../../src/i18n/i18n-context";
 import {
 	createWallet,
 	deleteWallet,
+	deleteWalletPermanently,
+	countWalletTransactions,
+	restoreWallet,
 	listWallets,
 	updateWallet,
 	type Wallet,
@@ -72,9 +75,20 @@ const copy = {
 		error: "Gagal memuat dompet",
 		createError: "Gagal membuat dompet",
 		edit: "Edit",
-		delete: "Hapus",
-		deleteTitle: "Hapus dompet?",
-		deleteMessage: (name: string) => `${name} akan dihapus permanen.`,
+		delete: "Nonaktifkan",
+		deletePermanent: "Hapus permanen",
+		restore: "Pulihkan",
+		showInactive: "Tampilkan nonaktif",
+		hideInactive: "Sembunyikan nonaktif",
+		inactiveSection: "Dompet nonaktif",
+		hasHistory: "Punya riwayat transaksi — disimpan untuk laporan",
+		deletePermanentTitle: "Hapus permanen dompet?",
+		deletePermanentMessage: (name: string) => `${name} akan dihapus permanen dan tidak bisa dikembalikan.`,
+		deletePermanentError: "Gagal menghapus permanen dompet",
+		restoreError: "Gagal memulihkan dompet",
+		deleteTitle: "Nonaktifkan dompet?",
+		deleteMessage: (name: string) =>
+			`${name} akan dinonaktifkan. Saldonya tidak lagi dihitung di total, tapi riwayatnya tetap tersimpan.`,
 		update: "Simpan perubahan",
 		updateError: "Gagal mengubah dompet",
 		deleteError: "Gagal menghapus dompet",
@@ -108,9 +122,20 @@ const copy = {
 		error: "Failed to load wallets",
 		createError: "Failed to create wallet",
 		edit: "Edit",
-		delete: "Delete",
-		deleteTitle: "Delete wallet?",
-		deleteMessage: (name: string) => `${name} will be permanently deleted.`,
+		delete: "Deactivate",
+		deletePermanent: "Delete permanently",
+		restore: "Restore",
+		showInactive: "Show inactive",
+		hideInactive: "Hide inactive",
+		inactiveSection: "Inactive wallets",
+		hasHistory: "Has transaction history — kept for reports",
+		deletePermanentTitle: "Delete wallet permanently?",
+		deletePermanentMessage: (name: string) => `${name} will be deleted permanently and cannot be restored.`,
+		deletePermanentError: "Failed to delete wallet permanently",
+		restoreError: "Failed to restore wallet",
+		deleteTitle: "Deactivate wallet?",
+		deleteMessage: (name: string) =>
+			`${name} will be deactivated. Its balance stops counting toward the total, but its history is kept.`,
 		update: "Save changes",
 		updateError: "Failed to update wallet",
 		deleteError: "Failed to delete wallet",
@@ -158,6 +183,8 @@ export default function WalletsScreen() {
 	const polish = isPwaPolish();
 	const styles = useMemo(() => createStyles(theme, premium, polish), [theme, premium, polish]);
 	const [filter, setFilter] = useState<FilterType>("all");
+	const [showInactive, setShowInactive] = useState(false);
+	const [inactiveTxCounts, setInactiveTxCounts] = useState<Record<string, number>>({});
 	const [wallets, setWallets] = useState<ScopedWallet[]>([]);
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState<string | null>(null);
@@ -316,6 +343,75 @@ export default function WalletsScreen() {
 		}
 	};
 
+	const loadInactiveTxCounts = async (list: ScopedWallet[]) => {
+		try {
+			const entries = await Promise.all(
+				list.map(async (wallet) => [wallet.id, await countWalletTransactions(wallet.id)] as const),
+			);
+			setInactiveTxCounts(Object.fromEntries(entries));
+		} catch (err) {
+			console.error("Error counting wallet transactions:", err);
+		}
+	};
+
+	const toggleInactive = () => {
+		setShowInactive((value) => {
+			const next = !value;
+			if (next) void loadInactiveTxCounts(inactiveWallets);
+			return next;
+		});
+	};
+
+	const restoreConfirmedWallet = async (wallet: ScopedWallet) => {
+		setSubmitting(true);
+		setError(null);
+		try {
+			await restoreWallet(wallet.id, contextForWallet(wallet));
+			await loadWallets();
+		} catch (err) {
+			console.error("Error restoring wallet:", err);
+			setError(tx.restoreError);
+		} finally {
+			setSubmitting(false);
+		}
+	};
+
+	const handleDeletePermanent = (wallet: ScopedWallet) => {
+		if (!canCreate) return;
+		const known = inactiveTxCounts[wallet.id];
+		if (known === undefined) {
+			void loadInactiveTxCounts(inactiveWallets);
+			return;
+		}
+		if (known > 0) return; // tombol memang disabled; jaga-jaga
+		const message = tx.deletePermanentMessage(wallet.name);
+		const perform = async () => {
+			setSubmitting(true);
+			setError(null);
+			try {
+				await deleteWalletPermanently(wallet.id, contextForWallet(wallet));
+				await loadWallets();
+			} catch (err) {
+				console.error("Error deleting wallet permanently:", err);
+				setError(tx.deletePermanentError);
+			} finally {
+				setSubmitting(false);
+			}
+		};
+
+		if (Platform.OS === "web") {
+			if (typeof globalThis.confirm === "function" && globalThis.confirm(`${tx.deletePermanentTitle}\n\n${message}`)) {
+				void perform();
+			}
+			return;
+		}
+
+		Alert.alert(tx.deletePermanentTitle, message, [
+			{ text: tx.cancel, style: "cancel" },
+			{ text: tx.deletePermanent, style: "destructive", onPress: () => void perform() },
+		]);
+	};
+
 	const handleDelete = (wallet: ScopedWallet) => {
 		if (!canCreate) return;
 		const message = tx.deleteMessage(wallet.name);
@@ -366,6 +462,11 @@ export default function WalletsScreen() {
 		filter === "all"
 			? wallets
 			: wallets.filter((wallet) => wallet.type === filter);
+	// Opsi C (kesepakatan Danu): daftar default hanya dompet aktif; nonaktif
+	// muncul di seksi terpisah yang bisa dibuka-tutup.
+	const visibleWallets = filtered.filter(
+		(wallet) => showInactive || wallet.is_active !== false,
+	);
 	// Total saldo = sisa seluruh dompet AKTIF (kesepakatan Danu): dompet
 	// nonaktif tetap terdaftar di bawah tapi bukan uang yang masih dipakai.
 	const totalBalance = wallets
@@ -719,7 +820,23 @@ export default function WalletsScreen() {
 				{errorBlock}
 				{emptyBlock}
 
-				{filtered.map((wallet) => (
+				{inactiveWallets.length > 0 ? (
+					<Pressable
+						testID="wallets-inactive-toggle"
+						accessibilityRole="button"
+						accessibilityLabel={showInactive ? tx.hideInactive : tx.showInactive}
+						accessibilityState={{ expanded: showInactive }}
+						style={styles.inactiveSectionToggle}
+						onPress={toggleInactive}
+					>
+						<Text style={styles.inactiveSectionTitle}>
+							{`${tx.inactiveSection} (${inactiveWallets.length})`}
+						</Text>
+						<Text style={styles.inactiveSectionChevron}>{showInactive ? "−" : "+"}</Text>
+					</Pressable>
+				) : null}
+
+				{visibleWallets.map((wallet) => (
 					<View
 						key={wallet.id}
 						testID={`wallet-card-${wallet.id}`}
@@ -797,6 +914,56 @@ export default function WalletsScreen() {
 								{formatCurrency(Number(wallet.balance ?? 0))}
 							</Text>
 							<View style={styles.walletActions}>
+								{wallet.is_active === false ? (
+									<>
+										<Pressable
+											testID={`wallet-restore-${wallet.id}`}
+											accessibilityRole="button"
+											accessibilityLabel={`${tx.restore} ${wallet.name}`}
+											accessibilityState={{ disabled: !canCreate }}
+											style={[styles.walletActionButton, !canCreate && styles.disabledButton]}
+											onPress={() => canCreate && void restoreConfirmedWallet(wallet)}
+											disabled={!canCreate}
+										>
+											<Text style={styles.walletActionText}>{tx.restore}</Text>
+										</Pressable>
+										<Pressable
+											testID={`wallet-delete-permanent-${wallet.id}`}
+											accessibilityRole="button"
+											accessibilityLabel={`${tx.deletePermanent} ${wallet.name}`}
+											accessibilityState={{
+												disabled:
+													!canCreate ||
+													inactiveTxCounts[wallet.id] === undefined ||
+													inactiveTxCounts[wallet.id] > 0,
+											}}
+											style={[
+												styles.walletActionButton,
+												styles.walletDeleteButton,
+												(!canCreate ||
+													inactiveTxCounts[wallet.id] === undefined ||
+													inactiveTxCounts[wallet.id] > 0) &&
+													styles.disabledButton,
+											]}
+											onPress={() => canCreate && handleDeletePermanent(wallet)}
+											disabled={
+												!canCreate ||
+												inactiveTxCounts[wallet.id] === undefined ||
+												inactiveTxCounts[wallet.id] > 0
+											}
+										>
+											<Text style={[styles.walletActionText, styles.walletDeleteText]}>
+												{tx.deletePermanent}
+											</Text>
+										</Pressable>
+										{(inactiveTxCounts[wallet.id] ?? 0) > 0 ? (
+											<Text testID={`wallet-history-hint-${wallet.id}`} style={styles.walletHistoryHint}>
+												{tx.hasHistory}
+											</Text>
+										) : null}
+									</>
+								) : (
+								<>
 								<Pressable
 									testID={`wallet-edit-${wallet.id}`}
 									accessibilityRole="button"
@@ -827,6 +994,8 @@ export default function WalletsScreen() {
 										{tx.delete}
 									</Text>
 								</Pressable>
+								</>
+								)}
 							</View>
 						</View>
 					</View>
@@ -1172,7 +1341,20 @@ function createStyles(
 			fontWeight: polish ? "600" : "800",
 			...(premium ? { fontVariant: [...experienceTabularNumerals] } : null),
 		},
-		walletActions: { flexDirection: "row", gap: 8, flexWrap: "wrap" },
+		walletActions: { flexDirection: "row", gap: 8, flexWrap: "wrap", alignItems: "center" },
+		walletHistoryHint: { color: theme.colors.textMuted, fontSize: 11, flexBasis: "100%" },
+		inactiveSectionToggle: {
+			flexDirection: "row",
+			alignItems: "center",
+			justifyContent: "space-between",
+			minHeight: 44,
+			paddingHorizontal: 20,
+			paddingVertical: 10,
+			borderTopWidth: 1,
+			borderTopColor: theme.colors.borderSoft,
+		},
+		inactiveSectionTitle: { color: theme.colors.textSecondary, fontSize: 13, fontWeight: "600" },
+		inactiveSectionChevron: { color: theme.colors.textMuted, fontSize: 16, fontWeight: "600" },
 		walletActionButton: {
 			minHeight: 44,
 			justifyContent: "center",

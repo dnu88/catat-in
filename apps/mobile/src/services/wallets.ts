@@ -109,6 +109,60 @@ export async function updateWallet(
 	return data as Wallet;
 }
 
+/** Jumlah transaksi (keluar + masuk sebagai target transfer) untuk dompet. */
+export async function countWalletTransactions(id: string): Promise<number> {
+	const [byWallet, byTarget] = await Promise.all([
+		supabase.from("transactions").select("id", { count: "exact", head: true }).eq("wallet_id", id),
+		supabase.from("transactions").select("id", { count: "exact", head: true }).eq("target_wallet_id", id),
+	]);
+	if (byWallet.error) throw byWallet.error;
+	if (byTarget.error) throw byTarget.error;
+	return (byWallet.count ?? 0) + (byTarget.count ?? 0);
+}
+
+/** Aktifkan kembali dompet yang sebelumnya dinonaktifkan. */
+export async function restoreWallet(
+	id: string,
+	context: FinanceContext = defaultContext,
+): Promise<void> {
+	const userId = await getCurrentUserId();
+	const existing = await getWalletById(id);
+	if (!existing) throw new Error("Dompet tidak ditemukan");
+	if (!canUpdateInContext(context, existing, userId))
+		throw new Error("Akses lihat saja");
+
+	const { error } = await supabase
+		.from("wallets")
+		.update({ is_active: true, ...buildFinanceUpdateAudit(userId) })
+		.eq("id", id);
+
+	if (error) throw error;
+}
+
+/**
+ * Hapus permanen — hanya untuk dompet nonaktif yang TIDAK punya riwayat
+ * transaksi. Dompet dengan riwayat harus tetap ada karena laporan historis
+ * menunjuk wallet_id-nya.
+ */
+export async function deleteWalletPermanently(
+	id: string,
+	context: FinanceContext = defaultContext,
+): Promise<void> {
+	const userId = await getCurrentUserId();
+	const existing = await getWalletById(id);
+	if (!existing) throw new Error("Dompet tidak ditemukan");
+	if (!canDeleteInContext(context, existing, userId))
+		throw new Error("Akses lihat saja");
+	if (existing.is_active !== false)
+		throw new Error("Nonaktifkan dompet sebelum menghapus permanen");
+	if ((await countWalletTransactions(id)) > 0)
+		throw new Error("Dompet ini punya riwayat transaksi");
+
+	const { error } = await supabase.from("wallets").delete().eq("id", id);
+
+	if (error) throw error;
+}
+
 export async function deleteWallet(
 	id: string,
 	context: FinanceContext = defaultContext,

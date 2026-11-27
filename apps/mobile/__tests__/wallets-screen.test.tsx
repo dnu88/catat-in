@@ -17,6 +17,9 @@ const mockListWallets = jest.fn();
 const mockCreateWallet = jest.fn();
 const mockUpdateWallet = jest.fn();
 const mockDeleteWallet = jest.fn();
+const mockDeleteWalletPermanently = jest.fn();
+const mockRestoreWallet = jest.fn();
+const mockCountWalletTransactions = jest.fn();
 let mockCanCreate = true;
 let mockActiveContext:
 	| { type: "personal" }
@@ -41,6 +44,9 @@ jest.mock("../src/services/wallets", () => ({
 	createWallet: (...args: unknown[]) => mockCreateWallet(...args),
 	updateWallet: (...args: unknown[]) => mockUpdateWallet(...args),
 	deleteWallet: (...args: unknown[]) => mockDeleteWallet(...args),
+	deleteWalletPermanently: (...args: unknown[]) => mockDeleteWalletPermanently(...args),
+	restoreWallet: (...args: unknown[]) => mockRestoreWallet(...args),
+	countWalletTransactions: (...args: unknown[]) => mockCountWalletTransactions(...args),
 }));
 
 jest.mock("../src/state/finance-context", () => ({
@@ -174,6 +180,9 @@ describe("WalletsScreen", () => {
 		mockCreateWallet.mockResolvedValue({ id: "wallet-new" });
 		mockUpdateWallet.mockResolvedValue({ id: "wallet-personal" });
 		mockDeleteWallet.mockResolvedValue(undefined);
+		mockDeleteWalletPermanently.mockResolvedValue(undefined);
+		mockRestoreWallet.mockResolvedValue(undefined);
+		mockCountWalletTransactions.mockResolvedValue(0);
 	});
 
 	afterEach(() => {
@@ -228,6 +237,10 @@ describe("WalletsScreen", () => {
 		});
 		renderWallets();
 
+		// Opsi C: daftar default hanya aktif; nonaktif di seksi yang bisa dibuka.
+		expect(await screen.findByText("BCA Utama")).toBeTruthy();
+		expect(screen.queryByText("Tunai lama")).toBeNull();
+		fireEvent.press(screen.getByTestId("wallets-inactive-toggle"));
 		expect(await screen.findByText("Tunai lama")).toBeTruthy();
 		expect(screen.getByTestId("wallet-inactive-badge-w2")).toBeTruthy();
 		// Total saldo = dompet AKTIF saja (kesepakatan Danu); dompet nonaktif
@@ -237,6 +250,56 @@ describe("WalletsScreen", () => {
 		const split = String(screen.getByTestId("wallets-split-balance").props.children);
 		expect(split).toContain("Nonaktif");
 		expect(split).toContain("250.000");
+	});
+
+	it("restores an inactive wallet from the inactive section", async () => {
+		mockListWallets.mockImplementation(async (context: any) => {
+			if (context?.type === "household") return [];
+			return [
+				{ id: "w1", user_id: "u1", household_id: null, name: "BCA Utama", type: "bank", balance: 1000000, currency: "IDR", is_active: true },
+				{ id: "w2", user_id: "u1", household_id: null, name: "Tunai lama", type: "cash", balance: 250000, currency: "IDR", is_active: false },
+			];
+		});
+		renderWallets();
+
+		fireEvent.press(await screen.findByTestId("wallets-inactive-toggle"));
+		await screen.findByText("Tunai lama");
+		fireEvent.press(screen.getByTestId("wallet-restore-w2"));
+
+		await waitFor(() => expect(mockRestoreWallet).toHaveBeenCalledWith("w2", { type: "personal" }));
+	});
+
+	it("only offers permanent delete for inactive wallets without transaction history", async () => {
+		mockListWallets.mockImplementation(async (context: any) => {
+			if (context?.type === "household") return [];
+			return [
+				{ id: "w1", user_id: "u1", household_id: null, name: "BCA Utama", type: "bank", balance: 1000000, currency: "IDR", is_active: true },
+				{ id: "w2", user_id: "u1", household_id: null, name: "Tunai lama", type: "cash", balance: 250000, currency: "IDR", is_active: false },
+				{ id: "w3", user_id: "u1", household_id: null, name: "Lama berjejak", type: "bank", balance: 0, currency: "IDR", is_active: false },
+			];
+		});
+		// w2 bersih, w3 punya riwayat
+		mockCountWalletTransactions.mockImplementation(async (id: string) => (id === "w3" ? 5 : 0));
+		renderWallets();
+
+		fireEvent.press(await screen.findByTestId("wallets-inactive-toggle"));
+		await screen.findByText("Lama berjejak");
+		await waitFor(() => expect(mockCountWalletTransactions).toHaveBeenCalledWith("w3"));
+
+		const clean = screen.getByTestId("wallet-delete-permanent-w2");
+		const withHistory = screen.getByTestId("wallet-delete-permanent-w3");
+		expect(clean.props.accessibilityState?.disabled).toBe(false);
+		expect(withHistory.props.accessibilityState?.disabled).toBe(true);
+		expect(screen.getByTestId("wallet-history-hint-w3")).toBeTruthy();
+
+		const alertSpy = jest.spyOn(Alert, "alert").mockImplementation(() => undefined);
+		fireEvent.press(clean);
+		const destructive = alertSpy.mock.calls[0]?.[2]?.find((button) => button.style === "destructive");
+		expect(alertSpy.mock.calls[0]?.[0]).toBe("Hapus permanen dompet?");
+		destructive?.onPress?.();
+		await waitFor(() =>
+			expect(mockDeleteWalletPermanently).toHaveBeenCalledWith("w2", { type: "personal" }),
+		);
 	});
 
 	it("opens create wallet form and creates in the active context", async () => {
@@ -287,13 +350,13 @@ describe("WalletsScreen", () => {
 		fireEvent.press(await screen.findByTestId("wallet-delete-wallet-family"));
 		const buttons = alertSpy.mock.calls[0]?.[2];
 		expect(alertSpy).toHaveBeenCalledWith(
-			"Hapus dompet?",
-			"Dompet Keluarga akan dihapus permanen.",
+			"Nonaktifkan dompet?",
+			"Dompet Keluarga akan dinonaktifkan. Saldonya tidak lagi dihitung di total, tapi riwayatnya tetap tersimpan.",
 			expect.any(Array),
 		);
 		expect(buttons).toEqual(expect.arrayContaining([
 			expect.objectContaining({ text: "Batal", style: "cancel" }),
-			expect.objectContaining({ text: "Hapus", style: "destructive" }),
+			expect.objectContaining({ text: "Nonaktifkan", style: "destructive" }),
 		]));
 		buttons?.[0]?.onPress?.();
 		expect(mockDeleteWallet).not.toHaveBeenCalled();
@@ -323,7 +386,9 @@ describe("WalletsScreen", () => {
 		renderWallets("en");
 
 		fireEvent.press(await screen.findByTestId("wallet-delete-wallet-family"));
-		expect(confirmSpy).toHaveBeenCalledWith("Delete wallet?\n\nDompet Keluarga will be permanently deleted.");
+		expect(confirmSpy).toHaveBeenCalledWith(
+			"Deactivate wallet?\n\nDompet Keluarga will be deactivated. Its balance stops counting toward the total, but its history is kept.",
+		);
 		expect(mockDeleteWallet).not.toHaveBeenCalled();
 
 		confirmSpy.mockReturnValue(true);
