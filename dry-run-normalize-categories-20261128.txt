@@ -1,0 +1,110 @@
+2026-11-27 21:37:29,481 INFO HTTP Request: GET https://xqvtsgfakuehjwdmenuw.supabase.co/rest/v1/transactions?select=category_id&limit=1 "HTTP/2 400 Bad Request"
+2026-11-27 21:37:30,276 INFO HTTP Request: GET https://xqvtsgfakuehjwdmenuw.supabase.co/rest/v1/transactions?select=id%2Cuser_id%2Chousehold_id%2Ckategori%2Ccreated_at&offset=0&limit=500 "HTTP/2 200 OK"
+2026-11-27 21:37:30,518 INFO HTTP Request: GET https://xqvtsgfakuehjwdmenuw.supabase.co/rest/v1/categories?select=id%2Cuser_id%2Cname%2Ctype&offset=0&limit=500 "HTTP/2 200 OK"
+2026-11-27 21:37:31,186 INFO HTTP Request: GET https://xqvtsgfakuehjwdmenuw.supabase.co/rest/v1/categories?select=id%2Cuser_id%2Cname%2Ctype&offset=500&limit=500 "HTTP/2 200 OK"
+========================================================================
+Scan: 354 transactions, 561 categories, 45 users
+========================================================================
+NOTE: transactions.category_id is NOT present — the category-discipline
+migration has not been applied. Counts below are text-mapping only;
+--execute / --rollback require the migration first.
+========================================================================
+
+Makan & Minum  →  Food & Beverage  ⚠ GAP: canonical category missing for some users
+  user aa70df9b-ec18-423c-8f4c-caf86e5567fa: rows=27 todo=27 already_done=0 target_present=yes
+  user 8e9b1f97-75af-4ae1-862a-764650964527: rows=1 todo=1 already_done=0 target_present=yes
+  user 328a70e0-61a4-4704-8175-28c2f7341248: rows=1 todo=1 already_done=0 target_present=yes
+  user 21472727-34c8-472f-aa22-2b1540fa5060: rows=1 todo=1 already_done=0 target_present=yes
+  user a4812ef8-0c20-4f49-8122-0089ece40da5: rows=1 todo=1 already_done=0 target_present=yes
+  user 4511fb5f-0d0b-458a-ab07-a840c0d3a31f: rows=1 todo=1 already_done=0 target_present=yes
+  user 9497b8fc-d304-4e9d-a748-966379d7f5a7: rows=1 todo=1 already_done=0 target_present=yes
+  user 33e7e8ad-bfdd-4450-a625-14b4f4ee83d3: rows=1 todo=1 already_done=0 target_present=yes
+  user b64826e4-fa95-4d80-b6fd-174b11c36db8: rows=1 todo=1 already_done=0 target_present=yes
+  user 03ebbe0e-97f4-4922-8170-83cefe6c19d6: rows=1 todo=1 already_done=0 target_present=MISSING
+  user 4432498a-10ab-42a2-94e3-d9b1c8771476: rows=1 todo=1 already_done=0 target_present=yes
+  user 3fd74c2e-0c64-4c3b-be4f-cda92a217c24: rows=1 todo=1 already_done=0 target_present=yes
+  user 31cb3b2f-845b-4ded-9872-863d9d15b632: rows=1 todo=1 already_done=0 target_present=yes
+  user f596f686-1c66-4be3-bbc9-e02d76e15f67: rows=1 todo=1 already_done=0 target_present=yes
+  user cc788b6c-7650-49cc-8ada-730284f10b0e: rows=1 todo=1 already_done=0 target_present=yes
+  user 91a8c013-07b4-4faf-a766-eb6706fb63a6: rows=1 todo=1 already_done=0 target_present=yes
+  user aaa1d9e6-fca5-456c-b73e-e1e469c58757: rows=1 todo=1 already_done=0 target_present=yes
+  user 795cdb53-5660-4510-8a87-5ef1673d060f: rows=1 todo=1 already_done=0 target_present=yes
+  user e66735b3-aa31-4d68-b684-5b987687557f: rows=1 todo=1 already_done=0 target_present=yes
+  user f284efa6-566e-4969-b76c-d538a7332bc9: rows=1 todo=1 already_done=0 target_present=yes
+  TOTAL rows to update: 46
+
+Belanja Bulanan  →  Groceries
+  user aa70df9b-ec18-423c-8f4c-caf86e5567fa: rows=9 todo=9 already_done=0 target_present=yes
+  TOTAL rows to update: 9
+
+Transportasi  →  Transport  ⚠ GAP: canonical category missing for some users
+  user 33a2ea34-3756-42a0-830e-0da6d198ba60: rows=4 todo=4 already_done=0 target_present=yes
+  user aa70df9b-ec18-423c-8f4c-caf86e5567fa: rows=6 todo=6 already_done=0 target_present=yes
+  user 091830ed-bdb5-42fb-8549-9282b1d537b4: rows=2 todo=2 already_done=0 target_present=yes
+  user 4511fb5f-0d0b-458a-ab07-a840c0d3a31f: rows=1 todo=1 already_done=0 target_present=yes
+  user 9497b8fc-d304-4e9d-a748-966379d7f5a7: rows=1 todo=1 already_done=0 target_present=yes
+  user 33e7e8ad-bfdd-4450-a625-14b4f4ee83d3: rows=1 todo=1 already_done=0 target_present=yes
+  user b64826e4-fa95-4d80-b6fd-174b11c36db8: rows=1 todo=1 already_done=0 target_present=yes
+  user 03ebbe0e-97f4-4922-8170-83cefe6c19d6: rows=1 todo=1 already_done=0 target_present=MISSING
+  user 4432498a-10ab-42a2-94e3-d9b1c8771476: rows=1 todo=1 already_done=0 target_present=yes
+  user 31cb3b2f-845b-4ded-9872-863d9d15b632: rows=1 todo=1 already_done=0 target_present=yes
+  user cc788b6c-7650-49cc-8ada-730284f10b0e: rows=1 todo=1 already_done=0 target_present=yes
+  user 91a8c013-07b4-4faf-a766-eb6706fb63a6: rows=1 todo=1 already_done=0 target_present=yes
+  user aaa1d9e6-fca5-456c-b73e-e1e469c58757: rows=1 todo=1 already_done=0 target_present=yes
+  user 795cdb53-5660-4510-8a87-5ef1673d060f: rows=1 todo=1 already_done=0 target_present=yes
+  TOTAL rows to update: 23
+
+Kebutuhan Rumah & Pribadi  →  Household & Personal Care
+  user aa70df9b-ec18-423c-8f4c-caf86e5567fa: rows=4 todo=4 already_done=0 target_present=yes
+  user 04163df2-bc65-4178-b97f-fc5ebc9e4cd8: rows=1 todo=1 already_done=0 target_present=yes
+  TOTAL rows to update: 5
+
+Olahraga  →  Sport
+  user aa70df9b-ec18-423c-8f4c-caf86e5567fa: rows=1 todo=1 already_done=0 target_present=yes
+  TOTAL rows to update: 1
+
+Gaji  →  Salary  ⚠ GAP: canonical category missing for some users
+  user 33a2ea34-3756-42a0-830e-0da6d198ba60: rows=3 todo=3 already_done=0 target_present=yes
+  user aa70df9b-ec18-423c-8f4c-caf86e5567fa: rows=1 todo=1 already_done=0 target_present=yes
+  user 091830ed-bdb5-42fb-8549-9282b1d537b4: rows=1 todo=1 already_done=0 target_present=yes
+  user 04163df2-bc65-4178-b97f-fc5ebc9e4cd8: rows=2 todo=2 already_done=0 target_present=yes
+  user 03ebbe0e-97f4-4922-8170-83cefe6c19d6: rows=1 todo=1 already_done=0 target_present=MISSING
+  user 4432498a-10ab-42a2-94e3-d9b1c8771476: rows=1 todo=1 already_done=0 target_present=yes
+  user 3fd74c2e-0c64-4c3b-be4f-cda92a217c24: rows=1 todo=1 already_done=0 target_present=yes
+  user 31cb3b2f-845b-4ded-9872-863d9d15b632: rows=1 todo=1 already_done=0 target_present=yes
+  user f596f686-1c66-4be3-bbc9-e02d76e15f67: rows=1 todo=1 already_done=0 target_present=yes
+  user cc788b6c-7650-49cc-8ada-730284f10b0e: rows=1 todo=1 already_done=0 target_present=yes
+  user 91a8c013-07b4-4faf-a766-eb6706fb63a6: rows=1 todo=1 already_done=0 target_present=yes
+  user aaa1d9e6-fca5-456c-b73e-e1e469c58757: rows=1 todo=1 already_done=0 target_present=yes
+  user 795cdb53-5660-4510-8a87-5ef1673d060f: rows=1 todo=1 already_done=0 target_present=yes
+  user e66735b3-aa31-4d68-b684-5b987687557f: rows=1 todo=1 already_done=0 target_present=yes
+  user f284efa6-566e-4969-b76c-d538a7332bc9: rows=1 todo=1 already_done=0 target_present=yes
+  TOTAL rows to update: 18
+
+Lainnya  →  Other expenses
+  user aa70df9b-ec18-423c-8f4c-caf86e5567fa: rows=2 todo=2 already_done=0 target_present=yes
+  user 091830ed-bdb5-42fb-8549-9282b1d537b4: rows=5 todo=5 already_done=0 target_present=yes
+  user de80ca52-a711-4a3f-876d-c4f11e5cb1f6: rows=1 todo=1 already_done=0 target_present=yes
+  TOTAL rows to update: 8
+
+Duplicate consolidation: Kartu Kredit → Credit Card
+  user aa70df9b-ec18-423c-8f4c-caf86e5567fa: rows_to_repoint=1 (duplicate category row KEPT, only reported)
+  TOTAL rows to re-point: 1
+
+Unmapped `kategori` values (no matching user category, not in mapping):
+  food: 16 rows
+  Belanja Pribadi: 13 rows
+  Kesehatan: 6 rows
+  Hiburan: 4 rows
+  Makanan: 4 rows
+  Makan: 3 rows
+  Belanja: 2 rows
+  freelance: 2 rows
+  housing: 1 rows
+  other: 1 rows
+  investment: 1 rows
+  Hadiah & Donasi: 1 rows
+  Makanan & Minuman: 1 rows
+  Pendidikan: 1 rows
+
+DRY-RUN: nothing was written. Use --execute to apply (a JSON backup is created first).

@@ -27,7 +27,7 @@ jest.mock("expo-av", () => ({
     RecordingOptionsPresets: { HIGH_QUALITY: {} },
   },
 }));
-jest.mock("../src/config/features", () => ({ featureFlags: { voiceNote: false, importStatement: false } }));
+jest.mock("../src/config/features", () => ({ featureFlags: { voiceNote: false, importStatement: false, isCategoryAiDisciplineUser: () => false, categoryAiDisciplineUsers: [] } }));
 jest.mock("../src/services/voice-intake", () => ({ getVoiceAuthSession: jest.fn(), processVoiceTransaction: jest.fn(), uploadVoiceAudio: jest.fn() }));
 jest.mock("../src/hooks/useEntitlements", () => ({ useEntitlements: () => ({ data: null, loading: false, refresh: jest.fn() }) }));
 

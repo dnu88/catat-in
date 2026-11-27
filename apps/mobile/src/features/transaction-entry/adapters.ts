@@ -1,4 +1,5 @@
 import { getCategoryCanonicalId } from "../../services/category-taxonomy";
+import { featureFlags } from "../../config/features";
 import { categorizeReceiptItem } from "../../services/receipt-item-categorizer";
 import {
 	normalizeReceiptDate,
@@ -32,6 +33,18 @@ const CATEGORY_CONFIDENCE_THRESHOLD = 0.8;
 /** Canonical id of the generic "Lainnya" / "Other expenses" fallback category. */
 const GENERIC_CATEGORY_ID = "other_expenses";
 
+/**
+ * Names the review chip treats as "the generic Other category"
+ * (`suggestedCategoryFor` only shows a suggestion next to one of these).
+ */
+const DISCIPLINE_OTHER_NAMES = ["Lainnya", "Other", "Other expenses"];
+
+/** Minimal user-category shape passed in by the capture screen. */
+export type DisciplineUserCategory = {
+	name: string;
+	type?: string | null;
+};
+
 /** Two distinct probe dates used to detect whether a date string parsed. */
 const DATE_PROBE_A = new Date(2001, 0, 1);
 const DATE_PROBE_B = new Date(2002, 5, 15);
@@ -58,6 +71,95 @@ function isGenericCategory(category: string | null | undefined): boolean {
 /** Missing confidence is as uncertain as an explicitly low one. */
 function isLowConfidence(confidence: number | null): boolean {
 	return confidence === null || confidence < CATEGORY_CONFIDENCE_THRESHOLD;
+}
+
+function usableDisciplineCategories(
+	categories: DisciplineUserCategory[] | null | undefined,
+): DisciplineUserCategory[] {
+	return (categories ?? []).filter(
+		(category) => typeof category?.name === "string" && category.name.trim(),
+	);
+}
+
+/** The Other name to fall back to, preferring the user's own Other category. */
+function disciplineOtherName(categories: DisciplineUserCategory[]): string {
+	const listed = categories.map((category) => category.name.trim());
+	return (
+		DISCIPLINE_OTHER_NAMES.find(
+			(name) =>
+				listed.includes(name) &&
+				getCategoryCanonicalId(name) === GENERIC_CATEGORY_ID,
+		) ?? DISCIPLINE_OTHER_NAMES[0]
+	);
+}
+
+/**
+ * Final user-list guard for an AI category (voice kategori, receipt category).
+ *
+ * `resolveAiCategoryName`-style discipline, kept in the pure adapter layer so
+ * every entry source lands on a category the user actually owns:
+ * - the backend's own `category_suggestion` (it clamped an unknown category
+ *   to "other") is carried through as the waiting suggestion;
+ * - an AI name that matches no user category (case-insensitive, id/en
+ *   equivalent via canonical id) becomes Other with the original name stored
+ *   as `suggestedCategory`;
+ * - a name that matches keeps the exact user-list name;
+ * - flag OFF or an empty user list leaves the resolved category untouched.
+ */
+function disciplineCategory(
+	resolvedCategory: string,
+	aiCategory: string | null | undefined,
+	aiSuggestion: string | null | undefined,
+	categories: DisciplineUserCategory[] | null | undefined,
+	enabled: boolean = featureFlags.categoryAiDiscipline,
+): { category: string; suggestedCategory: string | null } {
+	const userCategories = usableDisciplineCategories(categories);
+	if (!enabled || userCategories.length === 0) {
+		return { category: resolvedCategory, suggestedCategory: null };
+	}
+
+	const userByCanonical = new Map<string, string>();
+	for (const category of userCategories) {
+		const canonical = getCategoryCanonicalId(category.name);
+		if (canonical && !userByCanonical.has(canonical)) {
+			userByCanonical.set(canonical, category.name.trim());
+		}
+	}
+	const otherName = disciplineOtherName(userCategories);
+
+	const rawAi = (aiCategory ?? "").trim();
+	const rawSuggestion = (aiSuggestion ?? "").trim();
+	// The backend already decided this category is outside the user list.
+	if (rawSuggestion) {
+		return { category: otherName, suggestedCategory: rawSuggestion };
+	}
+
+	const aiCanonical = getCategoryCanonicalId(rawAi);
+	if (
+		rawAi &&
+		aiCanonical !== GENERIC_CATEGORY_ID &&
+		rawAi.toLowerCase() !== "other" &&
+		!userByCanonical.has(aiCanonical)
+	) {
+		return { category: otherName, suggestedCategory: rawAi };
+	}
+
+	const resolvedCanonical = getCategoryCanonicalId(resolvedCategory);
+	const matched = userByCanonical.get(resolvedCanonical);
+	if (matched) {
+		return { category: matched, suggestedCategory: null };
+	}
+	return { category: otherName, suggestedCategory: null };
+}
+
+/** Metadata for the review chip, attached only when a suggestion waits. */
+function withSuggestedCategory(
+	extraction: Record<string, unknown>,
+	suggestedCategory: string | null,
+): Record<string, unknown> {
+	return suggestedCategory
+		? { ...extraction, suggestedCategory }
+		: extraction;
 }
 
 /**
@@ -168,6 +270,8 @@ export function textDraftsToDrafts(input: {
 export function voiceExtractionToDraft(
 	extraction: VoiceExtraction,
 	walletId: string | null,
+	userCategories?: DisciplineUserCategory[] | null,
+	discipline: boolean = featureFlags.categoryAiDiscipline,
 ): TransactionDraft | null {
 	if (extraction.status !== "done") return null;
 
@@ -177,31 +281,49 @@ export function voiceExtractionToDraft(
 	const transcript =
 		typeof extraction.transcript === "string" ? extraction.transcript.trim() : "";
 	const note = fields?.catatan?.trim();
+	const rawCategory = fields?.kategori?.trim() ?? "";
+	const disciplined = disciplineCategory(
+		rawCategory,
+		rawCategory,
+		null,
+		userCategories,
+		discipline,
+	);
 
-	return buildDraft({
+	const draft = buildDraft({
 		source: "voice",
 		transactionType: fields?.type === "income" ? "income" : "expense",
 		amount: isValidRupiahAmount(nominal) ? nominal : null,
-		category: fields?.kategori?.trim() ?? "",
+		category: disciplined.category,
 		description: note || transcript,
 		walletId,
 		date,
 		dateMissing: missing,
 		merchant: fields?.merchant?.trim() || null,
 		confidence: finiteConfidence(extraction.confidence),
-		extraction: { ...extraction } as Record<string, unknown>,
+		extraction: withSuggestedCategory(
+			{ ...extraction } as Record<string, unknown>,
+			disciplined.suggestedCategory,
+		),
 	});
+	return draft;
 }
 
 function receiptCategoryLabel(
 	extraction: ReceiptExtraction,
 	merchant: string | null,
+	userCategories?: DisciplineUserCategory[] | null,
 ): string {
-	return categorizeReceiptItem({
-		itemName: merchant ? `Struk ${merchant}` : "Transaksi dari struk",
-		merchant,
-		fallbackCategory: extraction.category,
-	}).category;
+	return disciplineCategory(
+		categorizeReceiptItem({
+			itemName: merchant ? `Struk ${merchant}` : "Transaksi dari struk",
+			merchant,
+			fallbackCategory: extraction.category,
+		}).category,
+		extraction.category ?? null,
+		extraction.category_suggestion ?? null,
+		userCategories,
+	).category;
 }
 
 /**
@@ -215,6 +337,8 @@ function receiptCategoryLabel(
 export function receiptExtractionToSummaryDraft(
 	extraction: ReceiptExtraction,
 	walletId: string | null,
+	userCategories?: DisciplineUserCategory[] | null,
+	discipline: boolean = featureFlags.categoryAiDiscipline,
 ): TransactionDraft | null {
 	const amount = isValidRupiahAmount(extraction.total_amount)
 		? extraction.total_amount
@@ -223,19 +347,34 @@ export function receiptExtractionToSummaryDraft(
 
 	const merchant = extraction.merchant?.trim() || null;
 	const { date, missing } = resolveExtractionDate(extraction.date);
+	const categorized = categorizeReceiptItem({
+		itemName: merchant ? `Struk ${merchant}` : "Transaksi dari struk",
+		merchant,
+		fallbackCategory: extraction.category,
+	});
+	const disciplined = disciplineCategory(
+		categorized.category,
+		extraction.category ?? null,
+		extraction.category_suggestion ?? null,
+		userCategories,
+		discipline,
+	);
 
 	return buildDraft({
 		source: "image",
 		transactionType: "expense",
 		amount,
-		category: receiptCategoryLabel(extraction, merchant),
+		category: disciplined.category,
 		description: merchant ? `Struk ${merchant}` : "Transaksi dari struk",
 		walletId,
 		date,
 		dateMissing: missing,
 		merchant,
 		confidence: finiteConfidence(extraction.confidence),
-		extraction: { ...extraction } as Record<string, unknown>,
+		extraction: withSuggestedCategory(
+			{ ...extraction } as Record<string, unknown>,
+			disciplined.suggestedCategory,
+		),
 	});
 }
 
@@ -304,11 +443,18 @@ export function receiptDraftsForMode(
 	extraction: ReceiptExtraction,
 	mode: ReceiptDraftMode,
 	walletId: string | null,
+	userCategories?: DisciplineUserCategory[] | null,
+	discipline: boolean = featureFlags.categoryAiDiscipline,
 ): TransactionDraft[] {
 	if (mode === "unreadable") return [];
 
 	if (mode === "total") {
-		const summary = receiptExtractionToSummaryDraft(extraction, walletId);
+		const summary = receiptExtractionToSummaryDraft(
+			extraction,
+			walletId,
+			userCategories,
+			discipline,
+		);
 		return summary ? [summary] : [];
 	}
 
@@ -326,23 +472,34 @@ export function receiptDraftsForMode(
 	const reconciles = total === null || subtotal === total;
 
 	return lines.map((line) => {
+		const categorized = categorizeReceiptItem({
+			itemName: line.name,
+			itemCategory: line.category,
+			merchant,
+			fallbackCategory: extraction.category,
+		});
+		const disciplined = disciplineCategory(
+			categorized.category,
+			line.category ?? extraction.category ?? null,
+			line.categorySuggestion ?? extraction.category_suggestion ?? null,
+			userCategories,
+			discipline,
+		);
 		const draft = buildDraft({
 			source: "image",
 			transactionType: "expense",
 			amount: isValidRupiahAmount(line.amount) ? line.amount : null,
-			category: categorizeReceiptItem({
-				itemName: line.name,
-				itemCategory: line.category,
-				merchant,
-				fallbackCategory: extraction.category,
-			}).category,
+			category: disciplined.category,
 			description: line.name,
 			walletId,
 			date,
 			dateMissing: missing,
 			merchant,
 			confidence,
-			extraction: { itemName: line.name, quantity: line.quantity },
+			extraction: withSuggestedCategory(
+				{ itemName: line.name, quantity: line.quantity },
+				disciplined.suggestedCategory,
+			),
 		});
 		if (reconciles) return draft;
 		// The split does not add up to the confirmed total: surface it as an

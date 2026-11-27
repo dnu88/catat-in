@@ -64,6 +64,17 @@ const mockSupabase = {
 	auth: {
 		getUser: jest.fn(async () => ({ data: { user: { id: "user-1" } } })),
 	},
+	// useTransactionsChanged (realtime refetch) butuh channel + removeChannel.
+	channel: jest.fn(() => ({
+		on: (
+			_event: string,
+			_filter: Record<string, unknown>,
+			_callback: (payload: unknown) => void,
+		) => ({ subscribe: () => ({}) }),
+		subscribe: () => ({}),
+		unsubscribe: () => ({}),
+	})),
+	removeChannel: jest.fn(async () => undefined),
 };
 
 jest.mock("expo-router", () => ({
@@ -76,6 +87,9 @@ jest.mock("expo-router", () => ({
 
 jest.mock("../src/lib/supabase", () => ({
 	useSupabase: () => ({ supabase: mockSupabase }),
+	get supabase() {
+		return mockSupabase;
+	},
 }));
 
 jest.mock("../src/services/budget-envelopes", () => {

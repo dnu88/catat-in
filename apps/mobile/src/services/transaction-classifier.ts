@@ -1,6 +1,7 @@
 import type { Category } from "./categories";
 import type { TransactionType } from "./transactions";
 import { getCategoryCanonicalId } from "./category-taxonomy";
+import { featureFlags } from "../config/features";
 
 export type ClassificationCategory = Pick<Category, "id" | "name" | "type">;
 
@@ -15,6 +16,12 @@ export type ClassifiedTransaction = {
 	confidence: number;
 	matchedKeywords: string[];
 	matchedConcept: string;
+	/**
+	 * Discipline mode: nama kategori yang disarankan AI/konsep namun TIDAK ada
+	 * di daftar kategori user. Menunggu keputusan user (chip di review) —
+	 * transaksi tetap disimpan di Other expenses sampai user memutuskan.
+	 */
+	suggestedCategory?: string | null;
 };
 
 type KeywordRule = string | { value: string; weight: number };
@@ -753,6 +760,7 @@ function resolveCategory(
 	concept: CategoryConcept | null,
 	categories: ClassificationCategory[],
 	transactionType: TransactionType,
+	discipline = false,
 ) {
 	const compatibleCategories = categories.filter(
 		(category) => !category.type || category.type === transactionType,
@@ -782,6 +790,19 @@ function resolveCategory(
 		});
 		if (partial) return { id: partial.id, name: partial.name };
 
+		if (discipline) {
+			// Kategori di luar daftar user tidak boleh tersimpan sebagai teks
+			// bebas — jatuh ke Other expenses; nama konsep disimpan sebagai
+			// SARAN yang menunggu keputusan user.
+			const otherFallback = compatibleCategories.find(
+				(category) => getCategoryCanonicalId(category.name) === "other_expenses",
+			);
+			return {
+				id: otherFallback?.id ?? null,
+				name: otherFallback?.name ?? "Lainnya",
+				suggestion: concept.fallbackName,
+			};
+		}
 		return { id: null, name: concept.fallbackName };
 	}
 
@@ -803,6 +824,7 @@ export function classifyTransactionText(
 	input: string,
 	categories: ClassificationCategory[] = [],
 	date = new Date(),
+	discipline = featureFlags.categoryAiDiscipline,
 ): ClassifiedTransaction | null {
 	const rawNote = input.trim();
 	if (!rawNote) return null;
@@ -823,7 +845,12 @@ export function classifyTransactionText(
 	const matchedConcept = best?.score > 0 ? best.concept : null;
 	const matchedKeywords = best?.score > 0 ? best.matchedKeywords : [];
 	const matchedMerchants = best?.score > 0 ? best.matchedMerchants : [];
-	const category = resolveCategory(matchedConcept, categories, transactionType);
+	const category = resolveCategory(
+		matchedConcept,
+		categories,
+		transactionType,
+		discipline,
+	);
 	const confidence = confidenceFromScore(best?.score ?? 0, Boolean(matchedConcept));
 
 	return {
@@ -837,6 +864,7 @@ export function classifyTransactionText(
 		confidence,
 		matchedKeywords,
 		matchedConcept: matchedConcept?.id ?? "unknown",
+		suggestedCategory: category.suggestion ?? null,
 	};
 }
 
@@ -844,15 +872,16 @@ export function classifyTransactionTextBatch(
   input: string,
   categories: ClassificationCategory[] = [],
   date = new Date(),
+  discipline = featureFlags.categoryAiDiscipline,
 ): ClassifiedTransaction[] {
-  const fullDraft = classifyTransactionText(input, categories, date);
+  const fullDraft = classifyTransactionText(input, categories, date, discipline);
   if (!fullDraft) return [];
 
   const segments = segmentTextAroundAmounts(input);
   if (segments.length < 2) return [fullDraft];
 
   const segmentDrafts = segments
-    .map((segment) => classifyTransactionText(segment, categories, date))
+    .map((segment) => classifyTransactionText(segment, categories, date, discipline))
     .filter((draft): draft is ClassifiedTransaction => Boolean(draft));
 
   // If we only got one valid segment, return the full draft as fallback

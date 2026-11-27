@@ -359,9 +359,11 @@ describe("Capture envelope suggestion", () => {
 		await waitFor(() => expect(mockAnalyzeTransactionText).toHaveBeenCalledTimes(1), {
 			timeout: 4000,
 		});
+		// Argumen ketiga = daftar kategori user (null saat flag discipline OFF).
 		expect(mockAnalyzeTransactionText).toHaveBeenCalledWith(
 			expect.anything(),
 			"Beli kopi 35rb",
+			null,
 		);
 		expect(mockInvoke).not.toHaveBeenCalled();
 	});

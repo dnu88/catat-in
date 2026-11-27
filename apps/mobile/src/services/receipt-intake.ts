@@ -17,6 +17,9 @@ export type ReceiptItemExtraction = {
 	total_price?: number | string | null;
 	line_total?: number | string | null;
 	category?: string | null;
+	// Disiplin kategori (backend memvalidasi ke daftar user): kategori di luar
+	// daftar dikirim sebagai "other" + nama asli model di sini.
+	category_suggestion?: string | null;
 };
 
 export type ReceiptExtraction = {
@@ -24,6 +27,8 @@ export type ReceiptExtraction = {
 	merchant?: string | null;
 	date?: string | null;
 	category?: string | null;
+	// Disiplin kategori: nama asli model bila kategori di-clamp ke "other".
+	category_suggestion?: string | null;
 	items?: ReceiptItemExtraction[];
 	confidence?: number | null;
 	readable?: boolean;
@@ -289,9 +294,15 @@ export type TextAiExtraction = {
 	transactions?: unknown[];
 };
 
+export type UserCategoryForPrompt = {
+	name: string;
+	type: string;
+};
+
 export async function analyzeTransactionText(
 	supabase: SupabaseClient,
 	text: string,
+	categories?: UserCategoryForPrompt[] | null,
 ): Promise<TextAiExtraction> {
 	const session = await getReceiptAuthSession(supabase);
 	if (!session?.access_token) {
@@ -304,7 +315,11 @@ export async function analyzeTransactionText(
 			"Content-Type": "application/json",
 			Authorization: `Bearer ${session.access_token}`,
 		},
-		body: JSON.stringify({ text }),
+		// Discipline mode: kirim daftar kategori user supaya backend memakai
+		// prompt yang terikat daftar itu (model dipaksa memilih, bukan mengarang).
+		body: JSON.stringify(
+			categories && categories.length > 0 ? { text, categories } : { text },
+		),
 	});
 
 	if (!response.ok) {
@@ -318,6 +333,7 @@ export async function analyzeTransactionText(
 export async function analyzeReceiptImage(
 	supabase: SupabaseClient,
 	asset: ReceiptImageAsset,
+	userCategories?: UserCategoryForPrompt[] | null,
 ): Promise<ReceiptExtraction> {
 	const session = await getReceiptAuthSession(supabase);
 	if (!session?.access_token) {
@@ -334,6 +350,12 @@ export async function analyzeReceiptImage(
 		safeFileName(asset, extensionForMime(mimeType)),
 		mimeType,
 	);
+	if (userCategories && userCategories.length > 0) {
+		// Disiplin kategori: daftar kategori user (JSON array) dikirim sebagai
+		// field multipart "categories" supaya backend mengikat prompt OCR ke
+		// daftar itu dan memvalidasi output model di kode.
+		formData.append("categories", JSON.stringify(userCategories));
+	}
 
 	const response = await fetch(`${getApiBaseUrl()}/api/v1/ai/receipt`, {
 		method: "POST",
@@ -414,6 +436,8 @@ export type ReceiptItemLine = {
 	amount: number;
 	quantity: number;
 	category: string | null;
+	/** Original model category when the backend clamped it to "other". */
+	categorySuggestion: string | null;
 };
 
 /**
@@ -432,6 +456,7 @@ export function receiptItemLines(
 			amount: entry.amount,
 			quantity: entry.qty,
 			category: entry.item.category ?? null,
+			categorySuggestion: entry.item.category_suggestion?.trim() || null,
 		}));
 }
 

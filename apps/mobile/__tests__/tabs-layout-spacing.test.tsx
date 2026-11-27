@@ -143,6 +143,8 @@ jest.mock("../src/config/features", () => ({
 		get simpleNavigation() {
 			return mockSimpleNavigation;
 		},
+		isCategoryAiDisciplineUser: jest.fn(() => false),
+		categoryAiDisciplineUsers: [],
 	},
 }));
 

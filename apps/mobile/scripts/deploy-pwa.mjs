@@ -230,6 +230,8 @@ export function publicRuntimeConfigBlock(injected = {}) {
     EXPO_PUBLIC_FEATURE_TRANSACTION_ENTRY_V2: process.env.EXPO_PUBLIC_FEATURE_TRANSACTION_ENTRY_V2,
     EXPO_PUBLIC_FEATURE_AI_AUTOSAVE_TEXT: process.env.EXPO_PUBLIC_FEATURE_AI_AUTOSAVE_TEXT,
     EXPO_PUBLIC_FEATURE_SIMPLE_PREMIUM_EXPERIENCE: process.env.EXPO_PUBLIC_FEATURE_SIMPLE_PREMIUM_EXPERIENCE,
+    EXPO_PUBLIC_FEATURE_CATEGORY_AI_DISCIPLINE: process.env.EXPO_PUBLIC_FEATURE_CATEGORY_AI_DISCIPLINE,
+    EXPO_PUBLIC_FEATURE_CATEGORY_AI_DISCIPLINE_USERS: process.env.EXPO_PUBLIC_FEATURE_CATEGORY_AI_DISCIPLINE_USERS,
   }
   const rolloutConfig = injected.config ?? readRolloutConfig()
   const voiceNoteFeature = resolveRolloutFlagValue({
@@ -274,6 +276,20 @@ export function publicRuntimeConfigBlock(injected = {}) {
     envFile: env,
     config: rolloutConfig,
   })
+  const categoryAiDisciplineFeature = resolveRolloutFlagValue({
+    envKey: 'EXPO_PUBLIC_FEATURE_CATEGORY_AI_DISCIPLINE',
+    configKey: 'categoryAiDiscipline',
+    env: rolloutEnv,
+    envFile: env,
+    config: rolloutConfig,
+  })
+  const categoryAiDisciplineUsersFeature = resolveRolloutFlagValue({
+    envKey: 'EXPO_PUBLIC_FEATURE_CATEGORY_AI_DISCIPLINE_USERS',
+    configKey: 'categoryAiDisciplineUsers',
+    env: rolloutEnv,
+    envFile: env,
+    config: rolloutConfig,
+  })
 
   if (!supabaseUrl || !supabaseAnonKey) {
     throw new Error('Missing public Supabase config for PWA deploy')
@@ -289,7 +305,7 @@ export function publicRuntimeConfigBlock(injected = {}) {
     },
   }
 
-  return `${marker}\n    <script>\n      var process = window.process = window.process || {};\n      process.env = process.env || {};\n      process.env.NODE_ENV = "production";\n      process.env.EXPO_PUBLIC_SUPABASE_URL = ${JSON.stringify(supabaseUrl)};\n      process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY = ${JSON.stringify(supabaseAnonKey)};\n      process.env.EXPO_PUBLIC_FEATURE_VOICE_NOTE = ${JSON.stringify(voiceNoteFeature)};\n      process.env.EXPO_PUBLIC_FEATURE_SIMPLE_NAVIGATION = ${JSON.stringify(simpleNavigationFeature)};\n      process.env.EXPO_PUBLIC_FEATURE_IMPORT_STATEMENT = ${JSON.stringify(importStatementFeature)};\n      process.env.EXPO_PUBLIC_FEATURE_TRANSACTION_ENTRY_V2 = ${JSON.stringify(transactionEntryV2Feature)};\n      process.env.EXPO_PUBLIC_FEATURE_AI_AUTOSAVE_TEXT = ${JSON.stringify(aiAutoSaveTextFeature)};\n      process.env.EXPO_PUBLIC_FEATURE_SIMPLE_PREMIUM_EXPERIENCE = ${JSON.stringify(simplePremiumExperienceFeature)};\n      process.env.APP_MANIFEST = ${JSON.stringify(JSON.stringify(manifest))};\n    </script>\n`
+  return `${marker}\n    <script>\n      var process = window.process = window.process || {};\n      process.env = process.env || {};\n      process.env.NODE_ENV = "production";\n      process.env.EXPO_PUBLIC_SUPABASE_URL = ${JSON.stringify(supabaseUrl)};\n      process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY = ${JSON.stringify(supabaseAnonKey)};\n      process.env.EXPO_PUBLIC_FEATURE_VOICE_NOTE = ${JSON.stringify(voiceNoteFeature)};\n      process.env.EXPO_PUBLIC_FEATURE_SIMPLE_NAVIGATION = ${JSON.stringify(simpleNavigationFeature)};\n      process.env.EXPO_PUBLIC_FEATURE_IMPORT_STATEMENT = ${JSON.stringify(importStatementFeature)};\n      process.env.EXPO_PUBLIC_FEATURE_TRANSACTION_ENTRY_V2 = ${JSON.stringify(transactionEntryV2Feature)};\n      process.env.EXPO_PUBLIC_FEATURE_AI_AUTOSAVE_TEXT = ${JSON.stringify(aiAutoSaveTextFeature)};\n      process.env.EXPO_PUBLIC_FEATURE_SIMPLE_PREMIUM_EXPERIENCE = ${JSON.stringify(simplePremiumExperienceFeature)};\n      process.env.EXPO_PUBLIC_FEATURE_CATEGORY_AI_DISCIPLINE = ${JSON.stringify(categoryAiDisciplineFeature)};\n      process.env.EXPO_PUBLIC_FEATURE_CATEGORY_AI_DISCIPLINE_USERS = ${JSON.stringify(categoryAiDisciplineUsersFeature)};\n      process.env.APP_MANIFEST = ${JSON.stringify(JSON.stringify(manifest))};\n    </script>\n`
 }
 
 function deployDistToTarget() {

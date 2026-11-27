@@ -4,8 +4,9 @@ Endpoints untuk fitur AI: chat input, OCR struk, insights.
 """
 
 import base64
+import json
 
-from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile, status
 from pydantic import BaseModel
 
 from app.core.admin import is_admin_user
@@ -34,6 +35,9 @@ class ChatInputRequest(BaseModel):
     # Hanya klien yang mewajibkan konfirmasi manusia (Capture premium) yang
     # meminta draf lokal saat seluruh provider AI gagal.
     allow_local_review: bool = False
+    # Daftar kategori milik user ({name, type}) untuk disiplin kategori AI:
+    # model hanya boleh memilih dari daftar ini + "other". None = perilaku lama.
+    categories: list[dict] | None = None
 
 
 class InsightRequest(BaseModel):
@@ -118,10 +122,12 @@ async def chat_input(body: ChatInputRequest, current_user=Depends(get_current_us
     try:
         if body.allow_local_review:
             result = await extract_transaction_from_text(
-                body.text, allow_local_review=True
+                body.text, allow_local_review=True, categories=body.categories
             )
         else:
-            result = await extract_transaction_from_text(body.text)
+            result = await extract_transaction_from_text(
+                body.text, categories=body.categories
+            )
     except RuntimeError as exc:
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
@@ -133,10 +139,29 @@ async def chat_input(body: ChatInputRequest, current_user=Depends(get_current_us
     return result
 
 
+def _parse_categories_form(raw: str | None) -> list[dict] | None:
+    """Field multipart `categories` (JSON array [{name, type}]) -> daftar dict.
+
+    Nilai kosong atau JSON yang tidak valid diabaikan (None) supaya endpoint
+    tetap berperilaku seperti jalur lama, bukan error 422.
+    """
+    if not raw or not raw.strip():
+        return None
+    try:
+        parsed = json.loads(raw)
+    except (json.JSONDecodeError, TypeError):
+        return None
+    if not isinstance(parsed, list):
+        return None
+    items = [item for item in parsed if isinstance(item, dict)]
+    return items or None
+
+
 @router.post("/receipt", dependencies=[Depends(rate_limit_ai)])
 async def analyze_receipt(
     request: Request,
     file: UploadFile = File(...),
+    categories: str | None = Form(None),
     current_user=Depends(get_current_user),
 ):
     if file.content_type not in ALLOWED_IMAGE_TYPES:
@@ -150,7 +175,11 @@ async def analyze_receipt(
     state = _enforce_ai_quota(current_user, "photo")
 
     try:
-        result = await analyze_receipt_image(image_data, file.content_type)
+        result = await analyze_receipt_image(
+            image_data,
+            file.content_type,
+            categories=_parse_categories_form(categories),
+        )
     except RuntimeError as exc:
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,

@@ -129,6 +129,94 @@ describe("featureFlags — simplePremiumExperience (redesign gate, default OFF)"
 		expect(flags.aiAutosaveText).toBe(false);
 		expect(flags.voiceNote).toBe(false);
 		expect(flags.importStatement).toBe(false);
+		expect(flags.categoryAiDiscipline).toBe(false);
+	});
+});
+
+describe("featureFlags — categoryAiDiscipline (AI category gate, default OFF)", () => {
+	const disciplineEnvKey = "EXPO_PUBLIC_FEATURE_CATEGORY_AI_DISCIPLINE";
+	let originalEnvValue: string | undefined;
+
+	beforeEach(() => {
+		originalEnvValue = process.env[disciplineEnvKey];
+		delete process.env[disciplineEnvKey];
+		delete (globalThis as { __KASWISE_FEATURE_FLAGS__?: unknown }).__KASWISE_FEATURE_FLAGS__;
+	});
+
+	afterEach(() => {
+		if (originalEnvValue === undefined) {
+			delete process.env[disciplineEnvKey];
+		} else {
+			process.env[disciplineEnvKey] = originalEnvValue;
+		}
+		delete (globalThis as { __KASWISE_FEATURE_FLAGS__?: unknown }).__KASWISE_FEATURE_FLAGS__;
+	});
+
+	it("defaults to OFF without env or override (all platforms)", () => {
+		expect(withPlatformOs("ios", () => loadFeatureFlags().categoryAiDiscipline)).toBe(false);
+		expect(withPlatformOs("web", () => loadFeatureFlags().categoryAiDiscipline)).toBe(false);
+	});
+
+	it("follows the env key when present", () => {
+		process.env[disciplineEnvKey] = "1";
+		expect(loadFeatureFlags().categoryAiDiscipline).toBe(true);
+		process.env[disciplineEnvKey] = "0";
+		expect(loadFeatureFlags().categoryAiDiscipline).toBe(false);
+	});
+
+	it("runtime override wins over env", () => {
+		process.env[disciplineEnvKey] = "1";
+		(globalThis as { __KASWISE_FEATURE_FLAGS__?: unknown }).__KASWISE_FEATURE_FLAGS__ = {
+			categoryAiDiscipline: false,
+		};
+		expect(loadFeatureFlags().categoryAiDiscipline).toBe(false);
+	});
+});
+
+describe("featureFlags — categoryAiDisciplineUsers (allowlist per user)", () => {
+	const usersEnvKey = "EXPO_PUBLIC_FEATURE_CATEGORY_AI_DISCIPLINE_USERS";
+	let originalEnvValue: string | undefined;
+
+	beforeEach(() => {
+		originalEnvValue = process.env[usersEnvKey];
+		delete process.env[usersEnvKey];
+		delete process.env["EXPO_PUBLIC_FEATURE_CATEGORY_AI_DISCIPLINE"];
+		delete (globalThis as { __KASWISE_FEATURE_FLAGS__?: unknown }).__KASWISE_FEATURE_FLAGS__;
+	});
+
+	afterEach(() => {
+		if (originalEnvValue === undefined) {
+			delete process.env[usersEnvKey];
+		} else {
+			process.env[usersEnvKey] = originalEnvValue;
+		}
+		delete (globalThis as { __KASWISE_FEATURE_FLAGS__?: unknown }).__KASWISE_FEATURE_FLAGS__;
+	});
+
+	it("allowlist kosong + flag global OFF → semua user baseline", () => {
+		const flags = loadFeatureFlags();
+		expect(flags.isCategoryAiDisciplineUser("aa70df9b-ec18-423c-8f4c-caf86e5567fa")).toBe(false);
+	});
+
+	it("user di allowlist aktif walau flag global OFF", () => {
+		process.env[usersEnvKey] = "AA70DF9B-EC18-423C-8F4C-CAF86E5567FA";
+		const flags = loadFeatureFlags();
+		expect(flags.isCategoryAiDisciplineUser("aa70df9b-ec18-423c-8f4c-caf86e5567fa")).toBe(true);
+		// user lain tetap baseline.
+		expect(flags.isCategoryAiDisciplineUser("11111111-1111-1111-1111-111111111111")).toBe(false);
+	});
+
+	it("allowlist menang atas flag global ON (hanya user daftar)", () => {
+		process.env[usersEnvKey] = "aa70df9b";
+		process.env["EXPO_PUBLIC_FEATURE_CATEGORY_AI_DISCIPLINE"] = "1";
+		const flags = loadFeatureFlags();
+		expect(flags.isCategoryAiDisciplineUser("aa70df9b-ec18-423c-8f4c-caf86e5567fa")).toBe(true);
+		expect(flags.isCategoryAiDisciplineUser("22222222-2222-2222-2222-222222222222")).toBe(false);
+	});
+
+	it("allowlist kosong + flag global ON → semua user", () => {
+		process.env["EXPO_PUBLIC_FEATURE_CATEGORY_AI_DISCIPLINE"] = "1";
+		expect(loadFeatureFlags().isCategoryAiDisciplineUser("22222222-2222-2222-2222-222222222222")).toBe(true);
 	});
 });
 
