@@ -1,3 +1,19 @@
+import { Platform } from "react-native";
+
+function withPlatformOs<T>(os: "web" | "ios" | "android", run: () => T): T {
+	const original = Object.getOwnPropertyDescriptor(Platform, "OS");
+	Object.defineProperty(Platform, "OS", { configurable: true, value: os });
+	try {
+		return run();
+	} finally {
+		if (original) {
+			Object.defineProperty(Platform, "OS", original);
+		} else {
+			delete (Platform as unknown as { OS?: string }).OS;
+		}
+	}
+}
+
 type FeatureFlagsGlobal = typeof globalThis & {
 	__KASWISE_FEATURE_FLAGS__?: {
 		simpleNavigation?: boolean;
@@ -52,9 +68,31 @@ describe("featureFlags — simplePremiumExperience (redesign gate, default OFF)"
 		}
 	});
 
-	it("keeps the redesigned experience off by default", () => {
-		expect(loadFeatureFlags().simplePremiumExperience).toBe(false);
+	it("defaults the redesigned experience ON for web (premium is the default web surface)", () => {
+		expect(
+			withPlatformOs("web", () => loadFeatureFlags().simplePremiumExperience),
+		).toBe(true);
 	});
+
+	it("keeps native off by default (native baseline unchanged)", () => {
+		expect(
+			withPlatformOs("ios", () => loadFeatureFlags().simplePremiumExperience),
+		).toBe(false);
+		expect(
+			withPlatformOs("android", () => loadFeatureFlags().simplePremiumExperience),
+		).toBe(false);
+	});
+
+	it.each(["0", "false", "no", "off"])(
+		"an explicitly present env value %p overrides the web default to OFF",
+		(value) => {
+			process.env[premiumEnvKey] = value;
+
+			expect(
+				withPlatformOs("web", () => loadFeatureFlags().simplePremiumExperience),
+			).toBe(false);
+		},
+	);
 
 	it("allows tests, previews and canaries to override the redesign", () => {
 		flagsGlobal.__KASWISE_FEATURE_FLAGS__ = {
@@ -82,8 +120,8 @@ describe("featureFlags — simplePremiumExperience (redesign gate, default OFF)"
 		expect(loadFeatureFlags().simplePremiumExperience).toBe(false);
 	});
 
-	it("stays independent from the existing rollout flags", () => {
-		const flags = loadFeatureFlags();
+	it("stays independent from the existing rollout flags (native default)", () => {
+		const flags = withPlatformOs("ios", () => loadFeatureFlags());
 
 		expect(flags.simplePremiumExperience).toBe(false);
 		expect(flags.simpleNavigation).toBe(false);
