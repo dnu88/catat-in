@@ -366,10 +366,11 @@ export default function WalletsScreen() {
 		filter === "all"
 			? wallets
 			: wallets.filter((wallet) => wallet.type === filter);
-	const totalBalance = wallets.reduce(
-		(sum, wallet) => sum + Number(wallet.balance ?? 0),
-		0,
-	);
+	// Total saldo = sisa seluruh dompet AKTIF (kesepakatan Danu): dompet
+	// nonaktif tetap terdaftar di bawah tapi bukan uang yang masih dipakai.
+	const totalBalance = wallets
+		.filter((wallet) => wallet.is_active !== false)
+		.reduce((sum, wallet) => sum + Number(wallet.balance ?? 0), 0);
 	// Dompet nonaktif tetap menyimpan uang: hitung terpisah supaya angka total
 	// tidak pernah menyembunyikan saldo yang tidak bisa dipakai transaksi baru.
 	const activeWallets = wallets.filter((wallet) => wallet.is_active !== false);

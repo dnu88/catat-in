@@ -230,7 +230,10 @@ describe("WalletsScreen", () => {
 
 		expect(await screen.findByText("Tunai lama")).toBeTruthy();
 		expect(screen.getByTestId("wallet-inactive-badge-w2")).toBeTruthy();
-		expect(screen.getByTestId("wallets-total-value").props.children).toContain("1.250.000");
+		// Total saldo = dompet AKTIF saja (kesepakatan Danu); dompet nonaktif
+		// tetap terlihat dengan badge dan saldonya dipisah di baris "Nonaktif".
+		expect(screen.getByTestId("wallets-total-value").props.children).toContain("1.000.000");
+		expect(screen.getByTestId("wallets-total-value").props.children).not.toContain("1.250.000");
 		const split = String(screen.getByTestId("wallets-split-balance").props.children);
 		expect(split).toContain("Nonaktif");
 		expect(split).toContain("250.000");

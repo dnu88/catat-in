@@ -353,15 +353,18 @@ describe("DashboardScreen dark luxury Home parity", () => {
 		expect(mockPush).toHaveBeenLastCalledWith("/(tabs)/settings");
 	});
 
-	it("counts inactive wallets in the Home total instead of hiding their money", async () => {
+	it("totals only ACTIVE wallets while still listing every wallet in the stack label", async () => {
 		jest.spyOn(featureFlags, "simpleNavigation", "get").mockReturnValue(true);
 		mockWallets = [
 			{ id: "wallet-1", name: "Cash", balance: 100000, is_active: true },
 			{ id: "wallet-2", name: "Tunai lama", balance: 250000, is_active: false },
 		];
 		const screen = renderDashboard();
+		// Label jujur: semua terdaftar, satu aktif.
 		await screen.findByText("2 dompet · 1 aktif");
-		expect(screen.getByTestId("home-total-balance").props.children).toBe("Rp 350.000");
+		// Total saldo = sisa dompet aktif saja (kesepakatan Danu): Rp 100.000,
+		// bukan Rp 350.000 yang mencampur dompet nonaktif.
+		expect(screen.getByTestId("home-total-balance").props.children).toBe("Rp 100.000");
 	});
 
 	it("simple Home places one concise attention rail before Recent with review first and budget second", async () => {
