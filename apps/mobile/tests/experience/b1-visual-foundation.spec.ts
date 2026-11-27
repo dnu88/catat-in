@@ -208,7 +208,7 @@ test.describe('B1 — transactions visual foundation (local preview)', () => {
     expect(amount?.['font-variant-numeric']).toContain('tabular-nums')
     expect(bigAmount?.['font-variant-numeric']).toContain('tabular-nums')
     expect(amount?.color).toBe('rgb(38, 50, 70)')
-    expect(incomeAmount?.color).toBe('rgb(22, 143, 168)') // fe.financialIncome
+    expect(incomeAmount?.color).toBe('rgb(15, 112, 137)') // fe.financialIncomeDeep
 
     // G04 — row rhythm comes from the token, not a one-off literal.
     expect(row?.['min-height']).toBe('56px')

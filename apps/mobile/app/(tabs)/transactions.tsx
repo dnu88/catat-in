@@ -34,8 +34,8 @@ import {
 	experienceTokens,
 	resolveExperienceTextStyle,
 } from "../../src/theme/experience-tokens";
-import { featureFlags } from "../../src/config/features";
 import { isPwaPolish, pwaHeroCaption } from "../../src/theme/pwa-polish";
+import { featureFlags } from "../../src/config/features";
 import {
 	filterToggleLabel,
 	shouldShowFilterScroller,
@@ -437,7 +437,7 @@ function TransactionRow({
 							style={[
 								styles.rowAmount,
 								item.transaction_type === "income"
-									? { color: fe.financialIncome }
+									? { color: isPwaPolish() ? fe.financialIncomeDeep : fe.financialIncome }
 									: { color: fe.financialExpense },
 							]}
 						>
@@ -1126,9 +1126,8 @@ function createStyles(
 			gap: theme.spacing.xs,
 			justifyContent: "flex-end",
 		},
-		// PWA polish: the item count is a caption, not a control, so it drops the pill chrome.
-		summaryBadge: polish ? {} : { backgroundColor: "rgba(255,255,255,0.14)", borderWidth: 1, borderColor: "rgba(255,255,255,0.22)", borderRadius: 999, paddingHorizontal: 13, paddingVertical: 7 },
-		summaryBadgeText: { color: fe.white, fontSize: 12, fontWeight: "600" },
+		summaryBadge: { borderWidth: polish ? 0 : 1, borderColor: "rgba(255,255,255,0.22)", borderRadius: 999, backgroundColor: polish ? "transparent" : "rgba(255,255,255,0.14)", paddingHorizontal: 13, paddingVertical: 7 },
+		summaryBadgeText: { color: polish ? "rgba(255,255,255,0.74)" : fe.white, fontSize: 12, fontWeight: polish ? "500" : "600" },
 		selectionToolbar: { marginTop: 12, paddingHorizontal: 14, paddingVertical: 12, borderRadius: 16, borderWidth: 0, backgroundColor: fe.white, flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" },
 		selectionCountBlock: {
 			flex: 1,
@@ -1164,19 +1163,19 @@ function createStyles(
 		},
 		selectionDeleteCountText: {
 			color: fe.white,
-			fontSize: 10,
-			fontWeight: theme.typography.fontWeight.extrabold,
-			lineHeight: 10,
+			fontSize: polish ? 11 : 10,
+			fontWeight: polish ? theme.typography.fontWeight.semibold : theme.typography.fontWeight.extrabold,
+			lineHeight: polish ? 11 : 10,
 		},
 		reportPeriodCard: { backgroundColor: fe.white, borderWidth: 0, borderRadius: 18, paddingHorizontal: 16, paddingVertical: 14, marginBottom: 4 },
-		reportPeriodTitle: { color: fe.muted, fontSize: 11, fontWeight: "600", marginBottom: 3 },
-		reportPeriodLabel: { color: fe.ink, fontSize: 14, fontWeight: "700" },
+		reportPeriodTitle: { color: fe.muted, fontSize: 11, fontWeight: polish ? "500" : "600", marginBottom: 3 },
+		reportPeriodLabel: { color: polish ? fe.ink : fe.ink, fontSize: 14, fontWeight: polish ? "600" : "700" },
 		periodRow: { flexDirection: "row", gap: 8, marginBottom: 16 },
 		periodChip: {
 			flex: 1,
 			paddingVertical: 10,
 			minHeight: premium ? experienceTokens.target.chipMinHeight : 44,
-			borderRadius: 14,
+			borderRadius: polish ? 12 : 14,
 			borderWidth: premium ? 1 : 0,
 			borderColor: premium ? fe.line : "transparent",
 			backgroundColor: fe.white,
@@ -1191,7 +1190,7 @@ function createStyles(
 		statCardShell: { flex: 1, minWidth: 0, minHeight: 132 },
 		statCard: { flex: 1, minHeight: 132, padding: 16, borderRadius: 20, backgroundColor: "rgba(255,255,255,0.12)", borderWidth: 1, borderColor: "rgba(255,255,255,0.18)", justifyContent: "space-between" },
 		statCardContent: { gap: 4 },
-		statLabel: { color: polish ? pwaHeroCaption : "rgba(255,255,255,0.70)", fontSize: 12, fontWeight: "600" },
+		statLabel: { color: "rgba(255,255,255,0.70)", fontSize: 12, fontWeight: "600" },
 		statValueText: {
 			color: fe.white,
 			...(premium
@@ -1215,13 +1214,13 @@ function createStyles(
 			paddingHorizontal: 14,
 			paddingVertical: 10,
 			minHeight: experienceTokens.target.chipMinHeight,
-			borderRadius: 999,
+			borderRadius: polish ? 12 : 999,
 			borderWidth: 1,
 			borderColor: fe.line,
 			backgroundColor: fe.white,
 		},
 		filterToggleLabel: { color: fe.ink, fontSize: 14, fontWeight: "600" },
-		filterToggleChevron: { color: fe.slate, fontSize: 14, fontWeight: "700" },
+		filterToggleChevron: { color: fe.slate, fontSize: 14, fontWeight: polish ? "600" : "700" },
 		swipeShell: { position: "relative", overflow: "hidden", borderRadius: 18, backgroundColor: fe.white },
 		swipeActions: {
 			position: "absolute",
@@ -1269,7 +1268,7 @@ function createStyles(
 		rowTitle: { color: fe.ink, fontSize: 14, fontWeight: "600" },
 		rowMerchant: { color: fe.slate, fontSize: 12, marginTop: 1 },
 		rowSub: { color: fe.muted, fontSize: 11, marginTop: 2 },
-		rowAmount: { fontSize: 14, fontWeight: "700", marginRight: 8, textAlign: "right" },
+		rowAmount: { fontSize: 14, fontWeight: polish ? "600" : "700", marginRight: 8, textAlign: "right" },
 		fab: { position: "absolute", right: 22, bottom: 104, width: 56, height: 56, borderRadius: 28, backgroundColor: fe.ink, alignItems: "center", justifyContent: "center", shadowColor: fe.navy, shadowOpacity: 0.22, shadowRadius: 14, shadowOffset: { width: 0, height: 8 }, elevation: 8 },
 		fabDisabled: { opacity: 0.45 },
 		fabIcon: { color: fe.white, fontSize: 26, fontWeight: "700", lineHeight: 28 },

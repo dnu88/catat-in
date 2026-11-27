@@ -2487,7 +2487,7 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"], polish = fals
 		heroBubbleCluster: { flexDirection: "row", flexWrap: "wrap", justifyContent: "center", alignContent: "center", gap: 8, paddingHorizontal: 6 },
 		heroBubble: { alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: "rgba(255,255,255,0.20)", shadowColor: fe.navy, shadowOpacity: 0.24, shadowRadius: 14, shadowOffset: { width: 0, height: 8 }, paddingHorizontal: 9 },
 		heroBubbleLabel: { color: "rgba(255,255,255,0.82)", fontSize: 11, fontWeight: "600", marginTop: 4, maxWidth: 78 },
-		heroBubblePercent: { color: fe.white, fontSize: 13, fontWeight: "800", marginTop: 1 },
+		heroBubblePercent: { color: fe.white, fontSize: 13, fontWeight: polish ? "600" : "800", marginTop: 1 },
 		headerRow: {
 			flexDirection: "row",
 			justifyContent: "space-between",
@@ -2497,8 +2497,8 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"], polish = fals
 		title: {
 			color: fe.white,
 			fontSize: theme.typography.fontSize["4xl"],
-			fontWeight: theme.typography.fontWeight.extrabold,
-			letterSpacing: theme.typography.letterSpacing.tight,
+			fontWeight: polish ? "600" : theme.typography.fontWeight.extrabold,
+			letterSpacing: polish ? -0.6 : theme.typography.letterSpacing.tight,
 		},
 		subtitle: {
 			color: polish ? pwaHeroCaption : "rgba(255,255,255,0.64)",
@@ -2609,14 +2609,14 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"], polish = fals
 		activePeriodTitle: {
 			color: fe.muted,
 			fontSize: 11,
-			fontWeight: "800",
-			textTransform: "uppercase",
-			letterSpacing: 0.35,
+			fontWeight: polish ? "600" : "800",
+			textTransform: polish ? "none" : "uppercase",
+			letterSpacing: polish ? 0 : 0.35,
 		},
 		activePeriodValue: {
 			color: fe.ink,
 			fontSize: 13,
-			fontWeight: "800",
+			fontWeight: polish ? "600" : "800",
 			lineHeight: 17,
 			marginTop: 1,
 		},
@@ -2641,7 +2641,7 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"], polish = fals
 		activePeriodResetText: {
 			color: brandText,
 			fontSize: 11,
-			fontWeight: "800",
+			fontWeight: polish ? "600" : "800",
 		},
 		savedRulesInline: {
 			borderTopWidth: 1,
@@ -2652,9 +2652,9 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"], polish = fals
 		savedRulesInlineTitle: {
 			color: fe.muted,
 			fontSize: 11,
-			fontWeight: "800",
-			textTransform: "uppercase",
-			letterSpacing: 0.35,
+			fontWeight: polish ? "600" : "800",
+			textTransform: polish ? "none" : "uppercase",
+			letterSpacing: polish ? 0 : 0.35,
 		},
 		savedRuleRow: {
 			gap: 6,
@@ -2699,13 +2699,13 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"], polish = fals
 		savedRuleName: {
 			color: fe.ink,
 			fontSize: 12,
-			fontWeight: "800",
+			fontWeight: polish ? "600" : "800",
 		},
 		savedRuleNameActive: { color: fe.white },
 		savedRuleSummary: {
 			color: fe.muted,
-			fontSize: 10,
-			fontWeight: "700",
+			fontSize: polish ? 11 : 10,
+			fontWeight: polish ? "500" : "700",
 		},
 		savedRuleSummaryActive: { color: fe.white },
 		customRulePrompt: {
@@ -2727,7 +2727,7 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"], polish = fals
 		saveRuleButtonText: {
 			color: brandText,
 			fontSize: 12,
-			fontWeight: "800",
+			fontWeight: polish ? "600" : "800",
 		},
 		saveRuleHint: {
 			color: fe.slate,
@@ -2768,7 +2768,7 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"], polish = fals
 		ruleManageName: {
 			color: fe.ink,
 			fontSize: 15,
-			fontWeight: "800",
+			fontWeight: polish ? "600" : "800",
 			textAlign: "center",
 		},
 		ruleManageSummary: {
@@ -2794,7 +2794,7 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"], polish = fals
 		ruleManageMenuText: {
 			color: fe.ink,
 			fontSize: 14,
-			fontWeight: "800",
+			fontWeight: polish ? "600" : "800",
 		},
 		ruleManageMenuDangerButton: {
 			borderColor: `${theme.colors.danger}35`,
@@ -2803,7 +2803,7 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"], polish = fals
 		ruleManageMenuDangerText: {
 			color: theme.colors.danger,
 			fontSize: 14,
-			fontWeight: "800",
+			fontWeight: polish ? "600" : "800",
 		},
 		renameModalKeyboardWrap: {
 			flex: 1,
@@ -2836,7 +2836,7 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"], polish = fals
 		renameRuleTitle: {
 			color: fe.ink,
 			fontSize: 14,
-			fontWeight: "800",
+			fontWeight: polish ? "600" : "800",
 			textAlign: "center",
 		},
 		renameRuleSummary: {
@@ -2868,7 +2868,7 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"], polish = fals
 		deleteRuleConfirmText: {
 			color: theme.colors.danger,
 			fontSize: 14,
-			fontWeight: "800",
+			fontWeight: polish ? "600" : "800",
 		},
 		ruleManageCancelButton: {
 			minHeight: 44,
@@ -2881,7 +2881,7 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"], polish = fals
 		ruleManageCancelText: {
 			color: fe.slate,
 			fontSize: 13,
-			fontWeight: "800",
+			fontWeight: polish ? "600" : "800",
 		},
 		stateCard: {
 			backgroundColor: fe.white,
@@ -2995,7 +2995,7 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"], polish = fals
 		envelopeEntryTitle: {
 			color: fe.ink,
 			fontSize: 15,
-			fontWeight: "800",
+			fontWeight: polish ? "600" : "800",
 		},
 		envelopeEntryMeta: {
 			color: fe.muted,
@@ -3017,7 +3017,7 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"], polish = fals
 		envelopeManageText: {
 			color: brandText,
 			fontSize: 12,
-			fontWeight: "800",
+			fontWeight: polish ? "600" : "800",
 		},
 		tabScrollView: {
 			marginHorizontal: -20,
@@ -3077,7 +3077,7 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"], polish = fals
 			fontSize: 12,
 			fontWeight: "600",
 		},
-		summaryValue: { fontSize: 18, fontWeight: "800", marginTop: 2 },
+		summaryValue: { fontSize: 18, fontWeight: polish ? "600" : "800", marginTop: 2 },
 		summarySavingRate: {
 			color: fe.muted,
 			fontSize: 11,
@@ -3128,7 +3128,7 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"], polish = fals
 		top5Title: {
 			color: fe.ink,
 			fontSize: 16,
-			fontWeight: "800",
+			fontWeight: polish ? "600" : "800",
 		},
 		top5Sub: { color: fe.slate, fontSize: 12 },
 		top5Row: {
@@ -3155,7 +3155,7 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"], polish = fals
 			borderWidth: 1,
 			borderColor: brandSoftBorder,
 		},
-		top5RankText: { color: brandText, fontSize: 12, fontWeight: "800" },
+		top5RankText: { color: brandText, fontSize: 12, fontWeight: polish ? "600" : "800" },
 		top5Label: {
 			color: fe.ink,
 			fontSize: 14,
@@ -3183,8 +3183,8 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"], polish = fals
 			backgroundColor: fe.navySurface,
 			borderWidth: 1,
 			borderColor: "rgba(255,255,255,0.18)",
-			shadowColor: fe.blueBright,
-			shadowOpacity: 0.28,
+			shadowColor: polish ? fe.navy : fe.blueBright,
+			shadowOpacity: polish ? 0.16 : 0.28,
 			shadowRadius: 30,
 			shadowOffset: { width: 0, height: 16 },
 			elevation: 8,
@@ -3221,16 +3221,16 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"], polish = fals
 		ringValue: {
 			color: fe.white,
 			fontSize: 14,
-			fontWeight: "900",
-			letterSpacing: -0.4,
+			fontWeight: polish ? "600" : "900",
+			letterSpacing: polish ? 0 : -0.4,
 		},
 		ringLabel: {
-			color: polish ? pwaHeroCaption : "rgba(255,255,255,0.62)",
+			color: polish ? "rgba(255,255,255,0.74)" : "rgba(255,255,255,0.62)",
 			fontSize: 11,
-			fontWeight: "700",
-			letterSpacing: 0.5,
+			fontWeight: polish ? "600" : "700",
+			letterSpacing: polish ? 0 : 0.5,
 			marginTop: 3,
-			textTransform: "uppercase",
+			textTransform: polish ? "none" : "uppercase",
 		},
 		catRow: {
 			flexDirection: "row",
@@ -3254,8 +3254,8 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"], polish = fals
 			justifyContent: "center",
 			borderWidth: 0,
 			position: "relative",
-			shadowColor: fe.blueBright,
-			shadowOpacity: 0.22,
+			shadowColor: polish ? fe.navy : fe.blueBright,
+			shadowOpacity: polish ? 0.16 : 0.22,
 			shadowRadius: 16,
 			shadowOffset: { width: 0, height: 9 },
 			elevation: 5,
@@ -3263,7 +3263,7 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"], polish = fals
 		bubbleSvg: { position: "absolute", top: 0, left: 0 },
 		bubbleContent: { alignItems: "center", justifyContent: "center", maxWidth: "80%", gap: 1 },
 		bubbleLabel: { color: "rgba(255,255,255,0.82)", fontSize: 11, fontWeight: "600", maxWidth: 72 },
-		bubbleText: { color: fe.white, fontSize: 12, fontWeight: "800" },
+		bubbleText: { color: fe.white, fontSize: 12, fontWeight: polish ? "600" : "800" },
 		catLeft: { flexDirection: "row", alignItems: "center", gap: 10, flex: 1 },
 		catEmoji: { fontSize: 18 },
 		catName: {
@@ -3276,7 +3276,7 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"], polish = fals
 		catPct: {
 			color: fe.ink,
 			fontSize: 13,
-			fontWeight: "800",
+			fontWeight: polish ? "600" : "800",
 		},
 		catBar: {
 			width: 60,
@@ -3330,7 +3330,7 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"], polish = fals
 		modalTitle: {
 			color: fe.ink,
 			fontSize: 18,
-			fontWeight: "800",
+			fontWeight: polish ? "600" : "800",
 			textAlign: "center",
 			marginBottom: 20,
 		},
@@ -3366,7 +3366,7 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"], polish = fals
 		modalValue: {
 			color: fe.ink,
 			fontSize: 20,
-			fontWeight: "800",
+			fontWeight: polish ? "600" : "800",
 			minWidth: 60,
 			textAlign: "center",
 		},
@@ -3465,7 +3465,7 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"], polish = fals
 		compareCurrent: {
 			color: fe.ink,
 			fontSize: 14,
-			fontWeight: "800",
+			fontWeight: polish ? "600" : "800",
 		},
 		compareDelta: {
 			fontSize: 11,
@@ -3492,13 +3492,13 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"], polish = fals
 		detailBackText: {
 			color: brandText,
 			fontSize: 28,
-			fontWeight: "800",
+			fontWeight: polish ? "600" : "800",
 			lineHeight: 30,
 		},
 		detailBackLabel: {
 			color: brandText,
 			fontSize: 13,
-			fontWeight: "800",
+			fontWeight: polish ? "600" : "800",
 		},
 		detailHeaderTitleWrap: {
 			flex: 1,
@@ -3533,7 +3533,7 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"], polish = fals
 		detailTxTitle: {
 			color: fe.ink,
 			fontSize: 13,
-			fontWeight: "800",
+			fontWeight: polish ? "600" : "800",
 		},
 		detailTxMeta: {
 			color: fe.muted,
@@ -3543,7 +3543,7 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"], polish = fals
 		detailTxAmount: {
 			color: fe.financialExpense,
 			fontSize: 13,
-			fontWeight: "800",
+			fontWeight: polish ? "600" : "800",
 		},
 	});
 }
