@@ -474,6 +474,15 @@ export default function SettingsScreen() {
 	const [avatarFilter, setAvatarFilter] = useState<AvatarGroup>("all");
 	const [draftPhotoUri, setDraftPhotoUri] = useState<string | null>(null);
 	const [draftAvatarKey, setDraftAvatarKey] = useState<string | null>(null);
+	// Tombol Acak (Opsi stok tak terbatas, disetujui Danu): seed acak ditaruh
+	// langsung ke draftAvatarKey — pratinjau dirender dari seed itu dan nilai
+	// yang tersimpan tetap string seed deterministik (format metadata sama).
+	const handleRandomAvatar = () => {
+		const seed = `acak-${Math.random().toString(36).slice(2, 8)}`;
+		setDraftAvatarKey(seed);
+		setDraftVisualMode("avatar");
+		setDraftPhotoUri(null);
+	};
 	const [draftVisualMode, setDraftVisualMode] = useState<ProfileVisualMode>("none");
 	const [profileSaving, setProfileSaving] = useState(false);
 	const [profileMessage, setProfileMessage] = useState<SeedResultState | null>(null);
@@ -1657,8 +1666,17 @@ export default function SettingsScreen() {
 								<View style={styles.sheetPreviewAvatar}>
 									{draftVisualMode === "photo" && draftPhotoUri ? (
 										<Image source={{ uri: draftPhotoUri }} style={styles.sheetPreviewImage} />
-									) : draftVisualMode === "avatar" && draftSelectedClayAvatar ? (
-										<ClayAvatarImage preset={draftSelectedClayAvatar} size={72} />
+									) : draftVisualMode === "avatar" && polish && draftAvatarKey ? (
+										<ClayAvatarImage
+											preset={
+												draftSelectedClayAvatar ?? {
+													id: draftAvatarKey,
+													label: language === "id" ? "Acak" : "Random",
+													seed: draftAvatarKey,
+												}
+											}
+											size={72}
+										/>
 									) : draftVisualMode === "avatar" && draftSelectedAvatar ? (
 										<ProfileAvatarIllustration preset={draftSelectedAvatar} theme={theme} size={72} />
 									) : polish ? (
@@ -1672,7 +1690,22 @@ export default function SettingsScreen() {
 								</Text>
 							</View>
 
-							<Text style={styles.avatarSectionTitle}>{language === "id" ? "Pilih Avatar" : "Choose Avatar"}</Text>
+							<View style={styles.avatarSectionRow}>
+								<Text style={styles.avatarSectionTitle}>{language === "id" ? "Pilih Avatar" : "Choose Avatar"}</Text>
+								{polish ? (
+									<Pressable
+										testID="settings-avatar-random"
+										accessibilityRole="button"
+										accessibilityLabel={language === "id" ? "Acak avatar" : "Randomize avatar"}
+										style={styles.avatarRandomButton}
+										onPress={handleRandomAvatar}
+									>
+										<Text style={styles.avatarRandomText}>
+											{language === "id" ? "🎲 Acak" : "🎲 Random"}
+										</Text>
+									</Pressable>
+								) : null}
+							</View>
 							{!polish ? (
 							<View style={styles.avatarTabs}>
 								{AVATAR_FILTERS.map((filter) => {
@@ -2146,6 +2179,21 @@ function createStyles(
 		},
 		sheetPreviewImage: { width: 76, height: 76, borderRadius: 38 },
 		sheetPreviewText: { color: theme.colors.textMuted, fontSize: 11, fontWeight: polish ? "500" : "700" },
+		avatarSectionRow: {
+			flexDirection: "row",
+			alignItems: "center",
+			justifyContent: "space-between",
+		},
+		avatarRandomButton: {
+			minHeight: 32,
+			paddingHorizontal: 12,
+			paddingVertical: 6,
+			borderRadius: 999,
+			borderWidth: 1,
+			borderColor: fe.line,
+			backgroundColor: fe.paper,
+		},
+		avatarRandomText: { color: fe.ink, fontSize: 12, fontWeight: "600" },
 		avatarSectionTitle: {
 			color: theme.colors.textPrimary,
 			fontSize: 15,
@@ -2164,7 +2212,7 @@ function createStyles(
 			rowGap: 14,
 		},
 		avatarOption: {
-			width: "31%",
+			width: polish ? "23%" : "31%",
 			aspectRatio: 1,
 			borderRadius: 999,
 			alignItems: "center",
