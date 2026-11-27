@@ -20,6 +20,8 @@ import { KaswiseIcon } from "../../src/components/icons/kaswise-icons";
 import { useTheme } from "../../src/theme/theme-context";
 import { financeEditorial as fe } from "../../src/theme/finance-editorial";
 import { isPwaPolish, pwaHeroCaption } from "../../src/theme/pwa-polish";
+import { CLAY_AVATARS, ClayAvatarImage, type ClayAvatarPreset } from "../../src/components/profile/ProfileAvatar";
+import { ProfileMonogram } from "../../src/components/profile/ProfileMonogram";
 import { useI18n } from "../../src/i18n/i18n-context";
 import { useEntitlements } from "../../src/hooks/useEntitlements";
 import { featureFlags } from "../../src/config/features";
@@ -589,15 +591,23 @@ export default function SettingsScreen() {
 				.slice(0, 2)
 				.map((part) => part.charAt(0).toUpperCase())
 				.join("") || "?";
-	const selectedAvatar = PROFILE_AVATARS.find(
-		(avatar) => avatar.id === profileAvatarKey,
-	);
-	const draftSelectedAvatar = PROFILE_AVATARS.find(
-		(avatar) => avatar.id === draftAvatarKey,
-	);
-	const filteredAvatars = PROFILE_AVATARS.filter(
-		(avatar) => avatarFilter === "all" || avatar.group === avatarFilter,
-	);
+	const selectedClayAvatar = polish
+		? CLAY_AVATARS.find((avatar) => avatar.id === profileAvatarKey)
+		: undefined;
+	const draftSelectedClayAvatar = polish
+		? CLAY_AVATARS.find((avatar) => avatar.id === draftAvatarKey)
+		: undefined;
+	const selectedAvatar = polish
+		? undefined
+		: PROFILE_AVATARS.find((avatar) => avatar.id === profileAvatarKey);
+	const draftSelectedAvatar = polish
+		? undefined
+		: PROFILE_AVATARS.find((avatar) => avatar.id === draftAvatarKey);
+	const filteredAvatars = polish
+		? CLAY_AVATARS
+		: PROFILE_AVATARS.filter(
+				(avatar) => avatarFilter === "all" || avatar.group === avatarFilter,
+		  );
 
 	const toggleDailyReminder = () => { void notifications.toggle("daily_reminder_enabled"); };
 	const toggleBillReminder = () => { void notifications.toggle("bill_reminder_enabled"); };
@@ -1058,8 +1068,12 @@ export default function SettingsScreen() {
 			<View style={styles.profileAvatar}>
 				{profilePhotoUrl ? (
 					<Image source={{ uri: profilePhotoUrl }} style={styles.profileAvatarImage} />
+				) : selectedClayAvatar ? (
+					<ClayAvatarImage preset={selectedClayAvatar} size={68} />
 				) : selectedAvatar ? (
 					<ProfileAvatarIllustration preset={selectedAvatar} theme={theme} size={68} />
+				) : polish ? (
+					<ProfileMonogram name={displayName} size={68} fallbackEmail={displayEmail} />
 				) : (
 					<Text style={styles.profileAvatarText}>{avatarInitials}</Text>
 				)}
@@ -1643,8 +1657,12 @@ export default function SettingsScreen() {
 								<View style={styles.sheetPreviewAvatar}>
 									{draftVisualMode === "photo" && draftPhotoUri ? (
 										<Image source={{ uri: draftPhotoUri }} style={styles.sheetPreviewImage} />
+									) : draftVisualMode === "avatar" && draftSelectedClayAvatar ? (
+										<ClayAvatarImage preset={draftSelectedClayAvatar} size={72} />
 									) : draftVisualMode === "avatar" && draftSelectedAvatar ? (
 										<ProfileAvatarIllustration preset={draftSelectedAvatar} theme={theme} size={72} />
+									) : polish ? (
+										<ProfileMonogram name={displayName} size={72} fallbackEmail={displayEmail} />
 									) : (
 										<Text style={styles.profileAvatarText}>{avatarInitials}</Text>
 									)}
@@ -1655,6 +1673,7 @@ export default function SettingsScreen() {
 							</View>
 
 							<Text style={styles.avatarSectionTitle}>{language === "id" ? "Pilih Avatar" : "Choose Avatar"}</Text>
+							{!polish ? (
 							<View style={styles.avatarTabs}>
 								{AVATAR_FILTERS.map((filter) => {
 									const active = avatarFilter === filter.key;
@@ -1675,6 +1694,7 @@ export default function SettingsScreen() {
 									);
 								})}
 							</View>
+							) : null}
 
 							<View style={styles.avatarGrid}>
 								{filteredAvatars.map((avatar) => {
@@ -1693,7 +1713,11 @@ export default function SettingsScreen() {
 											setDraftVisualMode("avatar");
 										}}
 										>
-											<ProfileAvatarIllustration preset={avatar} theme={theme} size={88} />
+											{polish ? (
+												<ClayAvatarImage preset={avatar as ClayAvatarPreset} size={88} />
+											) : (
+												<ProfileAvatarIllustration preset={avatar as ProfileAvatarPreset} theme={theme} size={88} />
+											)}
 											{selected ? (
 												<View style={styles.avatarCheck}>
 													<KaswiseIcon name="check" size={14} weight="fill" color={theme.colors.buttonPrimaryText} />

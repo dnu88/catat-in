@@ -29,6 +29,8 @@
   },
   "dependencies": {
     "@babel/runtime": "^7.29.2",
+    "@dicebear/core": "11.0.0",
+    "@dicebear/styles": "11.0.0",
     "@expo/metro-runtime": "^6.1.2",
     "@expo/server": "^0.7.5",
     "@kaswise/shared": "workspace:*",
