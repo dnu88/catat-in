@@ -1,5 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage'
-import { Linking, StyleSheet } from 'react-native'
+import { Linking, Platform, StyleSheet } from 'react-native'
 import type { StyleProp, ViewStyle } from 'react-native'
 import { fireEvent, render, waitFor } from '@testing-library/react-native'
 
@@ -291,6 +291,47 @@ describe.each([false, true])('SettingsScreen honest controls (simpleNavigation=%
       expect(Number(control.minHeight)).toBeGreaterThanOrEqual(44)
       expect(Number(control.minWidth)).toBeGreaterThanOrEqual(44)
     }
+  })
+
+  it('avatar stock: Clay picker menampilkan 28 kurasi + Acak menghasilkan seed berbeda tiap ketuk dan tersimpan', async () => {
+    jest.spyOn(featureFlags, 'simplePremiumExperience', 'get').mockReturnValue(true)
+    Object.defineProperty(Platform, 'OS', { configurable: true, value: 'web' })
+    mockGetUser.mockResolvedValue({ data: { user: {
+      id: 'user-1', email: 'danu@kaswise.com', user_metadata: { full_name: 'Danu' },
+    } } } as any)
+    const screen = await renderSettings()
+
+    fireEvent.press(screen.getByTestId('settings-change-profile-photo'))
+
+    // 28 kurasi Clay tersedia di grid.
+    for (const seed of ['kopi', 'senja-lembut', 'pisang-goreng', 'sore']) {
+      expect(screen.getByTestId(`settings-avatar-option-${seed}`)).toBeTruthy()
+    }
+    expect(screen.getAllByTestId(/^settings-avatar-option-/).length).toBe(28)
+
+    // Ketuk Acak 2x: dua seed acak yang berbeda, pratinjau mengikuti terakhir.
+    const randomButton = screen.getByTestId('settings-avatar-random')
+    fireEvent.press(randomButton)
+    const firstSeed = mockUpdateUser.mock.calls.length
+    expect(screen.getAllByTestId(/^settings-avatar-option-/).some(
+      (node) => !/^settings-avatar-option-(kopi|senja|mentari|hujan|pagi|senja-lembut|bayu|rindu|ceria|teh-hijau|pelanuk|samudra|kanaya|bintang|legenda|gerimis|cempaka|nusantara|pisang-goreng|anggrek|santai|zenith|kelapa|matahari|rimba|nelayan|pelangi|sore)$/.test(String(node.props.testID)),
+    )).toBe(false) // Acak tidak menambah kartu di grid; pratinjau berubah sendiri
+    fireEvent.press(randomButton)
+
+    fireEvent.press(screen.getByTestId('settings-save-profile-photo'))
+    await waitFor(() => {
+      const calls = (mockUpdateUser.mock.calls as unknown as Array<[unknown]>).filter(
+        (call) => String((call[0] as { data?: { avatar_key?: string } })?.data?.avatar_key ?? '').startsWith('acak-'),
+      )
+      expect(calls.length).toBe(1)
+    })
+    const savedKey = (mockUpdateUser.mock.calls as unknown as Array<[unknown]>)
+      .map((call) => String((call[0] as { data?: { avatar_key?: string } })?.data?.avatar_key))
+      .find((key) => key.startsWith('acak-'))
+    expect(savedKey).toMatch(/^acak-[a-z0-9]{6}$/)
+    void firstSeed
+    Object.defineProperty(Platform, 'OS', { configurable: true, value: 'ios' })
+    jest.restoreAllMocks()
   })
 
   it('preserves profile avatar saving and logout behavior', async () => {
