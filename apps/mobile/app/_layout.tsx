@@ -26,15 +26,18 @@ class ErrorBoundary extends Component<
 
 	render() {
 		if (this.state.hasError) {
-			return <RootErrorFallback />;
+			return <RootErrorFallback error={this.state.error} />;
 		}
 		return this.props.children;
 	}
 }
 
-function RootErrorFallback() {
+function RootErrorFallback({ error }: { error: Error | null }) {
 	const { t } = useI18n();
 	const { theme } = useTheme();
+	const detail = error
+		? `${error.name || "Error"}: ${String(error.message || "").slice(0, 220)}`
+		: null;
 
 	return (
 		<View
@@ -66,6 +69,21 @@ function RootErrorFallback() {
 			>
 				{t("appCrashedDescription")}
 			</Text>
+			{detail ? (
+				<Text
+					testID="app-crash-detail"
+					selectable
+					style={{
+						fontSize: 11,
+						marginTop: 12,
+						color: theme.colors.textSecondary,
+						textAlign: "center",
+						opacity: 0.8,
+					}}
+				>
+					{detail}
+				</Text>
+			) : null}
 		</View>
 	);
 }
