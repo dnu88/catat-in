@@ -6,6 +6,18 @@ import clayStyle from "@dicebear/styles/clay.json";
 
 const clay = new Style(clayStyle);
 
-export function clayAvatarSvgForSeed(seed: string, size: number): string {
-	return new Avatar(clay, { seed, size }).toString();
+// Definisi Clay tidak mengekspos opsi backgroundColor (options: []) — isi
+// manual dengan tile opaque yang konsisten (tint biru muda brand family).
+const AVATAR_TILE_COLOR = "#E8EEF7";
+
+export function clayAvatarSvgForSeed(
+	seed: string,
+	size: number,
+	backgroundColor: string = AVATAR_TILE_COLOR,
+): string {
+	const svg = new Avatar(clay, { seed, size }).toString();
+	return svg.replace(
+		/<svg([^>]*)>/,
+		`<svg$1><rect x="0" y="0" width="100%" height="100%" fill="${backgroundColor}"/>`,
+	);
 }

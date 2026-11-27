@@ -558,10 +558,14 @@ export default function DashboardScreen() {
 									<Image
 										testID="home-avatar-image"
 										source={{ uri: profilePhotoUrl }}
-										style={styles.avatarImage}
+										style={
+											avatarPolish
+												? { width: 40, height: 40, borderRadius: 20 }
+												: styles.avatarImage
+										}
 									/>
 								) : selectedClayAvatar ? (
-									<ClayAvatarImage preset={selectedClayAvatar} size={34} />
+									<ClayAvatarImage preset={selectedClayAvatar} size={40} />
 								) : selectedProfileAvatar ? (
 									<ProfileAvatarIllustration preset={selectedProfileAvatar} theme={theme} size={34} />
 								) : avatarPolish ? (
