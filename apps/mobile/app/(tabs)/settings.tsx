@@ -1078,7 +1078,7 @@ export default function SettingsScreen() {
 				{profilePhotoUrl ? (
 					<Image source={{ uri: profilePhotoUrl }} style={styles.profileAvatarImage} />
 				) : selectedClayAvatar ? (
-					<ClayAvatarImage preset={selectedClayAvatar} size={68} />
+					<ClayAvatarImage preset={selectedClayAvatar} size={64} />
 				) : selectedAvatar ? (
 					<ProfileAvatarIllustration preset={selectedAvatar} theme={theme} size={68} />
 				) : polish ? (
@@ -1675,7 +1675,7 @@ export default function SettingsScreen() {
 													seed: draftAvatarKey,
 												}
 											}
-											size={72}
+											size={76}
 										/>
 									) : draftVisualMode === "avatar" && draftSelectedAvatar ? (
 										<ProfileAvatarIllustration preset={draftSelectedAvatar} theme={theme} size={72} />
