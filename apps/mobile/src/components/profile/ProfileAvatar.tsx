@@ -1,4 +1,6 @@
-import Svg, { Circle, Path, Rect } from "react-native-svg";
+import Svg, { Circle, Path, Rect, SvgXml } from "react-native-svg";
+
+import { clayAvatarSvgForSeed } from "./clay-avatar";
 
 import { useTheme } from "../../theme/theme-context";
 
@@ -32,6 +34,45 @@ export const AVATAR_FILTERS: Array<{ key: AvatarGroup; labelId: string; labelEn:
 	{ key: "women", labelId: "Wanita", labelEn: "Women" },
 	{ key: "other", labelId: "Lainnya", labelEn: "Other" },
 ];
+
+/**
+ * Kurasi DiceBear Clay ber-seed tetap (disetujui Danu, 26 Nov) — avatar
+ * ilustrasi tanpa gender. Seed ditulis konstan supaya avatar stabil. Label
+ * Indonesia. avatar_key lama yang tidak ada di daftar ini dirender Monogram.
+ */
+export type ClayAvatarPreset = {
+	id: string;
+	label: string;
+	seed: string;
+};
+
+export const CLAY_AVATARS: ClayAvatarPreset[] = [
+	{ id: "kopi", label: "Kopi", seed: "kopi" },
+	{ id: "senja", label: "Senja", seed: "senja" },
+	{ id: "mentari", label: "Mentari", seed: "mentari" },
+	{ id: "hujan", label: "Hujan", seed: "hujan" },
+	{ id: "pagi", label: "Pagi", seed: "pagi" },
+	{ id: "senja-lembut", label: "Senja Lembut", seed: "senja-lembut" },
+	{ id: "bayu", label: "Bayu", seed: "bayu" },
+];
+
+export function ClayAvatarImage({
+	preset,
+	size,
+}: {
+	preset: ClayAvatarPreset;
+	size: number;
+}) {
+	const xml = clayAvatarSvgForSeed(preset.seed, size);
+	return (
+		<SvgXml
+			xml={xml}
+			width={size}
+			height={size}
+			accessibilityLabel={preset.label}
+		/>
+	);
+}
 
 export function colorWithAlpha(color: string, alpha: string) {
 	return /^#[0-9a-f]{6}$/i.test(color) ? `${color}${alpha}` : color;

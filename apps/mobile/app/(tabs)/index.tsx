@@ -15,7 +15,8 @@ import {
 	type KaswiseIconName,
 } from "../../src/components/icons/kaswise-icons";
 import { getUnreadNotificationCount } from "../../src/services/notifications";
-import { PROFILE_AVATARS, ProfileAvatarIllustration, readProfileVisualMetadata } from "../../src/components/profile/ProfileAvatar";
+import { CLAY_AVATARS, ClayAvatarImage, PROFILE_AVATARS, ProfileAvatarIllustration, readProfileVisualMetadata, type ClayAvatarPreset, type ProfileAvatarPreset } from "../../src/components/profile/ProfileAvatar";
+import { ProfileMonogram } from "../../src/components/profile/ProfileMonogram";
 
 import {
 	experienceIcon,
@@ -106,6 +107,7 @@ export default function DashboardScreen() {
 	// exactly ONE record CTA. The decorative wallet stack and every existing
 	// section (attention, recent, budget, review) stay untouched.
 	const premium = featureFlags.simplePremiumExperience;
+	const avatarPolish = isPwaPolish();
 	const polishWebHome = isPwaPolish();
 	const tx = useMemo(
 		() =>
@@ -467,9 +469,12 @@ export default function DashboardScreen() {
 		: userEmail
 			? userEmail.slice(0, 1).toUpperCase()
 			: "?";
-	const selectedProfileAvatar = PROFILE_AVATARS.find(
-		(avatar) => avatar.id === profileAvatarKey,
-	);
+	const selectedClayAvatar = avatarPolish
+		? CLAY_AVATARS.find((avatar) => avatar.id === profileAvatarKey)
+		: undefined;
+	const selectedProfileAvatar = avatarPolish
+		? undefined
+		: PROFILE_AVATARS.find((avatar) => avatar.id === profileAvatarKey);
 	const dateText = now.toLocaleDateString(isEn ? "en-US" : "id-ID", {
 		month: "long",
 		year: "numeric",
@@ -555,8 +560,12 @@ export default function DashboardScreen() {
 										source={{ uri: profilePhotoUrl }}
 										style={styles.avatarImage}
 									/>
+								) : selectedClayAvatar ? (
+									<ClayAvatarImage preset={selectedClayAvatar} size={34} />
 								) : selectedProfileAvatar ? (
 									<ProfileAvatarIllustration preset={selectedProfileAvatar} theme={theme} size={34} />
+								) : avatarPolish ? (
+									<ProfileMonogram name={userName} size={34} fallbackEmail={userEmail} />
 								) : (
 									<Text style={styles.avatarText}>{avatarInitials}</Text>
 								)}
