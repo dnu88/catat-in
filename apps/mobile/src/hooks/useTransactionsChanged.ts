@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useId, useRef } from "react";
 import { supabase } from "../lib/supabase";
 import { subscribeTransactionsChanges } from "../services/wallet-events";
 import { useFinanceContext } from "../state/finance-context";
@@ -18,6 +18,12 @@ export function useTransactionsChanged(onChanged: () => void, debounceMs = 400) 
 	const { activeContext } = useFinanceContext();
 	const callbackRef = useRef(onChanged);
 	callbackRef.current = onChanged;
+	// Setiap pemakaian hook butuh channel sendiri: supabase-js mengembalikan
+	// instance channel yang SUDAH subscribe untuk nama yang sama, dan
+	// `.on('postgres_changes')` setelah subscribe melempar
+	// "cannot add postgres_changes callbacks ... after subscribe()".
+	// (Nyata di produksi: Beranda + Laporan membuka konteks household yang sama.)
+	const instanceId = useId();
 
 	useEffect(() => {
 		let cancelled = false;
@@ -35,7 +41,11 @@ export function useTransactionsChanged(onChanged: () => void, debounceMs = 400) 
 		const unsubscribeBus = subscribeTransactionsChanges(schedule);
 
 		const channel = supabase
-			.channel(`transactions-changed:${activeContext.type}:${activeContext.type === "household" ? activeContext.householdId : "personal"}`)
+			.channel(
+				`transactions-changed:${activeContext.type}:${
+					activeContext.type === "household" ? activeContext.householdId : "personal"
+				}:${instanceId}`,
+			)
 			.on(
 				"postgres_changes",
 				{
