@@ -48,6 +48,8 @@ jest.mock("../src/config/features", () => ({
 		get importStatement() {
 			return false;
 		},
+		isCategoryAiDisciplineUser: jest.fn(() => false),
+		categoryAiDisciplineUsers: [],
 	},
 }));
 

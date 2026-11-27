@@ -2,6 +2,7 @@ import { createDraft, type TransactionDraft } from "./draft";
 import {
 	draftFingerprint,
 	receiptDraftMode,
+	receiptDraftsForMode,
 	receiptExtractionToItemDrafts,
 	receiptExtractionToSummaryDraft,
 	textDraftsToDrafts,
@@ -319,6 +320,180 @@ describe("receipt drafts", () => {
 		expect(receiptDraftMode(unreadable)).toBe("unreadable");
 		expect(receiptExtractionToSummaryDraft(unreadable, "w1")).toBeNull();
 		expect(receiptExtractionToItemDrafts(unreadable, "w1")).toEqual([]);
+	});
+});
+
+/** Production form: AI answers in Indonesian, user categories in English. */
+const disciplineUserCategories = [
+	{ name: "Food & Beverage", type: "expense" },
+	{ name: "Groceries", type: "expense" },
+	{ name: "Transportation", type: "expense" },
+	{ name: "Other expenses", type: "expense" },
+];
+
+describe("category discipline (voice & receipt)", () => {
+	const flagsGlobal = globalThis as {
+		__KASWISE_FEATURE_FLAGS__?: { categoryAiDiscipline?: boolean };
+	};
+
+	beforeAll(() => {
+		flagsGlobal.__KASWISE_FEATURE_FLAGS__ = { categoryAiDiscipline: true };
+	});
+
+	afterAll(() => {
+		delete flagsGlobal.__KASWISE_FEATURE_FLAGS__;
+	});
+
+	describe("voice drafts", () => {
+		test("an AI category outside the user list falls back to Other with the original name as suggestion", () => {
+			const draft = voiceExtractionToDraft(
+				voiceExtraction({ kategori: "Nonton Bioskop" }),
+				"w1",
+				disciplineUserCategories,
+			);
+			expect(draft?.category).toBe("Other expenses");
+			expect(draft?.extraction?.suggestedCategory).toBe("Nonton Bioskop");
+			expect(draft?.unresolvedFields).toContain("category");
+		});
+
+		test("an Indonesian AI category matches an equivalent English user category by canonical id", () => {
+			const draft = voiceExtractionToDraft(
+				voiceExtraction({ kategori: "Makan & Minum" }),
+				"w1",
+				disciplineUserCategories,
+			);
+			expect(draft?.category).toBe("Food & Beverage");
+			expect(draft?.extraction?.suggestedCategory).toBeUndefined();
+		});
+
+		test("an 'other' answer stays generic without a suggestion", () => {
+			const draft = voiceExtractionToDraft(
+				voiceExtraction({ kategori: "other" }),
+				"w1",
+				disciplineUserCategories,
+			);
+			expect(draft?.category).toBe("Other expenses");
+			expect(draft?.extraction?.suggestedCategory).toBeUndefined();
+		});
+
+		test("a missing kategori falls back to Other without a suggestion", () => {
+			const draft = voiceExtractionToDraft(
+				voiceExtraction({ kategori: null }),
+				"w1",
+				disciplineUserCategories,
+			);
+			expect(draft?.category).toBe("Other expenses");
+			expect(draft?.extraction?.suggestedCategory).toBeUndefined();
+		});
+
+		test("without a user list the draft keeps the raw extraction category", () => {
+			const draft = voiceExtractionToDraft(
+				voiceExtraction({ kategori: "Nonton Bioskop" }),
+				"w1",
+				null,
+			);
+			expect(draft?.category).toBe("Nonton Bioskop");
+			expect(draft?.extraction?.suggestedCategory).toBeUndefined();
+		});
+	});
+
+	describe("receipt drafts", () => {
+		test("a summary draft with an unknown receipt category falls back to Other with a suggestion", () => {
+			const extraction: ReceiptExtraction = {
+				total_amount: 50000,
+				merchant: null,
+				date: "2026-03-15",
+				category: "Nonton Bioskop",
+				confidence: 0.9,
+				readable: true,
+			};
+			const draft = receiptExtractionToSummaryDraft(
+				extraction,
+				"w1",
+				disciplineUserCategories,
+			);
+			expect(draft?.category).toBe("Other expenses");
+			expect(draft?.extraction?.suggestedCategory).toBe("Nonton Bioskop");
+		});
+
+		test("a summary draft with an Indonesian category keeps the exact English user name", () => {
+			const draft = receiptExtractionToSummaryDraft(
+				{
+					...receiptTotal,
+					merchant: null,
+					category: "Belanja Bulanan",
+				},
+				"w1",
+				disciplineUserCategories,
+			);
+			expect(draft?.category).toBe("Groceries");
+			expect(draft?.extraction?.suggestedCategory).toBeUndefined();
+		});
+
+		test("item drafts with an unknown per-item category fall back to Other with a suggestion", () => {
+			const extraction: ReceiptExtraction = {
+				total_amount: 35000,
+				merchant: null,
+				date: "2026-03-15",
+				category: "Nonton Bioskop",
+				confidence: 0.9,
+				readable: true,
+				items: [
+					{ name: "Tiket", qty: 1, price: 20000, category: "Hiburan" },
+					{ name: "Popcorn", qty: 1, price: 15000, category: "Makan & Minum" },
+				],
+			};
+			const drafts = receiptDraftsForMode(
+				extraction,
+				"items",
+				"w1",
+				disciplineUserCategories,
+			);
+			expect(drafts).toHaveLength(2);
+			expect(drafts[0].category).toBe("Other expenses");
+			expect(drafts[0].extraction?.suggestedCategory).toBe("Hiburan");
+			expect(drafts[1].category).toBe("Food & Beverage");
+			expect(drafts[1].extraction?.suggestedCategory).toBeUndefined();
+		});
+
+		test("a backend-provided category_suggestion is carried into the item draft", () => {
+			const extraction: ReceiptExtraction = {
+				total_amount: 5000,
+				merchant: null,
+				date: "2026-03-15",
+				category: "other",
+				category_suggestion: "Belanja Skripsi",
+				confidence: 0.9,
+				readable: true,
+				items: [
+					{
+						name: "Buku",
+						qty: 1,
+						price: 5000,
+						category: "other",
+						category_suggestion: "Buku & Alat Tulis",
+					},
+				],
+			};
+			const drafts = receiptDraftsForMode(
+				extraction,
+				"items",
+				"w1",
+				disciplineUserCategories,
+			);
+			expect(drafts[0].category).toBe("Other expenses");
+			expect(drafts[0].extraction?.suggestedCategory).toBe("Buku & Alat Tulis");
+		});
+
+		test("without a user list the summary draft keeps the categorizer result", () => {
+			const draft = receiptExtractionToSummaryDraft(
+				{ ...receiptTotal, merchant: null, category: "Nonton Bioskop" },
+				"w1",
+				null,
+			);
+			expect(draft?.category).toBe("Lainnya");
+			expect(draft?.extraction?.suggestedCategory).toBeUndefined();
+		});
 	});
 });
 

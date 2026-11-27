@@ -17,6 +17,8 @@ import {
 	type FinanceContext,
 } from "./finance-context-query";
 import { normalizeTransaction, type Transaction } from "./transactions";
+import { featureFlags } from "../config/features";
+import { areCategoryNamesEquivalent } from "./category-taxonomy";
 
 /**
  * Atomic, idempotent persistence for a reviewed transaction-entry batch.
@@ -44,6 +46,11 @@ export type SaveEntryInput = {
 	 */
 	wallets?: WalletOption[];
 	categories?: CategoryOption[];
+	/**
+	 * Saklar rilis 27 Nov: disiplin kategori aktif untuk user ini — payload
+	 * menyertakan category_id hanya bila true (allowlist per user).
+	 */
+	categoryDiscipline?: boolean;
 };
 
 export type SaveEntryResult = {
@@ -123,8 +130,12 @@ function buildValidationContext(input: SaveEntryInput): DraftValidationContext {
 	};
 }
 
-function buildDraftPayload(draft: TransactionDraft): Record<string, unknown> {
-	return {
+function buildDraftPayload(
+	draft: TransactionDraft,
+	categories: CategoryOption[] | undefined,
+	categoryDiscipline?: boolean,
+): Record<string, unknown> {
+	const payload: Record<string, unknown> = {
 		wallet_id: draft.walletId,
 		target_wallet_id: draft.targetWalletId,
 		transaction_type: draft.transactionType,
@@ -141,6 +152,16 @@ function buildDraftPayload(draft: TransactionDraft): Record<string, unknown> {
 		is_verified: false,
 		confidence: draft.confidence,
 	};
+	// P2 category discipline: tulis category_id dari daftar kategori yang
+	// dibawa caller (id/en ekuivalen). RPC juga resolve dari nama bila kosong.
+	if ((categoryDiscipline ?? featureFlags.categoryAiDiscipline) &&
+		draft.category.trim()) {
+		const category = categories?.find((option) =>
+			Boolean(option.id) && areCategoryNamesEquivalent(option.name, draft.category),
+		);
+		if (category?.id) payload.category_id = category.id;
+	}
+	return payload;
 }
 
 function extractMessage(error: unknown): string {
@@ -270,7 +291,9 @@ export async function saveEntry(
 			p_context_type: financeContext.type,
 			p_household_id:
 				financeContext.type === "household" ? financeContext.householdId : null,
-			p_drafts: input.drafts.map(buildDraftPayload),
+			p_drafts: input.drafts.map((draft) =>
+				buildDraftPayload(draft, input.categories, input.categoryDiscipline),
+			),
 		});
 		data = response.data;
 		error = response.error;

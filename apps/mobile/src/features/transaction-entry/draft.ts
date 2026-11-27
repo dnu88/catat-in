@@ -45,6 +45,12 @@ export type WalletOption = {
 
 export type CategoryOption = {
 	name: string;
+	/**
+	 * P2 category discipline: id kategori user bila diketahui, dipakai untuk
+	 * menulis transactions.category_id saat simpan. Opsional — caller tanpa id
+	 * (legacy) tetap valid; server resolve dari nama.
+	 */
+	id?: string;
 };
 
 export type DraftValidationContext = {

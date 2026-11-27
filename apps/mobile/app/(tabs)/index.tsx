@@ -2,6 +2,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Image, Platform, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useFocusEffect, useRouter } from "expo-router";
+import { useTransactionsChanged } from "../../src/hooks/useTransactionsChanged";
 import { LinearGradient } from "expo-linear-gradient";
 
 import { FinanceContextSwitcher } from "../../src/components/FinanceContextSwitcher";
@@ -390,6 +391,14 @@ export default function DashboardScreen() {
 			setRefreshing(false);
 		}
 	}, [loadDashboard]);
+
+	// Refetch tanpa pindah tab / pull-to-refresh: perubahan transaksi (AI teks,
+	// suara, struk, manual, edit, hapus, undo auto-save) di perangkat yang sama
+	// maupun dari anggota household lain (realtime). Debounce di dalam hook;
+	// guard mounted di loadDashboard tetap berlaku.
+	useTransactionsChanged(() => {
+		void loadDashboard();
+	});
 
 	const hideAuxiliaryData = premium && auxiliaryScope !== scopeKey;
 	const primaryEnvelopeAlert = hideUnloadedData || hideAuxiliaryData ? undefined : envelopeAlerts[0];

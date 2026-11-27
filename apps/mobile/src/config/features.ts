@@ -11,6 +11,8 @@ type FeatureOverride = {
 	transactionEntryV2?: boolean;
 	aiAutosaveText?: boolean;
 	simplePremiumExperience?: boolean;
+	categoryAiDiscipline?: boolean;
+	categoryAiDisciplineUsers?: string;
 };
 
 function featureOverrides() {
@@ -85,5 +87,46 @@ export const featureFlags = {
 			return true;
 		}
 		return false;
+	},
+	/**
+	 * Gates the AI category discipline: the model must pick from the user's
+	 * category list (+ Other), a suggestion for an unknown category is stored
+	 * separately and waits for the user's decision, and merchant corrections
+	 * become reusable rules. OFF = the previous free-text fallback behaviour.
+	 */
+	get categoryAiDiscipline() {
+		return (
+			featureOverrides()?.categoryAiDiscipline ??
+			flagEnabled(processEnv?.EXPO_PUBLIC_FEATURE_CATEGORY_AI_DISCIPLINE)
+		);
+	},
+	/**
+	 * Per-user allowlist (saklar rilis 27 Nov: akun Danu dulu). Empty string /
+	 * kosong = tak ada user yang di-allowlist lewat env ini.
+	 */
+	get categoryAiDisciplineUsers(): string[] {
+		const raw =
+			featureOverrides()?.categoryAiDisciplineUsers ??
+			processEnv?.EXPO_PUBLIC_FEATURE_CATEGORY_AI_DISCIPLINE_USERS ??
+			"";
+		return String(raw)
+			.split(",")
+			.map((value) => value.trim().toLowerCase())
+			.filter(Boolean);
+	},
+	/**
+	 * Disiplin kategori untuk SATU user: allowlist menang bila berisi id-nya
+	 * (flag global tidak perlu ON); tanpa allowlist, ikut flag global.
+	 * Override global (test) tetap menang supaya tes lama tidak berubah.
+	 */
+	isCategoryAiDisciplineUser(userId: string | null | undefined): boolean {
+		const override = featureOverrides()?.categoryAiDiscipline;
+		const users = this.categoryAiDisciplineUsers;
+		if (users.length > 0) {
+			const id = String(userId ?? "").trim().toLowerCase();
+			// Env boleh berisi id penuh atau prefix unik (mis. `aa70df9b`).
+			return Boolean(id && users.some((entry) => id === entry || id.startsWith(entry)));
+		}
+		return override ?? this.categoryAiDiscipline;
 	},
 };

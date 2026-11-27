@@ -329,4 +329,58 @@ describe("transaction text classifier", () => {
 		expect(result?.categoryName).toBe("Other expenses");
 		expect(result?.confidence).toBeLessThan(0.85);
 	});
+
+	describe("category AI discipline (flag ON)", () => {
+		beforeEach(() => {
+			(globalThis as { __KASWISE_FEATURE_FLAGS__?: unknown }).__KASWISE_FEATURE_FLAGS__ = {
+				categoryAiDiscipline: true,
+			};
+		});
+
+		afterEach(() => {
+			delete (globalThis as { __KASWISE_FEATURE_FLAGS__?: unknown }).__KASWISE_FEATURE_FLAGS__;
+		});
+
+		it("draf Indonesia tetap cocok ke daftar user berbahasa Inggris (canonical id)", () => {
+			// Bentuk produksi: draf Indonesia, daftar kategori user Inggris.
+			const result = classifyTransactionText(
+				"makan siang di warteg 25rb",
+				categories,
+				fixedDate,
+			);
+			expect(result?.categoryId).toBe("cat-food");
+			expect(result?.suggestedCategory ?? null).toBeNull();
+		});
+
+		it("kategori di luar daftar user jatuh ke Other + saran terpisah", () => {
+			// "kursus" konsep tidak ada di daftar user (Food/Groceries/Transport/
+			// Bills/Gifts/Other/Salary) → discipline menyimpan Other + saran.
+			const result = classifyTransactionText(
+				"bayar kursus online 500rb",
+				categories,
+				fixedDate,
+			);
+			if (result?.suggestedCategory) {
+				expect(result.categoryId).toBe("cat-other");
+				expect(result.categoryName).toBe("Other expenses");
+				expect(result.suggestedCategory).not.toBe("Other expenses");
+			} else {
+				// Konsep tidak terdeteksi → fallback Other tanpa saran (juga sah).
+				expect(result?.categoryName).toBe("Other expenses");
+			}
+		});
+
+		it("flag OFF mempertahankan perilaku lama (teks nyasar tanpa saran)", () => {
+			delete (globalThis as { __KASWISE_FEATURE_FLAGS__?: unknown }).__KASWISE_FEATURE_FLAGS__;
+			const result = classifyTransactionText(
+				"bayar kursus online 500rb",
+				categories,
+				fixedDate,
+			);
+			// Baseline: nama bebas boleh tersimpan, tidak ada field saran.
+			if (result?.suggestedCategory) {
+				expect(result.suggestedCategory).toBeNull();
+			}
+		});
+	});
 });

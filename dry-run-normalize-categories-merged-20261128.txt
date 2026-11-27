@@ -1,0 +1,300 @@
+2026-11-27 22:48:44,636 INFO HTTP Request: GET https://xqvtsgfakuehjwdmenuw.supabase.co/rest/v1/transactions?select=category_id&limit=1 "HTTP/2 400 Bad Request"
+2026-11-27 22:48:45,392 INFO HTTP Request: GET https://xqvtsgfakuehjwdmenuw.supabase.co/rest/v1/transactions?select=id%2Cuser_id%2Chousehold_id%2Ctype%2Ckategori%2Ccreated_at&offset=0&limit=500 "HTTP/2 200 OK"
+2026-11-27 22:48:46,158 INFO HTTP Request: GET https://xqvtsgfakuehjwdmenuw.supabase.co/rest/v1/categories?select=id%2Cuser_id%2Cname%2Ctype&offset=0&limit=500 "HTTP/2 200 OK"
+2026-11-27 22:48:46,770 INFO HTTP Request: GET https://xqvtsgfakuehjwdmenuw.supabase.co/rest/v1/categories?select=id%2Cuser_id%2Cname%2Ctype&offset=500&limit=500 "HTTP/2 200 OK"
+========================================================================
+Scan: 354 transactions, 561 categories, 45 users
+========================================================================
+NOTE: transactions.category_id is NOT present — the category-discipline
+migration has not been applied. Counts below are text-mapping only;
+--execute / --rollback require the migration first.
+========================================================================
+
+Makan & Minum  →  Food & Beverage  ⚠ GAP: canonical category missing for some users
+  user aa70df9b-ec18-423c-8f4c-caf86e5567fa: rows=27 todo=27 already_done=0
+    [expense] target=Food & Beverage kind=exact todo=27
+  user 8e9b1f97-75af-4ae1-862a-764650964527: rows=1 todo=1 already_done=0
+    [expense] target=Food & Beverage kind=exact todo=1
+  user 328a70e0-61a4-4704-8175-28c2f7341248: rows=1 todo=1 already_done=0
+    [expense] target=Food & Beverage kind=exact todo=1
+  user 21472727-34c8-472f-aa22-2b1540fa5060: rows=1 todo=1 already_done=0
+    [expense] target=Food & Beverage kind=exact todo=1
+  user a4812ef8-0c20-4f49-8122-0089ece40da5: rows=1 todo=1 already_done=0
+    [expense] target=Food & Beverage kind=exact todo=1
+  user 4511fb5f-0d0b-458a-ab07-a840c0d3a31f: rows=1 todo=1 already_done=0
+    [expense] target=Food & Beverage kind=exact todo=1
+  user 9497b8fc-d304-4e9d-a748-966379d7f5a7: rows=1 todo=1 already_done=0
+    [expense] target=Food & Beverage kind=exact todo=1
+  user 33e7e8ad-bfdd-4450-a625-14b4f4ee83d3: rows=1 todo=1 already_done=0
+    [expense] target=Food & Beverage kind=exact todo=1
+  user b64826e4-fa95-4d80-b6fd-174b11c36db8: rows=1 todo=1 already_done=0
+    [expense] target=Food & Beverage kind=exact todo=1
+  user 03ebbe0e-97f4-4922-8170-83cefe6c19d6: rows=1 todo=1 already_done=0
+    [expense] target=no-fallback kind=no-expense-fallback todo=1
+  user 4432498a-10ab-42a2-94e3-d9b1c8771476: rows=1 todo=1 already_done=0
+    [expense] target=Food & Beverage kind=exact todo=1
+  user 3fd74c2e-0c64-4c3b-be4f-cda92a217c24: rows=1 todo=1 already_done=0
+    [expense] target=Food & Beverage kind=exact todo=1
+  user 31cb3b2f-845b-4ded-9872-863d9d15b632: rows=1 todo=1 already_done=0
+    [expense] target=Food & Beverage kind=exact todo=1
+  user f596f686-1c66-4be3-bbc9-e02d76e15f67: rows=1 todo=1 already_done=0
+    [expense] target=Food & Beverage kind=exact todo=1
+  user cc788b6c-7650-49cc-8ada-730284f10b0e: rows=1 todo=1 already_done=0
+    [expense] target=Food & Beverage kind=exact todo=1
+  user 91a8c013-07b4-4faf-a766-eb6706fb63a6: rows=1 todo=1 already_done=0
+    [expense] target=Food & Beverage kind=exact todo=1
+  user aaa1d9e6-fca5-456c-b73e-e1e469c58757: rows=1 todo=1 already_done=0
+    [expense] target=Food & Beverage kind=exact todo=1
+  user 795cdb53-5660-4510-8a87-5ef1673d060f: rows=1 todo=1 already_done=0
+    [expense] target=Food & Beverage kind=exact todo=1
+  user e66735b3-aa31-4d68-b684-5b987687557f: rows=1 todo=1 already_done=0
+    [expense] target=Food & Beverage kind=exact todo=1
+  user f284efa6-566e-4969-b76c-d538a7332bc9: rows=1 todo=1 already_done=0
+    [expense] target=Food & Beverage kind=exact todo=1
+  TOTAL rows to update: 46
+
+Belanja Bulanan  →  Groceries
+  user aa70df9b-ec18-423c-8f4c-caf86e5567fa: rows=9 todo=9 already_done=0
+    [expense] target=Groceries kind=exact todo=9
+  TOTAL rows to update: 9
+
+Transportasi  →  Transport  ⚠ GAP: canonical category missing for some users
+  user 33a2ea34-3756-42a0-830e-0da6d198ba60: rows=4 todo=4 already_done=0
+    [expense] target=Transport kind=exact todo=4
+  user aa70df9b-ec18-423c-8f4c-caf86e5567fa: rows=6 todo=6 already_done=0
+    [expense] target=Transport kind=exact todo=6
+  user 091830ed-bdb5-42fb-8549-9282b1d537b4: rows=2 todo=2 already_done=0
+    [expense] target=Transport kind=exact todo=2
+  user 4511fb5f-0d0b-458a-ab07-a840c0d3a31f: rows=1 todo=1 already_done=0
+    [expense] target=Transport kind=exact todo=1
+  user 9497b8fc-d304-4e9d-a748-966379d7f5a7: rows=1 todo=1 already_done=0
+    [expense] target=Transport kind=exact todo=1
+  user 33e7e8ad-bfdd-4450-a625-14b4f4ee83d3: rows=1 todo=1 already_done=0
+    [expense] target=Transport kind=exact todo=1
+  user b64826e4-fa95-4d80-b6fd-174b11c36db8: rows=1 todo=1 already_done=0
+    [expense] target=Transport kind=exact todo=1
+  user 03ebbe0e-97f4-4922-8170-83cefe6c19d6: rows=1 todo=1 already_done=0
+    [expense] target=no-fallback kind=no-expense-fallback todo=1
+  user 4432498a-10ab-42a2-94e3-d9b1c8771476: rows=1 todo=1 already_done=0
+    [expense] target=Transport kind=exact todo=1
+  user 31cb3b2f-845b-4ded-9872-863d9d15b632: rows=1 todo=1 already_done=0
+    [expense] target=Transport kind=exact todo=1
+  user cc788b6c-7650-49cc-8ada-730284f10b0e: rows=1 todo=1 already_done=0
+    [expense] target=Transport kind=exact todo=1
+  user 91a8c013-07b4-4faf-a766-eb6706fb63a6: rows=1 todo=1 already_done=0
+    [expense] target=Transport kind=exact todo=1
+  user aaa1d9e6-fca5-456c-b73e-e1e469c58757: rows=1 todo=1 already_done=0
+    [expense] target=Transport kind=exact todo=1
+  user 795cdb53-5660-4510-8a87-5ef1673d060f: rows=1 todo=1 already_done=0
+    [expense] target=Transport kind=exact todo=1
+  TOTAL rows to update: 23
+
+Kebutuhan Rumah & Pribadi  →  Household & Personal Care
+  user aa70df9b-ec18-423c-8f4c-caf86e5567fa: rows=4 todo=4 already_done=0
+    [expense] target=Household & Personal Care kind=exact todo=4
+  user 04163df2-bc65-4178-b97f-fc5ebc9e4cd8: rows=1 todo=1 already_done=0
+    [expense] target=Household & Personal Care kind=exact todo=1
+  TOTAL rows to update: 5
+
+Olahraga  →  Sport
+  user aa70df9b-ec18-423c-8f4c-caf86e5567fa: rows=1 todo=1 already_done=0
+    [expense] target=Sport kind=exact todo=1
+  TOTAL rows to update: 1
+
+Gaji  →  Salary  ⚠ GAP: canonical category missing for some users
+  user 33a2ea34-3756-42a0-830e-0da6d198ba60: rows=3 todo=3 already_done=0
+    [income] target=Salary kind=exact todo=3
+  user aa70df9b-ec18-423c-8f4c-caf86e5567fa: rows=1 todo=1 already_done=0
+    [income] target=Salary kind=exact todo=1
+  user 091830ed-bdb5-42fb-8549-9282b1d537b4: rows=1 todo=1 already_done=0
+    [income] target=Salary kind=exact todo=1
+  user 04163df2-bc65-4178-b97f-fc5ebc9e4cd8: rows=2 todo=2 already_done=0
+    [income] target=Salary kind=exact todo=2
+  user 03ebbe0e-97f4-4922-8170-83cefe6c19d6: rows=1 todo=1 already_done=0
+    [income] target=no-fallback kind=no-income-fallback todo=1
+  user 4432498a-10ab-42a2-94e3-d9b1c8771476: rows=1 todo=1 already_done=0
+    [income] target=Salary kind=exact todo=1
+  user 3fd74c2e-0c64-4c3b-be4f-cda92a217c24: rows=1 todo=1 already_done=0
+    [income] target=Salary kind=exact todo=1
+  user 31cb3b2f-845b-4ded-9872-863d9d15b632: rows=1 todo=1 already_done=0
+    [income] target=Salary kind=exact todo=1
+  user f596f686-1c66-4be3-bbc9-e02d76e15f67: rows=1 todo=1 already_done=0
+    [income] target=Salary kind=exact todo=1
+  user cc788b6c-7650-49cc-8ada-730284f10b0e: rows=1 todo=1 already_done=0
+    [income] target=Salary kind=exact todo=1
+  user 91a8c013-07b4-4faf-a766-eb6706fb63a6: rows=1 todo=1 already_done=0
+    [income] target=Salary kind=exact todo=1
+  user aaa1d9e6-fca5-456c-b73e-e1e469c58757: rows=1 todo=1 already_done=0
+    [income] target=Salary kind=exact todo=1
+  user 795cdb53-5660-4510-8a87-5ef1673d060f: rows=1 todo=1 already_done=0
+    [income] target=Salary kind=exact todo=1
+  user e66735b3-aa31-4d68-b684-5b987687557f: rows=1 todo=1 already_done=0
+    [income] target=Salary kind=exact todo=1
+  user f284efa6-566e-4969-b76c-d538a7332bc9: rows=1 todo=1 already_done=0
+    [income] target=Salary kind=exact todo=1
+  TOTAL rows to update: 18
+
+Lainnya  →  Other expenses
+  user aa70df9b-ec18-423c-8f4c-caf86e5567fa: rows=2 todo=2 already_done=0
+    [expense] target=Other expenses kind=exact todo=2
+  user 091830ed-bdb5-42fb-8549-9282b1d537b4: rows=5 todo=5 already_done=0
+    [expense] target=Other expenses kind=exact todo=5
+  user de80ca52-a711-4a3f-876d-c4f11e5cb1f6: rows=1 todo=1 already_done=0
+    [expense] target=Other expenses kind=exact todo=1
+  TOTAL rows to update: 8
+
+food  →  Food & Beverage  ⚠ GAP: canonical category missing for some users
+  user e710395c-48c2-4b19-be95-a152dcc0598e: rows=1 todo=1 already_done=0
+    [expense] target=no-fallback kind=no-expense-fallback todo=1
+  user 3d4307dd-477f-4b8e-97a0-58936eab537e: rows=1 todo=1 already_done=0
+    [expense] target=no-fallback kind=no-expense-fallback todo=1
+  user c95c7339-8547-421d-a76e-25c3b61cb42d: rows=1 todo=1 already_done=0
+    [expense] target=no-fallback kind=no-expense-fallback todo=1
+  user 3ea3effc-9bf6-4979-96da-355b602a6fe5: rows=1 todo=1 already_done=0
+    [expense] target=no-fallback kind=no-expense-fallback todo=1
+  user a330aa33-3b2e-4e00-b730-2f3d79a50d46: rows=1 todo=1 already_done=0
+    [expense] target=no-fallback kind=no-expense-fallback todo=1
+  user 5270f38b-862c-4aab-ba29-ce6960d76c9a: rows=1 todo=1 already_done=0
+    [expense] target=no-fallback kind=no-expense-fallback todo=1
+  user 6d7381ac-9bbf-4d0d-8d69-60933a801229: rows=1 todo=1 already_done=0
+    [expense] target=no-fallback kind=no-expense-fallback todo=1
+  user 726bd834-67ea-44bd-9378-d28f2ecf6336: rows=1 todo=1 already_done=0
+    [expense] target=no-fallback kind=no-expense-fallback todo=1
+  user b5df936a-27b0-4342-9c0f-10481f833330: rows=1 todo=1 already_done=0
+    [expense] target=no-fallback kind=no-expense-fallback todo=1
+  user d9cd523b-74ee-4b7c-b932-3b5571d9039e: rows=1 todo=1 already_done=0
+    [expense] target=no-fallback kind=no-expense-fallback todo=1
+  user 8686b828-898b-482d-801f-d1e01d7f24e8: rows=1 todo=1 already_done=0
+    [expense] target=no-fallback kind=no-expense-fallback todo=1
+  user 7a57bcef-5e43-4d54-91b7-5ba62eda8e87: rows=1 todo=1 already_done=0
+    [expense] target=no-fallback kind=no-expense-fallback todo=1
+  user daea016c-2cf1-4aa8-9bf9-9899bf11b4c6: rows=1 todo=1 already_done=0
+    [expense] target=no-fallback kind=no-expense-fallback todo=1
+  user 0b06c337-6c8e-4a24-b974-168875605987: rows=1 todo=1 already_done=0
+    [expense] target=no-fallback kind=no-expense-fallback todo=1
+  user eaf85015-1e42-4107-bc74-2146fe29b1c3: rows=1 todo=1 already_done=0
+    [expense] target=Food & Beverage kind=exact todo=1
+  user 8c6e65c2-1b05-450f-9d2d-6aa7189e687c: rows=2 todo=2 already_done=0
+    [expense] target=no-fallback kind=no-expense-fallback todo=2
+  user 961c53e2-d6bf-4424-a411-55691aaed360: rows=1 todo=1 already_done=0
+    [expense] target=no-fallback kind=no-expense-fallback todo=1
+  TOTAL rows to update: 18
+
+Makanan  →  Food & Beverage
+  user 33a2ea34-3756-42a0-830e-0da6d198ba60: rows=4 todo=4 already_done=0
+    [expense] target=Food & Beverage kind=exact todo=4
+  TOTAL rows to update: 4
+
+Makanan & Minuman  →  Food & Beverage
+  user eaf85015-1e42-4107-bc74-2146fe29b1c3: rows=1 todo=1 already_done=0
+    [expense] target=Food & Beverage kind=exact todo=1
+  TOTAL rows to update: 1
+
+Makan  →  Food & Beverage  ⚠ GAP: canonical category missing for some users
+  user 33a2ea34-3756-42a0-830e-0da6d198ba60: rows=1 todo=1 already_done=0
+    [expense] target=Food & Beverage kind=exact todo=1
+  user b5b94cde-eb10-4212-8d62-bb6e09f1c7fa: rows=1 todo=1 already_done=0
+    [expense] target=no-fallback kind=no-expense-fallback todo=1
+  user ea84c709-938e-49eb-b71c-3da60f3dbef4: rows=1 todo=1 already_done=0
+    [expense] target=no-fallback kind=no-expense-fallback todo=1
+  TOTAL rows to update: 3
+
+Kesehatan  →  Health  ⚠ GAP: canonical category missing for some users
+  user 4511fb5f-0d0b-458a-ab07-a840c0d3a31f: rows=1 todo=1 already_done=0
+    [expense] target=Health kind=exact todo=1
+  user 9497b8fc-d304-4e9d-a748-966379d7f5a7: rows=1 todo=1 already_done=0
+    [expense] target=Health kind=exact todo=1
+  user 03ebbe0e-97f4-4922-8170-83cefe6c19d6: rows=1 todo=1 already_done=0
+    [expense] target=no-fallback kind=no-expense-fallback todo=1
+  user 4432498a-10ab-42a2-94e3-d9b1c8771476: rows=1 todo=1 already_done=0
+    [expense] target=Health kind=exact todo=1
+  user aaa1d9e6-fca5-456c-b73e-e1e469c58757: rows=1 todo=1 already_done=0
+    [expense] target=Health kind=exact todo=1
+  user 795cdb53-5660-4510-8a87-5ef1673d060f: rows=1 todo=1 already_done=0
+    [expense] target=Health kind=exact todo=1
+  TOTAL rows to update: 6
+
+Hiburan  →  Entertainment
+  user 33a2ea34-3756-42a0-830e-0da6d198ba60: rows=2 todo=2 already_done=0
+    [expense] target=Entertainment kind=exact todo=2
+  user cc788b6c-7650-49cc-8ada-730284f10b0e: rows=1 todo=1 already_done=0
+    [expense] target=Entertainment kind=exact todo=1
+  user 91a8c013-07b4-4faf-a766-eb6706fb63a6: rows=1 todo=1 already_done=0
+    [expense] target=Entertainment kind=exact todo=1
+  TOTAL rows to update: 4
+
+Belanja Pribadi  →  Personal Shopping  ⚠ GAP: canonical category missing for some users
+  user 4511fb5f-0d0b-458a-ab07-a840c0d3a31f: rows=1 todo=1 already_done=0
+    [expense] target=Personal Shopping kind=exact todo=1
+  user 9497b8fc-d304-4e9d-a748-966379d7f5a7: rows=1 todo=1 already_done=0
+    [expense] target=Personal Shopping kind=exact todo=1
+  user 33e7e8ad-bfdd-4450-a625-14b4f4ee83d3: rows=1 todo=1 already_done=0
+    [expense] target=Personal Shopping kind=exact todo=1
+  user b64826e4-fa95-4d80-b6fd-174b11c36db8: rows=1 todo=1 already_done=0
+    [expense] target=Personal Shopping kind=exact todo=1
+  user 03ebbe0e-97f4-4922-8170-83cefe6c19d6: rows=1 todo=1 already_done=0
+    [expense] target=no-fallback kind=no-expense-fallback todo=1
+  user 4432498a-10ab-42a2-94e3-d9b1c8771476: rows=1 todo=1 already_done=0
+    [expense] target=Personal Shopping kind=exact todo=1
+  user 31cb3b2f-845b-4ded-9872-863d9d15b632: rows=1 todo=1 already_done=0
+    [expense] target=Personal Shopping kind=exact todo=1
+  user cc788b6c-7650-49cc-8ada-730284f10b0e: rows=1 todo=1 already_done=0
+    [expense] target=Personal Shopping kind=exact todo=1
+  user 91a8c013-07b4-4faf-a766-eb6706fb63a6: rows=1 todo=1 already_done=0
+    [expense] target=Personal Shopping kind=exact todo=1
+  user aaa1d9e6-fca5-456c-b73e-e1e469c58757: rows=1 todo=1 already_done=0
+    [expense] target=Personal Shopping kind=exact todo=1
+  user 795cdb53-5660-4510-8a87-5ef1673d060f: rows=1 todo=1 already_done=0
+    [expense] target=Personal Shopping kind=exact todo=1
+  user e66735b3-aa31-4d68-b684-5b987687557f: rows=1 todo=1 already_done=0
+    [expense] target=Personal Shopping kind=exact todo=1
+  user f284efa6-566e-4969-b76c-d538a7332bc9: rows=1 todo=1 already_done=0
+    [expense] target=Personal Shopping kind=exact todo=1
+  TOTAL rows to update: 13
+
+housing  →  Household & Personal Care  ⚠ GAP: canonical category missing for some users
+  user 0b06c337-6c8e-4a24-b974-168875605987: rows=1 todo=1 already_done=0
+    [expense] target=no-fallback kind=no-expense-fallback todo=1
+  TOTAL rows to update: 1
+
+Hadiah & Donasi  →  Gifts & Donations
+  user eaf85015-1e42-4107-bc74-2146fe29b1c3: rows=1 todo=1 already_done=0
+    [expense] target=Gifts & Donations kind=exact todo=1
+  TOTAL rows to update: 1
+
+other  →  Other expenses  ⚠ GAP: canonical category missing for some users
+  user 0b06c337-6c8e-4a24-b974-168875605987: rows=1 todo=1 already_done=0
+    [expense] target=no-fallback kind=no-expense-fallback todo=1
+  TOTAL rows to update: 1
+
+Belanja  →  Other expenses
+  user 33a2ea34-3756-42a0-830e-0da6d198ba60: rows=2 todo=2 already_done=0
+    [expense] target=Other expenses kind=exact todo=2
+  TOTAL rows to update: 2
+
+freelance  →  Freelance  ⚠ GAP: canonical category missing for some users
+  user 33a2ea34-3756-42a0-830e-0da6d198ba60: rows=2 todo=2 already_done=0
+    [income] target=Freelance kind=exact todo=2
+  user 0b06c337-6c8e-4a24-b974-168875605987: rows=2 todo=2 already_done=0
+    [income] target=no-fallback kind=no-income-fallback todo=2
+  user aa70df9b-ec18-423c-8f4c-caf86e5567fa: rows=2 todo=2 already_done=0
+    [income] target=Freelance kind=exact todo=2
+  TOTAL rows to update: 6
+
+investment  →  Other expenses  ⚠ GAP: canonical category missing for some users
+  user 0b06c337-6c8e-4a24-b974-168875605987: rows=1 todo=1 already_done=0
+    [expense] target=no-fallback kind=no-expense-fallback todo=1
+  TOTAL rows to update: 1
+
+Pendidikan  →  Education
+  user 04163df2-bc65-4178-b97f-fc5ebc9e4cd8: rows=1 todo=1 already_done=0
+    [expense] target=Education kind=exact todo=1
+  TOTAL rows to update: 1
+
+Duplicate consolidation: Kartu Kredit → Credit Card
+  user aa70df9b-ec18-423c-8f4c-caf86e5567fa: rows_to_repoint=1 (duplicate category row KEPT, only reported)
+  TOTAL rows to re-point: 1
+
+Unmapped `kategori` values: none
+
+DRY-RUN: nothing was written. Use --execute to apply (a JSON backup is created first).

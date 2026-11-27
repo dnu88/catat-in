@@ -112,8 +112,29 @@ jest.mock("../src/lib/supabase", () => {
     limit: jest.fn((): typeof chain => chain),
     single: jest.fn(async (): Promise<{ data: null; error: null }> => ({ data: null, error: null })),
   };
+  const supabaseMock = {
+    rpc: jest.fn(),
+    from: jest.fn(() => chain),
+    auth: { getUser: jest.fn(async () => ({ data: { user: null }, error: null })) },
+    // useTransactionsChanged (realtime refetch, Tugas 1) butuh channel +
+    // removeChannel — pola sama seperti reports-screen/home-b1.
+    channel: jest.fn(() => ({
+      on: (
+        _event: string,
+        _filter: Record<string, unknown>,
+        _callback: (payload: unknown) => void,
+      ) => ({ subscribe: () => ({}) }),
+      subscribe: () => ({}),
+      unsubscribe: () => ({}),
+    })),
+    removeChannel: jest.fn(async () => undefined),
+  };
   return {
-    useSupabase: () => ({ supabase: { rpc: jest.fn(), from: jest.fn(() => chain), auth: { getUser: jest.fn(async () => ({ data: { user: null }, error: null })) } } }),
+    useSupabase: () => ({ supabase: supabaseMock }),
+    // hook meng-import { supabase } langsung dari modul.
+    get supabase() {
+      return supabaseMock;
+    },
     SupabaseProvider: ({ children }: { children: React.ReactNode }) => children,
   };
 });

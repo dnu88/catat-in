@@ -36,6 +36,14 @@ import {
 import { createEnvelopeAllocation } from "../../src/services/budget-envelopes";
 import { createTransaction } from "../../src/services/transactions";
 import {
+	applyMerchantRulesToDrafts,
+	listMerchantRules,
+	upsertMerchantRule,
+	type MerchantRule,
+} from "../../src/services/merchant-rules";
+import { createCategory as createCategoryService } from "../../src/services/categories";
+import { getCurrentUserId } from "../../src/services/currentUser";import { areCategoryNamesEquivalent } from "../../src/services/category-taxonomy";
+import {
 	analyzeReceiptImage,
 	analyzeTransactionText,
 	getReceiptAuthSession,
@@ -238,14 +246,36 @@ function resolveAiCategoryName(
 	category: unknown,
 	categories: Category[],
 	language: "id" | "en",
-) {
+	discipline = featureFlags.categoryAiDiscipline,
+): { name: string; suggestion: string | null } {
 	const rawName = typeof category === "string" && category.trim() ? category.trim() : "other";
 	const canonicalId = getCategoryCanonicalId(rawName);
 	const existing = categories.find(
 		(option) => getCategoryCanonicalId(option.name) === canonicalId,
 	);
-	if (existing) return getLocalizedCategoryName(existing.name, language);
-	return getLocalizedCategoryName(rawName, language) || (language === "en" ? "Other expenses" : "Lainnya");
+	if (existing) return { name: getLocalizedCategoryName(existing.name, language), suggestion: null };
+
+	if (discipline) {
+		// Discipline: model boleh mengarang, tapi nama yang tidak ada di daftar
+		// user jatuh ke Other expenses; nama aslinya disimpan sebagai saran.
+		const other = categories.find(
+			(option) => getCategoryCanonicalId(option.name) === "other_expenses",
+		);
+		return {
+			name: other
+				? getLocalizedCategoryName(other.name, language)
+				: language === "en"
+					? "Other expenses"
+					: "Lainnya",
+			suggestion: rawName !== "other" ? rawName : null,
+		};
+	}
+	return {
+		name:
+			getLocalizedCategoryName(rawName, language) ||
+			(language === "en" ? "Other expenses" : "Lainnya"),
+		suggestion: null,
+	};
 }
 
 function extractionUnclearOf(extraction: unknown): string | null {
@@ -288,6 +318,7 @@ function aiExtractionToDrafts(
 	categories: Category[],
 	language: "id" | "en",
 	fallbackInput: string,
+	discipline = featureFlags.categoryAiDiscipline,
 ): ClassifiedTransaction[] {
 	const transactions = Array.isArray(extraction?.transactions)
 		? extraction.transactions
@@ -300,7 +331,9 @@ function aiExtractionToDrafts(
 			if (!Number.isFinite(amount) || amount <= 0) return null;
 
 			const transactionType = item.type === "income" ? "income" : "expense";
-			const categoryName = resolveAiCategoryName(item.category, categories, language);
+			const resolvedCategory = resolveAiCategoryName(item.category, categories, language, discipline);
+			const categoryName = resolvedCategory.name;
+			const suggestedCategory = resolvedCategory.suggestion;
 			const note = typeof item.note === "string" && item.note.trim()
 				? item.note.trim()
 				: fallbackInput;
@@ -319,6 +352,7 @@ function aiExtractionToDrafts(
 				confidence: Number.isFinite(confidence) ? Math.max(0, Math.min(confidence, 1)) : 0.82,
 				matchedKeywords: [],
 				matchedConcept: getCategoryCanonicalId(categoryName) || "unknown",
+				suggestedCategory,
 			};
 		})
 		.filter((draft): draft is ClassifiedTransaction => Boolean(draft));
@@ -558,6 +592,8 @@ export default function CaptureScreen() {
 	const [transactionId, setTransactionId] = useState<string | null>(null);
 	const [wallets, setWallets] = useState<Wallet[]>([]);
 	const [categoryOptions, setCategoryOptions] = useState<Category[]>([]);
+	// Saklar rilis 27 Nov: disiplin kategori aktif untuk user ini (allowlist).
+	const [categoryDiscipline, setCategoryDiscipline] = useState(false);
 	const [walletId, setWalletId] = useState<string | null>(null);
 	const [walletLoading, setWalletLoading] = useState(false);
 	const [submitting, setSubmitting] = useState(false);
@@ -746,13 +782,24 @@ export default function CaptureScreen() {
 				return;
 			}
 
-			const aiExtraction = await analyzeTransactionText(supabase, value);
-			void refreshEntitlements();
-
 			const categoriesForClassification =
 				categoryOptions.length > 0
 					? categoryOptions
 					: await listCategories().catch(() => [] as Category[]);
+			// Saklar rilis 27 Nov: disiplin kategori per user (allowlist),
+			// flag global tetap OFF.
+			const discipline = featureFlags.isCategoryAiDisciplineUser(user.id);
+			const aiExtraction = await analyzeTransactionText(
+				supabase,
+				value,
+				discipline
+					? categoriesForClassification.map((category) => ({
+							name: category.name,
+							type: category.type ?? "expense",
+						}))
+					: null,
+			);
+			void refreshEntitlements();
 			const localizedCategoriesForClassification = categoriesForClassification.map((category) => ({
 				...category,
 				name: getLocalizedCategoryName(category.name, isEn ? "en" : "id"),
@@ -760,12 +807,15 @@ export default function CaptureScreen() {
 			const localDrafts = classifyTransactionTextBatch(
 				value,
 				localizedCategoriesForClassification,
+				new Date(),
+				discipline,
 			);
 			const aiDrafts = aiExtractionToDrafts(
 				aiExtraction,
 				categoriesForClassification,
 				isEn ? "en" : "id",
 				value,
+				discipline,
 			);
 			const quickDrafts = localDrafts.length >= aiDrafts.length ? localDrafts : aiDrafts;
 			const quickDraft = quickDrafts[0] ?? null;
@@ -916,9 +966,15 @@ export default function CaptureScreen() {
 			const audioPath = await uploadVoiceAudio(supabase, session.user.id, voiceAsset);
 			const extraction = await processVoiceTransaction(supabase, audioPath);
 			void refreshEntitlements();
+			const voiceDiscipline = featureFlags.isCategoryAiDisciplineUser(session.user.id);
+			setCategoryDiscipline(voiceDiscipline);
 			if (entryV2) {
 				// Voice now lands in the same editable review as text/receipt.
-				const draft = voiceExtractionToDraft(extraction, resolveEntryWalletId());
+				const draft = voiceExtractionToDraft(
+				extraction,
+				resolveEntryWalletId(),
+				userCategoriesForDiscipline(voiceDiscipline),
+			);
 				if (!draft) throw new Error(tx.voiceEmpty);
 				setVoiceAsset(null);
 				startEntryReview([attachWallet(draft)], "voice");
@@ -1067,7 +1123,13 @@ export default function CaptureScreen() {
 				throw new Error(tx.sessionMissing);
 			}
 
-			const extraction = await analyzeReceiptImage(supabase, receiptAsset);
+			const receiptDiscipline = featureFlags.isCategoryAiDisciplineUser(userId);
+			setCategoryDiscipline(receiptDiscipline);
+			const extraction = await analyzeReceiptImage(
+				supabase,
+				receiptAsset,
+				userCategoriesForDiscipline(receiptDiscipline),
+			);
 			void refreshEntitlements();
 			if (entryV2) {
 				// Receipt defaults to ONE total transaction; the per-item split
@@ -1083,6 +1145,7 @@ export default function CaptureScreen() {
 					extraction,
 					mode,
 					resolveEntryWalletId(),
+					userCategoriesForDiscipline(receiptDiscipline),
 				);
 				if (imageDrafts.length === 0) {
 					throw new Error(tx.receiptAmountMissing);
@@ -1443,6 +1506,26 @@ export default function CaptureScreen() {
 		entryWalletRef.current.wallets[0]?.id ??
 		null;
 
+	// Disiplin kategori AI (P4): daftar kategori user untuk jalur struk/suara,
+	// selaras dengan submitText — null saat disiplin OFF atau daftar kosong.
+	const resolveCategoryDiscipline = async (): Promise<boolean> => {
+		try {
+			const userId = await getCurrentUserId();
+			const enabled = featureFlags.isCategoryAiDisciplineUser(userId);
+			setCategoryDiscipline(enabled);
+			return enabled;
+		} catch {
+			return false;
+		}
+	};
+	const userCategoriesForDiscipline = (enabled: boolean) =>
+		enabled
+			? categoryOptions.map((category) => ({
+					name: category.name,
+					type: category.type ?? "expense",
+				}))
+			: null;
+
 	const attachWallet = (draft: TransactionDraft): TransactionDraft => {
 		const targetWalletId = resolveEntryWalletId();
 		if (!targetWalletId) return draft;
@@ -1477,6 +1560,7 @@ export default function CaptureScreen() {
 			receiptExtraction,
 			mode,
 			resolveEntryWalletId(),
+			userCategoriesForDiscipline(categoryDiscipline),
 		);
 		if (drafts.length === 0) return;
 		setReceiptMode(mode);
@@ -1551,13 +1635,24 @@ export default function CaptureScreen() {
 			} = await supabase.auth.getUser();
 			if (!user) throw new Error(tx.sessionMissing);
 
-			const aiExtraction = await analyzeTransactionText(supabase, value);
-			void refreshEntitlements();
-
 			const categoriesForClassification =
 				categoryOptions.length > 0
 					? categoryOptions
 					: await listCategories().catch(() => [] as Category[]);
+			// Saklar rilis 27 Nov: disiplin kategori per user (allowlist).
+			const discipline = featureFlags.isCategoryAiDisciplineUser(user.id);
+			setCategoryDiscipline(discipline);
+			const aiExtraction = await analyzeTransactionText(
+				supabase,
+				value,
+				discipline
+					? categoriesForClassification.map((category) => ({
+							name: category.name,
+							type: category.type ?? "expense",
+						}))
+					: null,
+			);
+			void refreshEntitlements();
 			const localizedCategoriesForClassification =
 				categoriesForClassification.map((category) => ({
 					...category,
@@ -1572,6 +1667,7 @@ export default function CaptureScreen() {
 				categoriesForClassification,
 				isEn ? "en" : "id",
 				value,
+				discipline,
 			);
 			const quickDrafts =
 				localDrafts.length >= aiDrafts.length ? localDrafts : aiDrafts;
@@ -1581,6 +1677,23 @@ export default function CaptureScreen() {
 				classified: quickDrafts,
 				fallbackInput: value,
 			}).map(attachWallet);
+			// Discipline: aturan merchant→kategori dari koreksi user menang
+			// atas tebakan AI sebelum keputusan auto-save diambil.
+			if (categoryDiscipline) {
+				try {
+					const userId = await getCurrentUserId();
+					const rules = await listMerchantRules(
+						supabase,
+						userId,
+						activeContext.type === "household"
+							? activeContext.householdId
+							: null,
+					).catch(() => [] as MerchantRule[]);
+					applyMerchantRulesToDrafts(readyDrafts, rules);
+				} catch {
+					// Aturan gagal dimuat → lanjut tanpa aturan (perilaku AI biasa).
+				}
+			}
 			// One clear sentence may be written without asking; anything else
 			// stops at review with a reason the user can act on.
 			const autoSaveDecision = shouldAutoSaveEntry({
@@ -1621,6 +1734,57 @@ export default function CaptureScreen() {
 					: tx.systemError,
 			);
 		}
+	};
+
+	function mergeDraftExtraction(
+		key: string,
+		patch: Record<string, unknown>,
+	): Record<string, unknown> {
+		const draft = entryState.drafts.find((item) => item.key === key);
+		return {
+			...((draft?.extraction as Record<string, unknown> | null) ?? {}),
+			...patch,
+		};
+	}
+
+	// Discipline: keputusan user atas saran kategori baru (chip di review).
+	const handleAddSuggestedCategory = async (key: string, name: string) => {
+		try {
+			const created = await createCategoryService({
+				name,
+				type: "expense",
+			});
+			setCategoryOptions((options) =>
+				options.some((option) => option.id === created.id)
+					? options
+					: [...options, created],
+			);
+			entryDispatch({
+				type: "draft-updated",
+				key,
+				patch: {
+					category: created.name,
+					extraction: mergeDraftExtraction(key, {
+						suggestedCategory: null,
+					}),
+				},
+			});
+		} catch (error) {
+			Sentry.captureException(error);
+			setError(
+				error instanceof Error ? error.message : tx.systemError,
+			);
+		}
+	};
+
+	const handleDismissSuggestedCategory = (key: string) => {
+		entryDispatch({
+			type: "draft-updated",
+			key,
+			patch: {
+				extraction: mergeDraftExtraction(key, { suggestedCategory: null }),
+			},
+		});
 	};
 
 	// Single save path for every reviewed source. requestId is minted once per
@@ -1681,12 +1845,55 @@ export default function CaptureScreen() {
 					})),
 					categories: categoryOptions.map((category) => ({
 						name: category.name,
+						// P2: id diteruskan agar simpan menulis category_id.
+						id: category.id,
 					})),
+					// Saklar rilis 27 Nov: id hanya ditulis bila user allowlist.
+					categoryDiscipline,
 				});
 				setEntrySaved(result);
 				entryOutcomeUnknownRef.current = false;
 				entryRequestIdRef.current = null;
 				entryFingerprintRef.current = null;
+				// Discipline: koreksi kategori + merchant → aturan dipelajari
+				// (fire-and-forget; kegagalan tidak mempengaruhi simpanan).
+				if (categoryDiscipline) {
+					void (async () => {
+						try {
+							const userId = await getCurrentUserId();
+							const householdId =
+								activeContext.type === "household"
+									? activeContext.householdId
+									: null;
+							await Promise.all(
+								drafts
+									.filter(
+										(draft) =>
+											draft.merchant?.trim() &&
+											draft.category.trim() &&
+											!(
+												(draft.extraction as Record<string, unknown> | null)
+													?.categoryName === draft.category.trim()
+											),
+									)
+									.map((draft) =>
+										upsertMerchantRule(
+											supabase,
+											userId,
+											householdId,
+											draft.merchant as string,
+											draft.category.trim(),
+											categoryOptions.find((option) =>
+												areCategoryNamesEquivalent(option.name, draft.category),
+											)?.id ?? null,
+										),
+								),
+							);
+						} catch (ruleError) {
+							Sentry.captureException(ruleError);
+						}
+					})();
+				}
 				if (!options?.auto) void trackReviewClosed("saved");
 				reviewOpenedTrackedRef.current = false;
 				entryDispatch({
@@ -2435,6 +2642,17 @@ export default function CaptureScreen() {
 							saving={entryState.phase === "saving"}
 							errors={entryErrors}
 							summary={summariseDrafts(entryState.drafts)}
+							discipline={categoryDiscipline}
+							onAddSuggestedCategory={
+								categoryDiscipline
+									? handleAddSuggestedCategory
+									: undefined
+							}
+							onDismissSuggestedCategory={
+								categoryDiscipline
+									? handleDismissSuggestedCategory
+									: undefined
+							}
 						/>
 						)}
 						{entryState.source === "image" && !premium ? (

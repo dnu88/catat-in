@@ -32,6 +32,17 @@ const mockSupabase = {
 	auth: {
 		getUser: jest.fn(async () => ({ data: { user: mockAuthUser } })),
 	},
+	// Untuk useTransactionsChanged (refetch realtime di Beranda).
+	channel: jest.fn(() => ({
+		on: (
+			_event: string,
+			_filter: Record<string, unknown>,
+			_callback: (payload: unknown) => void,
+		) => ({ subscribe: () => ({}) }),
+		subscribe: () => ({}),
+		unsubscribe: () => ({}),
+	})),
+	removeChannel: jest.fn(async () => undefined),
 };
 
 jest.mock("expo-router", () => ({
@@ -44,6 +55,11 @@ jest.mock("expo-router", () => ({
 
 jest.mock("../src/lib/supabase", () => ({
 	useSupabase: () => ({ supabase: mockSupabase }),
+	// useTransactionsChanged meng-import { supabase } langsung. Factory jest
+	// di-hoist — pakai getter agar dievaluasi saat runtime (bukan TDZ).
+	get supabase() {
+		return mockSupabase;
+	},
 }));
 
 jest.mock("../src/services/budget-envelopes", () => {

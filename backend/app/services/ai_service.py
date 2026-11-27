@@ -61,6 +61,176 @@ ATURAN:
 - wallet_hint: nama wallet/bank/e-wallet jika disebut pengguna, null jika tidak disebut
 """
 
+
+# Pemetaan kualifikasi Indonesia/Inggris yang dikenal: kunci = jawaban model
+# (dinormalisasi saat dipakai), nilai = nama kategori tampilan pengguna.
+CATEGORY_ALIAS_ID_EN: dict[str, str] = {
+    "Food & Beverage": "Makan & Minum",
+    "Groceries": "Belanja Bulanan",
+    "Salary": "Gaji",
+    "Transport": "Transportasi",
+    "Sport": "Olahraga",
+    "Other expenses": "Lainnya",
+}
+
+DEFAULT_EXTRACT_CATEGORY = "other"
+
+
+def _normalize_category_name(value: object) -> str:
+    """Nama kategori dibandingkan case-insensitive dan tanpa spasi liar."""
+    if not isinstance(value, str):
+        return ""
+    return re.sub(r"\s+", " ", value.strip().casefold())
+
+
+# Versi ternormalisasi untuk pencocokan case-insensitive di kode.
+CATEGORY_ALIAS_BY_NORM: dict[str, str] = {
+    _normalize_category_name(model_answer): display_name
+    for model_answer, display_name in CATEGORY_ALIAS_ID_EN.items()
+}
+
+
+def _build_user_category_index(categories: list[dict] | None) -> dict[str, str]:
+    """Indeks nama kategori user: nama ternormalisasi -> nama tampilan."""
+    index: dict[str, str] = {}
+    for item in categories or []:
+        if not isinstance(item, dict):
+            continue
+        name = item.get("name")
+        if not isinstance(name, str) or not name.strip():
+            continue
+        normalized = _normalize_category_name(name)
+        if normalized and normalized not in index:
+            index[normalized] = name.strip()
+    return index
+
+
+def _match_user_category_name(
+    raw_name: str, user_index: dict[str, str]
+) -> str | None:
+    """Nama kategori hasil model -> nama persis dari daftar user, atau None."""
+    normalized = _normalize_category_name(raw_name)
+    if not normalized:
+        return None
+    if normalized in user_index:
+        return user_index[normalized]
+
+    # Jawaban model versi Inggris -> nama tampilan user bila ada di daftar.
+    alias_target = CATEGORY_ALIAS_BY_NORM.get(normalized)
+    if alias_target:
+        target_normalized = _normalize_category_name(alias_target)
+        if target_normalized in user_index:
+            return user_index[target_normalized]
+
+    # Arah sebaliknya: user menyimpan nama Inggris, model menjawab Indonesia.
+    for answer_normalized, display_name in CATEGORY_ALIAS_BY_NORM.items():
+        if _normalize_category_name(display_name) == normalized:
+            if answer_normalized in user_index:
+                return user_index[answer_normalized]
+    return None
+
+
+def _build_category_block(lines_intro: str, categories: list[dict] | None) -> str | None:
+    """Blok daftar kategori user untuk prompt; None bila daftar kosong."""
+    user_index = _build_user_category_index(categories)
+    if not user_index:
+        return None
+
+    lines: list[str] = [lines_intro]
+    seen: set[str] = set()
+    for item in categories or []:
+        if not isinstance(item, dict):
+            continue
+        name = item.get("name")
+        if not isinstance(name, str) or not name.strip():
+            continue
+        normalized = _normalize_category_name(name)
+        if not normalized or normalized in seen:
+            continue
+        seen.add(normalized)
+        tx_type = item.get("type")
+        if isinstance(tx_type, str) and tx_type.strip():
+            lines.append(f"- {name.strip()} (type: {tx_type.strip()})")
+        else:
+            lines.append(f"- {name.strip()}")
+
+    lines.extend(
+        [
+            "",
+            "ATURAN KATEGORI:",
+            '- Pilih "category" HANYA dari daftar kategori pengguna di atas. '
+            "JANGAN PERNAH membuat atau menebak kategori baru di luar daftar.",
+            "- Pencocokan fleksibel Indonesia/Inggris diperbolehkan selama "
+            "maknanya sama dengan salah satu kategori di daftar.",
+        ]
+    )
+    alias_lines = [
+        f"- {model_answer} → {display_name}"
+        for model_answer, display_name in CATEGORY_ALIAS_ID_EN.items()
+        if _normalize_category_name(display_name) in user_index
+    ]
+    if alias_lines:
+        lines.append("- Pemetaan manual yang wajib dipatuhi:")
+        lines.extend(alias_lines)
+    lines.append(
+        '- Bila tidak ada kategori di daftar yang cocok, set "category": "other".'
+    )
+    return "\n".join(lines)
+
+
+def _build_transaction_extract_prompt(categories: list[dict] | None) -> str:
+    """Prompt ekstraksi; daftar kategori user disisipkan bila dikirim.
+
+    Tanpa daftar, prompt dasar dipakai apa adanya sehingga respons model
+    (dan seluruh jalur lama) tidak berubah.
+    """
+    block = _build_category_block("\n\nDAFTAR KATEGORI PENGGUNA:", categories)
+    if block is None:
+        return TRANSACTION_EXTRACT_PROMPT
+    return TRANSACTION_EXTRACT_PROMPT + block
+
+
+def _validate_transaction_categories(
+    result: dict, categories: list[dict] | None
+) -> dict:
+    """Kunci kategori hasil model ke daftar kategori user (di kode, bukan cuma prompt).
+
+    Setiap item transaksi: nama kategori dinormalisasi (case-insensitive,
+    trim). Yang cocok dengan daftar user (nama persis atau kaliasi id/en yang
+    dikenal) dipaksa memakai nama persis dari daftar user dengan
+    `category_suggestion` null; yang tidak dikenal menjadi "other" dan
+    `category_suggestion` berisi jawaban asli model. "other" selalu diterima
+    (daftar user + Other). Tanpa daftar user, hasil dikembalikan apa adanya.
+    """
+    if not isinstance(result, dict):
+        return result
+    transactions = result.get("transactions")
+    if not isinstance(transactions, list):
+        return result
+
+    user_index = _build_user_category_index(categories)
+    if not user_index:
+        return result
+
+    for tx in transactions:
+        if not isinstance(tx, dict):
+            continue
+        raw = tx.get("category")
+        raw_text = raw if isinstance(raw, str) else ("" if raw is None else str(raw))
+        if _normalize_category_name(raw_text) == DEFAULT_EXTRACT_CATEGORY:
+            tx["category"] = DEFAULT_EXTRACT_CATEGORY
+            tx["category_suggestion"] = None
+            continue
+        matched = _match_user_category_name(raw_text, user_index)
+        if matched:
+            tx["category"] = matched
+            tx["category_suggestion"] = None
+        else:
+            tx["category"] = DEFAULT_EXTRACT_CATEGORY
+            tx["category_suggestion"] = raw_text.strip() or None
+    return result
+
+
 RECEIPT_ANALYSIS_PROMPT = """Kamu adalah asisten pencatatan keuangan untuk Catat.in.
 Tugasmu: analisis gambar struk/nota belanja dan ekstrak informasi transaksi.
 
@@ -79,6 +249,73 @@ OUTPUT: Selalu response dengan JSON valid saja. Format:
 
 Jika struk tidak jelas/buram, set readable = false dan confidence rendah.
 """
+
+
+def _build_receipt_analysis_prompt(categories: list[dict] | None) -> str:
+    """Prompt analisis struk; daftar kategori user disisipkan bila dikirim.
+
+    Tanpa daftar, prompt dasar dipakai apa adanya sehingga respons model
+    (dan seluruh jalur lama) tidak berubah.
+    """
+    block = _build_category_block(
+        "\n\nDAFTAR KATEGORI PENGGUNA:\n- Pilih \"category\" (total struk) dan "
+        "\"category\" pada setiap item di \"items\" bila ada — HANYA dari "
+        "daftar di bawah:",
+        categories,
+    )
+    if block is None:
+        return RECEIPT_ANALYSIS_PROMPT
+    return RECEIPT_ANALYSIS_PROMPT + block
+
+
+def _validate_receipt_categories(
+    result: dict, categories: list[dict] | None
+) -> dict:
+    """Kunci kategori hasil OCR ke daftar kategori user (di kode, bukan cuma prompt).
+
+    Aturan sama seperti ekstraksi teks: nama kategori dinormalisasi
+    (case-insensitive, trim); yang cocok dengan daftar user (nama persis atau
+    kaliasi id/en yang dikenal) dipaksa memakai nama persis dari daftar user
+    dengan `category_suggestion` null; yang tidak dikenal menjadi "other" dan
+    `category_suggestion` berisi jawaban asli model. Berlaku untuk kategori
+    total struk dan setiap item yang membawa kategori; item tanpa kategori
+    dibiarkan apa adanya. Tanpa daftar user, hasil dikembalikan apa adanya.
+    """
+    if not isinstance(result, dict):
+        return result
+    user_index = _build_user_category_index(categories)
+    if not user_index:
+        return result
+
+    def clamp(value: object) -> tuple[str, str | None]:
+        raw_text = value if isinstance(value, str) else ("" if value is None else str(value))
+        if not raw_text.strip():
+            return "", None
+        if _normalize_category_name(raw_text) == DEFAULT_EXTRACT_CATEGORY:
+            return DEFAULT_EXTRACT_CATEGORY, None
+        matched = _match_user_category_name(raw_text, user_index)
+        if matched:
+            return matched, None
+        return DEFAULT_EXTRACT_CATEGORY, raw_text.strip()
+
+    raw = result.get("category")
+    if isinstance(raw, str) and raw.strip():
+        category, suggestion = clamp(raw)
+        result["category"] = category
+        result["category_suggestion"] = suggestion
+
+    items = result.get("items")
+    if isinstance(items, list):
+        for item in items:
+            if not isinstance(item, dict):
+                continue
+            item_raw = item.get("category")
+            if not (isinstance(item_raw, str) and item_raw.strip()):
+                continue
+            category, suggestion = clamp(item_raw)
+            item["category"] = category
+            item["category_suggestion"] = suggestion
+    return result
 
 
 @lru_cache
@@ -205,7 +442,10 @@ async def _glm_extract_json(system_prompt: str, user_text: str) -> str:
 
 
 async def extract_transaction_from_text(
-    user_text: str, *, allow_local_review: bool = False
+    user_text: str,
+    *,
+    allow_local_review: bool = False,
+    categories: list[dict] | None = None,
 ) -> dict:
     """Ekstraksi transaksi dari teks bebas.
 
@@ -218,13 +458,25 @@ async def extract_transaction_from_text(
     (Capture). Tanpa opt-in, kegagalan seluruh provider tetap menjadi
     RuntimeError -> 502, sehingga klien lama tidak mengubah arti 502 menjadi
     simpan otomatis.
+
+    `categories` (opsional) adalah daftar kategori milik user
+    ({"name": str, "type": str}). Bila dikirim, daftar itu disisipkan ke
+    prompt dengan instruksi memilih kategori HANYA dari daftar (kaliasi
+    Indonesia/Inggris yang dikenal tetap diterima), dan output model
+    divalidasi di kode: kategori di luar daftar menjadi "other" dengan
+    `category_suggestion` berisi nama asli model. Tanpa `categories`,
+    perilaku lama utuh tanpa validasi tambahan.
     """
+
+    def finalize(result: dict) -> dict:
+        return _validate_transaction_categories(result, categories)
+
     if not (
         settings.DEEPSEEK_API_KEY or settings.ANTHROPIC_API_KEY or settings.ZAI_OCR_API_KEY
     ):
         if allow_local_review:
-            return _outage_fallback_extraction(user_text)
-        return _extract_transaction_locally(user_text)
+            return finalize(_outage_fallback_extraction(user_text))
+        return finalize(_extract_transaction_locally(user_text))
 
     providers = []
     if settings.DEEPSEEK_API_KEY:
@@ -234,10 +486,12 @@ async def extract_transaction_from_text(
     if settings.ANTHROPIC_API_KEY:
         providers.append(("anthropic", _anthropic_extract_json))
 
+    system_prompt = _build_transaction_extract_prompt(categories)
+
     for name, call in providers:
         try:
-            raw = _strip_json_code_block(await call(TRANSACTION_EXTRACT_PROMPT, user_text))
-            return json.loads(raw)
+            raw = _strip_json_code_block(await call(system_prompt, user_text))
+            return finalize(json.loads(raw))
         except json.JSONDecodeError:
             return {
                 "transactions": [],
@@ -250,7 +504,7 @@ async def extract_transaction_from_text(
     if not allow_local_review:
         # Pesan sengaja generik: detail provider tidak boleh bocor ke klien/log.
         raise RuntimeError("Semua provider ekstraksi teks gagal")
-    return _outage_fallback_extraction(user_text)
+    return finalize(_outage_fallback_extraction(user_text))
 
 
 RECEIPT_ANALYSIS_USER_TEXT = (
@@ -336,14 +590,14 @@ def gemini_models_to_try() -> list[str]:
     return models
 
 
-async def _gemini_chat_once(model: str, image_b64: str, media_type: str) -> str:
+async def _gemini_chat_once(model: str, image_b64: str, media_type: str, prompt: str) -> str:
     """Satu panggilan ke endpoint kompatibel-OpenAI milik Google."""
     payload = {
         "model": model,
         "max_tokens": 2048,
         "temperature": 0,
         "messages": [
-            {"role": "system", "content": RECEIPT_ANALYSIS_PROMPT},
+            {"role": "system", "content": prompt},
             {
                 "role": "user",
                 "content": [
@@ -383,7 +637,7 @@ async def _gemini_chat_once(model: str, image_b64: str, media_type: str) -> str:
     return choices[0].get("message", {}).get("content") or ""
 
 
-async def _gemini_receipt_json(image_b64: str, media_type: str) -> str:
+async def _gemini_receipt_json(image_b64: str, media_type: str, prompt: str = RECEIPT_ANALYSIS_PROMPT) -> str:
     """Baca struk lewat Gemini (endpoint kompatibel-OpenAI Google AI Studio).
 
     Gemini adalah cadangan: provider utama kini DeepSeek, yang ternyata sanggup
@@ -398,7 +652,7 @@ async def _gemini_receipt_json(image_b64: str, media_type: str) -> str:
     last_error: Exception | None = None
     for model in gemini_models_to_try():
         try:
-            return await _gemini_chat_once(model, image_b64, media_type)
+            return await _gemini_chat_once(model, image_b64, media_type, prompt)
         except _GeminiModelUnavailable as exc:
             last_error = exc
             continue
@@ -406,7 +660,7 @@ async def _gemini_receipt_json(image_b64: str, media_type: str) -> str:
     raise RuntimeError(f"Model Gemini tidak tersedia: {last_error}") from last_error
 
 
-async def _deepseek_receipt_json(image_b64: str, media_type: str) -> str:
+async def _deepseek_receipt_json(image_b64: str, media_type: str, prompt: str = RECEIPT_ANALYSIS_PROMPT) -> str:
     """Baca struk lewat DeepSeek (endpoint kompatibel-OpenAI).
 
     DeepSeek dianggap hanya bisa teks sampai probe 2026-10-10 membuktikan
@@ -427,7 +681,7 @@ async def _deepseek_receipt_json(image_b64: str, media_type: str) -> str:
         "max_tokens": _RECEIPT_MAX_TOKENS,
         "temperature": 0,
         "messages": [
-            {"role": "system", "content": RECEIPT_ANALYSIS_PROMPT},
+            {"role": "system", "content": prompt},
             {
                 "role": "user",
                 "content": [
@@ -472,7 +726,7 @@ async def _deepseek_receipt_json(image_b64: str, media_type: str) -> str:
     return content
 
 
-async def _anthropic_receipt_json(image_b64: str, media_type: str) -> str:
+async def _anthropic_receipt_json(image_b64: str, media_type: str, prompt: str = RECEIPT_ANALYSIS_PROMPT) -> str:
     """Baca struk lewat Claude (cadangan bila Gemini tidak tersedia)."""
     client = _get_async_anthropic_client()
     response = await client.messages.create(
@@ -481,7 +735,7 @@ async def _anthropic_receipt_json(image_b64: str, media_type: str) -> str:
         system=[
             {
                 "type": "text",
-                "text": RECEIPT_ANALYSIS_PROMPT,
+                "text": prompt,
                 "cache_control": {"type": "ephemeral"},
             }
         ],
@@ -506,7 +760,9 @@ async def _anthropic_receipt_json(image_b64: str, media_type: str) -> str:
 
 
 async def analyze_receipt_image(
-    image_data: bytes, media_type: str = "image/jpeg"
+    image_data: bytes,
+    media_type: str = "image/jpeg",
+    categories: list[dict] | None = None,
 ) -> dict:
     """Baca struk dari gambar.
 
@@ -515,10 +771,19 @@ async def analyze_receipt_image(
     scan struk. Kalau tidak ada provider gambar sama sekali, balasannya sama
     seperti sebelumnya: struk dianggap tidak terbaca (bukan error) supaya
     aplikasi tetap jalan.
+
+    `categories` (opsional) adalah daftar kategori milik user
+    ({"name": str, "type": str}). Bila dikirim, daftar itu disisipkan ke
+    prompt struk dengan instruksi memilih kategori HANYA dari daftar (kaliasi
+    Indonesia/Inggris yang dikenal tetap diterima), dan output model
+    divalidasi di kode: kategori di luar daftar menjadi "other" dengan
+    `category_suggestion` berisi nama asli model — di level total maupun
+    item. Tanpa `categories`, perilaku lama utuh tanpa validasi tambahan.
     """
+    prompt = _build_receipt_analysis_prompt(categories)
     providers = _vision_providers()
     if not providers:
-        return _unreadable_receipt()
+        return _validate_receipt_categories(_unreadable_receipt(), categories)
 
     image_b64 = base64.standard_b64encode(image_data).decode("utf-8")
     malformed_json = False
@@ -527,21 +792,23 @@ async def analyze_receipt_image(
     for provider in providers:
         try:
             if provider == "glm-ocr":
-                result = await extract_glm_receipt(image_b64, media_type, RECEIPT_ANALYSIS_PROMPT)
+                result = await extract_glm_receipt(image_b64, media_type, prompt)
                 logger.info("Receipt provider=glm-ocr readable=%s", result["readable"])
-                return result
+                return _validate_receipt_categories(result, categories)
             if provider == "deepseek":
-                raw = await _deepseek_receipt_json(image_b64, media_type)
+                raw = await _deepseek_receipt_json(image_b64, media_type, prompt)
             elif provider == "gemini":
-                raw = await _gemini_receipt_json(image_b64, media_type)
+                raw = await _gemini_receipt_json(image_b64, media_type, prompt)
             else:
-                raw = await _anthropic_receipt_json(image_b64, media_type)
+                raw = await _anthropic_receipt_json(image_b64, media_type, prompt)
         except Exception as exc:  # provider bermasalah -> coba berikutnya
             last_error = exc
             continue
 
         try:
-            return json.loads(_strip_json_code_block(raw))
+            return _validate_receipt_categories(
+                json.loads(_strip_json_code_block(raw)), categories
+            )
         except json.JSONDecodeError:
             # Jawaban provider tidak berbentuk JSON: coba provider berikutnya,
             # dan kalau semuanya begitu, balas "tidak terbaca" (bukan 500).
@@ -549,10 +816,10 @@ async def analyze_receipt_image(
             continue
 
     if malformed_json and last_error is None:
-        return _unreadable_receipt(0.0)
+        return _validate_receipt_categories(_unreadable_receipt(0.0), categories)
     if last_error is not None:
         raise RuntimeError(f"Semua provider gambar gagal: {last_error}") from last_error
-    return _unreadable_receipt()
+    return _validate_receipt_categories(_unreadable_receipt(), categories)
 
 
 # Urutan provider AI Insight bawaan bila INSIGHT_PROVIDER_ORDER tidak diisi.

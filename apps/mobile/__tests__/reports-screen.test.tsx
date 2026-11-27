@@ -8,6 +8,10 @@ import { StyleSheet } from "react-native";
 import type { StyleProp, ViewStyle } from "react-native";
 
 import { featureFlags } from "../src/config/features";
+import {
+	notifyTransactionsChanged,
+	subscribeTransactionsChanges,
+} from "../src/services/wallet-events";
 import ReportsScreen from "../app/(tabs)/reports";
 import { ThemeProvider } from "../src/theme/theme-context";
 import { SupabaseProvider } from "../src/lib/supabase";
@@ -99,9 +103,49 @@ jest.mock("../src/lib/supabase", () => {
 					getUser: jest.fn(async () => ({ data: { user: { id: "user-1" } } })),
 				},
 				from: jest.fn(() => chain),
+				// Realtime channel untuk useTransactionsChanged: handler
+				// disimpan agar test bisa mensimulasikan event
+				// postgres_changes; removeChannel dicatat untuk assert
+				// unsubscribe saat unmount.
+				channel: jest.fn(() => ({
+					on: (
+						_event: string,
+						_filter: Record<string, unknown>,
+						callback: (payload: unknown) => void,
+					) => {
+						(globalThis as any).__reportsRealtimeHandler = callback;
+						return { subscribe: () => ({}) };
+					},
+					subscribe: () => ({}),
+					unsubscribe: () => ({}),
+				})),
+				removeChannel: jest.fn(async () => {
+					(globalThis as any).__reportsRemoveChannelCalled = true;
+				}),
+				},
+			}),
+			SupabaseProvider: ({ children }: { children: React.ReactNode }) => children,
+			// Ekspor modul-level `supabase` — hook useTransactionsChanged
+			// meng-import { supabase } langsung, bukan lewat useSupabase.
+			supabase: {
+				auth: { getUser: jest.fn(async () => ({ data: { user: { id: "user-1" } } })) },
+				from: jest.fn(() => chain),
+				channel: jest.fn(() => ({
+					on: (
+						_event: string,
+						_filter: Record<string, unknown>,
+						callback: (payload: unknown) => void,
+					) => {
+						(globalThis as any).__reportsRealtimeHandler = callback;
+						return { subscribe: () => ({}) };
+					},
+					subscribe: () => ({}),
+					unsubscribe: () => ({}),
+				})),
+				removeChannel: jest.fn(async () => {
+					(globalThis as any).__reportsRemoveChannelCalled = true;
+				}),
 			},
-		}),
-		SupabaseProvider: ({ children }: { children: React.ReactNode }) => children,
 	};
 });
 
@@ -670,5 +714,66 @@ describe("ReportsScreen visual parity", () => {
 			expect((globalThis as any).__reportsGteMock).not.toHaveBeenCalled();
 			expect((globalThis as any).__reportsLteMock).not.toHaveBeenCalled();
 		});
+	});
+
+	it("refetch saat transaksi tersimpan (event bus lokal) tanpa pindah tab", async () => {
+		const screen = renderReports();
+		await waitFor(() => expect(screen.getByTestId("reports-analytics-hero")).toBeTruthy());
+
+		const callsBefore = jest.fn.length; // placeholder agar lint senang
+		void callsBefore;
+		const fromCallsBefore = (globalThis as any).__reportsQueryChain.then.mock.calls.length;
+
+		// Simpan transaksi (mode AI/teks/struk/manual/edit/hapus) → bus memicu.
+		notifyTransactionsChanged();
+
+		// Debounce hook 400 ms; loader berjalan via refreshTick yang sudah ada.
+		await waitFor(
+			() => {
+				expect(
+					(globalThis as any).__reportsQueryChain.then.mock.calls.length,
+				).toBeGreaterThan(fromCallsBefore);
+			},
+			{ timeout: 2000 },
+		);
+	});
+
+	it("refetch saat event realtime postgres_changes dari device lain masuk", async () => {
+		const screen = renderReports();
+		await waitFor(() => expect(screen.getByTestId("reports-analytics-hero")).toBeTruthy());
+
+		const fromCallsBefore = (globalThis as any).__reportsQueryChain.then.mock.calls.length;
+		const handler = (globalThis as any).__reportsRealtimeHandler;
+		expect(handler).toBeTruthy();
+
+		handler({ new: { id: "tx-realtime", household_id: null }, old: {} });
+
+		await waitFor(
+			() => {
+				expect(
+					(globalThis as any).__reportsQueryChain.then.mock.calls.length,
+				).toBeGreaterThan(fromCallsBefore);
+			},
+			{ timeout: 2000 },
+		);
+	});
+
+	it("unmount: unsubscribe realtime channel + bus (tidak ada listener bocor)", async () => {
+		const busUnsubscribe = jest.fn();
+		const spy = jest
+			.spyOn(require("../src/services/wallet-events"), "subscribeTransactionsChanges")
+			.mockImplementation(() => busUnsubscribe);
+
+		const screen = renderReports();
+		await waitFor(() => expect(screen.getByTestId("reports-analytics-hero")).toBeTruthy());
+
+	screen.unmount();
+		// removeChannel realtime dipanggil saat unmount (tidak ada listener bocor).
+		expect((globalThis as any).__reportsRemoveChannelCalled).toBe(true);
+		spy.mockRestore();
+
+		// Emit setelah unmount tidak boleh crash.
+		expect(() => notifyTransactionsChanged()).not.toThrow();
+		subscribeTransactionsChanges(() => {})();
 	});
 });

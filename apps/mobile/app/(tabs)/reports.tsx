@@ -14,6 +14,7 @@ import {
 	TextInput,
 } from "react-native";
 import { useFocusEffect, useRouter } from "expo-router";
+import { useTransactionsChanged } from "../../src/hooks/useTransactionsChanged";
 import { LinearGradient } from "expo-linear-gradient";
 import Svg, {
 	Circle,
@@ -1063,6 +1064,14 @@ export default function ReportsScreen() {
 			};
 		}, []),
 	);
+
+	// Refetch tanpa pindah tab: dengarkan perubahan transaksi (event bus
+	// lokal + Supabase realtime per context) — bug 27 Nov (mode AI tidak
+	// memicu refresh). setRefreshTick memakai jalur retry yang sudah ada;
+	// guard `cancelled` loader tetap berlaku.
+	useTransactionsChanged(() => {
+		setRefreshTick((value) => value + 1);
+	});
 
 	const handleShare = async () => {
 		const periodText =

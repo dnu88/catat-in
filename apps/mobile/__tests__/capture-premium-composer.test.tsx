@@ -41,6 +41,8 @@ jest.mock("../src/config/features", () => ({
 		get simplePremiumExperience() {
 			return mockSimplePremiumExperience;
 		},
+		isCategoryAiDisciplineUser: jest.fn(() => false),
+		categoryAiDisciplineUsers: [],
 	},
 }));
 

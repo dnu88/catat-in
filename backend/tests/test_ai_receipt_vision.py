@@ -112,10 +112,10 @@ def test_empty_deepseek_answer_falls_through_to_the_next_provider(monkeypatch):
     monkeypatch.setattr(settings, "DEEPSEEK_API_KEY", "ds-key", raising=False)
     monkeypatch.setattr(settings, "GEMINI_API_KEY", "gemini-key", raising=False)
 
-    async def empty(image_b64, media_type):
+    async def empty(image_b64, media_type, *_):
         raise RuntimeError("DeepSeek mengembalikan jawaban kosong")
 
-    async def ok(image_b64, media_type):
+    async def ok(image_b64, media_type, *_):
         return RECEIPT_JSON
 
     monkeypatch.setattr(ai_service, "_deepseek_receipt_json", empty)
@@ -156,7 +156,7 @@ def test_deepseek_receipt_json_rejects_empty_content(monkeypatch):
 
     monkeypatch.setattr(ai_service.httpx, "AsyncClient", FakeClient)
 
-    async def boom(image_b64, media_type):
+    async def boom(image_b64, media_type, *_):
         raise RuntimeError("jangan sampai dipanggil")
 
     monkeypatch.setattr(ai_service, "_gemini_receipt_json", boom)
@@ -265,10 +265,10 @@ def test_falls_back_to_claude_when_gemini_fails(monkeypatch):
     monkeypatch.setattr(settings, "GEMINI_API_KEY", "gemini-key", raising=False)
     monkeypatch.setattr(settings, "ANTHROPIC_API_KEY", "sk-ant", raising=False)
 
-    async def boom(image_b64, media_type):
+    async def boom(image_b64, media_type, *_):
         raise RuntimeError("gemini 429 kuota habis")
 
-    async def ok(image_b64, media_type):
+    async def ok(image_b64, media_type, *_):
         return RECEIPT_JSON
 
     monkeypatch.setattr(ai_service, "_gemini_receipt_json", boom)
@@ -282,7 +282,7 @@ def test_raises_when_every_vision_provider_fails(monkeypatch):
     monkeypatch.setattr(settings, "GEMINI_API_KEY", "gemini-key", raising=False)
     monkeypatch.setattr(settings, "ANTHROPIC_API_KEY", "sk-ant", raising=False)
 
-    async def boom(image_b64, media_type):
+    async def boom(image_b64, media_type, *_):
         raise RuntimeError("down")
 
     monkeypatch.setattr(ai_service, "_gemini_receipt_json", boom)
@@ -297,7 +297,7 @@ def test_malformed_json_answers_are_reported_as_unreadable(monkeypatch):
     monkeypatch.setattr(settings, "GEMINI_API_KEY", "gemini-key", raising=False)
     monkeypatch.setattr(settings, "ANTHROPIC_API_KEY", "sk-ant", raising=False)
 
-    async def prose(image_b64, media_type):
+    async def prose(image_b64, media_type, *_):
         return "Maaf, gambar ini terlalu buram untuk dibaca."
 
     monkeypatch.setattr(ai_service, "_gemini_receipt_json", prose)
@@ -312,7 +312,7 @@ def test_code_fenced_json_is_accepted(monkeypatch):
     """Model kadang membungkus JSON dengan ```json — harus tetap terbaca."""
     monkeypatch.setattr(settings, "GEMINI_API_KEY", "gemini-key", raising=False)
 
-    async def fenced(image_b64, media_type):
+    async def fenced(image_b64, media_type, *_):
         return f"```json\n{RECEIPT_JSON}\n```"
 
     monkeypatch.setattr(ai_service, "_gemini_receipt_json", fenced)
@@ -335,7 +335,7 @@ def test_retired_model_falls_through_to_the_fallback_model(monkeypatch):
 
     tried: list[str] = []
 
-    async def chat_once(model, image_b64, media_type):
+    async def chat_once(model, image_b64, media_type, *_):
         tried.append(model)
         if model == "gemini-2.5-flash":
             raise ai_service._GeminiModelUnavailable(
@@ -358,7 +358,7 @@ def test_retired_model_falls_through_to_the_fallback_model(monkeypatch):
 def test_all_gemini_models_retired_raises_for_the_next_provider(monkeypatch):
     monkeypatch.setattr(settings, "GEMINI_API_KEY", "gemini-key", raising=False)
 
-    async def chat_once(model, image_b64, media_type):
+    async def chat_once(model, image_b64, media_type, *_):
         raise ai_service._GeminiModelUnavailable("no longer available")
 
     monkeypatch.setattr(ai_service, "_gemini_chat_once", chat_once)

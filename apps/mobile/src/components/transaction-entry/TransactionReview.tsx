@@ -19,6 +19,8 @@ import {
 	allDraftsValid,
 	unacknowledgedWarnings,
 } from "../../features/transaction-entry/draft";
+import { OTHER_CATEGORY_NAMES } from "../../services/transaction-review";
+import { featureFlags } from "../../config/features";
 import { useI18n } from "../../i18n/i18n-context";
 import { financeEditorial as fe } from "../../theme/finance-editorial";
 import { entryCopy, formatRupiah, warningLabel } from "./copy";
@@ -41,7 +43,29 @@ type TransactionReviewProps = {
 	saving: boolean;
 	errors?: Record<string, DraftFieldErrors>;
 	summary: { count: number; total: number };
+	/**
+	 * Discipline mode (chip saran kategori baru): hanya dipasang dari Capture
+	 * ketika flag categoryAiDiscipline ON — flag OFF berarti chip tidak ada
+	 * sama sekali dan komponen ini identik dengan baseline.
+	 */
+	onAddSuggestedCategory?: (key: string, name: string) => void | Promise<void>;
+	onDismissSuggestedCategory?: (key: string) => void;
+	/** Saklar rilis 27 Nov: disiplin aktif untuk user ini (allowlist). */
+	discipline?: boolean;
 };
+
+/** Nama saran yang menunggu keputusan user (metadata extraction). */
+export function suggestedCategoryFor(
+	draft: TransactionDraft,
+	discipline: boolean = featureFlags.categoryAiDiscipline,
+): string | null {
+	if (!discipline) return null;
+	const raw = (draft.extraction as Record<string, unknown> | null)?.suggestedCategory;
+	if (typeof raw !== "string" || !raw.trim()) return null;
+	// Saran hanya relevan saat kategori draf masih generic (Other).
+	if (!OTHER_CATEGORY_NAMES.includes(draft.category.trim())) return null;
+	return raw.trim();
+}
 
 export function DraftWarnings({
 	draft,
@@ -108,6 +132,9 @@ export function TransactionReview({
 	saving,
 	errors,
 	summary,
+	onAddSuggestedCategory,
+	onDismissSuggestedCategory,
+	discipline = featureFlags.categoryAiDiscipline,
 }: TransactionReviewProps) {
 	const { language } = useI18n();
 	const copy = entryCopy(language);
@@ -219,6 +246,15 @@ export function TransactionReview({
 								testID={`draft-${draft.key}`}
 							/>
 
+							{suggestedCategoryFor(draft, discipline) ? (
+								<CategorySuggestionChip
+									draft={draft}
+									suggestion={suggestedCategoryFor(draft, discipline) as string}
+									onAdd={onAddSuggestedCategory}
+									onDismiss={onDismissSuggestedCategory}
+								/>
+							) : null}
+
 							<DraftWarnings draft={draft} onAcknowledge={onAcknowledge} />
 						</View>
 					);
@@ -287,8 +323,100 @@ export function TransactionReview({
 	);
 }
 
+function CategorySuggestionChip({
+	draft,
+	suggestion,
+	onAdd,
+	onDismiss,
+}: {
+	draft: TransactionDraft;
+	suggestion: string;
+	onAdd?: (key: string, name: string) => void | Promise<void>;
+	onDismiss?: (key: string) => void;
+}) {
+	const { language } = useI18n();
+	const isEn = language === "en";
+	const styles = useMemo(() => createStyles(), []);
+	if (!onAdd && !onDismiss) return null;
+
+	return (
+		<View style={styles.suggestionBox} testID={`review-suggestion-${draft.key}`}>
+			<Text style={styles.suggestionText} testID={`review-suggestion-text-${draft.key}`}>
+				{isEn ? `New category: ${suggestion}?` : `Kategori baru: ${suggestion}?`}
+			</Text>
+			<View style={styles.suggestionActions}>
+				{onAdd ? (
+					<Pressable
+						testID={`review-suggestion-create-${draft.key}`}
+						accessibilityRole="button"
+						style={styles.suggestionPrimary}
+						onPress={() => void onAdd(draft.key, suggestion)}
+					>
+						<Text style={styles.suggestionPrimaryText}>
+							{isEn ? "Create" : "Buat"}
+						</Text>
+					</Pressable>
+				) : null}
+				{onDismiss ? (
+					<Pressable
+						testID={`review-suggestion-dismiss-${draft.key}`}
+						accessibilityRole="button"
+						style={styles.suggestionSecondary}
+						onPress={() => onDismiss(draft.key)}
+					>
+						<Text style={styles.suggestionSecondaryText}>
+							{isEn ? "Keep in Other" : "Masukkan ke Lainnya"}
+						</Text>
+					</Pressable>
+				) : null}
+			</View>
+		</View>
+	);
+}
+
 function createStyles() {
 	return StyleSheet.create({
+	suggestionBox: {
+		marginTop: 12,
+		padding: 12,
+		borderRadius: 12,
+		backgroundColor: fe.paper,
+		borderWidth: 1,
+		borderColor: "rgba(9, 13, 24, 0.12)",
+	},
+	suggestionText: {
+		fontSize: 12,
+		fontWeight: "600",
+		color: fe.ink,
+	},
+	suggestionActions: {
+		flexDirection: "row",
+		gap: 8,
+		marginTop: 8,
+	},
+	suggestionPrimary: {
+		paddingVertical: 8,
+		paddingHorizontal: 14,
+		borderRadius: 999,
+		backgroundColor: fe.navy,
+	},
+	suggestionPrimaryText: {
+		fontSize: 12,
+		fontWeight: "600",
+		color: fe.paper,
+	},
+	suggestionSecondary: {
+		paddingVertical: 8,
+		paddingHorizontal: 14,
+		borderRadius: 999,
+		borderWidth: 1,
+		borderColor: "rgba(9, 13, 24, 0.12)",
+	},
+	suggestionSecondaryText: {
+		fontSize: 12,
+		fontWeight: "500",
+		color: fe.muted,
+	},
 		container: {
 			flex: 1,
 			backgroundColor: fe.paper,
