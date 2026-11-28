@@ -665,6 +665,11 @@ export default function ReportsScreen() {
 				: periodFilter === "month"
 					? `${monthName(new Date().getMonth() + 1)} ${new Date().getFullYear()}`
 					: periodLabels[periodFilter];
+	const monthBadgeLabel = premium
+		? periodFilter === "custom" || periodFilter === "saved_rule"
+			? periodDisplayLabel
+			: periodLabels[periodFilter]
+		: tx.monthBadge;
 	const managedSavedRule = managedRuleId
 		? savedRules.find((rule) => rule.id === managedRuleId) ?? null
 		: null;
@@ -1414,9 +1419,11 @@ export default function ReportsScreen() {
 								{activeContext.type === "household" ? tx.contextHousehold : tx.contextPersonal}
 							</Text>
 						</View>
-						<View testID="reports-month-badge" style={styles.monthBadge}>
-							<Text style={styles.monthBadgeText}>{premium ? (periodFilter === "custom" || periodFilter === "saved_rule" ? periodDisplayLabel : periodLabels[periodFilter]) : tx.monthBadge}</Text>
-						</View>
+						{polish ? null : (
+							<View testID="reports-month-badge" style={styles.monthBadge}>
+								<Text style={styles.monthBadgeText}>{monthBadgeLabel}</Text>
+							</View>
+						)}
 						<Pressable
 							accessibilityRole="button"
 							accessibilityLabel={tx.shareA11y}
@@ -1429,6 +1436,13 @@ export default function ReportsScreen() {
 						</Pressable>
 					</View>
 				</View>
+				{polish ? (
+					<View testID="reports-month-badge-row" style={styles.monthBadgeRow}>
+						<View testID="reports-month-badge" style={styles.monthBadge}>
+							<Text style={styles.monthBadgeText}>{monthBadgeLabel}</Text>
+						</View>
+					</View>
+				) : null}
 				<View testID="reports-hero-bubbles" style={styles.heroBubbleCluster}>
 					{dynamicCategories.length === 0 ? null : dynamicCategories.slice(0, 5).map((cat, index) => {
 						const size = [112, 88, 96, 106, 82][index] ?? 88;
@@ -2514,6 +2528,10 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"], polish = fals
 			fontSize: theme.typography.fontSize.sm,
 			marginTop: 2,
 		},
+		monthBadgeRow: {
+			marginTop: 10,
+			alignSelf: "stretch",
+		},
 		monthBadge: {
 			backgroundColor: "rgba(255,255,255,0.12)",
 			borderWidth: 1,
@@ -2521,11 +2539,13 @@ function createStyles(theme: ReturnType<typeof useTheme>["theme"], polish = fals
 			borderRadius: theme.radius.pill,
 			paddingHorizontal: 12,
 			paddingVertical: 6,
+			...(polish ? { alignSelf: "flex-start" as const, maxWidth: "100%" as const } : null),
 		},
 		monthBadgeText: {
 			color: fe.white,
 			fontSize: theme.typography.fontSize.sm,
 			fontWeight: theme.typography.fontWeight.bold,
+			...(polish ? { flexShrink: 1 } : null),
 		},
 		contextBadge: {
 			backgroundColor: "rgba(255,255,255,0.12)",
