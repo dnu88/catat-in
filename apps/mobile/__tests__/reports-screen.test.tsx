@@ -354,6 +354,26 @@ describe("ReportsScreen visual parity", () => {
 		).not.toBe("#A3FF12");
 	});
 
+	it("polish ON: badge periode pindah ke baris sendiri (tidak terpotong)", () => {
+		const flagsGlobal = globalThis as { __KASWISE_FEATURE_FLAGS__?: unknown };
+		const original = flagsGlobal.__KASWISE_FEATURE_FLAGS__;
+		const { Platform } = require("react-native");
+		const originalPlatform = Object.getOwnPropertyDescriptor(Platform, "OS");
+		flagsGlobal.__KASWISE_FEATURE_FLAGS__ = { simplePremiumExperience: true };
+		Object.defineProperty(Platform, "OS", { configurable: true, value: "web" });
+		try {
+			const screen = renderReports();
+			const badge = screen.getByTestId("reports-month-badge");
+			const style = getFlattenedStyle(badge);
+			// Baris sendiri: shrinkable + tidak melebar melewati hero.
+			expect(style.alignSelf).toBe("flex-start");
+			expect(style.maxWidth).toBe("100%");
+		} finally {
+			if (originalPlatform) Object.defineProperty(Platform, "OS", originalPlatform);
+			flagsGlobal.__KASWISE_FEATURE_FLAGS__ = original;
+		}
+	});
+
 	it("matches home hero light-theme treatment for reports summary accents", () => {
 		const screen = renderReports();
 
