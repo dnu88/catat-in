@@ -266,7 +266,10 @@ describe("WalletsScreen", () => {
 		try {
 			renderWallets();
 			const split = await screen.findByTestId("wallets-split-balance");
-			const style = getFlattenedStyle(split);
+			const style = getFlattenedStyle(split) as {
+				color?: string;
+				fontWeight?: string | number;
+			};
 			expect(style.color).toBe("rgba(255,255,255,0.68)");
 			expect(String(style.fontWeight)).toBe("500");
 		} finally {
