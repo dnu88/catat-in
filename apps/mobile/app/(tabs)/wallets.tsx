@@ -1170,7 +1170,13 @@ function createStyles(
 					}),
 		},
 		totalRow: { marginTop: 6, flexDirection: "row", gap: 8, flexWrap: "wrap" },
-		totalSplit: { marginTop: 6, color: theme.colors.textSecondary, fontSize: theme.typography.fontSize.sm },
+		totalSplit: {
+			marginTop: 6,
+			// Polish: caption hero navy butuh kontras terbaca (rasio lama ~1,6:1).
+			color: polish ? "rgba(255,255,255,0.68)" : theme.colors.textSecondary,
+			fontSize: theme.typography.fontSize.sm,
+			...(polish ? { fontWeight: "500" as const } : null),
+		},
 		// PWA polish: the active-wallet count is a caption, so it drops the pill chrome.
 		totalChip: polish
 			? { paddingVertical: 5, alignSelf: "flex-start" }
