@@ -252,6 +252,32 @@ describe("WalletsScreen", () => {
 		expect(split).toContain("250.000");
 	});
 
+	it("polish ON: caption totalSplit terbaca di atas hero navy (kontras)", async () => {
+		const flagsGlobal = globalThis as { __KASWISE_FEATURE_FLAGS__?: unknown };
+		const original = flagsGlobal.__KASWISE_FEATURE_FLAGS__;
+		const { Platform } = require("react-native");
+		const originalPlatform = Object.getOwnPropertyDescriptor(Platform, "OS");
+		flagsGlobal.__KASWISE_FEATURE_FLAGS__ = { simplePremiumExperience: true };
+		Object.defineProperty(Platform, "OS", { configurable: true, value: "web" });
+		mockListWallets.mockImplementation(async () => [
+			{ id: "w1", name: "BCA Utama", type: "bank", balance: 1000000, is_active: true },
+			{ id: "w2", name: "Tunai lama", type: "cash", balance: 250000, is_active: false },
+		]);
+		try {
+			renderWallets();
+			const split = await screen.findByTestId("wallets-split-balance");
+			const style = getFlattenedStyle(split) as {
+				color?: string;
+				fontWeight?: string | number;
+			};
+			expect(style.color).toBe("rgba(255,255,255,0.68)");
+			expect(String(style.fontWeight)).toBe("500");
+		} finally {
+			if (originalPlatform) Object.defineProperty(Platform, "OS", originalPlatform);
+			flagsGlobal.__KASWISE_FEATURE_FLAGS__ = original;
+		}
+	});
+
 	it("restores an inactive wallet from the inactive section", async () => {
 		mockListWallets.mockImplementation(async (context: any) => {
 			if (context?.type === "household") return [];
